@@ -914,3 +914,153 @@ issued at 0% stays at 0% no matter what the settings default becomes later.
 on a value that is not a rate, and `-1` reaching the schema would be silently stored); a separate
 `isTaxExempt` boolean (rejected: two fields that can contradict each other, and the exemption is
 already expressible as a rate).
+
+---
+
+## D-027 — `totalDiscount` reports the discount actually given, and clamps are surfaced
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · **Origin:** an ambiguity in the project spec, corrected
+by the project owner. Supersedes the literal reading implemented in increment (b).
+
+**Decision.** §4 step 9 becomes
+`totalDiscount = Σ effectiveLineDiscount + effectiveInvoiceDiscount`, where the *effective* discount
+is the amount actually deducted after clamping — never the amount as entered. The project spec was amended to say so.
+
+Additionally: a clamped discount, at either level, is **reported to the caller as data** on
+`CalculatedInvoice.warnings` — not absorbed, and not thrown.
+
+**Reason.** The contract's original wording defined the figure as the sum of what was entered.
+Implemented literally in increment (b), that made an item discount larger than its line inflate the
+reported total above what was actually given — a line worth 1,000,000 with 1,500,000 entered against
+it reported 1,500,000 while deducting 1,000,000. The owner's ruling:
+
+> *"The number printed on an invoice must be the discount actually given, or the customer cannot
+> reconcile the document by hand — and 'total discount 150' on a line that only ever gave 100 is a
+> defect a user will find before we do."*
+
+The wording was wrong, not the implementation of it. Both figures are kept on the line
+(`discountRequested` and `discount`), so the document can still show what was typed and the
+difference stays auditable.
+
+**Why the clamp is surfaced rather than absorbed.** An over-large line discount is almost always a
+data-entry slip rather than an intent. Absorbing it silently is how a wrong figure reaches a document
+nobody questions. It is not an exception, because the totals are correct and the invoice is usable —
+what is questionable is the input, and only the user can settle that. So the engine reports and the
+UI asks. `InvoiceWarning` carries the kind, the line index, and both amounts, so the UI can state the
+difference exactly rather than saying "some discount was ignored". It deliberately carries **no
+message**: user-facing text is Persian and belongs to the localization layer (§1), which
+`core/money/` may not reach.
+
+**The two clamps are kept, for different reasons.** A *line* discount is capped because a line
+cannot give away more than it is worth. An *invoice* discount is capped because it is part of the
+reconciliation invariant, and an uncapped one produces a negative grand total, which is never a valid
+document. The owner confirmed the invoice-level behaviour is unchanged; only its visibility is new.
+
+**Consequence.** `CalculatedLine.discount` changed meaning — it is now the effective amount, so any
+future reader of it gets the figure that belongs on the document. The reconciliation invariant is
+untouched: it is built from `subtotal`, never from `totalDiscount`.
+
+**Alternatives considered.** Reporting the entered amount and letting the UI derive the effective one
+(rejected: two places would compute the same figure, and the document layer must not recompute —
+§12 and D-004 both require the renderer to receive already-computed values). Throwing on an
+over-large discount (rejected: the invoice is computable and correct, and refusing to compute would
+block a user mid-entry over what may be a deliberate write-off of an entire line). Silently rewriting
+the user's input down to the line total (rejected: it discards what they typed with no way to
+notice).
+
+---
+
+## D-028 — Iran Standard Time is an explicit parameter, not a timezone database
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** `core/date/` derives Iranian business-day boundaries from a named constant,
+`kIranStandardOffset = Duration(hours: 3, minutes: 30)`, which every period function takes as a
+**parameter defaulting to that value**. Nothing in `core/date/` reads `DateTime.now()` or the device
+timezone. `package:timezone` is not added.
+
+**Reason.** D-006 requires that boundaries be "derived explicitly rather than hardcoded as a fixed
+offset" in a way that "would break for a user whose device is set to another timezone". The failure
+that requirement guards against is using **device local time** — a laptop in Berlin would then
+compute German day boundaries and mis-file every evening sale. Passing the offset explicitly avoids
+it completely: the answer does not depend on the device at all, which is also what makes every
+boundary testable against fixed values.
+
+Iran abolished daylight saving in 2022, so `Asia/Tehran` has no transitions in any range this
+application will handle; a timezone database would add a dependency and a runtime initialization step
+to return the same number. The parameter is the seam: if Iran restores DST there is one constant to
+replace and one parameter through which a date-dependent rule can be supplied, rather than a search
+for `3.5` across the codebase.
+
+**Dependency added: `shamsi_date` 1.1.1** (the project spec names it; this is the phase that needed
+it). *What it does:* Jalali↔Gregorian conversion and Jalali calendar arithmetic. *Why it is needed:*
+the conversion is on the correctness path for every dashboard figure (D-006), not merely on the
+formatting path. *If it becomes unmaintained:* the algorithm is fixed, published arithmetic over a
+calendar whose leap rule does not change, and `core/date/` wraps it behind this project's own types
+— so a replacement is a single-file swap, and the boundary tests (Nowruz anchors, leap years, month
+tiling) are what would confirm it.
+
+**Alternatives considered.** `package:timezone` (rejected for now: correct in general, unnecessary
+for a fixed-offset zone, and it requires an initialization step a pure library should not have —
+revisit if the app ever serves a second timezone). Reading `DateTime.now().timeZoneOffset`
+(rejected: that *is* the bug D-006 names). Hardcoding `+03:30` inline at each call site (rejected:
+nothing to change when the assumption changes, and nothing to override in a test).
+
+---
+
+## D-029 — `searchKey` produces an opaque key, and folds further than §9 enumerates
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · Extends D-025.
+
+**Decision.** One function, `searchKey`, produces both the value stored in `search_name` and the term
+queried against it. It folds more aggressively than the project spec lists:
+
+| Fold | Named by §9 | Reason for the extras |
+|---|---|---|
+| Persian and Arabic-Indic digits → ASCII | yes | |
+| `ي`/`ك` → `ی`/`ک` | yes | |
+| ZWNJ handled | yes | |
+| `ى` (alef maksura) → `ی` | no | the same yeh again, from a third keyboard layout |
+| `ة`/`ۀ` → `ه` | no | borrowed names are written both ways by the same person |
+| `آ`/`أ`/`إ`/`ٱ` → `ا` | no | the hamza and madda marks are typed inconsistently |
+| diacritics, tatweel, bidi controls dropped | no | invisible to the user, so a mismatch caused by one is undiagnosable |
+| **all whitespace removed** | no | see below |
+| Latin lowercased | no | |
+
+**The result is a key, not a display string.** It is stripped of spacing and case and must never be
+shown to the user. The display name is stored separately, exactly as typed.
+
+**Why whitespace is removed.** Persian compounds are written three ways by the same person —
+`علی‌رضا` (ZWNJ), `علی رضا` (space), `علیرضا` (joined). Folding ZWNJ alone would still leave the
+spaced form unmatched. Removing spacing entirely reduces all three to one key, and a substring `LIKE`
+search over a space-free key still matches each individual word of a multi-word name, so nothing is
+lost. Tested.
+
+**What is deliberately *not* folded.** `ئ` (U+0626, yeh with hamza above) is a distinct Persian
+letter, not a variant: `رئیس` and `رییس` are different spellings, and merging them would make search
+answer a question it was not asked. The rule applied is *the same letter written differently*, never
+*letters that look similar*.
+
+**Enforced structurally, not by convention.** `test/core/formatting/single_normalizer_path_test.dart`
+fails the build if anything in `lib/` outside `core/formatting/` open-codes a character fold, or
+references `searchName` without calling `searchKey`. This is the treatment the database opener gets
+(D-020), for the same reason: **the failure is silent.** Two call sites that normalize almost the
+same way produce no error and no crash — the write succeeds, the index builds, the query runs, and a
+customer saved yesterday simply cannot be found. Neither side looks wrong in isolation.
+
+The guard scans code only, not comments: naming کد ملی in a doc comment describes a field, and a
+comment cannot execute a fold. It carries a `// normalizer-exempt: <reason>` escape hatch, so the raw
+form is a visible, justified choice rather than a forbidden one.
+
+**Verified end to end, not only as a unit.**
+`test/data/database/search_name_roundtrip_test.dart` writes through the real encrypted database and
+searches with a parameterized `LIKE`, because the normalizer can be perfect and the search still fail
+— if one side folds and the other does not, or if SQLite compares the stored bytes differently from
+what Dart produced.
+
+**Alternatives considered.** Normalizing at query time with a user-defined function (rejected in
+D-025: it cannot use an index and degrades to a full scan). Folding only what §9 enumerates
+(rejected: it would leave `علی رضا` unmatchable against `علی‌رضا` — the same failure §9 exists to
+prevent, one character over). Unicode NFKC normalization (rejected: it does not fold the
+Arabic/Persian letter pairs at all, since they are distinct code points with distinct meanings in
+Arabic, and it would fold things this app has no reason to touch).

@@ -150,11 +150,77 @@ void main() {
 
       expect(invoice.lines.single.net, Money.zero);
       expect(invoice.lines.single.total, Money.zero);
-      // §4 step 9 defines totalDiscount as the sum of what was entered, so it
-      // reports 1,500,000 even though only 1,000,000 could be given. The
-      // invariant is unaffected: it is built from subtotal, not this figure.
-      expect(invoice.totalDiscount, Money.rial(1500000));
       expectReconciles(invoice);
+    });
+
+    // D-027, the owner's correction to §4 step 9. This is the case the whole
+    // entry is about: a line worth 1,000,000 with 1,500,000 entered against it
+    // gives away 1,000,000, and that is the only figure a customer could ever
+    // reconcile the document to by hand.
+    test('reports the effective line discount, not the amount entered', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, discountRial: 1500000),
+      ]);
+
+      expect(invoice.totalDiscount, Money.rial(1000000));
+      expect(invoice.lines.single.discount, Money.rial(1000000));
+      expect(invoice.lines.single.discountRequested, Money.rial(1500000));
+      expect(invoice.lines.single.discountWasClamped, isTrue);
+    });
+
+    test(
+      'sums effective discounts across a mix of clamped and normal lines',
+      () {
+        final invoice = calculate(<InvoiceLineInput>[
+          line(priceRial: 1000000, discountRial: 1500000), // gives 1,000,000
+          line(priceRial: 2000000, discountRial: 300000), // gives   300,000
+          line(priceRial: 500000), // gives         0
+        ]);
+
+        expect(invoice.totalDiscount, Money.rial(1300000));
+        expect(invoice.lines[0].discountWasClamped, isTrue);
+        expect(invoice.lines[1].discountWasClamped, isFalse);
+        expect(invoice.lines[2].discountWasClamped, isFalse);
+        expectReconciles(invoice);
+      },
+    );
+
+    test('surfaces a clamped line discount as a warning', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 800000),
+        line(priceRial: 1000000, discountRial: 1500000),
+      ]);
+
+      expect(invoice.hasWarnings, isTrue);
+      final warning = invoice.warnings.single;
+      expect(warning.kind, InvoiceWarningKind.lineDiscountClamped);
+      expect(warning.lineIndex, 1);
+      expect(warning.requested, Money.rial(1500000));
+      expect(warning.applied, Money.rial(1000000));
+      expect(warning.absorbed, Money.rial(500000));
+    });
+
+    test('a clean invoice carries no warnings', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, discountRial: 100000),
+      ], discountRial: 50000);
+
+      expect(invoice.warnings, isEmpty);
+      expect(invoice.hasWarnings, isFalse);
+      expect(invoice.lines.single.discountWasClamped, isFalse);
+    });
+
+    test('a percentage discount can never be clamped', () {
+      // Rates are validated at 0-10000 bp, so the resolved amount is at most
+      // the gross. Only an absolute entry can overshoot a line.
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, discountPercentBp: 10000),
+      ]);
+
+      expect(invoice.lines.single.discount, Money.rial(1000000));
+      expect(invoice.lines.single.discountWasClamped, isFalse);
+      expect(invoice.warnings, isEmpty);
+      expect(invoice.totalDiscount, Money.rial(1000000));
     });
   });
 
@@ -216,6 +282,38 @@ void main() {
       ], discountRial: 5000000);
 
       expect(invoice.invoiceDiscount, Money.rial(1000000));
+      expect(invoice.grandTotal, Money.zero);
+      expectReconciles(invoice);
+    });
+
+    test('surfaces a clamped invoice discount, and reports it effectively', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000),
+      ], discountRial: 5000000);
+
+      // Same D-027 treatment as a line: reported at what was given.
+      expect(invoice.totalDiscount, Money.rial(1000000));
+      expect(invoice.invoiceDiscountRequested, Money.rial(5000000));
+
+      final warning = invoice.warnings.single;
+      expect(warning.kind, InvoiceWarningKind.invoiceDiscountClamped);
+      expect(warning.lineIndex, isNull);
+      expect(warning.requested, Money.rial(5000000));
+      expect(warning.applied, Money.rial(1000000));
+    });
+
+    test('reports both clamps when a line and the invoice overshoot', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, discountRial: 1500000), // line net 0
+        line(priceRial: 400000), // line net 400,000
+      ], discountRial: 900000); // subtotal is only 400,000
+
+      expect(invoice.warnings.map((w) => w.kind), <InvoiceWarningKind>[
+        InvoiceWarningKind.lineDiscountClamped,
+        InvoiceWarningKind.invoiceDiscountClamped,
+      ], reason: 'line warnings come first, invoice-level last');
+      // 1,000,000 given on the line + 400,000 given on the invoice.
+      expect(invoice.totalDiscount, Money.rial(1400000));
       expect(invoice.grandTotal, Money.zero);
       expectReconciles(invoice);
     });

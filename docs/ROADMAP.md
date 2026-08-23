@@ -145,8 +145,8 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increments (a) and (b) complete, reviewed and **accepted**.
-Increment (c) is **blocked**: the owner's review notes for it are pending. See `CURRENT_STATE.md`.
+**Status:** `IN_PROGRESS` — increments (a), (b) and (c) complete; (a) and (b) reviewed and
+**accepted**, (c) awaiting review. See `CURRENT_STATE.md`.
 
 Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
 stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
@@ -156,7 +156,7 @@ connection layer (D-020, D-023); it is built on.
 |---|---|---|
 | a | Drift schema, migration setup, soft-delete helper | `COMPLETED` 2026-08-23 |
 | b | `core/money/` engine + unit tests (§4) | `COMPLETED` 2026-08-23 |
-| c | Jalali date layer and digit normalization + tests | `NOT_STARTED` |
+| c | Jalali date layer and digit normalization + tests | `COMPLETED` 2026-08-24 |
 | d | Repositories and domain models | `NOT_STARTED` |
 | e | Theme, localization, routing, responsive shell | `NOT_STARTED` |
 | f | The four screens, on real data | `NOT_STARTED` |
@@ -212,9 +212,47 @@ both are far cheaper to correct now than after screens depend on them.
   project-relative imports, so pulling in a helper that itself imports Flutter cannot slip past it.
 - Decision recorded: **D-026** (tax-rate resolution treats `0` as a real rate, never as absent).
 
+**Owner ruling on known issue #3 — carried out 2026-08-24 (D-027)**
+
+- §4 step 9 now reports the **effective** discount, not the amount as entered. The project spec was amended: the wording was wrong, not the implementation of it.
+- A clamped discount at either level is **surfaced to the caller as data** on
+  `CalculatedInvoice.warnings` — an over-large discount is nearly always a data-entry error, and
+  absorbing it silently is how a wrong figure reaches a document nobody questions. Not an exception:
+  the totals are correct, the input is what is questionable, so the engine reports and the UI asks.
+- The invoice-level clamp is unchanged in behaviour, as ruled; only its visibility is new.
+
+**Increment (c) — completed 2026-08-24**
+
+- `core/formatting/persian_text.dart` — **one** normalizer. `searchKey` produces both the stored
+  `search_name` and the term queried against it (D-025, D-029), and folds digits, the Arabic letter
+  variants, diacritics, tatweel, bidi controls and all whitespace to one opaque key.
+- **The single path is enforced structurally, not by convention** —
+  `single_normalizer_path_test.dart` fails the build if anything in `lib/` outside `core/formatting/`
+  open-codes a character fold, or touches `searchName` without calling `searchKey`. The same
+  treatment as the database opener, for the same reason: two call sites that normalize almost the
+  same way produce no error at all, just a customer who cannot be found.
+- **Round-tripped through the real encrypted database**, not only unit-tested
+  (`search_name_roundtrip_test.dart`): written with `searchKey`, searched with a parameterized
+  `LIKE`, across both letter variants, ZWNJ, and all three digit sets in one string. The normalizer
+  can be perfect and the search still fail if the two sides disagree — that is the failure being
+  tested for.
+- `core/date/` — Jalali reporting periods as half-open UTC instant ranges (D-006). Periods are
+  computed in the Jalali calendar and only then converted, and every boundary is tested against
+  independently known Nowruz dates rather than against the implementation's own output. Esfand's
+  length is never computed: a month ends where the next begins.
+- **`InstantRange` is half-open** so adjacent periods tile the timeline exactly; an inclusive end
+  would drop a payment recorded in the period's last millisecond.
+- Nothing in `core/date/` reads the clock or the device timezone: the Iran offset is a named constant
+  passed as a parameter (D-028), so a device in another timezone still gets Iranian boundaries.
+- Iranian mobile normalization (`0`, `+98`, `0098`, and the bare country code, with any digit set and
+  any separators) and the national-ID checksum, with the field remaining optional.
+- Numeric input parsing that never routes a quantity through a `double`, and rejects more precision
+  than `quantity_milli` can hold rather than silently truncating it.
+- 140 new tests; 279 pass in total. Three decisions recorded: **D-027**, **D-028**, **D-029**.
+
 **Remaining in Phase 1**
 
-- Increments (c) through (f) above.
+- Increments (d) through (f) above.
 
 **Known issues**
 
@@ -223,11 +261,29 @@ both are far cheaper to correct now than after screens depend on them.
   device, so its database will need that migration rather than a reinstall.
 - The database opens on the main isolate. Phase 13 moves it to a background isolate; until then the
   `setup` closure must stay isolate-sendable, which is now recorded in `ARCHITECTURE.md` §B.5.
-- `search_name` is empty until the normalizer lands in increment (c) and repositories fill it in (d).
-- §4 step 9 defines `totalDiscount` as the sum of the discounts **as entered**, so an item discount
-  larger than its line inflates that figure above what was actually given. Implemented literally;
-  flagged for the owner rather than silently "corrected". The reconciliation invariant is unaffected
-  — it is built from `subtotal`, not from this reporting figure.
+- `search_name` is still empty in the database: the normalizer exists as of (c), and the repositories
+  that must call it on every write arrive in (d). The guard test is already in place for them.
+- ~~§4 step 9 reports discounts as entered~~ — **resolved** by the owner's ruling, D-027.
+- The national-ID checksum cannot catch every transposition: the rule maps remainders 1 and 10 onto
+  the same check digit, so `0079542311` and `0079542131` both validate. That is the official
+  algorithm, not a defect here; it is recorded as a test so nobody later invents a stricter rule than
+  the one numbers are issued under. The UI must not present a passing value as a verified identity.
+
+**Security note (increment c).** No new stored data, no new permissions, no network, no new platform
+surface — but this is the increment that builds the **input boundary**, so the threat model gains
+its first validation layer:
+
+- **Every numeric input now has one place to be normalized and parsed**, and it returns `null` rather
+  than throwing, so malformed input is an ordinary form state rather than an error path that might
+  surface a raw exception to the user (§7 forbids that).
+- **The national-ID and mobile validators are the first code to touch the highest-sensitivity
+  fields.** Neither logs, and neither appears in an error message — the validators return booleans
+  and normalized values, never diagnostics containing the value itself.
+- **Search terms reach SQL as bound parameters, never interpolated** (D-018), demonstrated in the
+  round-trip test rather than only asserted.
+- The normalizer is pure and total: it has no failure mode on hostile input, since every code point
+  either folds, drops, or passes through. Field-level length limits remain enforced at the schema
+  boundary, which is what bounds the size of what it can be handed.
 
 **Security note (increment b).** No new data, inputs, permissions or platform surface: the money
 engine is a pure function over integers. Its security relevance is integrity rather than

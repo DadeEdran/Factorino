@@ -32,7 +32,15 @@ Factorino/
         money.dart                                #   Money value type + kMaxAmountRial ceiling
         rounding.dart                             #   half-up + overflow-checked multiply
         discount_allocation.dart                  #   largest-remainder distribution
-        invoice_calculator.dart                   #   §4, step for step
+        invoice_calculator.dart                   #   §4, step for step + clamp warnings (D-027)
+      date/                                       # Jalali periods as UTC instant ranges (D-006)
+        jalali_instant.dart                       #   instant <-> Jalali, offset as a parameter
+        jalali_period.dart                        #   InstantRange + day/month/year boundaries
+      formatting/                                 # the input boundary (§9)
+        persian_text.dart                         #   THE normalizer: searchKey (D-025, D-029)
+        number_input.dart                         #   digit folding + exact scaled parsing
+        iranian_phone.dart                        #   09xxxxxxxxx, from +98 / 0098 / bare
+        national_id.dart                          #   checksum; the field stays optional
       security/database_encryption_key.dart       # key type + OS-keystore key store (D-023)
       utils/uuid.dart                             # wrapper over package:uuid (D-024)
     data/database/
@@ -43,7 +51,10 @@ Factorino/
       tables/                                     # six tables + SyncColumns mixin
     main.dart            # bootstraps the database; renders nothing yet
   test/
-    core/money/                                     # 70 tests: §4 cases + the invariant
+    core/money/                                     # §4 cases, the invariant, D-027 clamps
+    core/date/jalali_period_test.dart               # boundaries vs known Nowruz dates
+    core/formatting/                                # normalizer, numbers, phone, national ID
+      single_normalizer_path_test.dart              #   scans lib/ for a second normalizer
     core/utils/uuid_test.dart
     data/database/connection_setup_order_test.dart  # pragma-ordering guard
     data/database/database_file_state_test.dart     # header classifier + startup assertion
@@ -51,6 +62,7 @@ Factorino/
     data/database/soft_delete_usage_test.dart       # scans lib/ for unguarded reads
     data/database/schema_shape_test.dart            # D-011 columns on every table
     data/database/app_database_test.dart            # schema behaviour, real encrypted file
+    data/database/search_name_roundtrip_test.dart   # write -> LIKE, through the real file
   integration_test/
     d020_encryption_proof_test.dart                 # the end-to-end proof, per platform
     startup_test.dart                               # the real startup path, per platform
@@ -71,12 +83,19 @@ decided by the file header, never by a pragma - see the three named traps in D-0
 - **State management:** none yet. `main.dart` opens the database, asserts it is encrypted, and
   renders an empty `Scaffold`; Riverpod and the real shell arrive in a later Phase 1 increment.
 - **Money:** the §4 engine exists and is pure. It computes; the schema records. Nothing calls it
-  yet — repositories (increment d) are what will feed it and persist its output.
+  yet — repositories (increment d) are what will feed it and persist its output. As of D-027 it also
+  **reports** clamped inputs on `CalculatedInvoice.warnings` rather than absorbing them.
 - **Persistence:** connection layer **and schema v1** — six tables, the `SyncColumns` mixin, indexes,
   foreign keys with cascades, the seeded settings row, and the soft-delete helper. No DAOs and no
   repositories yet.
 - **Routing:** none (a single `MaterialApp` home).
-- **Localization:** none - the template is English and LTR.
+- **Localization:** the **input boundary** exists -- digit folding, the Persian/Arabic letter folds,
+  the single `searchKey` normalizer, phone normalization and the national-ID checksum, all pure Dart
+  in `core/formatting/`. The *presentation* side -- ARB files, RTL, Vazirmatn, Persian strings -- is
+  increment (e) and does not exist yet.
+- **Dates:** `core/date/` converts between stored UTC instants and Jalali civil dates, and computes
+  Jalali reporting periods as half-open `InstantRange`s (D-006, D-028). Nothing reads the clock or
+  the device timezone; the Iran offset is a parameter.
 - **Theme:** the default Material 3 `ColorScheme.fromSeed`.
 - **Security:** encryption at rest is implemented and proven on Android and Windows; the startup
   assertion exists but is not yet called from `main.dart`. Manifest hardening, app lock, CSP and secure logging are not built. Repository hygiene is
@@ -231,7 +250,7 @@ creation time and never joins to the live product row for pricing (D-004).
 | `money.dart` | The `Money` value type — integer Rial, never `double` (D-002) — and `kMaxAmountRial` |
 | `rounding.dart` | Half-up division, basis-point application, rounding to a unit, and an overflow-checked multiply |
 | `discount_allocation.dart` | Proportional allocation with largest-remainder distribution |
-| `invoice_calculator.dart` | §4 in order: gross → line discount → net → allocation → tax → totals → optional rounding |
+| `invoice_calculator.dart` | §4 in order: gross → line discount → net → allocation → tax → totals → optional rounding, plus the clamp warnings (D-027) |
 
 Three properties are worth knowing before touching it:
 
@@ -249,8 +268,34 @@ deterministic — two devices must not disagree about an invoice after sync.
 64-bit range, so the Dart VM and the Web refuse the same inputs (D-002's Web caveat). A `Money` is
 constructed for every output, so no amount escapes the ceiling.
 
+**Clamped inputs are reported, never absorbed** (D-027). `totalDiscount` is the sum of the discounts
+*actually given*, and any discount capped on the way there appears on `CalculatedInvoice.warnings`
+with both figures. Not an exception: the totals are correct and the invoice is usable — what is
+questionable is the input, so the engine reports and the UI asks. The warning carries no message,
+because user-facing text is Persian and this file may not reach the localization layer.
+
 Money is a value type in the engine's API; the schema stores plain `int` Rial. The repository layer
 (increment d) is the boundary that converts, in one place.
+
+## B.6.1 The date and formatting layers — **built** (increment c)
+
+Both pure Dart, both in `core/`, both tested against fixed known values rather than against their own
+output.
+
+`core/date/` (D-006, D-028). Reporting periods are computed **in the Jalali calendar first** and only
+then converted to UTC instants, because the two calendars' month boundaries never coincide — a
+Gregorian month applied to a dashboard tile produces a figure that matches nothing the user
+recognises, and does so without looking wrong. Periods are half-open `InstantRange`s, so adjacent
+periods tile the timeline exactly and nothing falls into the gap at a boundary. Nothing here reads
+the clock or the device timezone: the Iran offset is a named constant taken as a parameter, so the
+same input gives the same answer on a phone in Tehran and a laptop in Berlin.
+
+`core/formatting/` (§9, D-025, D-029). The **input boundary**: every numeric field is normalized
+before parsing, and every stored `search_name` and every search term is produced by one function,
+`searchKey`. That single path is the load-bearing part — two call sites that normalize almost the
+same way produce no error, just a customer who cannot be found — so it is enforced by a test that
+scans `lib/`, exactly as the single database opener is (D-020), and verified end to end through the
+real encrypted database rather than only as a unit.
 
 ## B.7 Navigation
 
@@ -273,7 +318,9 @@ even though Persian is currently the only locale.
 
 `core/formatting/` owns digit normalization (Persian `۰-۹` and Arabic-Indic `٠-٩` to ASCII), the
 `ي`→`ی` / `ك`→`ک` mapping, and ZWNJ handling — applied at every numeric input boundary and to every
-search term, so a customer saved as "علي" is found by typing "علی".
+search term, so a customer saved as "علي" is found by typing "علی". **This half is built** as of
+increment (c); see §B.6.1. What remains planned here is the presentation side: ARB files, RTL,
+Vazirmatn, and the Persian strings themselves.
 
 Numbers display with Persian digits and thousands separators. Invoice numbers, phone numbers and
 national IDs get explicit bidi isolation so they do not visually scramble inside RTL text. Amounts

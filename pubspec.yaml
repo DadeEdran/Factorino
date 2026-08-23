@@ -56,6 +56,17 @@ dependencies:
   # (%APPDATA% on Windows, app-private storage on Android) -- the project spec.
   path_provider: 2.1.5
 
+  # Jalali (Shamsi) calendar conversion (D-005/D-006). Dates are
+  # stored as UTC epoch milliseconds and displayed Jalali, and reporting periods
+  # are Jalali months and years -- so the conversion is on the correctness path
+  # for every dashboard figure, not just for formatting.
+  #
+  # If it becomes unmaintained: the Jalali<->Gregorian algorithm is a fixed,
+  # published arithmetic (Birashk / Borkowski) over a calendar whose leap rule
+  # does not change, and `core/date/` wraps it behind our own types -- so a
+  # replacement is a single-file swap, checked by the existing boundary tests.
+  shamsi_date: 1.1.1
+
 dev_dependencies:
   flutter_test:
     sdk: flutter
