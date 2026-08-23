@@ -1,12 +1,8 @@
 import 'package:drift/drift.dart';
 
+import '../../models/payment_method.dart';
 import 'invoices.dart';
 import 'sync_columns.dart';
-
-/// How a payment reached the business.
-///
-/// Stored as the enum index: never reorder, only append.
-enum PaymentMethod { cash, cardTransfer, bankTransfer, cheque, other }
 
 /// Money received against an invoice.
 ///
@@ -15,6 +11,7 @@ enum PaymentMethod { cash, cardTransfer, bankTransfer, cheque, other }
 @TableIndex(name: 'idx_payments_deleted_at', columns: {#deletedAt})
 @TableIndex(name: 'idx_payments_invoice', columns: {#invoiceId})
 @TableIndex(name: 'idx_payments_paid_at', columns: {#paidAt})
+@DataClassName('PaymentRow')
 class Payments extends Table with SyncColumns {
   TextColumn get invoiceId =>
       text().references(Invoices, #id, onDelete: KeyAction.cascade)();

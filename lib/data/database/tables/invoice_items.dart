@@ -13,6 +13,7 @@ import 'sync_columns.dart';
 /// the live `products` row would silently rewrite financial history.
 @TableIndex(name: 'idx_invoice_items_deleted_at', columns: {#deletedAt})
 @TableIndex(name: 'idx_invoice_items_invoice', columns: {#invoiceId})
+@DataClassName('InvoiceItemRow')
 class InvoiceItems extends Table with SyncColumns {
   /// Cascades: an invoice item must never outlive its invoice. Invoice
   /// deletion itself is a soft delete; the cascade covers hard cleanup only

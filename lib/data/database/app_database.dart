@@ -3,6 +3,10 @@ import 'package:drift/drift.dart';
 // Referenced only by the generated part file, which resolves names through
 // this library's imports: `uuidV4` and `nowMillis` back the column defaults.
 import '../../core/utils/uuid.dart';
+import '../models/invoice_status.dart';
+import '../models/payment_method.dart';
+import '../models/product_type.dart';
+import '../models/sync_status.dart';
 
 import 'tables/customers.dart';
 import 'tables/invoice_items.dart';

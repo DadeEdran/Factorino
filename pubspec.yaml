@@ -56,6 +56,16 @@ dependencies:
   # (%APPDATA% on Windows, app-private storage on Android) -- the project spec.
   path_provider: 2.1.5
 
+  # State management and dependency injection (DECISIONS.md D-007), in the
+  # code-generation flavor. The repository providers are the seam that lets a
+  # test swap the whole data layer for an in-memory one without a widget
+  # knowing.
+  #
+  # If it becomes unmaintained: provider boundaries are ordinary Dart classes,
+  # so a migration would be mechanical but wide. Accepted given its maturity.
+  flutter_riverpod: 3.4.2
+  riverpod_annotation: 4.0.6
+
   # Jalali (Shamsi) calendar conversion (D-005/D-006). Dates are
   # stored as UTC epoch milliseconds and displayed Jalali, and reporting periods
   # are Jalali months and years -- so the conversion is on the correctness path
@@ -75,6 +85,13 @@ dev_dependencies:
   # nothing generated needs the generator at run time.
   drift_dev: 2.34.5
   build_runner: 2.16.0
+
+  # Generates the provider boilerplate for the annotations above. Note that
+  # `riverpod_lint`/`custom_lint` are deliberately NOT here: they pin the
+  # analyzer back far enough to drag drift and sqlite3 down with them, which
+  # would reintroduce the end-of-life native packages D-010 exists to avoid
+  # (D-015).
+  riverpod_generator: 4.0.8
 
   # Runs the D-020 encryption proof on a real Android device and on Windows.
   # A Dart-VM test cannot stand in for it: the proof is precisely about whether

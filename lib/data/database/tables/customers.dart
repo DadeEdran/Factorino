@@ -9,6 +9,7 @@ import 'sync_columns.dart';
 /// and why none of these fields may ever be logged.
 @TableIndex(name: 'idx_customers_deleted_at', columns: {#deletedAt})
 @TableIndex(name: 'idx_customers_search_name', columns: {#searchName})
+@DataClassName('CustomerRow')
 class Customers extends Table with SyncColumns {
   /// Length limits are enforced at the schema boundary as well as in the UI,
   /// because the UI is not the only writer -- import (Phase 6) is another.

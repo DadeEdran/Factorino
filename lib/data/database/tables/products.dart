@@ -1,11 +1,7 @@
 import 'package:drift/drift.dart';
 
+import '../../models/product_type.dart';
 import 'sync_columns.dart';
-
-/// Whether a catalogue entry is a physical product or a service.
-///
-/// Stored as the enum index: never reorder, only append.
-enum ProductType { product, service }
 
 /// The catalogue an invoice line can be built from.
 ///
@@ -14,6 +10,7 @@ enum ProductType { product, service }
 /// rewrite an invoice issued today.
 @TableIndex(name: 'idx_products_deleted_at', columns: {#deletedAt})
 @TableIndex(name: 'idx_products_search_name', columns: {#searchName})
+@DataClassName('ProductRow')
 class Products extends Table with SyncColumns {
   TextColumn get name => text().withLength(min: 1, max: 160)();
 

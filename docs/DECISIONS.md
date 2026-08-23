@@ -1064,3 +1064,161 @@ D-025: it cannot use an index and degrades to a full scan). Folding only what §
 prevent, one character over). Unicode NFKC normalization (rejected: it does not fold the
 Arabic/Persian letter pairs at all, since they are distinct code points with distinct meanings in
 Arabic, and it would fold things this app has no reason to touch).
+
+---
+
+## D-030 — The national-ID checksum validates a format, never an identity
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · **Owner ruling**, arising from a finding in increment
+(c).
+
+**The finding.** The official Iranian national-ID (کد ملی) checksum cannot distinguish every pair of
+distinct numbers. The rule takes the weighted sum of the first nine digits modulo 11 and requires the
+check digit to be `r` when `r < 2` and `11 − r` otherwise — so remainders **1 and 10 both produce the
+check digit 1**. Any data-entry error that moves the weighted sum between those two remainders is
+invisible to the check. `0079542311` and `0079542131` differ by a transposition and **both validate**,
+under this implementation and under any correct implementation of the published algorithm.
+
+This is a property of the algorithm, not a defect in `core/formatting/national_id.dart`. It is
+recorded as a passing test (`national_id_test.dart`, *"a transposition can survive, and that is the
+algorithm, not a bug"*) so that nobody later "fixes" it by inventing a stricter rule than the one the
+government issues numbers under.
+
+**Decision — a UI constraint that binds increment (f) and every screen after it.**
+
+The Persian copy for this field says that the **format** is valid. It must never say, imply, or be
+translated as *confirmed*, *correct*, *verified*, *authenticated*, or *identity established*.
+
+| Acceptable | Not acceptable |
+|---|---|
+| «فرمت کد ملی معتبر است» — the format is valid | «کد ملی تأیید شد» — the national ID is confirmed |
+| «کد ملی نامعتبر است» — invalid, on failure | «کد ملی صحیح است» — the national ID is correct |
+| No affirmative message at all on success | Any green "verified" badge or check-mark treated as identity |
+
+**Reason.** A passing checksum narrows the space of typos; it does not close it, and it says nothing
+whatever about whether the number belongs to the person named on the invoice. A user told their entry
+is "verified" will stop checking it — which is exactly when a transposed digit that happens to
+checksum survives onto a tax document. The wording is the only thing standing between a probabilistic
+check and a false assurance, and it costs nothing to get right.
+
+Failure messages are unaffected: a value that fails the checksum is genuinely invalid and may be
+called so plainly.
+
+**Consequence.** Increment (f), and Phase 2 (Customers), must satisfy this in the ARB strings
+themselves, not in a code comment. A reviewer should be able to check compliance by reading the
+Persian copy alone.
+
+**Scope.** The same reasoning applies to any future validator that is a checksum rather than a
+lookup — the economic ID and IBAN/Sheba being the likely candidates. State the format, never the
+identity.
+
+---
+
+## D-031 — The domain boundary is a directory split, not a naming convention
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** the project spec's *"repositories expose domain models, never Drift-generated row
+classes"* is enforced by making the drift types **unreachable** from the boundary, rather than by
+asking reviewers to notice:
+
+```
+lib/data/models/                    domain entities + enums   -- no drift import
+lib/data/repositories/*.dart        interfaces                -- no drift import
+lib/data/repositories/drift/*.dart  implementations + mapping -- drift lives here
+lib/data/providers.dart             composition root          -- sees both
+```
+
+A signature cannot name a type its library does not import, so an interface in
+`repositories/` **cannot** return a row class. `domain_boundary_test.dart` fails the build if
+`package:drift/`, `app_database.dart`, `database/tables/` or a `.g.dart` import appears in either
+drift-free directory, and checks that every interface has a `drift_*.dart` implementation beside it.
+
+**Reason.** The rule as written is a code-review rule, and code review is exactly what misses it:
+returning `CustomerRow` instead of `Customer` compiles, runs, and reads as ordinary code at the call
+site. Nothing goes wrong until row types are threaded through providers and widgets, at which point
+the layering is gone and the fix is a refactor rather than an edit. Every other rule in this project
+that fails silently is enforced by a test that scans `lib/` — the single database opener (D-020), the
+soft-delete filter (D-003), the single normalizer (D-029). This is the same treatment.
+
+**Three supporting changes.**
+
+1. **Row classes are named `*Row`** via `@DataClassName` on every table (`CustomerRow`,
+   `ProductRow`, `InvoiceRow`, `InvoiceItemRow`, `PaymentRow`; `SettingsRow` already was). Drift
+   otherwise names the row class for `Customers` **`Customer`** — colliding with the domain model of
+   the same name, and forcing every file that touches both to disambiguate with an import alias.
+   The suffix also makes a leak legible on sight. This is a Dart-level rename only: the generated
+   SQL is unchanged, `drift_schemas/drift_schema_v1.json` is byte-identical, and **no migration is
+   required**.
+
+2. **The enums moved to `data/models/`** — `SyncStatus`, `ProductType`, `InvoiceStatus`,
+   `PaymentMethod`. They were declared beside the tables that store them, which meant a domain model
+   carrying one would have had to import a file that imports drift. The tables import the enums now;
+   the dependency runs schema → domain, never the reverse.
+
+3. **The soft-delete guard was extended to `selectOnly`**, and `selectOnlyAlive` added beside
+   `selectAlive`/`countAlive`. Aggregates were an uncovered gap and the worse half of it: a `select`
+   that forgets the filter returns visibly deleted rows, while a `sum` that forgets it just returns a
+   larger number on a dashboard, with nothing to compare it against.
+
+**Consequence.** One deliberate exemption exists so far: invoice-number allocation reads
+`MAX(number_sequence)` **including** soft-deleted invoices, because a spent number stays spent
+(D-013). It carries `// soft-delete-exempt:` and a reason, which is the escape hatch working as
+intended rather than being worked around.
+
+**Alternatives considered.** A lint rule (rejected: `custom_lint` is the package D-015 excludes for
+dragging the analyzer, and with it drift and sqlite3, backwards). Scanning repository signatures for
+`Row` types with a regex (rejected: fragile against generics, typedefs and inference, and it would
+police the symptom rather than remove the possibility). Trusting the convention (rejected: that is
+what the rule already was).
+
+---
+
+## D-032 — Riverpod composition root, with a synchronous overridden database provider
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · implements D-007.
+
+**Decision.** `lib/data/providers.dart` is the data layer's composition root. `appDatabaseProvider`
+is **synchronous** and its default implementation **throws**; `main()` opens the database and
+overrides it with the result. Every repository provider is typed as its **interface**.
+
+**Dependencies added** (the project spec requires each to be justified):
+
+| Package | Version | What it does | If unmaintained |
+|---|---|---|---|
+| `flutter_riverpod` | 3.4.2 | state management and DI (D-007) | provider boundaries are ordinary Dart classes; migration is mechanical but wide |
+| `riverpod_annotation` | 4.0.6 | the annotations for the generator | removed with the generator |
+| `riverpod_generator` | 4.0.8 | generates the provider boilerplate | the generated providers can be hand-written; it is boilerplate, not behaviour |
+
+**D-015 was re-verified rather than assumed.** Adding these re-resolved 121 packages, and drift
+2.34.3 / drift_dev 2.34.5 / sqlite3 3.5.2 / analyzer 13.3.0 are **unchanged** — the modern native
+stack held, because `riverpod_lint` and `custom_lint` are still deliberately absent (D-015). Had they
+been included, the analyzer pin would have dragged sqlite3 back to 2.x and reintroduced the
+end-of-life native packages D-010 exists to avoid.
+
+**Reason for a synchronous provider with an override.** Opening the database is a fail-loud,
+must-succeed step: it derives the key from the OS keystore, opens with the cipher pragmas in the one
+correct order, migrates, and asserts against the bytes on disk that the file is really encrypted
+(D-020). If any of that fails, the application has no business rendering a partially-working UI while
+a `FutureProvider` resolves — and every dependent provider would be `AsyncValue`-wrapped forever
+after, for a value that is never legitimately absent.
+
+So `main()` does it first and overrides. The consequences are all in the right direction: dependent
+providers are plainly synchronous, the failure is a crash at startup rather than an error state
+threaded through the UI, and **the override is the test seam** — `providers_test.dart` swaps the
+whole data layer onto a temporary encrypted file in one line, which is exactly what a screen in
+increment (f) will need.
+
+**The default throws rather than opening a database itself.** A convenient fallback would give every
+call site a way around `openEncryptedDatabase`, which is the single choke point D-020 depends on. The
+message names `main()` and the decision, because the developer who hits it is the one who needs it.
+
+**Note for a future session.** Riverpod 3 wraps an error thrown inside a provider in a
+`ProviderException`; a test asserting on the inner type directly will not match. Assert on the
+message.
+
+**Alternatives considered.** An async `FutureProvider<AppDatabase>` (rejected for the reasons above).
+Passing repositories down the widget tree by constructor (rejected: D-007 settled Riverpod, and this
+would reintroduce the prop-drilling it exists to avoid). Instantiating repositories inside widgets
+(rejected: it is the layering violation §3 forbids, and it would make the data layer untestable
+without a widget binding).

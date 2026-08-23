@@ -1,17 +1,8 @@
 import 'package:drift/drift.dart';
 
+import '../../models/invoice_status.dart';
 import 'customers.dart';
 import 'sync_columns.dart';
-
-/// Lifecycle of an invoice.
-///
-/// `partiallyPaid` and `paid` are **derived** from the sum of payments against
-/// [Invoices.grandTotalRial], recomputed on every payment write and persisted
-/// here so lists can be queried without joining. `draft` and `cancelled` are
-/// set by hand and are never derived.
-///
-/// Stored as the enum index: never reorder, only append.
-enum InvoiceStatus { draft, unpaid, partiallyPaid, paid, cancelled }
 
 /// Issued invoices.
 ///
@@ -24,6 +15,7 @@ enum InvoiceStatus { draft, unpaid, partiallyPaid, paid, cancelled }
 @TableIndex(name: 'idx_invoices_status', columns: {#status})
 @TableIndex(name: 'idx_invoices_number_year', columns: {#numberYear})
 @TableIndex(name: 'idx_invoices_number', columns: {#number}, unique: true)
+@DataClassName('InvoiceRow')
 class Invoices extends Table with SyncColumns {
   /// The full human-facing number, e.g. `INV-1405-0001` (D-013).
   ///

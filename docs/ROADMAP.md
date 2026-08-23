@@ -145,8 +145,8 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increments (a), (b) and (c) complete; (a) and (b) reviewed and
-**accepted**, (c) awaiting review. See `CURRENT_STATE.md`.
+**Status:** `IN_PROGRESS` — increments (a) through (d) complete; (a), (b) and (c) reviewed and
+**accepted**, (d) awaiting review. See `CURRENT_STATE.md`.
 
 Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
 stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
@@ -157,7 +157,7 @@ connection layer (D-020, D-023); it is built on.
 | a | Drift schema, migration setup, soft-delete helper | `COMPLETED` 2026-08-23 |
 | b | `core/money/` engine + unit tests (§4) | `COMPLETED` 2026-08-23 |
 | c | Jalali date layer and digit normalization + tests | `COMPLETED` 2026-08-24 |
-| d | Repositories and domain models | `NOT_STARTED` |
+| d | Repositories and domain models | `COMPLETED` 2026-08-24 |
 | e | Theme, localization, routing, responsive shell | `NOT_STARTED` |
 | f | The four screens, on real data | `NOT_STARTED` |
 
@@ -250,9 +250,42 @@ both are far cheaper to correct now than after screens depend on them.
   than `quantity_milli` can hold rather than silently truncating it.
 - 140 new tests; 279 pass in total. Three decisions recorded: **D-027**, **D-028**, **D-029**.
 
+**Increment (d) — completed 2026-08-24**
+
+- **Domain models in `data/models/`, and the boundary made structural** (D-031). Interfaces live in
+  `repositories/`, implementations one directory down in `repositories/drift/`, and neither the
+  models nor the interfaces import drift at all — so a signature *cannot* name a row class.
+  `domain_boundary_test.dart` fails the build if an import appears.
+- Row classes renamed `*Row` via `@DataClassName`, which removes the collision between drift's
+  generated `Customer` and the domain `Customer`. Dart-level only: the schema dump is byte-identical
+  and **no migration is needed**.
+- The four enums moved to `data/models/` so the dependency runs schema → domain, never the reverse.
+- **`CustomerRepository` first**, as the first real call site of `searchKey`. `search_name` is
+  written through the one normalizer on create **and on update** — the update path is the one that
+  gets missed, and its failure is the quiet kind: the row is still found, by the name the user no
+  longer typed.
+- **Invoice number allocation inside the write transaction** (D-013), against the **Jalali** year of
+  the issue date. Ten concurrent creates produce ten distinct numbers with no gaps; moving the
+  allocation outside the transaction makes that test fail on the unique index, which was verified by
+  doing it.
+- **Payment writes recompute and persist the derived status in the same transaction** (§6), in both
+  directions — recording a payment moves the status forward, removing one moves it back. `draft` and
+  `cancelled` are never derived.
+- Only a draft may be edited or deleted; anything else raises `InvoiceNotEditable`. Cancellation
+  keeps the number, because a spent number stays spent.
+- Editing a draft **soft-deletes** the replaced lines rather than removing them (D-003): a hard
+  delete cannot be propagated, so the replaced line would resurrect on the first sync.
+- The soft-delete guard now covers `selectOnly`, with `selectOnlyAlive` added beside `selectAlive`.
+  Aggregates were the uncovered half and the worse one — a `sum` that forgets the filter just
+  returns a larger number on a dashboard.
+- **Riverpod composition root** (D-032, implementing D-007): every repository exposed as its
+  interface, `appDatabaseProvider` synchronous and overridden from `main()`. Adding it re-resolved
+  121 packages and drift/sqlite3/analyzer were unchanged — D-015 re-verified rather than assumed.
+- 81 new tests; 360 pass in total. Decisions recorded: **D-030**, **D-031**, **D-032**.
+
 **Remaining in Phase 1**
 
-- Increments (d) through (f) above.
+- Increments (e) and (f) above.
 
 **Known issues**
 
@@ -261,13 +294,30 @@ both are far cheaper to correct now than after screens depend on them.
   device, so its database will need that migration rather than a reinstall.
 - The database opens on the main isolate. Phase 13 moves it to a background isolate; until then the
   `setup` closure must stay isolate-sendable, which is now recorded in `ARCHITECTURE.md` §B.5.
-- `search_name` is still empty in the database: the normalizer exists as of (c), and the repositories
-  that must call it on every write arrive in (d). The guard test is already in place for them.
+- ~~`search_name` is empty~~ — **resolved**: the repositories fill it on every create and update as
+  of (d), and the guard is no longer vacuous.
 - ~~§4 step 9 reports discounts as entered~~ — **resolved** by the owner's ruling, D-027.
 - The national-ID checksum cannot catch every transposition: the rule maps remainders 1 and 10 onto
   the same check digit, so `0079542311` and `0079542131` both validate. That is the official
   algorithm, not a defect here; it is recorded as a test so nobody later invents a stricter rule than
   the one numbers are issued under. The UI must not present a passing value as a verified identity.
+
+**Security note (increment d).** The first code that **writes** third-party personal identifiers,
+so the threat model gains a write path:
+
+- **National IDs, economic IDs and phone numbers now reach the encrypted database through
+  repositories.** None of the domain models carry a `toString` that dumps their fields — `Customer`
+  deliberately prints only its id — because a model's `toString` is what eventually ends up
+  interpolated into a log line or an error message (§7).
+- **Every query is Drift's typed, parameterized API** (D-018). Search terms in particular are bound,
+  never interpolated, which matters because they are user text containing Persian and apostrophes.
+- **Validation stays at the form boundary, not in the repository.** An unrecognised mobile number is
+  stored as typed rather than silently discarded — a foreign client's number is data the user
+  deliberately entered, and dropping it would be data loss dressed as tidiness.
+- **Domain exceptions carry ids and statuses, never amounts or identifiers**, so an unhandled one
+  cannot leak personal data through a stack trace.
+- No new permissions, no network, no new platform surface. The only file written is still the
+  encrypted database.
 
 **Security note (increment c).** No new stored data, no new permissions, no network, no new platform
 surface — but this is the increment that builds the **input boundary**, so the threat model gains

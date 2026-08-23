@@ -6,6 +6,11 @@ import 'package:flutter_test/flutter_test.dart';
 /// cannot be forgotten per-call-site". A helper nobody is obliged to use is
 /// still forgettable, so this test is the obligation.
 ///
+/// `selectOnly` is covered as well as `select`. Aggregates are the easier of
+/// the two to get wrong: no rows are materialised, so a sum that quietly
+/// includes deleted invoices looks exactly like one that does not -- it is just
+/// a larger number on a dashboard.
+///
 /// Forgetting it does not surface as an error: the query succeeds and returns
 /// rows the user deleted. For a customer list that is confusing; for an
 /// invoice total or a dashboard figure it is wrong money.
@@ -19,7 +24,9 @@ void main() {
   /// Defines the helper itself, so it necessarily contains the raw calls.
   const helper = 'lib/data/database/soft_delete.dart';
 
-  final rawQuery = RegExp(r'(?<![A-Za-z0-9_])(select|customSelect)\s*\(');
+  final rawQuery = RegExp(
+    r'(?<![A-Za-z0-9_])(select|customSelect|selectOnly)\s*\(',
+  );
   const exemption = 'soft-delete-exempt:';
 
   test('no unexplained raw select() in lib/', () {
@@ -60,6 +67,7 @@ void main() {
     // Keeps the test above from passing vacuously after a rename.
     final source = File(helper).readAsStringSync();
     expect(source, contains('selectAlive'));
+    expect(source, contains('selectOnlyAlive'));
     expect(source, contains('countAlive'));
     expect(source, contains(kDeletedAtLiteral));
   });

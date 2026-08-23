@@ -1,26 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../../core/utils/uuid.dart';
-
-/// Where a row stands relative to the (future) cloud.
-///
-/// Stored as the **enum index**, so these values must never be reordered and
-/// new ones may only be appended. Unused in Phase 1 but present from the first
-/// schema, because adding it later would mean migrating live user data
-/// (D-011).
-enum SyncStatus {
-  /// Created on this device and never sent anywhere.
-  local,
-
-  /// Changed locally, awaiting upload.
-  pending,
-
-  /// Matches the server as of [SyncColumns.lastSyncedAt].
-  synced,
-
-  /// Diverged from the server; needs resolution.
-  conflict,
-}
+import '../../models/sync_status.dart';
 
 /// The six columns every user-data table carries (D-011).
 ///

@@ -169,6 +169,33 @@ String searchKey(String input) {
   return out.toString().toLowerCase();
 }
 
+/// The separator between fields inside a composite search key.
+///
+/// A customer is searchable by name *and* company, so `search_name` holds both.
+/// They need a boundary, or `احمد` + `دلتا` would concatenate into a key
+/// containing `دد` and match a term that appears in neither field. This
+/// character works because [searchKey] can never produce it: a search term is
+/// folded by the same function, so a term containing it is impossible, and a
+/// `LIKE` match therefore cannot span the boundary.
+const String kSearchFieldSeparator = '|';
+
+/// The composite key for a record with more than one searchable field.
+///
+/// Here rather than in the repositories so that both call sites cannot compose
+/// it differently -- the same reason [searchKey] itself is one function. Null
+/// and blank fields are dropped, so adding a company name later changes the key
+/// only by appending.
+String searchKeyOf(Iterable<String?> fields) {
+  final keys = <String>[];
+  for (final field in fields) {
+    if (field == null) continue;
+    final key = searchKey(field);
+    if (key.isEmpty) continue;
+    keys.add(key);
+  }
+  return keys.join(kSearchFieldSeparator);
+}
+
 /// The ASCII digit a rune represents, across all three digit sets, or `null`.
 int? _asciiDigitOf(int rune) {
   if (rune >= _persianZero && rune <= _persianZero + 9) {

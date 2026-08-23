@@ -64,6 +64,21 @@ extension AliveQueries on DatabaseConnectionUser {
     return select(table)..where((_) => aliveFilter(table));
   }
 
+  /// An aggregate query over non-deleted rows only.
+  ///
+  /// The counterpart of [selectAlive] for `selectOnly` — sums and maximums,
+  /// where the rows are never materialised and the missing filter is therefore
+  /// even harder to notice than in a list query. A dashboard total that
+  /// silently includes deleted invoices is wrong money on the screen the user
+  /// trusts most.
+  ///
+  /// Further conditions compose with `..where(...)`; drift ANDs them.
+  JoinedSelectStatement<T, R> selectOnlyAlive<T extends HasResultSet, R>(
+    ResultSetImplementation<T, R> table,
+  ) {
+    return selectOnly(table)..where(aliveFilter(table));
+  }
+
   /// Counts non-deleted rows without materialising them, so dashboard tiles
   /// stay SQL aggregates rather than Dart loops over full tables (§13).
   Selectable<int> countAlive<T extends Table, R>(TableInfo<T, R> table) {

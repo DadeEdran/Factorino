@@ -43,13 +43,29 @@ Factorino/
         national_id.dart                          #   checksum; the field stays optional
       security/database_encryption_key.dart       # key type + OS-keystore key store (D-023)
       utils/uuid.dart                             # wrapper over package:uuid (D-024)
-    data/database/
-      encrypted_database.dart                     # THE single database opener (D-020)
-      database_bootstrap.dart                     # key -> open -> migrate -> assert encrypted
-      app_database.dart (+ .g.dart)               # @DriftDatabase, schemaVersion 1, migration
-      soft_delete.dart                            # THE single `deleted_at IS NULL` helper
-      tables/                                     # six tables + SyncColumns mixin
-    main.dart            # bootstraps the database; renders nothing yet
+    data/
+      database/
+        encrypted_database.dart                   # THE single database opener (D-020)
+        database_bootstrap.dart                   # key -> open -> migrate -> assert encrypted
+        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 1, migration
+        soft_delete.dart                          # selectAlive / selectOnlyAlive / countAlive
+        tables/                                   # six tables + SyncColumns mixin
+      models/                                     # domain entities -- NO drift import (D-031)
+        customer.dart  product.dart  invoice.dart  invoice_item.dart
+        payment.dart   invoice_detail.dart  invoice_draft.dart
+        app_settings.dart  invoice_number.dart
+        sync_status.dart  product_type.dart  invoice_status.dart  payment_method.dart
+      repositories/                               # interfaces -- NO drift import (D-031)
+        customer_repository.dart  product_repository.dart
+        invoice_repository.dart   payment_repository.dart
+        settings_repository.dart
+        drift/                                    # implementations; drift lives here
+          mappers.dart                            #   THE row -> domain boundary
+          drift_customer_repository.dart  drift_product_repository.dart
+          drift_invoice_repository.dart   drift_payment_repository.dart
+          drift_settings_repository.dart
+      providers.dart (+ .g.dart)                  # composition root (D-032)
+    main.dart            # opens the database, overrides the provider, renders nothing yet
   test/
     core/money/                                     # §4 cases, the invariant, D-027 clamps
     core/date/jalali_period_test.dart               # boundaries vs known Nowruz dates
@@ -63,6 +79,12 @@ Factorino/
     data/database/schema_shape_test.dart            # D-011 columns on every table
     data/database/app_database_test.dart            # schema behaviour, real encrypted file
     data/database/search_name_roundtrip_test.dart   # write -> LIKE, through the real file
+    data/providers_test.dart                        # the override seam
+    data/repositories/
+      domain_boundary_test.dart                     # scans for drift imports across the boundary
+      repository_harness.dart                       # real encrypted file, wired as the app wires it
+      customer_repository_test.dart  invoice_repository_test.dart
+      payment_repository_test.dart   product_and_settings_test.dart
   integration_test/
     d020_encryption_proof_test.dart                 # the end-to-end proof, per platform
     startup_test.dart                               # the real startup path, per platform
@@ -80,14 +102,18 @@ decided by the file header, never by a pragma - see the three named traps in D-0
 256-bit random value from `Random.secure()`, held in the OS keystore with `resetOnError: false`
 (D-023), and never logged.
 
-- **State management:** none yet. `main.dart` opens the database, asserts it is encrypted, and
-  renders an empty `Scaffold`; Riverpod and the real shell arrive in a later Phase 1 increment.
-- **Money:** the §4 engine exists and is pure. It computes; the schema records. Nothing calls it
-  yet — repositories (increment d) are what will feed it and persist its output. As of D-027 it also
+- **State management:** Riverpod is wired (D-032). `lib/data/providers.dart` is the composition
+  root: `appDatabaseProvider` is synchronous and its default throws, `main.dart` opens the database
+  and overrides it, and every repository is exposed as its **interface**. No feature providers yet --
+  there are no screens. `main.dart` still renders an empty `Scaffold`.
+- **Money:** the §4 engine exists, is pure, and is now **called** — `DriftInvoiceRepository` runs it
+  over a draft and persists the result as snapshots (D-004). A caller cannot supply a total, so a
+  stored total cannot disagree with its lines. As of D-027 it also
   **reports** clamped inputs on `CalculatedInvoice.warnings` rather than absorbing them.
-- **Persistence:** connection layer **and schema v1** — six tables, the `SyncColumns` mixin, indexes,
-  foreign keys with cascades, the seeded settings row, and the soft-delete helper. No DAOs and no
-  repositories yet.
+- **Persistence:** connection layer, schema v1, **and the full repository layer**. Five repositories
+  behind drift-free interfaces (D-031), returning domain models. Invoice creation allocates its
+  number inside the write transaction (D-013); payment writes recompute the derived invoice status in
+  the same transaction (§6).
 - **Routing:** none (a single `MaterialApp` home).
 - **Localization:** the **input boundary** exists -- digit folding, the Persian/Arabic letter folds,
   the single `searchKey` normalizer, phone normalization and the national-ID checksum, all pure Dart
@@ -171,21 +197,42 @@ lib/
   main.dart
 ```
 
-## B.3 State management
+## B.3 State management — **built** (increment d)
 
-Riverpod, code-generation flavor (D-007).
+Riverpod, code-generation flavor (D-007), wired in `lib/data/providers.dart` (D-032).
+
+`appDatabaseProvider` is synchronous and throws by default; `main()` opens the database and overrides
+it. Opening is a fail-loud, must-succeed step (D-020), so the alternative — an async provider — would
+wrap every dependent value in an `AsyncValue` for a database that is never legitimately absent, and
+would render a partial UI while a failed open resolved. The override is also the test seam: one line
+swaps the entire data layer onto a temporary encrypted file.
+
+Repository providers are typed as their **interfaces**, so nothing watching one can reach a drift
+type through it. Feature providers arrive with the screens.
 
 - Providers are scoped and `autoDispose` by default; global mutable state is avoided.
 - Widgets watch the **narrowest possible selector** so one changed field does not rebuild a screen.
 - The database and repositories are exposed as providers, which makes them overridable in tests
   against an in-memory database.
 
-## B.4 Data flow
+## B.4 Data flow — **built** (increment d), minus the widget half
 
-Reads are reactive: Drift query streams surface through repositories as streams of domain models and
-reach widgets as `AsyncValue`. Writes go through repository methods that own their transaction
-boundary — notably invoice creation (item snapshotting plus number allocation) and payment recording
-(which recomputes and persists derived invoice status).
+Reads are reactive: drift query streams surface through repositories as streams of **domain models**
+(`watchAll`, `watchSearch`, `watchInPeriod`, `watchDetail`). They will reach widgets as `AsyncValue`
+once there are widgets.
+
+Writes own their transaction boundary, and two of them are the reason the boundary is there:
+
+* **Invoice creation** resolves the tax chain against settings, runs the money engine, allocates the
+  next sequence for the issue date's **Jalali** year, and writes the invoice with its lines — all in
+  one transaction (D-013). Ten concurrent creates produce ten distinct numbers; moving the allocation
+  outside makes that fail on the unique index, which was verified rather than assumed.
+* **Payment recording** inserts the payment and recomputes the derived invoice status in the *same*
+  transaction (§6). Splitting them would leave a window in which a paid invoice reads as unpaid, and
+  a crash inside that window would make it permanent.
+
+Reporting queries take an `InstantRange` from `core/date/` rather than a month number, which keeps
+the Jalali decision in one place instead of in every query, and aggregate in SQL (§13).
 
 ## B.5 Database design
 
@@ -228,8 +275,12 @@ All timestamps are UTC epoch milliseconds (D-005).
 `ON DELETE CASCADE`. Invoice deletion is a soft delete at the invoice level; the cascade exists for
 hard cleanup only. Customers and products referenced by an invoice are soft-deleted only.
 
-**Soft-delete discipline:** a single shared query helper applies `deleted_at IS NULL`, so it cannot
-be forgotten at an individual call site (D-003).
+**Soft-delete discipline:** a single shared helper applies `deleted_at IS NULL` -- `selectAlive` for
+rows, `selectOnlyAlive` for aggregates, `countAlive` for counts -- so it cannot be forgotten at an
+individual call site (D-003). A test scans `lib/` and fails on a raw `select` / `selectOnly` /
+`customSelect` that carries no `// soft-delete-exempt:` reason. Exactly one exemption exists:
+invoice-number allocation reads the maximum sequence **including** deleted rows, because a spent
+number stays spent (D-013).
 
 **Snapshots:** `invoice_items` copies product title, unit, unit price and resolved tax rate at
 creation time and never joins to the live product row for pricing (D-004).

@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import 'data/database/app_database.dart';
 import 'data/database/database_bootstrap.dart';
+import 'data/providers.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,7 +18,15 @@ Future<void> main() async {
   // rather than a silently degraded start.
   final AppDatabase database = await openAppDatabase();
 
-  runApp(FactorinoApp(database: database));
+  // The composition root: everything below this point reaches the data layer
+  // through providers, and the only thing that knows how the database was
+  // opened is this line (D-007).
+  runApp(
+    ProviderScope(
+      overrides: [appDatabaseProvider.overrideWithValue(database)],
+      child: const FactorinoApp(),
+    ),
+  );
 }
 
 /// Placeholder root.
@@ -26,11 +36,7 @@ Future<void> main() async {
 /// English scaffold would violate the zero-English-user-facing-text rule
 /// on its way to being deleted.
 class FactorinoApp extends StatelessWidget {
-  const FactorinoApp({required this.database, super.key});
-
-  /// Held so the connection stays open for the process lifetime. The next
-  /// increment exposes it through a Riverpod provider instead.
-  final AppDatabase database;
+  const FactorinoApp({super.key});
 
   @override
   Widget build(BuildContext context) {

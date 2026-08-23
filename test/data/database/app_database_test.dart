@@ -7,10 +7,10 @@ import 'package:factorino/core/security/database_encryption_key.dart';
 import 'package:factorino/data/database/app_database.dart';
 import 'package:factorino/data/database/database_bootstrap.dart';
 import 'package:factorino/data/database/soft_delete.dart';
-import 'package:factorino/data/database/tables/invoices.dart';
-import 'package:factorino/data/database/tables/payments.dart';
-import 'package:factorino/data/database/tables/products.dart';
-import 'package:factorino/data/database/tables/sync_columns.dart';
+import 'package:factorino/data/models/invoice_status.dart';
+import 'package:factorino/data/models/payment_method.dart';
+import 'package:factorino/data/models/product_type.dart';
+import 'package:factorino/data/models/sync_status.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// Schema behaviour, against a real encrypted database opened through the
