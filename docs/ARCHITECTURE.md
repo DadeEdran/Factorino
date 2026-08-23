@@ -25,17 +25,29 @@ Factorino/
 .githooks/pre-commit   # lockfile-host / secrets / app-ID gate (D-019)
   tools/sanitize_lockfile
   assets/fonts/          # Vazirmatn 400/500/700 + OFL.txt (D-022) - not yet declared in pubspec
+  drift_schemas/         # drift_schema_v1.json - the baseline for migration tests
   lib/
-    core/security/database_encryption_key.dart    # key type + OS-keystore key store (D-023)
-    data/database/encrypted_database.dart         # THE single database opener (D-020)
-    main.dart            # still the default counter app
+    core/
+      security/database_encryption_key.dart       # key type + OS-keystore key store (D-023)
+      utils/uuid.dart                             # RFC 4122 v4, no dependency (D-024)
+    data/database/
+      encrypted_database.dart                     # THE single database opener (D-020)
+      database_bootstrap.dart                     # key -> open -> migrate -> assert encrypted
+      app_database.dart (+ .g.dart)               # @DriftDatabase, schemaVersion 1, migration
+      soft_delete.dart                            # THE single `deleted_at IS NULL` helper
+      tables/                                     # six tables + SyncColumns mixin
+    main.dart            # bootstraps the database; renders nothing yet
   test/
+    core/utils/uuid_test.dart
     data/database/connection_setup_order_test.dart  # pragma-ordering guard
     data/database/database_file_state_test.dart     # header classifier + startup assertion
     data/database/single_open_path_test.dart        # scans lib/ for bypass routes
-    widget_test.dart     # default counter smoke test
+    data/database/soft_delete_usage_test.dart       # scans lib/ for unguarded reads
+    data/database/schema_shape_test.dart            # D-011 columns on every table
+    data/database/app_database_test.dart            # schema behaviour, real encrypted file
   integration_test/
     d020_encryption_proof_test.dart                 # the end-to-end proof, per platform
+    startup_test.dart                               # the real startup path, per platform
   android/  web/  windows/
   docs/
 ```
@@ -50,15 +62,26 @@ decided by the file header, never by a pragma - see the three named traps in D-0
 256-bit random value from `Random.secure()`, held in the OS keystore with `resetOnError: false`
 (D-023), and never logged.
 
-- **State management:** none yet (the template `setState` counter).
-- **Persistence:** the connection layer only. No tables, no DAOs, no repositories, no schema.
+- **State management:** none yet. `main.dart` opens the database, asserts it is encrypted, and
+  renders an empty `Scaffold`; Riverpod and the real shell arrive in a later Phase 1 increment.
+- **Persistence:** connection layer **and schema v1** — six tables, the `SyncColumns` mixin, indexes,
+  foreign keys with cascades, the seeded settings row, and the soft-delete helper. No DAOs and no
+  repositories yet.
 - **Routing:** none (a single `MaterialApp` home).
 - **Localization:** none - the template is English and LTR.
 - **Theme:** the default Material 3 `ColorScheme.fromSeed`.
 - **Security:** encryption at rest is implemented and proven on Android and Windows; the startup
   assertion exists but is not yet called from `main.dart`. Manifest hardening, app lock, CSP and secure logging are not built. Repository hygiene is
   in place (hardened `.gitignore`, pre-commit gate).
-- **Version control:** `main`, four commits, application ID `io.github.erysaw.factorino`.
+- **Version control:** `main`, five commits, application ID `io.github.erysaw.factorino`.
+
+**The schema, as built.** Every table mixes in `SyncColumns`, so the six D-011 columns cannot be
+omitted by construction, and `schema_shape_test.dart` verifies it for every table rather than
+trusting six copies to match. Reads go through `selectAlive`/`countAlive`, the single expression of
+`deleted_at IS NULL`; `soft_delete_usage_test.dart` fails the build on a raw `select(` anywhere in
+`lib/` unless the line carries a `// soft-delete-exempt:` comment giving a reason. Money is integer
+Rial, rates are basis points and quantities are milli-units, checked mechanically by column-name
+suffix. `drift_schemas/drift_schema_v1.json` is the dump future migration tests diff against.
 
 Platform scaffolds exist for Android, Web and Windows. Android and Windows both build with plugins
 and native assets; Web has not been rebuilt since the plugins were added.
@@ -142,7 +165,17 @@ encrypted native library supplied by `package:sqlite3` build hooks configured fo
 
 Implemented in exactly one place — `openEncryptedDatabase`, the Drift `NativeDatabase(setup:)`
 callback — so no call site can open a connection differently; `single_open_path_test.dart` fails the
-build if one tries. Getting the order wrong silently produces an unencrypted database on a new file,
+build if one tries.
+
+> **Keep the setup callback isolate-sendable.** The connection currently opens on the main isolate.
+> Phase 13 moves it to `NativeDatabase.createInBackground`, which sends the `setup` closure to
+> another isolate — so that closure must stay sendable: it may capture only the key string and
+> plain data, never a `Ref`, a provider, a `BuildContext`, an open `File` handle, or anything
+> holding a platform channel. Written down because the constraint is invisible until the day the
+> move is attempted, and at that point a captured reference turns a one-line change into a rewrite
+> of the opener.
+
+ Getting the order wrong silently produces an unencrypted database on a new file,
 or an undiagnosable `file is not a database` on an existing one. **Built and proven on both Android
 and Windows as of 2026-08-23** (§A).
 

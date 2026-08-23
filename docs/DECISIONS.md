@@ -314,6 +314,15 @@ away. A `device_prefix` concept is reserved in the schema as the intended mitiga
 the sync design, which does not exist yet. Building a speculative solution now would likely be the
 wrong one.
 
+**Implementation note (2026-08-23, schema v1).** `invoices` stores the formatted `number` *and* the
+`number_year` / `number_sequence` it was built from. Allocation is then
+`MAX(number_sequence) WHERE number_year = ?` inside a transaction, rather than parsing formatted
+strings back apart — a parser that would have to keep working after the prefix is reconfigured.
+
+The unique index on `number` deliberately **covers soft-deleted rows**: an issued number is spent,
+and a gap in the sequence is a far better outcome than two different documents sharing one identity.
+`settings.device_prefix` is the reserved column named above; it is nullable and unused in Phase 1.
+
 ---
 
 ## D-014 — pub.dev is the only host named in the lockfile; resolution goes through a mirror
@@ -811,3 +820,57 @@ from that an attacker holding the device would not also have - that is key-hardc
 steps).
 
 ---
+
+---
+
+## D-024 — UUID v4 is generated in-repo, not taken from `package:uuid`
+
+**Date:** 2026-08-23 · **Status:** ACCEPTED
+
+**Decision.** `lib/core/utils/uuid.dart` generates RFC 4122 version 4 UUIDs from `Random.secure()`.
+`package:uuid` is not a dependency.
+
+**Reason.** the project spec requires checking whether Dart already provides what a dependency would.
+It does: a v4 UUID is 122 random bits with six fixed bits, which is a dozen lines. Against that,
+`package:uuid` would be a supply-chain surface and a version to track, for one function of its
+surface. The in-repo version is also directly testable — `uuid_test.dart` pins the format, the
+version and variant bits under an RNG stuck at `0x00` and at `0xff`, and checks 10,000 generated
+values for collisions and leading-byte entropy.
+
+**Alternatives considered.** `package:uuid` (rejected on the §2 test above, not on quality — it is a
+fine package); a database-side `randomblob(16)` default (rejected: pushes an identity decision into
+SQL where it cannot be unit-tested and would differ on the Web target); a timestamp-plus-counter id
+(rejected: predictable, and it leaks creation order into a primary key).
+
+**Risk accepted.** The correctness of the generator is now ours. That risk is why the bit-masking
+test exercises both RNG extremes rather than only sampling random output, where a masking bug would
+show up in roughly one run in sixteen.
+
+---
+
+## D-025 — Denormalized `search_name` columns for Persian-insensitive search
+
+**Date:** 2026-08-23 · **Status:** ACCEPTED
+
+**Decision.** `customers` and `products` each carry a `search_name` column holding a normalized copy
+of the display name, written by the repository layer and indexed. Search queries match against it.
+
+**Reason.** the project spec requires that a customer saved as "علي" be found by typing "علی" — Arabic
+`ي`/`ك` folded to Persian `ی`/`ک`, ZWNJ handled, digits normalized. Normalizing at query time
+(`WHERE normalize(full_name) LIKE ?`) would mean a user-defined function applied to every row of
+every search, which cannot use an index and degrades to a full scan — against §13's requirement to
+design for thousands of records.
+
+**Consequence, stated plainly.** A denormalized column can drift out of sync with its source. The
+mitigation is that the repository is the only writer and sets both in the same statement; the risk
+is that a future direct DAO write bypasses it. When repositories land, that gets the same treatment
+as the soft-delete helper: a test, not a convention.
+
+**Why the column exists before the normalizer.** Schema is the expensive thing to change once a
+build with real data is installed; the normalizer is a pure function that can be written and tested
+independently. The column defaults to an empty string until the normalizer increment fills it, and
+no user data exists yet.
+
+**Alternatives considered.** SQLite FTS5 (rejected for now: a second index structure to keep in sync
+and a larger file, for prefix search over a few thousand short names); normalizing only in Dart after
+loading all rows (rejected: that is the O(n) UI-thread work §13 forbids).

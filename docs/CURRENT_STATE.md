@@ -8,169 +8,151 @@
 ## Phase
 
 **Phase 0 — Environment and Setup · `COMPLETED`**
-**Phase 1 — Foundation and Architecture · `NOT_STARTED`** ← start here
+**Phase 1 — Foundation and Architecture · `IN_PROGRESS`**
 
-Both blockers from the previous session were cleared by the owner (Windows Developer Mode on; a
-Redmi Note 8 Pro attached over USB, and "Install via USB" enabled when MIUI refused the install).
-The **D-020 encryption proof passes end to end on both Android and Windows**, and the encryption
-slice it proves is committed production code, not a throwaway.
+Phase 1 is being delivered in six reviewable increments at the owner's instruction, each reported
+and **stopped for review** rather than landing as one pile:
+
+| # | Increment | Status |
+|---|---|---|
+| a | Drift schema, migration setup, soft-delete helper | `COMPLETED` — awaiting review |
+| b | `core/money/` engine + unit tests (§4) | ← **next** |
+| c | Jalali date layer and digit normalization + tests | `NOT_STARTED` |
+| d | Repositories and domain models | `NOT_STARTED` |
+| e | Theme, localization, routing, responsive shell | `NOT_STARTED` |
+| f | The four screens, on real data | `NOT_STARTED` |
+
+(a) and (b) precede all UI work: everything else reads from the schema and the money engine.
 
 ## Verification status
 
 ```
 flutter analyze:            PASS   (No issues found)
-flutter test:               PASS   (23/23 - 22 new + the template smoke test)
+flutter test:               PASS   (69/69)
 Android build (plugins):    PASS   debug APK carries lib/arm64-v8a/libsqlite3mc.so (1.9 MB)
-Windows build (plugins):    PASS   Developer Mode enabled; builds and runs
+Windows build (plugins):    PASS
 Web build:                  NOT_RETESTED since plugins were added
-AndroidX plugin resolution: PASS
-D-020 proof - Windows:      PASS   5/5 integration tests on the real Windows build
+D-020 proof - Windows:      PASS   5/5
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (API 30, arm64)
+Startup path - Windows:     PASS   six tables created through the keyed connection
+Startup path - Android:     PASS   same, at /data/user/0/io.github.erysaw.factorino/files
 ```
 
-## What was completed this session (2026-08-23, proof run)
+## What was completed this session
 
-**The ordering in D-020 was wrong, and the way it was wrong is the point.** A cross-open matrix over
-three databases showed that `PRAGMA cipher = 'sqlcipher'` is **silently ignored when issued after
-`PRAGMA key`**. The earlier probe — and the ordering written into D-020 — had been producing
-sqlite3mc-default (ChaCha20) files while every check said "encrypted": correct header, key works,
-no plaintext on disk. Only cross-opening the file with a different sequence reveals it. Encryption
-at rest still held, but D-010's reason 3 (SQLCipher-format compatibility as the escape hatch from
-implementation lock-in) did not. **The cipher pragmas must precede the key.** D-020 is amended,
-D-010 carries the caveat, `ARCHITECTURE.md` §B.5 is corrected.
+**Phase 0 (earlier):** the D-020 encryption proof on both platforms, the corrected pragma ordering,
+the three named sqlite3mc traps, and the encryption slice as production code. See `DECISIONS.md`
+D-020 and D-023.
 
-**Two more false witnesses, now named traps in D-020:**
+**Phase 1 increment (a) — the schema.**
 
-| Pragma | What it reports | Why it is useless as evidence |
-|---|---|---|
-| `cipher_version` | *empty* under sqlite3mc | Reads as "not encrypted" on a correctly encrypted database |
-| `cipher` | the value the connection was **configured** with | Answers `sqlcipher` on an unkeyed in-memory database |
-| cipher pragma after key | no error at all | Accepted and ignored; wrong on-disk format |
+Six tables, each mixing in `SyncColumns`, so the six D-011 columns (`id` UUID v4, `created_at`,
+`updated_at`, `deleted_at`, `sync_status`, `last_synced_at`) **cannot be omitted by construction**
+rather than by convention. `schema_shape_test.dart` verifies it per table, so the seventh table gets
+the same treatment automatically.
 
-The only assertion used anywhere is the **file header**: a plaintext SQLite file starts with
-`SQLite format 3\0`; an encrypted one does not.
+| Guarantee | How it is held |
+|---|---|
+| Every table has the sync columns, keyed on a text UUID | `SyncColumns` mixin + `schema_shape_test.dart` |
+| `deleted_at IS NULL` on every read | `selectAlive` / `countAlive`, with `soft_delete_usage_test.dart` failing the build on an unexplained raw `select(` in `lib/` |
+| Invoice items and payments never outlive their invoice | `ON DELETE CASCADE`, tested |
+| A customer with invoices cannot be hard-deleted | SQLite `NO ACTION` — the delete throws, tested |
+| An issued invoice number is never reused | unique index that **covers soft-deleted rows**, tested |
+| Money never becomes floating point | integer columns, checked by `_rial` / `_bp` / `_milli` suffix across the whole schema |
+| Foreign keys are actually on | `beforeOpen` reads the pragma back and throws if it is not `1` |
+| Configuration is never missing | settings row seeded in `onCreate`, kept single by `CHECK (singleton = 1)` |
 
-**Built (production code, ~200 lines, not a probe):**
+**Startup is wired** (`main.dart` → `openAppDatabase`): key from the OS keystore → keyed open →
+first statement, which runs the migration → **`assertDatabaseFileIsEncrypted`**. The assertion must
+come last: before the first write the file may not exist, and "no file" must never read as
+"encrypted". `main.dart` renders an empty `Scaffold` — a temporary English placeholder would violate
+§1 on its way to being deleted, and Persian strings belong to increment (e).
 
-- `lib/data/database/encrypted_database.dart` — `openEncryptedDatabase`, the single opener; the
-  ordered setup sequence; `assertKeyPrecedesDatabaseAccess` (runs in production, before the first
-  statement executes); `inspectDatabaseFile`; `assertDatabaseFileIsEncrypted`.
-- `lib/core/security/database_encryption_key.dart` — 256-bit key from `Random.secure()`, OS
-  keystore, `toString()` redacted, **`resetOnError: false`** (D-023 — the package default would have
-  deleted the database key on a read error and silently orphaned every invoice).
+**Verified on the real targets, not only in unit tests.** `integration_test/startup_test.dart`
+creates the six tables through the keyed connection and reopens with the keystore key, on the Redmi
+and on Windows both.
 
-**The ordering no longer depends on discipline.** 22 unit tests, of which the load-bearing ones are:
-a guard that fails if any statement precedes `pragma key` (asserted against the very list the app
-executes, not a copy), and `single_open_path_test.dart`, which scans `lib/` and fails the build if
-any file other than the sanctioned opener mentions `NativeDatabase(`, `sqlite3.open(`,
-`driftDatabase(` or `pragma key`.
+**Decisions recorded:** D-024 (UUID generated in-repo, no `package:uuid`), D-025 (denormalized
+`search_name` for Persian-insensitive search), plus an implementation note on D-013 (numbering
+stored as `number_year` + `number_sequence`, not parsed back out of the formatted string).
 
-**Verified in the Drift source** (`lib/src/sqlite3/database.dart:111`) that `setup` is invoked after
-`useNativeFunctions()` — which issues no SQL — and before the version delegate's
-`PRAGMA user_version`. The choke point is real, not assumed.
-
-**The proof is an integration test, not a throwaway app** — `integration_test/`, so it is repeatable
-on every target and cannot rot. Windows, 5/5:
-
-```
-database dir: C:\Users\...\AppData\Roaming\io.github.erysaw\factorino   (%APPDATA%, per §7)
-keystore: DPAPI returns a stable 256-bit key across calls
-header bytes: c1 51 85 73 60 bd 92 8e bd 32 39 d6 72 34 49 00   -> encrypted
-sentinel on disk: absent from a raw byte scan
-foreign_keys: 1 (on, for the connection Drift actually uses)
-unkeyed reopen: REJECTED  SqliteException(26): file is not a database
-wrong-key reopen: REJECTED
-keyed reopen: 1 row, value intact
-out-of-order: plaintext file + "file is not a database" - hazard reproduced on the real platform
-startup assert: caught the plaintext database and refused to open it
-```
-
-Android, 5/5, on a Redmi Note 8 Pro (Android 11, API 30, arm64):
-
-```
-database dir: /data/user/0/io.github.erysaw.factorino/files   (app-private, per §7)
-keystore: Android Keystore returns a stable 256-bit key across calls
-header bytes: c4 93 43 23 a6 f7 67 27 8a 9a ee af 90 12 49 75   -> encrypted
-sentinel on disk: absent from a raw byte scan
-unkeyed reopen: REJECTED     wrong-key reopen: REJECTED     keyed reopen: 1 row, intact
-out-of-order: hazard reproduced; startup assertion caught the plaintext database
-```
-
-The native library comes from `lib/arm64-v8a/libsqlite3mc.so` (1.9 MB), packaged by the build hook
-with no manual native setup — the main technical risk this proof existed to settle. **Both traps and
-the ordering hazard reproduce identically on Android and Windows**, so they are properties of
-sqlite3mc, not of one platform's build. Header bytes differ every run: the salt is random.
-
-The first install attempt was refused by MIUI (`INSTALL_FAILED_USER_RESTRICTED`) through every route
-— `flutter test`, `adb install`, `adb shell pm install`. Enabling Developer options → **Install via
-USB** on the device fixed it.
+**Notable:** the encrypted `sqlite3mc` library loads under `flutter test` on the Dart VM, so schema
+and repository tests run against a **real encrypted database file**, not an in-memory stand-in.
+Referential integrity, cascades and CHECK constraints are properties of the real file.
 
 ## Known issues
 
 | # | Issue | Impact |
 |---|---|---|
-| 1 | MIUI refuses adb installation until Developer options -> **Install via USB** is enabled | Resolved on this device. Worth knowing for the next one: it fails as `INSTALL_FAILED_USER_RESTRICTED` through every install route. |
-| 2 | `pub.dev` 403; `dl.google.com` fully blocked | Worked around by mirrors (D-014 amendment). SDK packages installed by hand from the Tencent mirror with SHA-1 verification. |
-| 3 | Every `flutter pub get` re-contaminates `pubspec.lock` | Run `sh tools/sanitize_lockfile` after **every** resolve — 66 URLs were rewritten this session. Pre-commit hook is the backstop. |
-| 4 | `flutter doctor` "Android license status unknown" | **Not a real failure — a stale check.** Details in `ENVIRONMENT.md`. No licence files were fabricated. |
-| 5 | Release builds signed with debug keys | Template `TODO` in `android/app/build.gradle.kts`. Phase 15. |
-| 6 | Web build not retested since plugins were added | Low. Also note Web gets **no** encryption at rest (D-012) — the opener is Android/Windows only and Phase 12 must supply a separate Web path. |
-| 7 | The database is opened on the main isolate | `NativeDatabase(file, setup:)` rather than `createInBackground`. Fine for the proof; revisit in Phase 13 (the project spec forbids heavy sync work on the UI thread). Moving it means the setup closure must survive being sent to an isolate. |
+| 1 | `onUpgrade` throws by design — no v1→v2 path exists | The first schema change must add a migration step **and** a migration test (§6, §14). A build is already installed on the device, so its database needs migrating rather than reinstalling. |
+| 2 | The database opens on the main isolate | Phase 13 moves it to `createInBackground`. Until then the `setup` closure must stay isolate-sendable — recorded in `ARCHITECTURE.md` §B.5. |
+| 3 | `search_name` is empty | Filled once the normalizer lands in (c) and repositories write it in (d). |
+| 4 | MIUI re-blocks `flutter test`'s install on a *fresh* install | `adb install -r` once by hand, then `flutter test -d <device>` works. Setting: Developer options → Install via USB. |
+| 5 | `pub.dev` 403; `dl.google.com` blocked | Mirrors (D-014). Run `sh tools/sanitize_lockfile` after **every** resolve — 97 URLs this session. |
+| 6 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
+| 7 | Release builds signed with debug keys | Phase 15. |
+| 8 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12 must supply a separate Web path. |
 
 ## Important context for a future session
 
-- **The cipher pragmas come BEFORE `pragma key`.** Reversing them is silent: the file is still
-  encrypted, every check still passes, and the format is quietly not SQLCipher. See the matrix in
-  D-020.
-- **Never assert encryption with `PRAGMA cipher_version` or `PRAGMA cipher`.** Both are false
+- **The cipher pragmas come BEFORE `pragma key`.** Reversing them is silent (D-020).
+- **Never assert encryption with `PRAGMA cipher_version` or `PRAGMA cipher`** — both are false
   witnesses. Assert on the file header.
-- **Do not open a database anywhere but `openEncryptedDatabase`.** A test enforces this; if it fails,
-  the fix is to route through the opener, never to relax the test.
-- **`sh tools/sanitize_lockfile` after every `flutter pub get`.** Not optional, not one-time.
-- **Do not fabricate Android licence-hash files** to make `flutter doctor` green.
-- The `sqlite3mc` choice is an owner override of an earlier `sqlcipher` recommendation and is the
-  better call (Web support, no OpenSSL). Do not "correct" it back.
+- **Do not open a database anywhere but `openEncryptedDatabase`**, and **do not read rows without
+  `selectAlive`**. Both are enforced by tests that scan `lib/`; if one fails, route through the
+  helper rather than relaxing the test. The soft-delete guard has a deliberate escape hatch:
+  `// soft-delete-exempt: <reason>` on or above the line.
+- **`sh tools/sanitize_lockfile` after every `flutter pub get`.**
+- **Run `dart run build_runner build` after touching any table**, or `app_database.g.dart` goes
+  stale. The generated file resolves `uuidV4`, `nowMillis` and the enums through `app_database.dart`'s
+  imports, which is why that file imports things it does not appear to use.
 - Mirror configuration is **user-global only** and must never enter the repository.
-- SDK packages installed by hand, SHA-1 verified: `platforms/android-35`, `cmake/3.22.1`.
 
 ## Recently changed files
 
 ```
-pubspec.yaml                                          + drift, sqlite3, path_provider,
-                                                        integration_test, hooks: source sqlite3mc
-pubspec.lock                                          regenerated, sanitized
-lib/core/security/database_encryption_key.dart        NEW
-lib/data/database/encrypted_database.dart             NEW
-test/data/database/connection_setup_order_test.dart   NEW
-test/data/database/database_file_state_test.dart      NEW
-test/data/database/single_open_path_test.dart         NEW
-integration_test/d020_encryption_proof_test.dart      NEW
-docs/DECISIONS.md                                     D-020 amended; D-023 added; D-010 caveat
-docs/ARCHITECTURE.md                                  §A rewritten; §B.5 ordering corrected
-docs/ROADMAP.md                                       Phase 0 + Phase 1 status, security note
-docs/CURRENT_STATE.md                                 this file
+pubspec.yaml / pubspec.lock                       + drift_dev, build_runner (pinned)
+lib/core/utils/uuid.dart                          NEW
+lib/data/database/tables/*.dart                   NEW  six tables + SyncColumns mixin
+lib/data/database/app_database.dart (+ .g.dart)   NEW  schemaVersion 1, migration, seeding
+lib/data/database/soft_delete.dart                NEW  the single deleted_at helper
+lib/data/database/database_bootstrap.dart         NEW  key -> open -> migrate -> assert
+lib/main.dart                                     REWRITTEN  bootstraps; renders nothing yet
+drift_schemas/drift_schema_v1.json                NEW  migration-test baseline
+test/core/utils/uuid_test.dart                    NEW
+test/data/database/schema_shape_test.dart         NEW
+test/data/database/app_database_test.dart         NEW
+test/data/database/soft_delete_usage_test.dart    NEW
+test/data/database/single_open_path_test.dart     matcher fixed (false positive on @DriftDatabase)
+test/widget_test.dart                             REMOVED  tested the deleted counter template
+integration_test/startup_test.dart                NEW
+docs/*                                            D-013 note, D-024, D-025; ROADMAP; ARCHITECTURE
 ```
-
-`lib/main.dart` is still the untouched template counter app.
 
 ## Last completed action
 
-Corrected the D-020 ordering after disproving it empirically, built and committed the encryption
-slice with its enforcement tests, and **passed the D-020 proof 5/5 on Windows and 5/5 on the Android
-device**. Phase 0 is complete.
+Delivered Phase 1 increment (a): the six-table schema behind the proven encrypted opener, migration
+setup with the v1 schema dump, the soft-delete helper with build-failing enforcement, startup wired
+through `assertDatabaseFileIsEncrypted`, and the startup path verified on Android and Windows.
+69/69 tests pass, analyzer clean.
 
 ## Next action
 
-**Begin Phase 1 with the Drift schema.** Define the six tables from the project spec — `customers`,
-`products`, `invoices`, `invoice_items`, `payments`, `settings` — each carrying the sync-ready
-columns from D-011 (`id` TEXT UUID v4, `created_at`, `updated_at`, `deleted_at`, `sync_status`,
-`last_synced_at`), behind the **existing** `openEncryptedDatabase`. Do not rebuild the connection
-layer; it is proven. Concretely, in order:
+**Stop for owner review of increment (a). Then build increment (b): `core/money/`.**
 
-1. Add `drift_dev` + `build_runner` (dev), then write `lib/data/database/tables/*.dart` and the
-   `AppDatabase` class with `schemaVersion = 1`.
-2. Add the single soft-delete query helper required by the project spec, so `deleted_at IS NULL`
-   cannot be forgotten per call site.
-3. Wire startup: resolve the key via `SecureStorageDatabaseKeyStore`, open through
-   `openEncryptedDatabase(file: await defaultDatabaseFile(), ...)`, run the first query, then call
-   `assertDatabaseFileIsEncrypted` — currently defined and tested but not yet called from `main.dart`.
+The money engine is pure Dart with **zero Flutter imports** so it is unit-testable without a widget
+binding (§3). Implement the project spec exactly, in this order, and do not let the schema's stored
+totals tempt a shortcut — the engine computes, the schema records:
+
+1. `lineGross = unitPriceRial × quantityMilli ÷ 1000`, half-up.
+2. `lineNet = lineGross − lineDiscount`, clamped at ≥ 0.
+3. Invoice discount allocated across items **proportionally by `lineNet`**, remainders distributed
+   by the **largest-remainder method** so the allocations sum to the invoice discount exactly.
+4. `lineTax = round(lineNetAfterInvoiceDiscount × taxRateBp ÷ 10000)`, half-up; rate resolved
+   item → invoice → settings default, first non-null wins, and the resolved rate is recorded.
+5. Totals, plus optional `roundingUnitRial` with the delta kept as `roundingAdjustmentRial`.
+
+Tests must cover, at minimum: zero quantity, fractional quantity, an item discount exceeding the
+line total, invoice-discount allocation remainders, mixed tax rates, rounding boundaries, the
+`kMaxAmountRial` ceiling guard (D-002, the Web 53-bit limit), and the invariant
+`grandTotal == subtotal − invoiceDiscount + totalTax`.

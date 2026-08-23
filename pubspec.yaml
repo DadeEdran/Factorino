@@ -54,6 +54,11 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
 
+  # Drift table/DAO code generation. Kept out of the runtime dependency set --
+  # nothing generated needs the generator at run time.
+  drift_dev: 2.34.5
+  build_runner: 2.16.0
+
   # Runs the D-020 encryption proof on a real Android device and on Windows.
   # A Dart-VM test cannot stand in for it: the proof is precisely about whether
   # the native library is found through Flutter's packaging path at runtime.

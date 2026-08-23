@@ -209,6 +209,8 @@ QueryExecutor openEncryptedDatabase({
       // Force page 1 to be decrypted now. Without this, a wrong key or a
       // broken order surfaces later, at an arbitrary query, as "file is not a
       // database" -- the misleading corruption error from D-020.
+      // soft-delete-exempt: sqlite3's own API on schema metadata, not a
+      // drift query over user rows.
       database.select('select count(*) from sqlite_master;');
     },
   );

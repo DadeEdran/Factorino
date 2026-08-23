@@ -145,10 +145,76 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `NOT_STARTED` — decisions are settled and the encryption foundation is built and proven
-on both target platforms. The connection layer (D-020, D-023) already exists and must be built on, not rebuilt:
-Phase 1 adds the schema, DAOs and repositories behind `openEncryptedDatabase`, and wires
-`assertDatabaseFileIsEncrypted` into app startup.
+**Status:** `IN_PROGRESS` — increment (a) complete, awaiting review.
+
+Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
+stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
+connection layer (D-020, D-023); it is built on.
+
+| # | Increment | Status |
+|---|---|---|
+| a | Drift schema, migration setup, soft-delete helper | `COMPLETED` 2026-08-23 |
+| b | `core/money/` engine + unit tests (§4) | `NOT_STARTED` |
+| c | Jalali date layer and digit normalization + tests | `NOT_STARTED` |
+| d | Repositories and domain models | `NOT_STARTED` |
+| e | Theme, localization, routing, responsive shell | `NOT_STARTED` |
+| f | The four screens, on real data | `NOT_STARTED` |
+
+(a) and (b) come before any UI work: everything else reads from the schema and the money engine, and
+both are far cheaper to correct now than after screens depend on them.
+
+**Increment (a) — completed 2026-08-23**
+
+- Six tables: `customers`, `products`, `invoices`, `invoice_items`, `payments`, `settings`, each
+  mixing in `SyncColumns` so the six D-011 columns cannot be omitted by construction.
+- Foreign keys with the intended asymmetry: `invoice_items` and `payments` cascade from `invoices`;
+  `invoices.customer_id` uses SQLite's default `NO ACTION`, so hard-deleting a referenced customer
+  fails loudly instead of orphaning invoices (D-003).
+- Indexes on every column that gets queried: soft-delete on all six, plus invoice issue date,
+  customer, status, number year, and a unique index on the invoice number (§13).
+- `soft_delete.dart` — `selectAlive` / `countAlive`, the single expression of `deleted_at IS NULL`,
+  with `soft_delete_usage_test.dart` failing the build on an unexplained raw `select(` in `lib/`.
+- `schemaVersion = 1`, migration strategy in place, `drift_schemas/drift_schema_v1.json` exported as
+  the baseline future migration tests diff against. `beforeOpen` verifies foreign keys are actually
+  on rather than assuming the opener's pragma took effect.
+- The settings row is seeded in `onCreate` and kept single by a `CHECK (singleton = 1)` constraint,
+  so no read path anywhere has to handle "configuration missing".
+- `main.dart` now bootstraps: key → keyed open → migrate → **`assertDatabaseFileIsEncrypted`**. It
+  renders an empty `Scaffold`; a temporary English placeholder would violate §1 on its way to being
+  deleted, and Persian strings belong to the localization increment.
+- Verified on both platforms, not only in unit tests: `integration_test/startup_test.dart` creates
+  the six tables through the keyed connection on the Redmi and on Windows, confirms the file is
+  encrypted, and reopens it with the key from the OS keystore.
+- Three decisions recorded: **D-024** (UUID in-repo, no `package:uuid`), **D-025** (denormalized
+  `search_name`), and an implementation note on **D-013** (numbering stored as year + sequence; the
+  unique index covers soft-deleted rows).
+
+**Remaining in Phase 1**
+
+- Increments (b) through (f) above.
+
+**Known issues**
+
+- `onUpgrade` throws by design: there is no v1→v2 path yet. The first schema change must add both a
+  migration step and a migration test (§6, §14) — and note that a build is already installed on the
+  device, so its database will need that migration rather than a reinstall.
+- The database opens on the main isolate. Phase 13 moves it to a background isolate; until then the
+  `setup` closure must stay isolate-sendable, which is now recorded in `ARCHITECTURE.md` §B.5.
+- `search_name` is empty until the normalizer lands in increment (c) and repositories fill it in (d).
+
+**Security note.** The schema now defines what is stored, so the threat model gains real content:
+
+- **The database holds third-party personal identifiers** — national ID, economic ID, mobile numbers
+  — as of this increment. They are protected by the encryption proven in Phase 0, and none of them
+  may ever reach a log (§7). Field-level length limits are enforced at the schema boundary, not only
+  in the UI, because the UI will not be the only writer once backup import (Phase 6) exists.
+- **No new inputs are accepted yet** — there are no screens and no import path. Validation of the
+  values themselves (national-ID checksum, phone normalization) lands with the increments that
+  first accept user input.
+- **No new platform surface, no new permissions, no network.** The only file written is the
+  encrypted database, in per-user application storage on both platforms.
+- The one new failure mode is a corrupt or foreign database file, which `openEncryptedDatabase`
+  refuses to open rather than writing into.
 
 **Goal.** The complete skeleton — structure, theme, localization, database, repositories, routing,
 money engine, responsive shell, and four screens reading real data. No feature depth.
