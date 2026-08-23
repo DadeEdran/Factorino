@@ -31,6 +31,14 @@ dependencies:
   flutter:
     sdk: flutter
 
+  # Persian localization and RTL. Every user-facing string goes
+  # through the generated AppStrings from day one; there is no second locale
+  # yet and the layer exists anyway, because retrofitting one is a rewrite of
+  # every widget.
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
@@ -65,6 +73,14 @@ dependencies:
   # so a migration would be mechanical but wide. Accepted given its maturity.
   flutter_riverpod: 3.4.2
   riverpod_annotation: 4.0.6
+
+  # Routing (DECISIONS.md D-009). Chosen for real, shareable URLs on the web
+  # and working deep links on Windows and Android -- both stated product
+  # requirements that Navigator 1.0 cannot meet.
+  #
+  # If it becomes unmaintained: routes are declared in one file behind our own
+  # destination list, so the surface to port is small and mechanical.
+  go_router: 17.5.0
 
   # Jalali (Shamsi) calendar conversion (D-005/D-006). Dates are
   # stored as UTC epoch milliseconds and displayed Jalali, and reporting periods
@@ -116,6 +132,25 @@ flutter:
   # included with your application, so that you can use the icons in
   # the material Icons class.
   uses-material-design: true
+
+  # Generates AppStrings from the ARB files. See l10n.yaml.
+  generate: true
+
+  fonts:
+    # Vazirmatn (SIL OFL), standard variant, from the official GitHub release
+    # v33.003 -- provenance and sha256 in docs/ENVIRONMENT.md (D-022).
+    #
+    # The Farsi-digit (FD) variants are deliberately NOT used: digit rendering
+    # is `core/formatting/`'s job, where it is reviewable and testable, not a
+    # substitution hidden inside a binary asset.
+    - family: Vazirmatn
+      fonts:
+        - asset: assets/fonts/Vazirmatn-Regular.ttf
+          weight: 400
+        - asset: assets/fonts/Vazirmatn-Medium.ttf
+          weight: 500
+        - asset: assets/fonts/Vazirmatn-Bold.ttf
+          weight: 700
 
   # To add assets to your application, add an assets section, like this:
   # assets:

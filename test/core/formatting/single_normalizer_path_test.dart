@@ -25,6 +25,7 @@ import 'package:flutter_test/flutter_test.dart';
 /// forbid the raw form; it is to make using it a visible, justified choice.
 void main() {
   const normalizerDirectory = 'lib/core/formatting/';
+  const localizationDirectory = 'lib/core/localization/';
   const exemption = 'normalizer-exempt:';
 
   /// Code points that only a hand-rolled normalizer would need to name: the
@@ -56,6 +57,11 @@ void main() {
         .where((file) {
           final relative = file.path.replaceAll(r'\', '/');
           if (relative.endsWith('.g.dart')) return false;
+          // The localization layer is where Persian text legitimately lives:
+          // a translation is data, not a hand-rolled character fold. It has
+          // its own guard -- no_hardcoded_strings_test.dart -- enforcing the
+          // opposite direction, that Persian appears *only* there.
+          if (relative.contains(localizationDirectory)) return false;
           if (excludeNormalizer && relative.contains(normalizerDirectory)) {
             return false;
           }

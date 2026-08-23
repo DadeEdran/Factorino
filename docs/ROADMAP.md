@@ -145,8 +145,8 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increments (a) through (d) complete; (a), (b) and (c) reviewed and
-**accepted**, (d) awaiting review. See `CURRENT_STATE.md`.
+**Status:** `IN_PROGRESS` — increments (a) through (e) complete; (a)–(d) reviewed and **accepted**,
+(e) awaiting review. Only (f) remains. See `CURRENT_STATE.md`.
 
 Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
 stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
@@ -158,7 +158,7 @@ connection layer (D-020, D-023); it is built on.
 | b | `core/money/` engine + unit tests (§4) | `COMPLETED` 2026-08-23 |
 | c | Jalali date layer and digit normalization + tests | `COMPLETED` 2026-08-24 |
 | d | Repositories and domain models | `COMPLETED` 2026-08-24 |
-| e | Theme, localization, routing, responsive shell | `NOT_STARTED` |
+| e | Theme, localization, routing, responsive shell | `COMPLETED` 2026-08-24 |
 | f | The four screens, on real data | `NOT_STARTED` |
 
 (a) and (b) come before any UI work: everything else reads from the schema and the money engine, and
@@ -283,9 +283,42 @@ both are far cheaper to correct now than after screens depend on them.
   121 packages and drift/sqlite3/analyzer were unchanged — D-015 re-verified rather than assumed.
 - 81 new tests; 360 pass in total. Decisions recorded: **D-030**, **D-031**, **D-032**.
 
+**Increment (e) — completed 2026-08-24**
+
+- **Design tokens** in `core/theme/`: one Persian-turquoise accent, warm neutrals, six semantic
+  status pairs, a type scale with a dedicated prominent financial numeral style, and spacing /
+  radius / border / elevation / motion scales (D-033). Light and dark are built **separately**, not
+  derived from each other.
+- **Tokens are enforced, not offered.** `theme_tokens_only_test.dart` fails the build on a literal
+  colour, size, radius, spacing, font size or duration outside the three token files — verified to
+  bite by introducing both kinds of violation.
+- **Persian localization** through ARB and generated `AppStrings`, locale pinned to `fa`, RTL set
+  once at the root (D-034). `no_hardcoded_strings_test.dart` fails the build on any Arabic-script
+  character in code outside `core/localization/`, and additionally checks D-030's national-ID copy
+  mechanically.
+- **The platform manifests were user-facing English** and now carry the Persian name — Windows
+  window title, Android label, web title and manifest. The Windows one is written as unicode escapes
+  because MSVC read the source in the system codepage and produced mojibake from a pasted literal;
+  found by screenshotting the running build.
+- **go_router** with a `StatefulShellRoute`, so each destination keeps its own stack and scroll
+  position. Only routes whose screens exist are registered: detail and create routes arrive with
+  the screens they open. گزارش‌ها remains absent from both navigation and the router (D-021).
+- **Three genuinely different layouts** (§10) in `core/responsive/`: bottom `NavigationBar` on
+  mobile, compact rail on tablet, extended 232 px rail with a header on desktop, with the content
+  column capped at a readable measure rather than stretched.
+- Shared components in `core/widgets/`: card, section header, status badge, empty state, page frame,
+  and `AmountText`, which holds the rule that money is never a bare number.
+- Display formatting (`core/formatting/number_display.dart`): Persian grouping, percentages and
+  milli-quantities, out of the widgets and into the formatting layer where §3 puts them.
+- **Verified on the real Windows build**, not only in tests: three tiers captured in light, and the
+  settings screen — the one screen with real data — captured in both themes. Two defects were found
+  that no test would have caught: the longest destination label overflowed the compact rail at
+  exactly one breakpoint, and the window title was mojibake.
+- 25 new tests; 378 pass in total. Decisions recorded: **D-033**, **D-034**.
+
 **Remaining in Phase 1**
 
-- Increments (e) and (f) above.
+- Increment (f): the four screens, on real data.
 
 **Known issues**
 
@@ -301,6 +334,22 @@ both are far cheaper to correct now than after screens depend on them.
   the same check digit, so `0079542311` and `0079542131` both validate. That is the official
   algorithm, not a defect here; it is recorded as a test so nobody later invents a stricter rule than
   the one numbers are issued under. The UI must not present a passing value as a verified identity.
+
+**Security note (increment e).** The first increment with a user-facing surface, so the threat model
+gains a presentation boundary:
+
+- **No user data is displayed yet** — the only real values on screen are the application's own
+  settings. The screens that show customer and invoice data arrive in (f).
+- **Errors surface as friendly Persian messages, never as raw exceptions** (§7). The settings screen
+  maps an `AsyncValue.error` to `errorGenericTitle`/`errorGenericBody`; a stack trace, SQL statement
+  or file path cannot reach the user through it.
+- **D-030's constraint is now enforced by a test**, not only recorded: the national-ID copy must name
+  the format and must not contain any word claiming the identity is confirmed.
+- **No new permissions, no network, no new platform surface.** The manifest changes are display
+  names only. Android hardening (`allowBackup=false`, `usesCleartextTraffic=false`, `FLAG_SECURE`)
+  and the web CSP remain Phase 9 and Phase 12 work and are **not** done.
+- Note for (f): the screens that will show national IDs, phone numbers and amounts are the first
+  place §7's logging rule becomes load-bearing. The logging wrapper does not exist yet.
 
 **Security note (increment d).** The first code that **writes** third-party personal identifiers,
 so the threat model gains a write path:

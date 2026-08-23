@@ -23,7 +23,7 @@ Factorino/
 .gitattributes         # LF normalization (added after CRLF churn corrupted diffs)
 .gitignore             # hardened 2026-08-23 (D-019)
 .githooks/pre-commit   # lockfile-host / secrets / app-ID gate (D-019)
-  tools/sanitize_lockfile
+  tools/sanitize_lockfile  # run after ANY command that resolves deps, incl. build_runner
   assets/fonts/          # Vazirmatn 400/500/700 + OFL.txt (D-022) - not yet declared in pubspec
   drift_schemas/         # drift_schema_v1.json - the baseline for migration tests
   lib/
@@ -65,8 +65,26 @@ Factorino/
           drift_invoice_repository.dart   drift_payment_repository.dart
           drift_settings_repository.dart
       providers.dart (+ .g.dart)                  # composition root (D-032)
-    main.dart            # opens the database, overrides the provider, renders nothing yet
+    core/
+      theme/                                      # THE only place a colour or size is named
+        app_colors.dart      app_dimensions.dart
+        app_typography.dart  app_theme.dart
+      localization/                               # THE only place Persian text lives (D-034)
+        arb/app_fa.arb                            #   the source of every user-facing string
+        generated/app_strings*.dart               #   gen-l10n output, committed
+      router/  destinations.dart  app_router.dart # go_router; reports unregistered (D-021)
+      responsive/  breakpoints.dart  adaptive_scaffold.dart
+      widgets/                                    # shared design-system components
+        app_card.dart  status_badge.dart  empty_state.dart
+        amount_text.dart  page_body.dart
+    features/<feature>/
+      presentation/                               # screens
+      application/                                # feature providers (settings only, so far)
+    app.dart             # MaterialApp.router: themes, locale, RTL, router
+    main.dart            # opens the database, overrides the provider, runs the app
   test/
+    core/theme/theme_tokens_only_test.dart          # scans lib/ for literal colours and sizes
+    core/localization/no_hardcoded_strings_test.dart # scans lib/ for Persian in code; checks D-030
     core/money/                                     # §4 cases, the invariant, D-027 clamps
     core/date/jalali_period_test.dart               # boundaries vs known Nowruz dates
     core/formatting/                                # normalizer, numbers, phone, national ID
@@ -104,8 +122,8 @@ decided by the file header, never by a pragma - see the three named traps in D-0
 
 - **State management:** Riverpod is wired (D-032). `lib/data/providers.dart` is the composition
   root: `appDatabaseProvider` is synchronous and its default throws, `main.dart` opens the database
-  and overrides it, and every repository is exposed as its **interface**. No feature providers yet --
-  there are no screens. `main.dart` still renders an empty `Scaffold`.
+  and overrides it, and every repository is exposed as its **interface**. Feature providers live in
+  each feature's `application/` folder; `appSettingsProvider` is the first and, so far, only one.
 - **Money:** the §4 engine exists, is pure, and is now **called** — `DriftInvoiceRepository` runs it
   over a draft and persists the result as snapshots (D-004). A caller cannot supply a total, so a
   stored total cannot disagree with its lines. As of D-027 it also
@@ -114,19 +132,33 @@ decided by the file header, never by a pragma - see the three named traps in D-0
   behind drift-free interfaces (D-031), returning domain models. Invoice creation allocates its
   number inside the write transaction (D-013); payment writes recompute the derived invoice status in
   the same transaction (§6).
-- **Routing:** none (a single `MaterialApp` home).
-- **Localization:** the **input boundary** exists -- digit folding, the Persian/Arabic letter folds,
-  the single `searchKey` normalizer, phone normalization and the national-ID checksum, all pure Dart
-  in `core/formatting/`. The *presentation* side -- ARB files, RTL, Vazirmatn, Persian strings -- is
-  increment (e) and does not exist yet.
+- **Routing:** `go_router` with a `StatefulShellRoute` over five destinations, each keeping its own
+  stack and scroll position. Only routes whose screens exist are registered; detail and create
+  routes arrive with the screens they open. گزارش‌ها is absent from navigation *and* from the
+  router (D-021).
+- **Localization:** both halves exist. The **input boundary** in `core/formatting/` -- digit folding,
+  the letter folds, the single `searchKey` normalizer, phone normalization, the national-ID checksum,
+  and display formatting for grouped numbers, percentages and quantities. The **presentation side**
+  in `core/localization/` -- ARB, generated `AppStrings`, Vazirmatn declared at 400/500/700 with a
+  per-platform fallback, locale pinned to `fa`, RTL set once at the root (D-034). No Arabic-script
+  character may appear in code outside that directory, and a test enforces it.
+- **Responsive:** three tiers in `core/responsive/` -- bottom `NavigationBar` on mobile, compact rail
+  on tablet, extended 232 px rail with a header on desktop -- with the content column capped at a
+  readable measure rather than stretched. Shared components live in `core/widgets/`.
 - **Dates:** `core/date/` converts between stored UTC instants and Jalali civil dates, and computes
   Jalali reporting periods as half-open `InstantRange`s (D-006, D-028). Nothing reads the clock or
   the device timezone; the Iran offset is a parameter.
-- **Theme:** the default Material 3 `ColorScheme.fromSeed`.
-- **Security:** encryption at rest is implemented and proven on Android and Windows; the startup
-  assertion exists but is not yet called from `main.dart`. Manifest hardening, app lock, CSP and secure logging are not built. Repository hygiene is
-  in place (hardened `.gitignore`, pre-commit gate).
-- **Version control:** `main`, five commits, application ID `io.github.erysaw.factorino`.
+- **Theme:** a designed light and a separately designed dark theme, built from tokens in
+  `core/theme/` (D-033). One Persian-turquoise accent, warm neutrals, six semantic status pairs as a
+  `StatusPalette` theme extension, and a type scale whose largest style is the financial numeral
+  style. Enforced: a literal colour or dimension outside the token files fails the build.
+- **Security:** encryption at rest is implemented and proven on Android and Windows, and the startup
+  assertion runs from `main.dart`. Errors reaching the UI are mapped to friendly Persian messages;
+  no stack trace, SQL statement or path can surface (§7). Manifest hardening, app lock, CSP and
+  secure logging are **not** built -- Phases 9 and 12. Repository hygiene is in place (hardened
+  `.gitignore`, pre-commit gate).
+- **Version control:** `main`, application ID `io.github.erysaw.factorino`, Persian display name in
+  every platform manifest.
 
 **The schema, as built.** Every table mixes in `SyncColumns`, so the six D-011 columns cannot be
 omitted by construction, and `schema_shape_test.dart` verifies it for every table rather than
@@ -208,7 +240,15 @@ would render a partial UI while a failed open resolved. The override is also the
 swaps the entire data layer onto a temporary encrypted file.
 
 Repository providers are typed as their **interfaces**, so nothing watching one can reach a drift
-type through it. Feature providers arrive with the screens.
+type through it.
+
+Feature-level providers live in each feature's `application/` folder and watch the repository
+providers, never a repository or a database directly. `appSettingsProvider` is the first of them.
+
+> **Riverpod 3 wraps an error thrown inside a provider in a `ProviderException`.** A test — or an
+> error handler — that matches on the inner type directly will not match; assert on the message, or
+> unwrap first. Recorded because the symptom is a test that fails while the code is correct, and the
+> obvious reading of the failure is the wrong one.
 
 - Providers are scoped and `autoDispose` by default; global mutable state is avoided.
 - Widgets watch the **narrowest possible selector** so one changed field does not rebuild a screen.
@@ -348,7 +388,7 @@ same way produce no error, just a customer who cannot be found — so it is enfo
 scans `lib/`, exactly as the single database opener is (D-020), and verified end to end through the
 real encrypted database rather than only as a unit.
 
-## B.7 Navigation
+## B.7 Navigation — **built** (increment e)
 
 `go_router` (D-009), with routes for dashboard, customers, customer detail, products, product
 detail, invoices, invoice detail, create/edit invoice, reports and settings. Web URLs are real and
@@ -356,12 +396,16 @@ shareable; deep links restore on Windows and Android.
 
 Full navigation label set: داشبورد / فاکتورها / مشتریان / محصولات و خدمات / گزارش‌ها / تنظیمات.
 
+Routes are registered only where the screen exists: the five destinations do, and the detail and
+create routes arrive with the screens they open. A registered route resolving to nothing is the same
+failure D-021 rejects, one level down.
+
 **In Phase 1, گزارش‌ها is omitted entirely** — not disabled, not a coming-soon placeholder, and its
 route is not registered either, so no deep link or typed Web URL can reach a screen that does not
 exist. It arrives in Phase 8 (D-021). Phase 1 navigation is therefore:
 داشبورد · فاکتورها · مشتریان · محصولات و خدمات · تنظیمات.
 
-## B.8 Localization and RTL
+## B.8 Localization and RTL — **built** (increment e)
 
 `Directionality` is set once at the app root rather than fought per widget. Every user-facing string
 goes through the localization layer from day one; no Persian literal is hardcoded inside a widget,
@@ -380,7 +424,7 @@ always carry a unit label; Toman is primary.
 Icon mirroring is selective: directional navigation icons mirror; logos, media controls, checkmarks,
 charts and numerals do not.
 
-## B.9 Responsive strategy
+## B.9 Responsive strategy — **built** (increment e)
 
 Three tiers with genuinely different layouts, built on primitives in `core/responsive/` rather than
 scattered `MediaQuery` checks.
@@ -391,7 +435,7 @@ scattered `MediaQuery` checks.
 | Tablet | Adaptive | Two-pane where useful, higher density |
 | Desktop / Windows / Web | `NavigationRail` / `NavigationDrawer` | Multi-column, real data tables, master-detail, sticky invoice summary |
 
-## B.10 Theme
+## B.10 Theme — **built** (increment e)
 
 All visual values are tokens in `core/theme/`; no hardcoded colors, sizes, radii or spacing inside
 widgets. Tokens cover a neutral foundation plus one accent, semantic status colors (paid / unpaid /
@@ -399,7 +443,10 @@ draft / cancelled / overdue), a type scale including a dedicated prominent finan
 and spacing / radius / elevation scales favouring subtle borders over heavy shadows.
 
 Dark mode is designed, not inverted: real surface hierarchy, muted secondary text, retuned status
-colors.
+colors. The concrete palette, the type scale and the reasoning behind each choice are in D-033;
+the short version is one Persian-turquoise accent, warm neutrals in light and slightly cool ones in
+dark, borders instead of shadows, and colour reserved for status so that money can be the most
+prominent thing on a card without competing with it.
 
 ## B.11 Security model
 

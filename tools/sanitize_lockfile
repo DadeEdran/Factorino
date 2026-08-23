@@ -20,13 +20,36 @@
 # the hash on download regardless of which host it came from. Rewriting the URL
 # changes where a future resolve looks; it does not weaken what is verified.
 #
-# Run after every `flutter pub get` / `dart pub get`. Idempotent.
+# Run after every command that RESOLVES DEPENDENCIES. Idempotent.
+#
+# WHICH COMMANDS RESOLVE
+#
+# `flutter pub get` is the obvious one, and it is not the only one. Anything
+# that ensures dependencies before doing its own work re-runs the resolve and
+# writes the mirror host straight back:
+#
+#     flutter pub get            explicit
+#     dart pub get               explicit
+#     dart run build_runner ...  implicit -- resolves before generating
+#     flutter gen-l10n           implicit
+#     flutter test               implicit, when the lockfile looks stale
+#     flutter build <target>     implicit, likewise
+#
+# So the rule is not "sanitize after pub get"; it is **sanitize before you
+# commit, whatever you ran**. The pre-commit hook is the backstop and it does
+# fire — this script is what makes satisfying it one reproducible command.
+#
+# Measured: running `pub get` against an already-sanitized lockfile does not
+# accept it. pub treats a pub.dev entry as a different source from a mirror
+# entry, re-resolves, and reports "Changed N dependencies". The contamination
+# is not a one-time cleanup; it returns on every resolve.
 #
 # USAGE
 #     sh tools/sanitize_lockfile [path-to-pubspec.lock]
 #
 # Exits non-zero if any non-pub.dev host survives, so it is safe to chain:
 #     flutter pub get && sh tools/sanitize_lockfile
+#     dart run build_runner build && sh tools/sanitize_lockfile
 #
 # See docs/DECISIONS.md D-014. The .githooks/pre-commit hook is the backstop
 # that catches a lockfile which was never sanitized.

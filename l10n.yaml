@@ -1,0 +1,12 @@
+# Persian localization.
+#
+# The generated files are written into lib/ and committed, like every other
+# generated file in this project (ARCHITECTURE.md §A): code generation here
+# needs network access that is only available through the configured mirrors
+# (D-014), and a fresh checkout must still analyze, test and build.
+arb-dir: lib/core/localization/arb
+template-arb-file: app_fa.arb
+output-localization-file: app_strings.dart
+output-class: AppStrings
+output-dir: lib/core/localization/generated
+nullable-getter: false

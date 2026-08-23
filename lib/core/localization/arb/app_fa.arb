@@ -1,0 +1,171 @@
+{
+  "@@locale": "fa",
+
+  "appTitle": "فاکتورینو",
+  "@appTitle": {
+    "description": "The application name, shown in the window title and the app bar."
+  },
+
+  "navDashboard": "داشبورد",
+  "@navDashboard": {
+    "description": "Navigation destination: the dashboard."
+  },
+  "navInvoices": "فاکتورها",
+  "@navInvoices": {
+    "description": "Navigation destination: the invoice list."
+  },
+  "navCustomers": "مشتریان",
+  "@navCustomers": {
+    "description": "Navigation destination: the customer list."
+  },
+  "navProducts": "محصولات و خدمات",
+  "@navProducts": {
+    "description": "Navigation destination: the product and service catalogue."
+  },
+  "navSettings": "تنظیمات",
+  "@navSettings": {
+    "description": "Navigation destination: application settings."
+  },
+
+  "statusDraft": "پیش‌نویس",
+  "@statusDraft": {
+    "description": "Invoice status: draft. Editable; not yet a claim on anyone."
+  },
+  "statusUnpaid": "پرداخت نشده",
+  "@statusUnpaid": {
+    "description": "Invoice status: issued and unpaid."
+  },
+  "statusPartiallyPaid": "پرداخت جزئی",
+  "@statusPartiallyPaid": {
+    "description": "Invoice status: some but not all of the total has been paid."
+  },
+  "statusPaid": "پرداخت شده",
+  "@statusPaid": {
+    "description": "Invoice status: fully paid."
+  },
+  "statusCancelled": "لغو شده",
+  "@statusCancelled": {
+    "description": "Invoice status: cancelled. An issued invoice is corrected by cancellation, never by a silent edit."
+  },
+  "statusOverdue": "سررسید گذشته",
+  "@statusOverdue": {
+    "description": "Invoice status: unpaid and past its due date. Derived at display time from the due date, not stored."
+  },
+
+  "unitToman": "تومان",
+  "@unitToman": {
+    "description": "The primary display currency unit. Amounts are never shown as a bare number."
+  },
+  "unitRial": "ریال",
+  "@unitRial": {
+    "description": "The storage currency unit, shown where Rial precision matters."
+  },
+
+  "dashboardTitle": "داشبورد",
+  "@dashboardTitle": {},
+  "dashboardSalesThisMonth": "فروش این ماه",
+  "@dashboardSalesThisMonth": {
+    "description": "Dashboard tile. 'This month' means the current JALALI month (D-006), never the Gregorian one."
+  },
+  "dashboardOutstanding": "مانده دریافتنی",
+  "@dashboardOutstanding": {
+    "description": "Dashboard tile: the total still owed across unpaid invoices."
+  },
+  "dashboardInvoiceCount": "فاکتورهای این ماه",
+  "@dashboardInvoiceCount": {
+    "description": "Dashboard tile: number of invoices issued in the current Jalali month."
+  },
+  "dashboardCustomerCount": "مشتریان",
+  "@dashboardCustomerCount": {
+    "description": "Dashboard tile: number of customers on record."
+  },
+  "dashboardRecentInvoices": "فاکتورهای اخیر",
+  "@dashboardRecentInvoices": {},
+
+  "emptyDashboardTitle": "هنوز اطلاعاتی برای نمایش نیست",
+  "@emptyDashboardTitle": {},
+  "emptyDashboardBody": "با ساختن اولین فاکتور، خلاصهٔ فروش و مانده دریافتنی همین‌جا نمایش داده می‌شود.",
+  "@emptyDashboardBody": {},
+
+  "invoicesTitle": "فاکتورها",
+  "@invoicesTitle": {},
+  "emptyInvoicesTitle": "هنوز فاکتوری ثبت نشده است",
+  "@emptyInvoicesTitle": {},
+  "emptyInvoicesBody": "فاکتورهای شما پس از ثبت، همراه با وضعیت پرداخت در این فهرست نمایش داده می‌شوند.",
+  "@emptyInvoicesBody": {},
+
+  "customersTitle": "مشتریان",
+  "@customersTitle": {},
+  "emptyCustomersTitle": "هنوز مشتری‌ای ثبت نشده است",
+  "@emptyCustomersTitle": {},
+  "emptyCustomersBody": "مشتریانی که برایشان فاکتور صادر می‌کنید در این فهرست نگهداری می‌شوند.",
+  "@emptyCustomersBody": {},
+
+  "productsTitle": "محصولات و خدمات",
+  "@productsTitle": {},
+  "emptyProductsTitle": "هنوز محصول یا خدمتی ثبت نشده است",
+  "@emptyProductsTitle": {},
+  "emptyProductsBody": "کالاها و خدماتی که می‌فروشید را اینجا نگه دارید تا ساختن فاکتور سریع‌تر شود.",
+  "@emptyProductsBody": {},
+
+  "settingsTitle": "تنظیمات",
+  "@settingsTitle": {},
+  "settingsInvoicingSection": "فاکتور",
+  "@settingsInvoicingSection": {},
+  "settingsDefaultTaxRate": "نرخ مالیات بر ارزش افزوده",
+  "@settingsDefaultTaxRate": {
+    "description": "Settings field. Configurable, never hardcoded; changing it must not alter existing invoices."
+  },
+  "settingsDefaultTaxRateHint": "تغییر این نرخ روی فاکتورهای صادرشده اثری ندارد.",
+  "@settingsDefaultTaxRateHint": {},
+  "settingsInvoicePrefix": "پیشوند شمارهٔ فاکتور",
+  "@settingsInvoicePrefix": {},
+  "settingsRoundingUnit": "رند کردن مبلغ نهایی",
+  "@settingsRoundingUnit": {},
+  "settingsBackupSection": "پشتیبان‌گیری",
+  "@settingsBackupSection": {},
+  "settingsLastBackup": "آخرین پشتیبان‌گیری",
+  "@settingsLastBackup": {
+    "description": "Row label for when the last backup was taken. Distinct from the section heading above it, which names the section rather than the row."
+  },
+  "settingsLastBackupNever": "تا کنون پشتیبانی تهیه نشده است",
+  "@settingsLastBackupNever": {},
+
+  "tableColumnNumber": "شماره",
+  "@tableColumnNumber": {},
+  "tableColumnCustomer": "مشتری",
+  "@tableColumnCustomer": {},
+  "tableColumnDate": "تاریخ",
+  "@tableColumnDate": {},
+  "tableColumnStatus": "وضعیت",
+  "@tableColumnStatus": {},
+  "tableColumnAmount": "مبلغ",
+  "@tableColumnAmount": {},
+
+  "actionAdd": "افزودن",
+  "@actionAdd": {},
+  "actionSave": "ذخیره",
+  "@actionSave": {},
+  "actionCancel": "انصراف",
+  "@actionCancel": {},
+  "actionSearch": "جستجو",
+  "@actionSearch": {},
+  "actionRetry": "تلاش دوباره",
+  "@actionRetry": {},
+
+  "nationalIdFormatValid": "فرمت کد ملی معتبر است",
+  "@nationalIdFormatValid": {
+    "description": "Shown when an entered national ID passes the checksum. D-030 REQUIRES that this states only that the FORMAT is valid: it must never say the ID is confirmed, correct, or verified. The checksum maps two distinct numbers onto the same check digit, so a passing value is not a verified identity."
+  },
+  "nationalIdInvalid": "کد ملی نامعتبر است",
+  "@nationalIdInvalid": {
+    "description": "Shown when an entered national ID fails the checksum. A failing value is genuinely invalid and may be called so plainly (D-030)."
+  },
+
+  "errorGenericTitle": "خطایی رخ داد",
+  "@errorGenericTitle": {
+    "description": "Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user."
+  },
+  "errorGenericBody": "متأسفانه انجام این کار ممکن نشد. لطفاً دوباره تلاش کنید.",
+  "@errorGenericBody": {}
+}

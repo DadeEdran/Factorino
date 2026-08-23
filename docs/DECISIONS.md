@@ -1222,3 +1222,154 @@ Passing repositories down the widget tree by constructor (rejected: D-007 settle
 would reintroduce the prop-drilling it exists to avoid). Instantiating repositories inside widgets
 (rejected: it is the layering violation §3 forbids, and it would make the data layer untestable
 without a widget binding).
+
+---
+
+## D-033 — The design language, and tokens enforced rather than offered
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** The visual language, settled in `core/theme/` and enforced by
+`theme_tokens_only_test.dart`.
+
+### One accent: Persian turquoise
+
+`#11726B` in light, `#5ED2C5` in dark. The colour of Isfahan tile work, deepened until it behaves
+like a business colour. Chosen over Material blue because a tool for Iranian businesses should not
+look like a generic dashboard, and over a saturated turquoise because at full strength that is a
+craft-fair colour, not something to look at for eight hours while reconciling invoices.
+
+It appears sparingly: primary actions, the selected navigation destination, focus rings.
+
+### Colour means status, and nothing else means anything
+
+Six semantic pairs — draft, unpaid, partiallyPaid, paid, cancelled, overdue — each a foreground and
+a container, exposed as a `StatusPalette` theme extension.
+
+**Money is deliberately *not* accent-coloured.** It is rendered in the strongest neutral. The moment
+colour is also used for emphasis, colour stops being legible as meaning: a green amount beside a
+green badge is two signals competing, and the badge loses. Prominence for money comes from the type
+scale instead, which is what §10 actually asks for.
+
+Individual choices worth defending: unpaid is **amber, not red** — an invoice inside its terms is
+the normal state of business, not a problem; red is reserved for overdue, so red in a list means one
+thing only. Draft is the quietest of the six, a plain neutral, because a draft should not compete
+with a real invoice. Cancelled is a muted mauve-grey: recognisably not the draft neutral, and
+without the urgency of red, because a cancelled invoice needs no action.
+
+### Warm neutrals, and dark designed separately
+
+Light neutrals are warm (`#FAFAF8` page, `#FFFFFF` cards): a pure-grey business tool reads as
+clinical, and the warmth also stops the turquoise turning green against it. Dark neutrals go the
+other way, very slightly cool (`#0F1211` page, `#161A19` surface) — a warm dark surface reads brown
+next to a turquoise accent.
+
+Dark is **not an inversion** (§10). Every value is picked for its own background: the accent is
+lifted and desaturated so it does not glow, body text is `#E6E9E7` rather than pure white (which is
+the usual cause of what people call dark-mode eye strain), the page is not black (halation against a
+bright accent, and shimmering scroll edges on OLED), and the six status colours are re-picked at
+dark-background contrast rather than lightened mechanically.
+
+### Borders, not shadows
+
+Structure comes from a hairline border plus a surface step. The reason is dark mode: a shadow is
+nearly invisible on a dark surface, so a shadow-based hierarchy looks correct in light and collapses
+in dark. Elevation is kept for genuine overlays — menus and dialogs — where a shadow is the only cue
+that separates layers.
+
+### The type scale
+
+Vazirmatn 400/500/700 (D-022), with a per-platform fallback list for emoji and any glyph it lacks.
+
+| Token | Size / line | Weight | Use |
+|---|---|---|---|
+| `pageTitle` | 24 / 1.45 | 700 | one per screen |
+| `sectionTitle` | 17 / 1.5 | 500 | card and section headings |
+| `body` / `bodyStrong` | 15 / 1.65 | 400 / 500 | prose; emphasised values |
+| `caption` | 13 / 1.6 | 400 | secondary information |
+| `label` | 12 / 1.5 | 500 | field labels, table headers, badges |
+| **`amountLarge`** | **28 / 1.35** | **700** | **the prominent financial numeral style (§10)** |
+| `amountMedium` | 19 / 1.4 | 700 | the amount in a list row |
+| `amountSmall` | 15 / 1.5 | 500 | a table cell or secondary total |
+| `identifier` | 14 / 1.5 | 400 | invoice numbers, national IDs, phone numbers |
+
+Two Persian-specific choices. **Line heights are taller than a Latin scale would use** — the script
+has deep descenders and stacked diacritics, and at 1.2 the descenders of one line touch the ascenders
+of the next, which is the commonest way Persian typography is got wrong in an app built to Latin
+defaults. And **every numeral style enables `tnum`**: without tabular figures a column of amounts
+jitters by a few pixels per row, which makes a financial table feel unreliable without the reader
+being able to say why.
+
+### Enforcement
+
+`theme_tokens_only_test.dart` fails the build on a literal colour (`Color(0x…)`, `Colors.…`) or a
+literal size, radius, spacing, font size or duration anywhere outside the three token files.
+Verified to bite by introducing both kinds of violation and watching it fail.
+
+This is the rule most likely to erode quietly. Nothing breaks when someone writes
+`EdgeInsets.all(14)` — it compiles, it looks fine in the one place they were looking, and the next
+person copies it. A hundred screens later the layout is subtly irregular in a way nobody can point
+at, and the design system is a folder of constants nothing reads. `// tokens-exempt: <reason>` is
+the escape hatch, so an exception is visible and justified rather than forbidden.
+
+**Alternatives considered.** A generated Material colour scheme from a seed (`ColorScheme.fromSeed`)
+— rejected: it produces a competent palette nobody chose, and it derives dark from light, which is
+exactly what §10 forbids. Shadow-based elevation (rejected above). Enforcing tokens by review
+(rejected: that is what the rule already was).
+
+---
+
+## D-034 — Every user-facing string through the ARB, including the ones outside Dart
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** Persian is the only locale, pinned rather than inherited from the device; every
+user-facing string comes from `lib/core/localization/arb/app_fa.arb` through the generated
+`AppStrings`; and **no Arabic-script character may appear in code anywhere in `lib/`**, enforced by
+`no_hardcoded_strings_test.dart`.
+
+**The locale is pinned, not detected.** `supportedLocales` has one entry and `locale` fixes it, so a
+user whose phone is in English still gets a Persian invoicing application — because that is what the
+product is (§1), not a preference to negotiate.
+
+**RTL is set once at the root.** The Persian locale already gives every descendant
+`TextDirection.rtl`; the explicit `Directionality` in the app builder covers what renders outside
+that subtree — overlays, dialogs, route transitions built from the navigator — so no widget ever has
+to fight direction locally (§9). The navigation rail lands on the right with no positioning code at
+all, because `Row` resolves against the ambient direction.
+
+**Why the guard, when the strings are already Persian.** Hardcoding a Persian string in a widget is
+not a bug: it renders correctly, in the right language, and looks finished. It becomes a problem
+later and all at once — the day a second locale is added, or a wording rule has to be applied
+consistently, or someone needs to check every user-facing string against a constraint like D-030's.
+By then the strings are scattered across fifty widgets and the localization layer is a fiction. The
+guard makes that impossible on the first line rather than expensive on the thousandth.
+
+Comments are exempt — naming کد ملی in a doc comment is documentation, not copy — and
+`// l10n-exempt: <reason>` covers the real exceptions. Three exist so far, all in
+`core/formatting/number_display.dart`: the thousands separator, the decimal separator and the
+percent sign. Those are **numeric punctuation, not copy** — properties of how Persian writes numbers
+rather than phrases anyone would translate — and putting them in the ARB would invite someone
+editing text to "correct" the separator to a comma.
+
+**D-030 is checked mechanically now.** The same test asserts that `nationalIdFormatValid` names the
+format and contains none of تأیید / تایید / صحیح / احراز. The constraint the owner set is no longer
+only in a decision log; it fails the build if the copy drifts.
+
+### Strings the ARB cannot reach
+
+The platform manifests are user-facing and are not Dart: the Windows window title, the Android
+`android:label`, and the web `<title>` and manifest. All four said `factorino` and now say
+`فاکتورینو`, matching `appTitle`.
+
+**The Windows one is written as `\u` escapes, not as glyphs.** MSVC reads the source with the system
+ANSI codepage unless told otherwise, and a pasted Persian literal in `L"…"` compiled cleanly and
+produced mojibake in the title bar — found by screenshotting the running build, not by any test. The
+escapes carry no encoding assumption. This is the same lesson as the fold tables in
+`persian_text.dart`: where the encoding of the source is not guaranteed, name the character by code
+point.
+
+**Alternatives considered.** Leaving the platform titles in English as a brand name (rejected: the
+app already renders its own name in Persian, so the title bar would be the one place it did not).
+`intl_utils` or another string-management package (rejected: `gen-l10n` ships with Flutter and does
+this, and §2 asks whether the framework already provides it).

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'app.dart';
 import 'data/database/app_database.dart';
 import 'data/database/database_bootstrap.dart';
 import 'data/providers.dart';
@@ -27,22 +28,4 @@ Future<void> main() async {
       child: const FactorinoApp(),
     ),
   );
-}
-
-/// Placeholder root.
-///
-/// Intentionally renders nothing: the theme, localization, RTL setup, router
-/// and navigation shell are later increments of Phase 1, and a temporary
-/// English scaffold would violate the zero-English-user-facing-text rule
-/// on its way to being deleted.
-class FactorinoApp extends StatelessWidget {
-  const FactorinoApp({super.key});
-
-  @override
-  Widget build(BuildContext context) {
-    return const MaterialApp(
-      debugShowCheckedModeBanner: false,
-      home: Scaffold(body: SizedBox.shrink()),
-    );
-  }
 }

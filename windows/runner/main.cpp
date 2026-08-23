@@ -27,7 +27,13 @@ int APIENTRY wWinMain(_In_ HINSTANCE instance, _In_opt_ HINSTANCE prev,
   FlutterWindow window(project);
   Win32Window::Point origin(10, 10);
   Win32Window::Size size(1280, 720);
-  if (!window.Create(L"factorino", origin, size)) {
+    // The window title, as UTF-16 escapes rather than literal glyphs.
+  // MSVC reads this file with the system ANSI codepage unless told
+  // otherwise, and a pasted Persian literal comes out as mojibake in
+  // the title bar -- which is what happened the first time. Escapes
+  // carry no encoding assumption.
+  const wchar_t* kWindowTitle = L"\u0641\u0627\u06a9\u062a\u0648\u0631\u06cc\u0646\u0648";
+  if (!window.Create(kWindowTitle, origin, size)) {
     return EXIT_FAILURE;
   }
   window.SetQuitOnClose(true);
