@@ -15,14 +15,25 @@ and **stopped for review** rather than landing as one pile:
 
 | # | Increment | Status |
 |---|---|---|
-| a | Drift schema, migration setup, soft-delete helper | `COMPLETED` — reviewed and accepted |
-| b | `core/money/` engine + unit tests (§4) | `COMPLETED` — awaiting review |
-| c | Jalali date layer and digit normalization + tests | ← **next** |
+| a | Drift schema, migration setup, soft-delete helper | `COMPLETED` — **accepted** (`5522caf`) |
+| b | `core/money/` engine + unit tests (§4) | `COMPLETED` — **accepted** (`aa0be65`) |
+| c | Jalali date layer and digit normalization + tests | `NOT_STARTED` — **blocked**, see below |
 | d | Repositories and domain models | `NOT_STARTED` |
 | e | Theme, localization, routing, responsive shell | `NOT_STARTED` |
 | f | The four screens, on real data | `NOT_STARTED` |
 
-(a) and (b) precede all UI work: everything else reads from the schema and the money engine.
+(a) and (b) precede all UI work: everything else reads from the schema and the money engine. Both
+are reviewed, accepted and committed; the working tree is clean.
+
+> ### ⛔ Do not start increment (c) yet
+>
+> The owner ended the last session with **review notes for (c) still pending**. They are to be
+> delivered before work on (c) begins, and they may change its scope or approach.
+>
+> **If you are a fresh session:** do not open `core/date/` or `core/formatting/`. Ask the owner for
+> the pending (c) notes, or wait for them. The scope sketched under *Next action* below is this
+> project's own reading of §9 and D-006 — it is **not** the owner's instruction and must not be
+> treated as approved. Everything else in this file is settled and needs no re-explanation.
 
 ## Verification status
 
@@ -185,6 +196,11 @@ docs/*                                            D-013 note, D-024, D-025; ROAD
 
 ## Last completed action
 
+**Increments (a) and (b) were both reviewed by the owner and accepted.** Nothing from them is
+outstanding: no rework was requested, no follow-up was deferred, and every item raised in review was
+either resolved in the increment or recorded as a decision. The one owner override — D-024, from a
+hand-rolled UUID generator to `package:uuid` — was carried out and is committed.
+
 Delivered Phase 1 increment (b): the `core/money/` engine with 70 tests, the reconciliation
 invariant enforced at runtime as well as tested, the `kMaxAmountRial` ceiling proven to reject
 rather than truncate, and the zero-Flutter rule enforced transitively by a guard test. Also carried
@@ -198,26 +214,51 @@ through `assertDatabaseFileIsEncrypted`, and the startup path verified on Androi
 
 ## Next action
 
-**Stop for owner review of increment (b). Then build increment (c): Jalali dates and digit
-normalization.**
+**Wait for the owner's pending review notes on increment (c). Do not begin (c) before they arrive.**
 
-Both are pure Dart and both belong in `core/`, so they get the same treatment as the money engine —
-tested against fixed, known values rather than against whatever the implementation happens to do.
+There is no other outstanding work: (a) and (b) are accepted and committed, the tree is clean, and
+all verification passes. If the owner asks to proceed and the notes have been given, (c) is the
+Jalali date layer and digit normalization.
 
-1. **Jalali dates** (`core/date/`), using `shamsi_date`. Store UTC epoch milliseconds, display
-   Jalali (D-005). The load-bearing part is **D-006**: "این ماه" means the current *Jalali* month,
-   so the period helpers must compute Jalali month/year boundaries, convert them to UTC instants,
-   and hand back a range the schema can be queried on. Derive `Asia/Tehran` boundaries explicitly —
-   Iran has no DST, but a fixed +03:30 offset must not be hardcoded in a way that breaks for a
-   device set to another timezone.
+### Scope prepared for (c) — this project's reading, pending the owner's notes
+
+Both parts are pure Dart in `core/`, so both get the same treatment as the money engine: tested
+against fixed, known values rather than against whatever the implementation happens to produce.
+`shamsi_date` is already the settled dependency choice but is **not yet in
+`pubspec.yaml`** — adding it needs the D-014 workflow (`flutter pub get`, then
+`sh tools/sanitize_lockfile`).
+
+1. **Jalali dates** (`core/date/`). Store UTC epoch milliseconds, display Jalali (D-005). The
+   load-bearing part is **D-006**: "این ماه" means the current *Jalali* month, so the period helpers
+   must compute Jalali month/year boundaries, convert them to UTC instants, and return a range the
+   schema can be queried on. Derive `Asia/Tehran` boundaries explicitly — Iran has no DST, but a
+   fixed +03:30 offset must not be hardcoded in a way that breaks for a device in another timezone.
 2. **Digit and text normalization** (`core/formatting/`). Persian `۰-۹` and Arabic-Indic `٠-٩`
    digits fold to ASCII before parsing; Arabic `ي`/`ك` fold to Persian `ی`/`ک`; ZWNJ is normalized
-   for search. This is what fills `search_name` (D-025) — so the same normalizer must be used for
-   both storing and querying, or the index will not match.
-3. Tests: Jalali↔Gregorian boundary conversions including a leap year, month boundaries across the
-   Nowruz year change, digit folding for both digit sets, ZWNJ handling, and the §9 search case —
-   "علي" must be found by typing "علی".
+   for search. This is what fills `search_name` (D-025), so **the same normalizer must be used for
+   writing and for querying**, or the index will not match what the user typed.
+3. Also in scope, since the schema has the columns and neither has a validator: Iranian mobile
+   normalization (`09xxxxxxxxx`, tolerating `+98` / `0098`) and the national-ID checksum.
+4. Tests: Jalali↔Gregorian conversions including a leap year, month boundaries across the Nowruz
+   year change, digit folding for both digit sets, ZWNJ handling, and the §9 search case — a
+   customer saved as "علي" must be found by typing "علی".
 
-Also in scope for (c): Iranian mobile normalization (`09xxxxxxxxx`, tolerating `+98`/`0098`) and
-the national-ID checksum, both of which the schema already has columns for and neither of which has
-a validator yet.
+**Guard test to carry forward.** `core/formatting/` will be imported by `core/money/`'s neighbours,
+and `no_flutter_imports_test.dart` already follows project-relative imports transitively — so if a
+formatting helper imports Flutter and the money engine later reaches for it, the build fails. That
+is intended; do not loosen the guard to accommodate it.
+
+### Standing rules that outlive this handoff
+
+- **The cipher pragmas come before `pragma key`** (D-020); never assert encryption with
+  `PRAGMA cipher_version` or `PRAGMA cipher` — assert on the file header.
+- **Open the database only through `openEncryptedDatabase`; read rows only through `selectAlive`.**
+  Both are enforced by tests that scan `lib/`. If one fails, route through the helper — never
+  weaken the test.
+- **`sh tools/sanitize_lockfile` after every `flutter pub get`.** The pre-commit hook is the
+  backstop and it does fire.
+- **`dart run build_runner build` after touching any table**, and commit the regenerated
+  `.g.dart` — generated files are committed deliberately (see `ARCHITECTURE.md` §A).
+- **Nothing in `core/money/` may import Flutter**, directly or transitively.
+- Commit policy (D-019): commit at meaningful milestones, show `git diff --stat` and the message,
+  no per-commit approval needed. Never force-push, amend, rebase or reset --hard.

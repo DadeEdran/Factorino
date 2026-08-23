@@ -145,7 +145,8 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increments (a) and (b) complete; (b) awaiting review.
+**Status:** `IN_PROGRESS` — increments (a) and (b) complete, reviewed and **accepted**.
+Increment (c) is **blocked**: the owner's review notes for it are pending. See `CURRENT_STATE.md`.
 
 Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
 stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
