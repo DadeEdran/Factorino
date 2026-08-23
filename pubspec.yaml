@@ -35,6 +35,11 @@ dependencies:
   # Use with the CupertinoIcons class for iOS style icons.
   cupertino_icons: ^1.0.8
 
+  # Encryption key storage (Android Keystore / Windows DPAPI). Added first,
+  # ahead of any application code, as the probe for whether a plugin pulling
+  # new AndroidX artifacts can resolve on this machine (DECISIONS.md D-014).
+  flutter_secure_storage: 11.0.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

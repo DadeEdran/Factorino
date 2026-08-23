@@ -6,7 +6,11 @@ plugins {
 
 android {
     namespace = "io.github.erysaw.factorino"
-    compileSdk = flutter.compileSdkVersion
+    // Pinned above flutter.compileSdkVersion (36) because flutter_secure_storage
+    // requires compileSdk 37. AGP 9.1.0 warns that 36 is its maximum *recommended*
+    // value; the warning is suppressed in gradle.properties. compileSdk only
+    // controls which APIs are compilable — targetSdk and minSdk are unchanged.
+    compileSdk = 37
     ndkVersion = flutter.ndkVersion
 
     compileOptions {
