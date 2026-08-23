@@ -1,30 +1,24 @@
-import 'dart:math';
+import 'package:uuid/data.dart';
+import 'package:uuid/uuid.dart';
 
-/// RFC 4122 version 4 UUID, generated from the platform's secure RNG.
+/// RFC 4122 version 4 UUID, from `package:uuid`.
 ///
-/// Written here rather than pulled from a package: The project spec asks whether
-/// Dart already provides what a dependency would, and `Random.secure()` does.
-/// A v4 UUID is 122 random bits with six fixed bits, which is a dozen lines and
-/// is directly unit-testable -- against a dependency whose whole surface we
-/// would use one function of.
+/// A hand-rolled generator lived here briefly and was **reversed by the project
+/// owner** (D-024). The reasoning: a bit-masking bug in a hand-rolled generator
+/// surfaces in roughly one run in sixteen, on the primary key of every row, and
+/// once sync exists any strange conflict would put our own generator first in
+/// the suspect list. The project spec exists to prevent gratuitous dependencies,
+/// and ID generation for records that must merge across devices is not that.
 ///
-/// Primary keys are UUIDs so that rows created offline on two devices cannot
-/// collide when they later sync (D-001).
-String uuidV4([Random? random]) {
-  final rng = random ?? _secure;
-  final bytes = List<int>.generate(16, (_) => rng.nextInt(256));
-
-  // Version 4 in the high nibble of byte 6.
-  bytes[6] = (bytes[6] & 0x0f) | 0x40;
-  // RFC 4122 variant in the two high bits of byte 8.
-  bytes[8] = (bytes[8] & 0x3f) | 0x80;
-
-  final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).toList();
-  return '${hex.sublist(0, 4).join()}-'
-      '${hex.sublist(4, 6).join()}-'
-      '${hex.sublist(6, 8).join()}-'
-      '${hex.sublist(8, 10).join()}-'
-      '${hex.sublist(10, 16).join()}';
+/// Kept as a one-line wrapper rather than calling `Uuid()` at each site, so the
+/// package appears in exactly one place: the schema references this tear-off as
+/// a column default, and swapping the implementation again would touch one
+/// file. The property tests in `test/core/utils/uuid_test.dart` point here and
+/// so survived the swap unchanged.
+String uuidV4([List<int>? randomBytes]) {
+  return randomBytes == null
+      ? _uuid.v4()
+: _uuid.v4(config: V4Options(randomBytes, null));
 }
 
-final Random _secure = Random.secure();
+const Uuid _uuid = Uuid();

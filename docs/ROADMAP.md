@@ -145,7 +145,7 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increment (a) complete, awaiting review.
+**Status:** `IN_PROGRESS` — increments (a) and (b) complete; (b) awaiting review.
 
 Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
 stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
@@ -154,7 +154,7 @@ connection layer (D-020, D-023); it is built on.
 | # | Increment | Status |
 |---|---|---|
 | a | Drift schema, migration setup, soft-delete helper | `COMPLETED` 2026-08-23 |
-| b | `core/money/` engine + unit tests (§4) | `NOT_STARTED` |
+| b | `core/money/` engine + unit tests (§4) | `COMPLETED` 2026-08-23 |
 | c | Jalali date layer and digit normalization + tests | `NOT_STARTED` |
 | d | Repositories and domain models | `NOT_STARTED` |
 | e | Theme, localization, routing, responsive shell | `NOT_STARTED` |
@@ -189,9 +189,31 @@ both are far cheaper to correct now than after screens depend on them.
   `search_name`), and an implementation note on **D-013** (numbering stored as year + sequence; the
   unique index covers soft-deleted rows).
 
+**Increment (b) — completed 2026-08-23**
+
+- `core/money/` in four pure-Dart files: `money.dart` (the `Money` value type and the
+  `kMaxAmountRial` ceiling), `rounding.dart` (half-up arithmetic and the overflow-checked multiply),
+  `discount_allocation.dart` (largest-remainder distribution), `invoice_calculator.dart` (§4 in
+  order).
+- **The reconciliation invariant is a test, not a comment** — and also a runtime check: the engine
+  computes the grand total twice, from the lines and from
+  `subtotal − invoiceDiscount + totalTax`, and throws `InvoiceReconciliationError` if they differ.
+  The alternative to crashing on an inconsistent invoice is persisting one.
+- **The ceiling rejects rather than truncates**, identically on every platform. Checked against
+  2^53 rather than the 64-bit range, so the Dart VM and the Web refuse the same inputs: a
+  calculation that succeeds on Android and silently drops digits on the Web would be worse than one
+  that fails on both (D-002).
+- 70 tests covering the §4 cases: zero quantity, fractional quantity, an item discount exceeding the
+  line total, allocation remainders that do not divide evenly, mixed per-item tax rates, rounding
+  boundaries, the ceiling, and a deterministic sweep of 450 input combinations all asserting the
+  invariant.
+- `no_flutter_imports_test.dart` enforces §3's zero-Flutter rule **transitively** through
+  project-relative imports, so pulling in a helper that itself imports Flutter cannot slip past it.
+- Decision recorded: **D-026** (tax-rate resolution treats `0` as a real rate, never as absent).
+
 **Remaining in Phase 1**
 
-- Increments (b) through (f) above.
+- Increments (c) through (f) above.
 
 **Known issues**
 
@@ -201,8 +223,19 @@ both are far cheaper to correct now than after screens depend on them.
 - The database opens on the main isolate. Phase 13 moves it to a background isolate; until then the
   `setup` closure must stay isolate-sendable, which is now recorded in `ARCHITECTURE.md` §B.5.
 - `search_name` is empty until the normalizer lands in increment (c) and repositories fill it in (d).
+- §4 step 9 defines `totalDiscount` as the sum of the discounts **as entered**, so an item discount
+  larger than its line inflates that figure above what was actually given. Implemented literally;
+  flagged for the owner rather than silently "corrected". The reconciliation invariant is unaffected
+  — it is built from `subtotal`, not from this reporting figure.
 
-**Security note.** The schema now defines what is stored, so the threat model gains real content:
+**Security note (increment b).** No new data, inputs, permissions or platform surface: the money
+engine is a pure function over integers. Its security relevance is integrity rather than
+confidentiality — a silent overflow on the Web would corrupt financial records just as effectively
+as a bug in the storage layer, which is why the ceiling rejects rather than truncates and does so
+identically on every target.
+
+**Security note (increment a).** The schema now defines what is stored, so the threat model gains
+real content:
 
 - **The database holds third-party personal identifiers** — national ID, economic ID, mobile numbers
   — as of this increment. They are protected by the encryption proven in Phase 0, and none of them

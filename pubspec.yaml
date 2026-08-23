@@ -46,6 +46,12 @@ dependencies:
   drift: 2.34.3
   sqlite3: 3.5.2
 
+  # UUID v4 primary keys (D-001). A hand-rolled generator was written and then
+  # reversed by the project owner (D-024): the keys this produces are the
+  # identity of every synced record, and a subtle generator bug there is both
+  # rare and expensive to diagnose.
+  uuid: 4.6.0
+
   # Resolves the per-user application-support directory the database lives in
   # (%APPDATA% on Windows, app-private storage on Android) -- the project spec.
   path_provider: 2.1.5

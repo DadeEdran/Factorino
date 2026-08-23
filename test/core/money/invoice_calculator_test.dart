@@ -1,0 +1,462 @@
+import 'package:factorino/core/money/invoice_calculator.dart';
+import 'package:factorino/core/money/money.dart';
+import 'package:flutter_test/flutter_test.dart';
+
+/// the project spec, case by case. A wrong total here is the product-killing bug,
+/// so these tests are the specification rather than a sample of it.
+void main() {
+  InvoiceLineInput line({
+    int priceRial = 1000000,
+    int quantityMilli = 1000,
+    int discountRial = 0,
+    int? discountPercentBp,
+    int? taxRateBp,
+  }) {
+    return InvoiceLineInput(
+      unitPrice: Money.rial(priceRial),
+      quantityMilli: quantityMilli,
+      discount: Money.rial(discountRial),
+      discountPercentBp: discountPercentBp,
+      taxRateBp: taxRateBp,
+    );
+  }
+
+  CalculatedInvoice calculate(
+    List<InvoiceLineInput> lines, {
+    int discountRial = 0,
+    int? discountPercentBp,
+    int? taxRateBp,
+    int defaultTaxRateBp = 1000,
+    int roundingUnitRial = 0,
+  }) {
+    return calculateInvoice(
+      InvoiceInput(
+        lines: lines,
+        defaultTaxRateBp: defaultTaxRateBp,
+        discount: Money.rial(discountRial),
+        discountPercentBp: discountPercentBp,
+        taxRateBp: taxRateBp,
+        roundingUnitRial: roundingUnitRial,
+      ),
+    );
+  }
+
+  /// The §4 invariant, checked as a test rather than trusted as a comment.
+  void expectReconciles(CalculatedInvoice invoice) {
+    expect(
+      invoice.grandTotal.rial - invoice.roundingAdjustment.rial,
+      invoice.subtotal.rial -
+          invoice.invoiceDiscount.rial +
+          invoice.totalTax.rial,
+      reason: 'grandTotal != subtotal - invoiceDiscount + totalTax',
+    );
+
+    // Step 11 states the same total a second way; both must agree.
+    final sumOfLines = invoice.lines.fold<int>(0, (s, l) => s + l.total.rial);
+    expect(
+      sumOfLines,
+      invoice.grandTotal.rial - invoice.roundingAdjustment.rial,
+      reason: 'the lines do not sum to the grand total',
+    );
+
+    // The allocation must be exact, which is what makes the above hold.
+    final allocated = invoice.lines.fold<int>(
+      0,
+      (s, l) => s + l.allocatedInvoiceDiscount.rial,
+    );
+    expect(allocated, invoice.invoiceDiscount.rial);
+  }
+
+  group('step 1 - line gross', () {
+    test('multiplies price by quantity in milli-units', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, quantityMilli: 1000), // 1 unit
+      ]);
+      expect(invoice.lines.single.gross, Money.rial(1000000));
+    });
+
+    test('handles a fractional quantity exactly', () {
+      // 1.5 kg at 1,000,000 Rial = 1,500,000 Rial, with no floating point.
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, quantityMilli: 1500),
+      ]);
+      expect(invoice.lines.single.gross, Money.rial(1500000));
+    });
+
+    test('rounds a fractional Rial half-up', () {
+      // 0.333 x 1001 = 333.333 Rial -> 333
+      expect(
+        calculate(<InvoiceLineInput>[line(priceRial: 1001, quantityMilli: 333)])
+.lines
+.single
+.gross,
+        Money.rial(333),
+      );
+      // 5 x 0.5 = 2.5 Rial -> 3, not 2
+      expect(
+        calculate(<InvoiceLineInput>[line(priceRial: 5, quantityMilli: 500)])
+.lines
+.single
+.gross,
+        Money.rial(3),
+      );
+    });
+
+    test('a zero quantity produces a zero line, not an error', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, quantityMilli: 0),
+        line(priceRial: 2000000, quantityMilli: 1000),
+      ]);
+
+      expect(invoice.lines.first.gross, Money.zero);
+      expect(invoice.lines.first.net, Money.zero);
+      expect(invoice.lines.first.tax, Money.zero);
+      expect(invoice.lines.first.total, Money.zero);
+      expect(invoice.subtotal, Money.rial(2000000));
+      expectReconciles(invoice);
+    });
+
+    test('an invoice with no lines totals zero', () {
+      final invoice = calculate(<InvoiceLineInput>[]);
+      expect(invoice.subtotal, Money.zero);
+      expect(invoice.grandTotal, Money.zero);
+      expectReconciles(invoice);
+    });
+  });
+
+  group('steps 2-3 - line discount', () {
+    test('subtracts an absolute discount', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, discountRial: 250000),
+      ]);
+      expect(invoice.lines.single.net, Money.rial(750000));
+    });
+
+    test('resolves a percentage to an amount and keeps both', () {
+      // §4 step 2: store the entered percentage and the resolved amount.
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, discountPercentBp: 1500), // 15%
+      ]);
+
+      expect(invoice.lines.single.discount, Money.rial(150000));
+      expect(invoice.lines.single.discountPercentBp, 1500);
+      expect(invoice.lines.single.net, Money.rial(850000));
+    });
+
+    test('clamps the line net at zero when the discount exceeds the line', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, discountRial: 1500000),
+      ]);
+
+      expect(invoice.lines.single.net, Money.zero);
+      expect(invoice.lines.single.total, Money.zero);
+      // §4 step 9 defines totalDiscount as the sum of what was entered, so it
+      // reports 1,500,000 even though only 1,000,000 could be given. The
+      // invariant is unaffected: it is built from subtotal, not this figure.
+      expect(invoice.totalDiscount, Money.rial(1500000));
+      expectReconciles(invoice);
+    });
+  });
+
+  group('step 4 - invoice discount allocation', () {
+    test('allocates proportionally by line net', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000), // net 1,000,000
+        line(priceRial: 3000000), // net 3,000,000
+      ], discountRial: 400000);
+
+      expect(invoice.lines[0].allocatedInvoiceDiscount, Money.rial(100000));
+      expect(invoice.lines[1].allocatedInvoiceDiscount, Money.rial(300000));
+      expectReconciles(invoice);
+    });
+
+    test('distributes remainders so nothing is lost', () {
+      // 100 Rial across three equal lines: 33.33 each.
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000),
+        line(priceRial: 1000),
+        line(priceRial: 1000),
+      ], discountRial: 100);
+
+      expect(invoice.lines.map((l) => l.allocatedInvoiceDiscount.rial), <int>[
+        34,
+        33,
+        33,
+      ]);
+      expectReconciles(invoice);
+    });
+
+    test('reconciles across many awkward discount amounts', () {
+      for (var discount = 0; discount <= 300; discount++) {
+        final invoice = calculate(<InvoiceLineInput>[
+          line(priceRial: 333),
+          line(priceRial: 777),
+          line(priceRial: 1111),
+        ], discountRial: discount);
+        expectReconciles(invoice);
+      }
+    });
+
+    test('resolves an invoice percentage against the subtotal', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[line(priceRial: 2000000)],
+        discountPercentBp: 500, // 5%
+      );
+
+      expect(invoice.invoiceDiscount, Money.rial(100000));
+      expect(invoice.invoiceDiscountPercentBp, 500);
+      expectReconciles(invoice);
+    });
+
+    test('clamps an invoice discount larger than the subtotal', () {
+      // Unlike a line discount, this one is part of the invariant, so letting
+      // it run past the subtotal would produce a negative grand total.
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000),
+      ], discountRial: 5000000);
+
+      expect(invoice.invoiceDiscount, Money.rial(1000000));
+      expect(invoice.grandTotal, Money.zero);
+      expectReconciles(invoice);
+    });
+
+    test('ignores an invoice discount when every line is worth zero', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(quantityMilli: 0),
+      ], discountRial: 50000);
+
+      expect(invoice.subtotal, Money.zero);
+      expect(invoice.invoiceDiscount, Money.zero);
+      expect(invoice.grandTotal, Money.zero);
+      expectReconciles(invoice);
+    });
+  });
+
+  group('step 6 - tax rate resolution', () {
+    test('prefers the item rate, then the invoice rate, then the default', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[
+          line(taxRateBp: 500), // item wins
+          line(), // falls through to the invoice rate
+        ],
+        taxRateBp: 800,
+        defaultTaxRateBp: 1000,
+      );
+
+      expect(invoice.lines[0].resolvedTaxRateBp, 500);
+      expect(invoice.lines[1].resolvedTaxRateBp, 800);
+    });
+
+    test('falls through to the settings default when nothing overrides', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(),
+      ], defaultTaxRateBp: 900);
+      expect(invoice.lines.single.resolvedTaxRateBp, 900);
+    });
+
+    test('treats a zero item rate as a real rate, not as absent', () {
+      // A tax-exempt line is `0`, not null. Falling through to the default
+      // here would tax something the user marked exempt.
+      final invoice = calculate(<InvoiceLineInput>[
+        line(taxRateBp: 0),
+      ], defaultTaxRateBp: 1000);
+
+      expect(invoice.lines.single.resolvedTaxRateBp, 0);
+      expect(invoice.lines.single.tax, Money.zero);
+    });
+
+    test('computes mixed rates per line and sums them', () {
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, taxRateBp: 1000), // 100,000
+        line(priceRial: 1000000, taxRateBp: 500), // 50,000
+        line(priceRial: 1000000, taxRateBp: 0), // 0
+      ], defaultTaxRateBp: 900);
+
+      expect(invoice.lines.map((l) => l.tax.rial), <int>[100000, 50000, 0]);
+      expect(invoice.totalTax, Money.rial(150000));
+      expectReconciles(invoice);
+    });
+
+    test('taxes the net after the invoice discount, not before', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[line(priceRial: 1000000)],
+        discountRial: 200000,
+        defaultTaxRateBp: 1000,
+      );
+
+      // 10% of 800,000, not of 1,000,000.
+      expect(invoice.lines.single.tax, Money.rial(80000));
+      expect(invoice.grandTotal, Money.rial(880000));
+      expectReconciles(invoice);
+    });
+  });
+
+  group('steps 8-11 - totals', () {
+    test('reports every §4 figure for a mixed invoice', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[
+          line(priceRial: 1000000, quantityMilli: 2000, discountRial: 100000),
+          line(priceRial: 500000, quantityMilli: 1500, taxRateBp: 500),
+        ],
+        discountRial: 150000,
+        defaultTaxRateBp: 1000,
+      );
+
+      // Line 1: gross 2,000,000, discount 100,000, net 1,900,000
+      // Line 2: gross   750,000, discount       0, net   750,000
+      expect(invoice.lines[0].net, Money.rial(1900000));
+      expect(invoice.lines[1].net, Money.rial(750000));
+      expect(invoice.subtotal, Money.rial(2650000));
+
+      // 150,000 allocated by net: 1,900,000 : 750,000
+      final allocated = invoice.lines.fold<int>(
+        0,
+        (s, l) => s + l.allocatedInvoiceDiscount.rial,
+      );
+      expect(allocated, 150000);
+
+      expect(invoice.totalDiscount, Money.rial(250000)); // 100,000 + 150,000
+      expectReconciles(invoice);
+    });
+
+    test('subtotal is before the invoice discount and before tax', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[line(priceRial: 1000000)],
+        discountRial: 300000,
+        defaultTaxRateBp: 1000,
+      );
+      expect(invoice.subtotal, Money.rial(1000000));
+    });
+  });
+
+  group('rounding the grand total', () {
+    test('is disabled by default', () {
+      final invoice = calculate(<InvoiceLineInput>[line(priceRial: 1234567)]);
+      expect(invoice.roundingAdjustment, Money.zero);
+      expectReconciles(invoice);
+    });
+
+    test('rounds to the configured unit and records the delta', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[line(priceRial: 1234567)],
+        defaultTaxRateBp: 0,
+        roundingUnitRial: 1000,
+      );
+
+      expect(invoice.grandTotal, Money.rial(1235000));
+      expect(invoice.roundingAdjustment, Money.rial(433));
+      // Still reconciles once the recorded delta is taken into account -- that
+      // is why the delta is stored at all.
+      expectReconciles(invoice);
+    });
+
+    test('rounds down when below the halfway point', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[line(priceRial: 1234400)],
+        defaultTaxRateBp: 0,
+        roundingUnitRial: 1000,
+      );
+
+      expect(invoice.grandTotal, Money.rial(1234000));
+      expect(invoice.roundingAdjustment, Money.rial(-400));
+      expectReconciles(invoice);
+    });
+
+    test('rounds an exact half up', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[line(priceRial: 1234500)],
+        defaultTaxRateBp: 0,
+        roundingUnitRial: 1000,
+      );
+      expect(invoice.grandTotal, Money.rial(1235000));
+    });
+  });
+
+  group('range and validation', () {
+    test('rejects an amount past the ceiling rather than truncating', () {
+      expect(
+        () => calculate(<InvoiceLineInput>[
+          line(priceRial: kMaxAmountRial, quantityMilli: 2000),
+        ]),
+        throwsA(isA<MoneyRangeError>()),
+      );
+    });
+
+    test('rejects a quantity that would overflow exact integer arithmetic', () {
+      expect(
+        () => calculate(<InvoiceLineInput>[
+          line(priceRial: kMaxAmountRial, quantityMilli: 1000000000),
+        ]),
+        throwsA(isA<MoneyRangeError>()),
+      );
+    });
+
+    test('rejects negative quantities, prices and discounts', () {
+      expect(
+        () => calculate(<InvoiceLineInput>[line(quantityMilli: -1)]),
+        throwsArgumentError,
+      );
+      expect(
+        () => calculateInvoice(
+          InvoiceInput(
+            lines: <InvoiceLineInput>[
+              InvoiceLineInput(unitPrice: Money.rial(-1), quantityMilli: 1000),
+            ],
+            defaultTaxRateBp: 1000,
+          ),
+        ),
+        throwsArgumentError,
+      );
+      expect(
+        () => calculate(<InvoiceLineInput>[line(discountRial: -1)]),
+        throwsArgumentError,
+      );
+    });
+
+    test('rejects out-of-range basis points', () {
+      expect(
+        () => calculate(<InvoiceLineInput>[line(taxRateBp: 10001)]),
+        throwsArgumentError,
+      );
+      expect(
+        () => calculate(<InvoiceLineInput>[line(taxRateBp: -1)]),
+        throwsArgumentError,
+      );
+      expect(
+        () => calculate(<InvoiceLineInput>[line()], discountPercentBp: 20000),
+        throwsArgumentError,
+      );
+    });
+  });
+
+  group('the reconciliation invariant holds across the input space', () {
+    test('for many combinations of quantity, discount and rate', () {
+      // Deterministic sweep rather than random input: a money engine should
+      // fail the same way on every run, or a failure cannot be reproduced.
+      for (final quantity in <int>[0, 1, 500, 1000, 1500, 3333]) {
+        for (final lineDiscount in <int>[0, 1, 12345]) {
+          for (final invoiceDiscount in <int>[0, 7, 999]) {
+            for (final rate in <int>[0, 1, 900, 1000, 10000]) {
+              final invoice = calculate(
+                <InvoiceLineInput>[
+                  line(
+                    priceRial: 123457,
+                    quantityMilli: quantity,
+                    discountRial: lineDiscount,
+                  ),
+                  line(priceRial: 99991, quantityMilli: 1000),
+                  line(priceRial: 7, quantityMilli: 1),
+                ],
+                discountRial: invoiceDiscount,
+                defaultTaxRateBp: rate,
+              );
+
+              expectReconciles(invoice);
+              expect(invoice.grandTotal.isNegative, isFalse);
+            }
+          }
+        }
+      }
+    });
+  });
+}

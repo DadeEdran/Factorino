@@ -823,28 +823,42 @@ steps).
 
 ---
 
-## D-024 — UUID v4 is generated in-repo, not taken from `package:uuid`
+## D-024 — UUID v4 comes from `package:uuid`
 
-**Date:** 2026-08-23 · **Status:** ACCEPTED
+**Date:** 2026-08-23 · **Reversed the same day by the project owner** · **Status:** ACCEPTED
+(supersedes the original entry below)
 
-**Decision.** `lib/core/utils/uuid.dart` generates RFC 4122 version 4 UUIDs from `Random.secure()`.
-`package:uuid` is not a dependency.
+**Decision.** `lib/core/utils/uuid.dart` is a one-line wrapper over `package:uuid` 4.6.0.
 
-**Reason.** the project spec requires checking whether Dart already provides what a dependency would.
-It does: a v4 UUID is 122 random bits with six fixed bits, which is a dozen lines. Against that,
-`package:uuid` would be a supply-chain surface and a version to track, for one function of its
-surface. The in-repo version is also directly testable — `uuid_test.dart` pins the format, the
-version and variant bits under an RNG stuck at `0x00` and at `0xff`, and checks 10,000 generated
-values for collisions and leading-byte entropy.
+**Reason (owner, overruling this session's original decision).** The original reasoning — that
+The project spec asks whether Dart already provides what a dependency would, and `Random.secure()`
+does — was sound but landed wrong:
 
-**Alternatives considered.** `package:uuid` (rejected on the §2 test above, not on quality — it is a
-fine package); a database-side `randomblob(16)` default (rejected: pushes an identity decision into
-SQL where it cannot be unit-tested and would differ on the Web target); a timestamp-plus-counter id
-(rejected: predictable, and it leaks creation order into a primary key).
+1. **The failure is rare and expensive.** This session's own test notes that a version- or
+   variant-masking bug surfaces in roughly one run in sixteen. That is a rare, hard-to-diagnose
+   failure on the **primary key of every row in the database**.
+2. **It poisons future debugging.** Once sync exists, any strange conflict would put our own ID
+   generator first in the suspect list, spending investigation time on something that should be
+   settled.
+3. **§2 is about gratuitous dependencies.** Unique ID generation for records that must merge across
+   devices is not gratuitous — it is exactly the kind of thing worth taking from a maintained,
+   widely-audited package.
 
-**Risk accepted.** The correctness of the generator is now ours. That risk is why the bit-masking
-test exercises both RNG extremes rather than only sampling random output, where a masking bug would
-show up in roughly one run in sixteen.
+**How the swap was made.** The generator's property tests were kept and pointed at the wrapper
+rather than deleted: format, version and variant bits under all-zero and all-`0xff` random material,
+10,000 values checked for collisions, and leading-byte entropy. All four passed against
+`package:uuid` unchanged. A dependency swap is precisely when the old guarantees should be
+re-checked rather than assumed, and keeping the tests is what made the reversal cheap — the wrapper
+means one file changed, because the schema references the tear-off as a column default.
+
+**Original decision, for the record (superseded).** *UUID v4 generated in-repo from
+`Random.secure()`, on the grounds that it is a dozen lines, directly unit-testable, and avoids a
+supply-chain surface and a version to track for one function.* Rejected for the reasons above.
+
+**Alternatives considered.** Keeping the hand-rolled generator (rejected: see above); a
+database-side `randomblob(16)` default (rejected: pushes an identity decision into SQL where it
+cannot be unit-tested and would differ on the Web target); timestamp-plus-counter ids (rejected:
+predictable, and leaks creation order into a primary key).
 
 ---
 
@@ -874,3 +888,29 @@ no user data exists yet.
 **Alternatives considered.** SQLite FTS5 (rejected for now: a second index structure to keep in sync
 and a larger file, for prefix search over a few thousand short names); normalizing only in Dart after
 loading all rows (rejected: that is the O(n) UI-thread work §13 forbids).
+
+---
+
+## D-026 — A tax rate of `0` is a real rate, never "absent"
+
+**Date:** 2026-08-23 · **Status:** ACCEPTED
+
+**Decision.** In the §4 resolution order item → invoice → settings default, the engine takes the
+first **non-null** value. A rate of `0` stops the search; only `null` continues it.
+
+**Reason.** A tax-exempt line is expressed as `0`, and the obvious shortcut — treating a falsy or
+zero rate as "not set" and falling through — would apply the default VAT rate to a line the user
+deliberately marked exempt. That is a wrong total on a tax document, and it would look correct to
+everyone except the tax authority.
+
+The distinction is carried in the type: `int?` rather than `int` for the item and invoice
+overrides, with `null` meaning "inherit" and `0` meaning "zero percent". The settings default is
+non-nullable, because the chain has to terminate.
+
+**Consequence.** The resolved rate is snapshotted onto each invoice item (D-004), so an invoice
+issued at 0% stays at 0% no matter what the settings default becomes later.
+
+**Alternatives considered.** A sentinel such as `-1` for "inherit" (rejected: it invites arithmetic
+on a value that is not a rate, and `-1` reaching the schema would be silently stored); a separate
+`isTaxExempt` boolean (rejected: two fields that can contradict each other, and the exemption is
+already expressible as a rate).

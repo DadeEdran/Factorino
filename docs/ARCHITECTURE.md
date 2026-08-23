@@ -28,8 +28,13 @@ Factorino/
   drift_schemas/         # drift_schema_v1.json - the baseline for migration tests
   lib/
     core/
+      money/                                      # pure Dart, zero Flutter imports (§3)
+        money.dart                                #   Money value type + kMaxAmountRial ceiling
+        rounding.dart                             #   half-up + overflow-checked multiply
+        discount_allocation.dart                  #   largest-remainder distribution
+        invoice_calculator.dart                   #   §4, step for step
       security/database_encryption_key.dart       # key type + OS-keystore key store (D-023)
-      utils/uuid.dart                             # RFC 4122 v4, no dependency (D-024)
+      utils/uuid.dart                             # wrapper over package:uuid (D-024)
     data/database/
       encrypted_database.dart                     # THE single database opener (D-020)
       database_bootstrap.dart                     # key -> open -> migrate -> assert encrypted
@@ -38,6 +43,7 @@ Factorino/
       tables/                                     # six tables + SyncColumns mixin
     main.dart            # bootstraps the database; renders nothing yet
   test/
+    core/money/                                     # 70 tests: §4 cases + the invariant
     core/utils/uuid_test.dart
     data/database/connection_setup_order_test.dart  # pragma-ordering guard
     data/database/database_file_state_test.dart     # header classifier + startup assertion
@@ -64,6 +70,8 @@ decided by the file header, never by a pragma - see the three named traps in D-0
 
 - **State management:** none yet. `main.dart` opens the database, asserts it is encrypted, and
   renders an empty `Scaffold`; Riverpod and the real shell arrive in a later Phase 1 increment.
+- **Money:** the §4 engine exists and is pure. It computes; the schema records. Nothing calls it
+  yet — repositories (increment d) are what will feed it and persist its output.
 - **Persistence:** connection layer **and schema v1** — six tables, the `SyncColumns` mixin, indexes,
   foreign keys with cascades, the seeded settings row, and the soft-delete helper. No DAOs and no
   repositories yet.
@@ -82,6 +90,16 @@ trusting six copies to match. Reads go through `selectAlive`/`countAlive`, the s
 `lib/` unless the line carries a `// soft-delete-exempt:` comment giving a reason. Money is integer
 Rial, rates are basis points and quantities are milli-units, checked mechanically by column-name
 suffix. `drift_schemas/drift_schema_v1.json` is the dump future migration tests diff against.
+
+**Generated files are committed on purpose — do not "clean them up".** `app_database.g.dart` and
+any future `*.g.dart` are in version control because code generation on this machine needs network
+access that is only available through the configured mirrors (D-014). A checkout that cannot run
+`build_runner` must still analyze, test and build. Regenerate with
+`dart run build_runner build` after touching any table, and commit the result.
+
+Note also that `app_database.dart` imports `core/utils/uuid.dart` and `tables/sync_columns.dart`
+without appearing to use them: the generated part file resolves `uuidV4`, `nowMillis` and the enums
+through its parent library's imports. Removing those imports as "unused" breaks the build.
 
 Platform scaffolds exist for Android, Web and Windows. Android and Windows both build with plugins
 and native assets; Web has not been rebuilt since the plugins were added.
@@ -203,19 +221,36 @@ creation time and never joins to the live product row for pricing (D-004).
 **Migrations:** `schemaVersion` set from the first release; existing migrations are never mutated;
 `drift_dev` schema dumps back generated migration tests. A migration without a test is not done.
 
-## B.6 The money engine
+## B.6 The money engine — **built** (increment b)
 
-Pure Dart in `core/money/`, integer Rial throughout (D-002). It implements exactly the calculation
-order in the project spec — line gross, line discount, line net, proportional allocation of the
-invoice-level discount by line net using the **largest-remainder method**, then tax on the
-post-allocation net, then line total.
+`core/money/`, pure Dart with zero Flutter imports, enforced transitively by
+`no_flutter_imports_test.dart`.
 
-Tax rate resolution is item → invoice → settings default, first non-null wins, and the resolved rate
-is snapshotted onto the item.
+| File | Responsibility |
+|---|---|
+| `money.dart` | The `Money` value type — integer Rial, never `double` (D-002) — and `kMaxAmountRial` |
+| `rounding.dart` | Half-up division, basis-point application, rounding to a unit, and an overflow-checked multiply |
+| `discount_allocation.dart` | Proportional allocation with largest-remainder distribution |
+| `invoice_calculator.dart` | §4 in order: gross → line discount → net → allocation → tax → totals → optional rounding |
 
-The invariant `grandTotal == subtotal − invoiceDiscount + totalTax` must hold and is unit-tested,
-alongside zero quantity, fractional quantity, item discount exceeding line total, allocation
-remainders, mixed tax rates and rounding boundaries.
+Three properties are worth knowing before touching it:
+
+**The invariant is enforced at runtime, not just tested.** `calculateInvoice` computes the grand
+total twice — by summing the lines, and as `subtotal − invoiceDiscount + totalTax` — and throws
+`InvoiceReconciliationError` if they disagree. It should be unreachable; it is checked anyway
+because the alternative to crashing on an inconsistent invoice is persisting one.
+
+**Largest-remainder allocation is what makes the invariant hold.** Naive per-line rounding of an
+invoice discount loses Rial (100 across three lines → 33+33+33 = 99), and a lost Rial is an invoice
+whose lines do not sum to its total. Ties break toward the earlier line so the result is
+deterministic — two devices must not disagree about an invoice after sync.
+
+**The range check rejects, identically everywhere.** Products are checked against 2^53, not the
+64-bit range, so the Dart VM and the Web refuse the same inputs (D-002's Web caveat). A `Money` is
+constructed for every output, so no amount escapes the ceiling.
+
+Money is a value type in the engine's API; the schema stores plain `int` Rial. The repository layer
+(increment d) is the boundary that converts, in one place.
 
 ## B.7 Navigation
 
