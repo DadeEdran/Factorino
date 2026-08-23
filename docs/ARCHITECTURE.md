@@ -11,36 +11,57 @@
 
 # §A — What exists today (2026-08-23)
 
-A stock `flutter create` scaffold. Nothing of the target architecture has been built.
+The scaffold plus **one real slice of the target architecture**: the encrypted database connection
+and its key management. Nothing else of the application has been built.
 
 ```
 Factorino/
   analysis_options.yaml  # flutter_lints 6.0.0 defaults, unmodified
-  pubspec.yaml           # flutter + cupertino_icons + flutter_lints only
-  pubspec.lock           # CONTAMINATED — mirror-hosted, awaiting regeneration (D-014)
+  pubspec.yaml           # + drift, sqlite3 (hooks: source sqlite3mc), path_provider,
+                         #   flutter_secure_storage, integration_test
+  pubspec.lock           # canonical (pub.dev only) - re-sanitize after every resolve (D-014)
+.gitattributes         # LF normalization (added after CRLF churn corrupted diffs)
 .gitignore             # hardened 2026-08-23 (D-019)
 .githooks/pre-commit   # lockfile-host / secrets / app-ID gate (D-019)
-  assets/fonts/          # Vazirmatn 400/500/700 + OFL.txt (D-022) — not yet declared in pubspec
-  lib/main.dart          # default counter app, 122 lines
-  test/widget_test.dart  # default counter smoke test, 30 lines
+  tools/sanitize_lockfile
+  assets/fonts/          # Vazirmatn 400/500/700 + OFL.txt (D-022) - not yet declared in pubspec
+  lib/
+    core/security/database_encryption_key.dart    # key type + OS-keystore key store (D-023)
+    data/database/encrypted_database.dart         # THE single database opener (D-020)
+    main.dart            # still the default counter app
+  test/
+    data/database/connection_setup_order_test.dart  # pragma-ordering guard
+    data/database/database_file_state_test.dart     # header classifier + startup assertion
+    data/database/single_open_path_test.dart        # scans lib/ for bypass routes
+    widget_test.dart     # default counter smoke test
+  integration_test/
+    d020_encryption_proof_test.dart                 # the end-to-end proof, per platform
   android/  web/  windows/
-  docs/                  # created 2026-08-22; ENVIRONMENT.md added 2026-08-23
+  docs/
 ```
 
-- **State management:** none (the template `setState` counter).
-- **Persistence:** none.
-- **Routing:** none (a single `MaterialApp` home).
-- **Localization:** none — the template is English and LTR.
-- **Theme:** the default Material 3 `ColorScheme.fromSeed`.
-- **Security:** none of it in the app. No encryption, no key management, no manifest hardening, no
-  CSP. Repository-level hygiene *is* in place: hardened `.gitignore` and a pre-commit gate (D-019).
-- **Version control:** initialized 2026-08-23 — branch `main`, `core.autocrlf=false`,
-  `core.hooksPath=.githooks`. **No commit yet**: the first commit is gated on replacing the template
-  application ID (D-019).
+**The encryption slice, as built.** `openEncryptedDatabase` is the only function in `lib/` that may
+open a database; a test fails the build if anything else does. It issues, in order,
+`PRAGMA cipher = 'sqlcipher'` -> `PRAGMA legacy = 4` -> `PRAGMA key = "x'..'"` ->
+`PRAGMA foreign_keys = ON` -> a forced read of `sqlite_master`, as Drift's `NativeDatabase(setup:)`
+callback, which Drift invokes before any statement of its own. Ordering is checked at runtime by
+`assertKeyPrecedesDatabaseAccess` and structurally by tests. Whether encryption is actually on is
+decided by the file header, never by a pragma - see the three named traps in D-020. The key is a
+256-bit random value from `Random.secure()`, held in the OS keystore with `resetOnError: false`
+(D-023), and never logged.
 
-Platform scaffolds exist for Android, Web and Windows, and all three build (see `CURRENT_STATE.md`).
-Android is at `com.example.factorino` with the template `TODO` markers for the application ID and the
-release signing config still in place.
+- **State management:** none yet (the template `setState` counter).
+- **Persistence:** the connection layer only. No tables, no DAOs, no repositories, no schema.
+- **Routing:** none (a single `MaterialApp` home).
+- **Localization:** none - the template is English and LTR.
+- **Theme:** the default Material 3 `ColorScheme.fromSeed`.
+- **Security:** encryption at rest is implemented and proven on Windows; the startup assertion
+  exists. Manifest hardening, app lock, CSP and secure logging are not built. Repository hygiene is
+  in place (hardened `.gitignore`, pre-commit gate).
+- **Version control:** `main`, four commits, application ID `io.github.erysaw.factorino`.
+
+Platform scaffolds exist for Android, Web and Windows. Android and Windows both build with plugins
+and native assets; Web has not been rebuilt since the plugins were added.
 
 ---
 
@@ -112,14 +133,18 @@ boundary — notably invoice creation (item snapshotting plus number allocation)
 encrypted native library supplied by `package:sqlite3` build hooks configured for `sqlite3mc`
 (D-010). On every open, in this **exact order** (D-020):
 
-1. `PRAGMA key` from secure storage — **first statement on the connection, always**
-2. `PRAGMA cipher = 'sqlcipher'; PRAGMA legacy = 4;`
+1. `PRAGMA cipher = 'sqlcipher'; PRAGMA legacy = 4;` — cipher selection, which must precede the key
+   or it is silently ignored and the file gets the sqlite3mc default cipher instead
+2. `PRAGMA key` from secure storage — **before any statement that touches the database**
 3. `PRAGMA foreign_keys = ON` (D-017)
-4. only then anything Drift issues
+4. a forced `SELECT count(*) FROM sqlite_master`, so a wrong key fails here rather than later
+5. only then anything Drift issues
 
-Implemented in exactly one place (the Drift `LazyDatabase` setup callback) so no call site can open a
-connection differently. Getting the order wrong silently produces an unencrypted database on a new
-file, or an undiagnosable `file is not a database` on an existing one.
+Implemented in exactly one place — `openEncryptedDatabase`, the Drift `NativeDatabase(setup:)`
+callback — so no call site can open a connection differently; `single_open_path_test.dart` fails the
+build if one tries. Getting the order wrong silently produces an unencrypted database on a new file,
+or an undiagnosable `file is not a database` on an existing one. **Built and proven on Windows as of
+2026-08-23** (§A); the Android run is outstanding.
 
 Windows stores the file under `%APPDATA%`, never beside the executable.
 

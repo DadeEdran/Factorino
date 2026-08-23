@@ -40,8 +40,24 @@ dependencies:
   # new AndroidX artifacts can resolve on this machine (DECISIONS.md D-014).
   flutter_secure_storage: 11.0.0
 
+  # Persistence (DECISIONS.md D-008). Drift talks to `package:sqlite3`, which
+  # since 3.x builds and bundles the native library through Dart build hooks --
+  # see the `hooks:` block at the bottom of this file and D-010.
+  drift: 2.34.3
+  sqlite3: 3.5.2
+
+  # Resolves the per-user application-support directory the database lives in
+  # (%APPDATA% on Windows, app-private storage on Android) -- the project spec.
+  path_provider: 2.1.5
+
 dev_dependencies:
   flutter_test:
+    sdk: flutter
+
+  # Runs the D-020 encryption proof on a real Android device and on Windows.
+  # A Dart-VM test cannot stand in for it: the proof is precisely about whether
+  # the native library is found through Flutter's packaging path at runtime.
+  integration_test:
     sdk: flutter
 
   # The "flutter_lints" package below contains a set of recommended lints to
@@ -92,3 +108,12 @@ flutter:
   #
   # For details regarding fonts from package dependencies,
   # see https://flutter.dev/to/font-from-package
+
+# Build-hook configuration for `package:sqlite3` (DECISIONS.md D-010).
+# `sqlite3mc` = SQLite3 Multiple Ciphers: the encryption-at-rest provider for
+# Android and Windows. The cipher is configured SQLCipher-compatible at
+# connection-open time, not here -- see D-020.
+hooks:
+  user_defines:
+    sqlite3:
+      source: sqlite3mc

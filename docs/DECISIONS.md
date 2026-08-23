@@ -222,6 +222,10 @@ reasoned than the recommendation it replaced:
 3. **Not locked in.** `sqlite3mc` is SQLCipher-format-compatible via
    `PRAGMA cipher = 'sqlcipher'; PRAGMA legacy = 4;`, so choosing it does not foreclose reading or
    producing SQLCipher-format databases later.
+   **This reason holds only if those two pragmas are issued *before* `PRAGMA key`.** Issued
+   afterwards they are silently ignored and the file is written with the sqlite3mc default cipher
+   (ChaCha20), which SQLCipher cannot read - the escape hatch would exist on paper only. Proven by
+   cross-open matrix on 2026-08-23; see D-020.
 
 The governing requirement is **encryption at rest, not the SQLCipher brand**. The project spec
 were reworded accordingly on 2026-08-23 to say "encrypted SQLite (SQLite3 Multiple Ciphers via
@@ -574,81 +578,136 @@ staged signing material, secrets or local databases; and the template applicatio
 
 ---
 
-## D-020 — `PRAGMA key` must be the first statement on every connection
+## D-020 — The keyed open sequence, its single choke point, and its named traps
 
-**Date:** 2026-08-23 · **Status:** ACCEPTED
+**Date:** 2026-08-23 · **Amended:** 2026-08-23 (proof run) · **Status:** ACCEPTED
 
 **Decision.** On every database connection open, in this exact order:
 
-1. `PRAGMA key = '<key from secure storage>'` — **first, before anything else**
-2. `PRAGMA cipher = 'sqlcipher'; PRAGMA legacy = 4;` — SQLCipher-compatible format (D-010)
-3. `PRAGMA foreign_keys = ON` (D-017)
-4. Only then may Drift issue any statement of its own
+1. `PRAGMA cipher = 'sqlcipher'` and `PRAGMA legacy = 4` - select the SQLCipher-compatible on-disk
+   format (D-010). These are connection configuration; they do not touch the database.
+2. `PRAGMA key = "x'<64 hex chars>'"` - the raw 256-bit key from secure storage.
+3. `PRAGMA foreign_keys = ON` (D-017).
+4. `SELECT count(*) FROM sqlite_master` - forces page 1 to be decrypted **now**, so a wrong key or a
+   broken order fails at open rather than at some arbitrary later query.
+5. Only then may Drift issue any statement of its own.
 
-Drift's `LazyDatabase` / `NativeDatabase.opened` setup callback is the single place this ordering is
-implemented, so no call site can open a connection any other way.
+This lives in exactly one function, `openEncryptedDatabase` in
+`lib/data/database/encrypted_database.dart`, passed as Drift's `NativeDatabase(setup:)` callback.
+Verified in the Drift source (`lib/src/sqlite3/database.dart:111`): `_setup?.call(database)` runs
+after `useNativeFunctions()` - which registers Dart callbacks and issues no SQL - and before the
+version delegate's `PRAGMA user_version`. It is a genuine choke point, not merely the first thing we
+happen to call.
 
-**Reason.** SQLite applies the key to the connection, not the file. If any statement executes before
-`PRAGMA key`, the outcome is one of two silent failures rather than a loud one:
+### Amendment: "key first, unconditionally" was wrong, and wrong in a way that fails silently
 
-- On a **new** database file, the first statement creates an unencrypted database, and every
-  subsequent write lands in plaintext. Encryption at rest is simply absent, with nothing in the
-  application's behaviour to indicate it.
-- On an **existing** encrypted file, the read fails with `file is not a database` — an error whose
-  text points at corruption rather than at key ordering, and which is therefore easy to misdiagnose
-  and "fix" by deleting the user's financial records.
+The original entry required `PRAGMA key` to be the *first* statement, with the cipher pragmas after
+it. That is what the first Dart-VM probe did, and it appeared to work: the file was encrypted, the
+unkeyed reopen was rejected. **It was not producing a SQLCipher-format database.** A second probe
+created the same database three ways and cross-opened every combination:
 
-The failure mode is silent and the data loss is total, which is why this is a decision of record
-rather than an implementation detail.
+| File created with | opened by `key -> cipher` | by `cipher -> key` | by `key` alone |
+|---|---|---|---|
+| A: `key -> cipher` | yes | **no** | **yes** |
+| B: `cipher -> key` | no | yes | no |
+| C: `key` alone (sqlite3mc default cipher) | yes | no | yes |
 
-**Verification requirement.** This ordering is not considered proven by code review. It must be
-demonstrated end to end inside a real Flutter app on **both** Android and Windows: open through
-Drift, write a row, close, reopen **without** the key, and confirm the reopen is rejected. A
-standalone native probe does not count — it does not exercise Flutter's asset, plugin and
-packaging path, which is where the native library actually has to be found at runtime.
+A and C are interchangeable; B is readable only by itself. `PRAGMA cipher` issued *after* the key is
+**silently ignored for the on-disk format** - file A was written with the sqlite3mc default cipher
+(ChaCha20), not SQLCipher. Nothing reports this: the file is genuinely encrypted, the key works, the
+sentinel is absent from the raw bytes. Only a cross-open reveals it.
 
-**That requirement is still outstanding.** As of 2026-08-23 it cannot be run: the Windows target
-needs Developer Mode for plugin symlink support (administrator required), and no Android device or
-emulator is available.
+The consequence is narrow but real. Encryption at rest - the governing requirement - held either
+way. What did not hold is D-010's reason 3, that choosing `sqlite3mc` does not lock the project into
+one implementation: a ChaCha20 file cannot be read by SQLCipher, so the escape hatch D-010 relies on
+would have quietly not existed. **The cipher pragmas must precede the key**, and the rule is
+restated accordingly:
 
-### Empirically confirmed on the Dart VM, 2026-08-23 — the silent failure is real
+> No statement that reads or writes the database may precede `PRAGMA key`. The only statements
+> permitted before it are the cipher-configuration pragmas on the allowlist
+> (`kPragmasAllowedBeforeKey`).
 
-A Dart-VM probe (`sqlite3` 3.5.2, `source: sqlite3mc`, Windows) does **not** satisfy the requirement
-above, but it does settle whether the hazard this decision describes is real. It is:
+The original hazard is unchanged and still confirmed, on the Dart VM and on a real Windows build
+alike: a *database* statement before the key produces a plaintext file **and** an exception reading
+`file is not a database`, which blames corruption and invites deleting the user's records.
+
+### The named traps
+
+Each of these reads as evidence of encryption and is not. All three were observed, not reasoned
+about.
+
+**Trap 1 - `PRAGMA cipher_version` returns empty under sqlite3mc.** Under SQLCipher proper it
+reports e.g. `4.18.0 community`. Under sqlite3mc it returns an empty result set on a correctly
+encrypted database. Code asserting on it concludes "not encrypted" when encryption is fine - and
+would just as happily conclude nothing at all on a plaintext file. **Never use it as the runtime
+assertion.**
+
+**Trap 2 - `PRAGMA cipher` echoes the configured value, not the file's actual cipher.** Querying it
+returns `sqlcipher` on a connection that was told `sqlcipher`, including an **in-memory database
+with no key at all**. It reports what was requested, never what is on disk.
+
+**Trap 3 - a cipher pragma issued after the key is accepted and ignored.** No error, no warning; the
+setting simply does not apply to the file format. See the matrix above.
+
+**What to assert instead: the file header.** An unencrypted SQLite database begins with the 16 ASCII
+bytes `SQLite format 3\0`. An encrypted one does not. This is implementation-independent, cheap, and
+cannot be fooled by connection state. `inspectDatabaseFile` and `assertDatabaseFileIsEncrypted`
+implement it.
+
+### Enforcement - not developer discipline
+
+The ordering is a property of the codebase, checked by tests that fail on violation:
+
+| Guarantee | Enforced by |
+|---|---|
+| Nothing precedes the key but allowlisted cipher pragmas | `assertKeyPrecedesDatabaseAccess`, called **in production** inside `applyConnectionSetup` before the first statement is executed, and asserted directly in `test/data/database/connection_setup_order_test.dart` |
+| The cipher pragmas precede the key | same test file - the ordering is asserted against the very list the app executes, not a copy of it |
+| Only one code path opens a database | `test/data/database/single_open_path_test.dart` scans `lib/` and fails if any file other than the sanctioned opener mentions `NativeDatabase(`, `sqlite3.open(`, `driftDatabase(` or `pragma key` |
+| The on-disk file is never a plaintext SQLite database | `assertDatabaseFileIsEncrypted` at startup; `openEncryptedDatabase` additionally refuses to open an existing `SQLite format 3` file rather than writing more data into it |
+
+The startup assertion is deliberately unforgiving: `absent` and `tooShortToJudge` also throw, so
+"no file yet" can never be mistaken for "encrypted". There is no Persian user-facing message and no
+recovery path, because the only alternative to failing is writing financial records and third-party
+national IDs in the clear.
+
+### Verification - the end-to-end proof
+
+The proof is an integration test, `integration_test/d020_encryption_proof_test.dart`, rather than a
+throwaway app: it runs on the real target, is repeatable, and cannot silently rot. A Dart-VM test
+cannot substitute for it - the open question is whether the native library is found through
+Flutter's own packaging path at runtime, which is exactly what a VM probe skips.
+
+**Windows - PASS, 2026-08-23**, `flutter test integration_test/... -d windows`, 5/5:
 
 ```
-sqlite3 version : 3.53.4
-header bytes: b5 f3 0c 0e ee 47 cc 2f b4 93 3b 48 64 2a 6f d4
-encrypted: YES          (header is not "SQLite format 3"; differs every run)
-sentinel on disk: not found    (plaintext scan of the raw file)
-unkeyed reopen: REJECTED     SqliteException(26): file is not a database
-keyed reopen: 1 row(s), value=sentinel-value-42
-OVERALL: PASS
+sqlite3 library : 3.53.4 (package:sqlite3 build hooks, source: sqlite3mc)
+database dir: C:\Users\...\AppData\Roaming\io.github.erysaw\factorino   (%APPDATA%, per §7)
+keystore: DPAPI returns a stable 256-bit key across calls
+header bytes: c1 51 85 73 60 bd 92 8e bd 32 39 d6 72 34 49 00   -> encrypted
+sentinel on disk: absent from a raw byte scan
+foreign_keys: 1 (on, for the connection Drift actually uses)
+unkeyed reopen: REJECTED  SqliteException(26): file is not a database
+wrong-key reopen: REJECTED
+keyed reopen: 1 row, value intact
+out-of-order: plaintext file produced + "file is not a database" - hazard reproduced
+startup assert: caught the plaintext database and refused to open it
+cipher_version: (empty)                                        <- Trap 1 reproduced
+cipher echo: 'sqlcipher' on an unkeyed in-memory database   <- Trap 2 reproduced
 ```
 
-And the ordering case — one `CREATE TABLE` executed *before* `PRAGMA key`:
+**Android - the build path is proven; the run is blocked on a device setting.**
+`flutter build apk --debug` succeeds and the APK carries **`lib/arm64-v8a/libsqlite3mc.so`
+(1.9 MB)**, so the build hook does produce and package the native library for Android - the main
+technical risk this proof existed to settle. Installation is refused by MIUI with
+`INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`, identically via `flutter test`,
+`adb install`, and `adb shell pm install`. This is the Redmi's "Install via USB" developer setting,
+not a project defect. The Android run remains outstanding.
 
-```
-outcome: threw - SqliteException(26): file is not a database
-header ascii: "SQLite format 3"
-result: PLAINTEXT DATABASE
-```
-
-Both failure modes predicted above occurred together, which is worse than either alone: the
-`PRAGMA key` throws an error that names *corruption*, while the file already on disk is **plaintext**.
-A developer debugging that exception is being pointed away from the actual cause, and the obvious
-remedy — delete the "corrupt" file and retry — destroys data while leaving the database unencrypted.
-This is the concrete justification for implementing the open sequence in exactly one place.
-
-**Caveat on `PRAGMA cipher_version`.** Under `sqlite3mc` this pragma returns **empty**, unlike
-SQLCipher where it reports e.g. `4.18.0 community`. Do not use `cipher_version` as the runtime
-assertion that encryption is active — it will read as "not encrypted" on a correctly encrypted
-database. Assert on the file header instead (a real SQLite file starts with the ASCII bytes
-`SQLite format 3`; an encrypted one does not), which is what the probe above does.
-
-**Build hooks confirmed working.** The probe resolved and built `sqlite3` with
-`source: sqlite3mc` through Dart build hooks with no experimental flag and no manual native setup,
-downloading from GitHub releases as D-010 assumed.
+**Alternatives considered.** Asserting on `cipher_version` (rejected: Trap 1 - it is empty under
+sqlite3mc, so the assertion would be permanently wrong in the unsafe direction). Documenting the
+ordering in a comment and relying on review (rejected: this is the reason the entry exists - the
+failure is invisible in behaviour, so review is the only thing that could catch it). A throwaway
+proof app (rejected: it verifies once, then rots).
 
 ---
 
@@ -700,3 +759,33 @@ the licence requires the copyright and licence notice to be distributed with the
 
 **Provenance.** Recorded with sha256 hashes in `docs/ENVIRONMENT.md`, because the fonts were fetched
 out-of-band from GitHub rather than resolved through a package.
+
+---
+
+## D-023 — `flutter_secure_storage` runs with `resetOnError: false`
+
+**Date:** 2026-08-23 · **Status:** ACCEPTED
+
+**Decision.** The `FlutterSecureStorage` instance holding the database key is configured with
+`AndroidOptions(resetOnError: false)`. The package default is `true`.
+
+**Reason.** With `resetOnError: true`, a read failure causes the package to **delete the stored
+entry** and return null. For an ordinary session token that is a harmless forced re-login. Here the
+entry is the only key that can decrypt the user's database: discarding it converts a transient
+keystore error - an OS upgrade, a restore onto a new device, a Keystore hiccup - into permanent,
+silent loss of every invoice the business has ever issued, and the app would then cheerfully
+generate a fresh key and create an empty database on top of the unreadable one.
+
+Failing loudly is correct. The recovery path is the encrypted backup file, which is
+why backup is in the MVP rather than a later phase.
+
+**Note.** `encryptedSharedPreferences: true`, named in older guidance, does not exist in
+`flutter_secure_storage` 11: AES-GCM with RSA-OAEP key wrapping is now the default and the AndroidX
+`EncryptedSharedPreferences` path is gone.
+
+**Alternatives considered.** Accepting the default (rejected: silent total data loss). Catching the
+error and re-deriving the key from something stable (rejected: there is nothing stable to derive
+from that an attacker holding the device would not also have - that is key-hardcoding with extra
+steps).
+
+---

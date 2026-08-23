@@ -9,144 +9,151 @@
 
 **Phase 0 — Environment and Setup · `IN_PROGRESS`**
 
-All decisions settled. The AndroidX resolution probe **passed**. The D-020 encryption proof is
-**blocked on two items that need the owner**, both requiring administrator rights or hardware:
+Both blockers from the previous session were cleared by the owner (Windows Developer Mode on; a
+Redmi Note 8 Pro attached over USB). The **D-020 encryption proof now passes end to end on Windows**,
+and the encryption slice it proves is committed production code, not a throwaway.
 
-1. **Windows: Developer Mode is off.** `flutter build windows` fails with *"Building with plugins
-   requires symlink support"*. Enabling it needs an administrator
-   (`start ms-settings:developers`, or the `AppModelUnlock` registry key). No plugin-using Windows
-   build is possible until then.
-2. **Android: no device and no emulator.** `flutter devices` lists only Windows, Chrome and Edge;
-   `flutter emulators` reports none. A physical device over USB, or an emulator system image
-   (fetchable from the Tencent SDK mirror), is required.
+One item is left in Phase 0: the same proof on Android. The APK builds and **contains the native
+library**, but the device refuses to install it — a MIUI setting, not a project defect.
 
 ## Verification status
 
 ```
 flutter analyze:            PASS   (No issues found)
-flutter test:               PASS   (1/1 template smoke test)
-Android build (plugins):    PASS   flutter build apk --debug with flutter_secure_storage
-Web build:                  NOT_RETESTED since the plugin was added
-Windows build (plugins):    BLOCKED  Developer Mode off - symlink support
-AndroidX plugin resolution: PASS   <- the D-014 probe; this was the open risk
-sqlite3mc encryption:       PASS on the Dart VM (Windows) - NOT the D-020 proof
-D-020 end-to-end proof:     BLOCKED  needs Windows Developer Mode + an Android target
+flutter test:               PASS   (23/23 - 22 new + the template smoke test)
+Android build (plugins):    PASS   debug APK carries lib/arm64-v8a/libsqlite3mc.so (1.9 MB)
+Windows build (plugins):    PASS   Developer Mode enabled; builds and runs
+Web build:                  NOT_RETESTED since plugins were added
+AndroidX plugin resolution: PASS
+D-020 proof - Windows:      PASS   5/5 integration tests on the real Windows build
+D-020 proof - Android:      BLOCKED  builds and packages; install refused by MIUI
 ```
 
-## What was completed this session (2026-08-23)
+## What was completed this session (2026-08-23, proof run)
 
-**Git history — three commits, working tree clean.**
+**The ordering in D-020 was wrong, and the way it was wrong is the point.** A cross-open matrix over
+three databases showed that `PRAGMA cipher = 'sqlcipher'` is **silently ignored when issued after
+`PRAGMA key`**. The earlier probe — and the ordering written into D-020 — had been producing
+sqlite3mc-default (ChaCha20) files while every check said "encrypted": correct header, key works,
+no plaintext on disk. Only cross-opening the file with a different sequence reveals it. Encryption
+at rest still held, but D-010's reason 3 (SQLCipher-format compatibility as the escape hatch from
+implementation lock-in) did not. **The cipher pragmas must precede the key.** D-020 is amended,
+D-010 carries the caveat, `ARCHITECTURE.md` §B.5 is corrected.
+
+**Two more false witnesses, now named traps in D-020:**
+
+| Pragma | What it reports | Why it is useless as evidence |
+|---|---|---|
+| `cipher_version` | *empty* under sqlite3mc | Reads as "not encrypted" on a correctly encrypted database |
+| `cipher` | the value the connection was **configured** with | Answers `sqlcipher` on an unkeyed in-memory database |
+| cipher pragma after key | no error at all | Accepted and ignored; wrong on-disk format |
+
+The only assertion used anywhere is the **file header**: a plaintext SQLite file starts with
+`SQLite format 3\0`; an encrypted one does not.
+
+**Built (production code, ~200 lines, not a probe):**
+
+- `lib/data/database/encrypted_database.dart` — `openEncryptedDatabase`, the single opener; the
+  ordered setup sequence; `assertKeyPrecedesDatabaseAccess` (runs in production, before the first
+  statement executes); `inspectDatabaseFile`; `assertDatabaseFileIsEncrypted`.
+- `lib/core/security/database_encryption_key.dart` — 256-bit key from `Random.secure()`, OS
+  keystore, `toString()` redacted, **`resetOnError: false`** (D-023 — the package default would have
+  deleted the database key on a read error and silently orphaned every invoice).
+
+**The ordering no longer depends on discipline.** 22 unit tests, of which the load-bearing ones are:
+a guard that fails if any statement precedes `pragma key` (asserted against the very list the app
+executes, not a copy), and `single_open_path_test.dart`, which scans `lib/` and fails the build if
+any file other than the sanctioned opener mentions `NativeDatabase(`, `sqlite3.open(`,
+`driftDatabase(` or `pragma key`.
+
+**Verified in the Drift source** (`lib/src/sqlite3/database.dart:111`) that `setup` is invoked after
+`useNativeFunctions()` — which issues no SQL — and before the version delegate's
+`PRAGMA user_version`. The choke point is real, not assumed.
+
+**The proof is an integration test, not a throwaway app** — `integration_test/`, so it is repeatable
+on every target and cannot rot. Windows, 5/5:
 
 ```
-b480aa1  Add flutter_secure_storage and pin compileSdk 37; Android plugin build verified
-0f163c8  Normalize line endings to LF and add .gitattributes
-bebb414  Initial commit: Flutter scaffold, project docs, and repository guardrails
+database dir: C:\Users\...\AppData\Roaming\io.github.erysaw\factorino   (%APPDATA%, per §7)
+keystore: DPAPI returns a stable 256-bit key across calls
+header bytes: c1 51 85 73 60 bd 92 8e bd 32 39 d6 72 34 49 00   -> encrypted
+sentinel on disk: absent from a raw byte scan
+foreign_keys: 1 (on, for the connection Drift actually uses)
+unkeyed reopen: REJECTED  SqliteException(26): file is not a database
+wrong-key reopen: REJECTED
+keyed reopen: 1 row, value intact
+out-of-order: plaintext file + "file is not a database" - hazard reproduced on the real platform
+startup assert: caught the plaintext database and refused to open it
 ```
 
-**Mirrors configured, user-global, nothing in the repository** (D-014 amendment):
-`PUB_HOSTED_URL` and `FLUTTER_STORAGE_BASE_URL` via `setx`; Google Maven via
-`~/.gradle/init.d/cn-google-maven-mirror.gradle`. Only blocked hosts are mirrored — Maven Central
-and the Gradle plugin portal both return 200 and are untouched.
-
-**`tools/sanitize_lockfile`** written, committed, and proven: 24 URLs rewritten, all 24 `sha256`
-lines byte-identical, idempotent. **Finding: every `flutter pub get` re-contaminates the lockfile**,
-so this is a mandatory post-step, not a one-time cleanup.
-
-**Application ID** set to `io.github.erysaw.factorino` across the Gradle namespace/applicationId,
-the Kotlin package path, and the Windows `Runner.rc` identifiers.
-
-**AndroidX resolution probe PASSED** — the open risk from D-014 is closed. Three environment
-problems were found and fixed outside the repository along the way:
-
-- Google Maven unreachable → mirrored via the init script.
-- `jni` (pulled in by **`path_provider_android`**, not by `flutter_secure_storage`) compiles against
-  `android-35`, which was absent and undownloadable because `dl.google.com` is fully blocked.
-  Installed from the Tencent SDK mirror, SHA-1 verified against the SDK manifest.
-- The same plugin needs CMake 3.22.1, absent entirely. Installed the same way, SHA-1 verified.
-
-The built APK contains `libdartjni.so`, so the CMake/NDK native path is exercised, not just JVM
-dependency resolution.
-
-**`compileSdk` pinned to 37** (above `flutter.compileSdkVersion` 36) because
-`flutter_secure_storage` requires it, with `android.suppressUnsupportedCompileSdk=37` for AGP 9.1.0.
-`targetSdk` and `minSdk` untouched.
-
-**`.gitattributes` added** after discovering that script edits were flipping CRLF to LF and turning
-a five-line change into a 183-line diff. Normalization was committed separately from content.
-
-**Encryption de-risked on the Dart VM** (`sqlite3` 3.5.2 + `sqlite3mc`, Windows): encrypted header,
-sentinel absent from the raw file, unkeyed reopen rejected, keyed reopen returns the row.
-**The D-020 ordering hazard is now empirically confirmed** — a statement before `PRAGMA key`
-produces a file whose header reads `SQLite format 3` (plaintext) *and* an exception that says
-"file is not a database", pointing the developer at corruption rather than at the real cause.
-**`PRAGMA cipher_version` returns empty under `sqlite3mc`** and must not be used as the runtime
-assertion that encryption is on; assert on the file header instead.
+**Android:** `flutter build apk --debug` succeeds and the APK carries
+`lib/arm64-v8a/libsqlite3mc.so` (1.9 MB) — the build hook produces and packages the native library,
+which was the main technical risk. Installation is refused identically by `flutter test`,
+`adb install` and `adb shell pm install`.
 
 ## Known issues
 
 | # | Issue | Impact |
 |---|---|---|
-| 1 | **Windows Developer Mode off** | **Blocking the D-020 proof and all Windows plugin builds.** Needs an administrator. |
-| 2 | **No Android device or emulator** | **Blocking the Android half of the D-020 proof.** Needs a USB device or an emulator system image. |
-| 3 | `pub.dev` 403; `dl.google.com` fully blocked | Worked around by mirrors (D-014 amendment). SDK packages must be installed by hand from the Tencent mirror with SHA-1 verification. |
-| 4 | Every `flutter pub get` re-contaminates `pubspec.lock` | Run `sh tools/sanitize_lockfile` after **every** resolve. The pre-commit hook is the backstop. |
-| 5 | `flutter doctor` "Android license status unknown" | **Not a real failure — a stale check.** `--licenses` is removed from the new Android CLI; the canonical licence hash file is present and `flutter build apk` succeeds. No licence files were fabricated to silence it. Details in `ENVIRONMENT.md`. |
-| 6 | Release builds signed with debug keys | Template `TODO` in `android/app/build.gradle.kts`. Phase 15. |
-| 7 | Web build not retested since plugins were added | Low. `flutter_secure_storage` has a web implementation; re-verify during Phase 1. |
+| 1 | **MIUI refuses adb installation** (`INSTALL_FAILED_USER_RESTRICTED`) | **Blocks the Android half of the D-020 proof.** Fix on the device: Developer options -> **Install via USB**. Not a project defect. |
+| 2 | `pub.dev` 403; `dl.google.com` fully blocked | Worked around by mirrors (D-014 amendment). SDK packages installed by hand from the Tencent mirror with SHA-1 verification. |
+| 3 | Every `flutter pub get` re-contaminates `pubspec.lock` | Run `sh tools/sanitize_lockfile` after **every** resolve — 66 URLs were rewritten this session. Pre-commit hook is the backstop. |
+| 4 | `flutter doctor` "Android license status unknown" | **Not a real failure — a stale check.** Details in `ENVIRONMENT.md`. No licence files were fabricated. |
+| 5 | Release builds signed with debug keys | Template `TODO` in `android/app/build.gradle.kts`. Phase 15. |
+| 6 | Web build not retested since plugins were added | Low. Also note Web gets **no** encryption at rest (D-012) — the opener is Android/Windows only and Phase 12 must supply a separate Web path. |
+| 7 | The database is opened on the main isolate | `NativeDatabase(file, setup:)` rather than `createInBackground`. Fine for the proof; revisit in Phase 13 (the project spec forbids heavy sync work on the UI thread). Moving it means the setup closure must survive being sent to an isolate. |
 
 ## Important context for a future session
 
-- **`sh tools/sanitize_lockfile` after every `flutter pub get`.** Not optional, not one-time — pub
-  rewrites the mirror host back into the lockfile on every resolve.
-- **Do not fabricate Android licence-hash files** to make `flutter doctor` green (issue #5).
-- **Do not assert encryption with `PRAGMA cipher_version`** — it returns *empty* under `sqlite3mc`
-  even on a correctly encrypted database. Assert on the file header instead.
-- **`PRAGMA key` must be the first statement on the connection.** This is now empirically confirmed,
-  not theoretical: a statement before it yields a plaintext file *and* a misleading
-  "file is not a database" exception. See D-020.
-- The `sqlite3mc` choice is an owner override of this project's earlier `sqlcipher` recommendation,
-  and it is the better call — SQLCipher has no Web support, and Web is a target platform. Do not
-  "correct" it back.
-- Mirror configuration is **user-global only** and must never enter the repository. The tree must
-  build unmodified where pub.dev is reachable.
-- SDK packages installed by hand (not via `sdkmanager`, which cannot reach Google):
-  `platforms/android-35` and `cmake/3.22.1`, both SHA-1 verified against the SDK manifest served by
-  `https://mirrors.cloud.tencent.com/AndroidSDK/repository2-1.xml`.
+- **The cipher pragmas come BEFORE `pragma key`.** Reversing them is silent: the file is still
+  encrypted, every check still passes, and the format is quietly not SQLCipher. See the matrix in
+  D-020.
+- **Never assert encryption with `PRAGMA cipher_version` or `PRAGMA cipher`.** Both are false
+  witnesses. Assert on the file header.
+- **Do not open a database anywhere but `openEncryptedDatabase`.** A test enforces this; if it fails,
+  the fix is to route through the opener, never to relax the test.
+- **`sh tools/sanitize_lockfile` after every `flutter pub get`.** Not optional, not one-time.
+- **Do not fabricate Android licence-hash files** to make `flutter doctor` green.
+- The `sqlite3mc` choice is an owner override of an earlier `sqlcipher` recommendation and is the
+  better call (Web support, no OpenSSL). Do not "correct" it back.
+- Mirror configuration is **user-global only** and must never enter the repository.
+- SDK packages installed by hand, SHA-1 verified: `platforms/android-35`, `cmake/3.22.1`.
 
 ## Recently changed files
 
-Committed in `b480aa1`, `0f163c8`, `bebb414`. Working tree clean. Uncommitted doc updates from this
-report are the only pending change.
+```
+pubspec.yaml                                          + drift, sqlite3, path_provider,
+                                                        integration_test, hooks: source sqlite3mc
+pubspec.lock                                          regenerated, sanitized
+lib/core/security/database_encryption_key.dart        NEW
+lib/data/database/encrypted_database.dart             NEW
+test/data/database/connection_setup_order_test.dart   NEW
+test/data/database/database_file_state_test.dart      NEW
+test/data/database/single_open_path_test.dart         NEW
+integration_test/d020_encryption_proof_test.dart      NEW
+docs/DECISIONS.md                                     D-020 amended; D-023 added; D-010 caveat
+docs/ARCHITECTURE.md                                  §A rewritten; §B.5 ordering corrected
+docs/ROADMAP.md                                       Phase 0 + Phase 1 status, security note
+docs/CURRENT_STATE.md                                 this file
+```
 
-Outside the repository (deliberately not committed):
-
-| Path | Purpose |
-|---|---|
-| `~/.gradle/init.d/cn-google-maven-mirror.gradle` | Rewrites Google Maven to the Aliyun mirror |
-| user env `PUB_HOSTED_URL`, `FLUTTER_STORAGE_BASE_URL` | Package and engine-artifact mirrors |
-| `%LOCALAPPDATA%/Android/Sdk/platforms/android-35` | Required by the `jni` plugin |
-| `%LOCALAPPDATA%/Android/Sdk/cmake/3.22.1` | Required by the `jni` plugin native build |
-
-No application code has been written. `lib/` and `test/` are untouched template files.
+`lib/main.dart` is still the untouched template counter app.
 
 ## Last completed action
 
-Configured mirrors, regenerated and sanitized the lockfile, set the application ID, made the first
-three commits, and **passed the AndroidX resolution probe** — `flutter build apk --debug` succeeds
-with `flutter_secure_storage`. Confirmed `sqlite3mc` encryption works on the Dart VM and that the
-D-020 ordering hazard is real. Found the D-020 end-to-end proof blocked on Windows Developer Mode
-and on the absence of any Android target.
+Corrected the D-020 ordering after disproving it empirically, built and committed the encryption
+slice with its enforcement tests, and **passed the D-020 proof 5/5 on Windows**. Confirmed the
+Android build packages `libsqlite3mc.so`, and found the Android run blocked by MIUI's install
+restriction.
 
 ## Next action
 
-**Unblock the two D-020 prerequisites, then run the proof.**
+**Run the Android half of the proof, then start Phase 1.**
 
-1. Enable Windows Developer Mode (administrator): `start ms-settings:developers`, or set
-   `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock\AllowDevelopmentWithoutDevLicense = 1`.
-   Verify with `flutter build windows --debug`.
-2. Provide an Android target — a device over USB with debugging enabled, or an emulator system
-   image from the Tencent SDK mirror plus an AVD.
-
-Then build the throwaway Flutter app that opens an encrypted database through Drift, writes a row,
-closes, reopens **without** the key, and confirms rejection — on **both** Windows and Android — and
-report before starting Phase 1 implementation.
+1. On the Redmi: Settings -> Additional settings -> Developer options -> enable **Install via USB**
+   (and **USB debugging (Security settings)** if present). It may require a signed-in Mi account.
+2. `flutter test integration_test/d020_encryption_proof_test.dart -d dmbyayb6rombo7ci` — expect the
+   same 5/5, and confirm the database path is under `/data/user/0/io.github.erysaw.factorino`.
+3. Record the Android result in D-020 and this file, then begin Phase 1 with the Drift schema:
+   define the six tables from the project spec with the sync-ready columns behind the existing
+   `openEncryptedDatabase`, and wire `assertDatabaseFileIsEncrypted` into app startup.

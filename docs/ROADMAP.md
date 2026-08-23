@@ -11,8 +11,9 @@
 
 ## Phase 0 — Environment and Setup
 
-**Status:** `IN_PROGRESS` — decisions settled and the AndroidX probe passed; **blocked** on the
-D-020 encryption proof, which needs Windows Developer Mode and an Android device or emulator.
+**Status:** `IN_PROGRESS` — decisions settled, the AndroidX probe passed, and the **D-020 encryption
+proof passes end to end on Windows**. One item remains: the same proof on Android, blocked on the
+device refusing installation (MIUI "Install via USB"), not on anything in the project.
 
 **Goal.** Establish the toolchain, verify every target platform builds, document the architecture and
 seed `docs/`.
@@ -65,19 +66,44 @@ seed `docs/`.
   confirmed** — a statement before `PRAGMA key` yields a plaintext file plus a misleading
   "file is not a database" error.
 
+**Completed 2026-08-23 (the D-020 proof run)**
+
+- **Both prerequisites cleared by the owner**: Windows Developer Mode is on
+  (`AllowDevelopmentWithoutDevLicense = 1`), and a Redmi Note 8 Pro (Android 11, API 30, arm64) is
+  attached over USB.
+- **The stated ordering in D-020 was found to be wrong and was corrected.** A cross-open matrix
+  showed `PRAGMA cipher = 'sqlcipher'` is **silently ignored when issued after `PRAGMA key`** — the
+  earlier probe had been producing ChaCha20 files, not SQLCipher-format ones, with nothing to
+  indicate it. The cipher pragmas must precede the key. D-010's "not locked in" reason depended on
+  this and now carries the caveat.
+- **Two further false witnesses named** in D-020: `PRAGMA cipher_version` returns empty under
+  sqlite3mc, and `PRAGMA cipher` echoes back whatever the connection was configured with — it
+  answers `sqlcipher` on an unkeyed in-memory database. The file header is the only evidence used.
+- **Built the encryption slice**: `lib/data/database/encrypted_database.dart` (the single opener,
+  the header classifier, the startup assertion) and `lib/core/security/database_encryption_key.dart`
+  (256-bit key from `Random.secure()`, OS keystore, `resetOnError: false` — D-023).
+- **Made the ordering structural rather than a matter of discipline**: 22 unit tests, including a
+  guard that fails if any statement precedes the key, and a scan of `lib/` that fails if any file
+  other than the sanctioned opener can open a database.
+- **Windows proof PASSES 5/5** — encrypted header, no plaintext on disk, unkeyed and wrong-key
+  reopens both rejected, keyed reopen intact, hazard reproduced and caught by the startup assertion,
+  database under `%APPDATA%`.
+- **Android build path proven**: the debug APK carries `lib/arm64-v8a/libsqlite3mc.so` (1.9 MB), so
+  the `package:sqlite3` build hook does produce and package the native library for Android.
+
 **Remaining (blocking Phase 1)**
 
-- **Windows Developer Mode** — administrator required. Without it no plugin-using Windows build
-  runs at all.
-- **An Android device or emulator** — none currently available.
-- **End-to-end encryption proof** — a real Flutter app, Drift, Android **and** Windows: write, close,
-  reopen without the key, confirm rejection (D-020). Blocked on the two items above.
+- **The Android run of the D-020 proof.** The APK builds and contains the native library, but the
+  device refuses installation with `INSTALL_FAILED_USER_RESTRICTED` via every route (`flutter test`,
+  `adb install`, `adb shell pm install`). Fix is on the device: Developer options ->
+  **Install via USB** (MIUI). Nothing to change in the project.
 
 **Known issues**
 
-- Windows Developer Mode is off; no plugin-using Windows build is possible until an administrator
-  enables it.
-- No Android device or emulator is available.
+- MIUI refuses `adb`-driven installation on the Redmi (`INSTALL_FAILED_USER_RESTRICTED`), so the
+  Android half of the D-020 proof has not run. Device-side setting, not a project defect.
+- Drift's debug-only "database opened twice" warning appears in the proof run, because the test
+  deliberately opens the same file several times in sequence to check rejection. Harmless here.
 - Every `flutter pub get` re-contaminates `pubspec.lock` with the mirror host. `sanitize_lockfile`
   must be run after each resolve; the pre-commit hook is the backstop.
 - `flutter doctor`'s "Android license status unknown" is a **stale check, not a failure**: the
@@ -85,8 +111,22 @@ seed `docs/`.
   present, and `flutter build apk --debug` succeeds. No licence files were fabricated to silence it.
 - Web has not been rebuilt since plugins were added.
 
-**Security note.** No user data is stored yet and no new inputs are accepted. The threat model is
-nonetheless affected in three ways, all now closed or explicitly bounded:
+**Security note.** No user data is stored yet and no new inputs are accepted, but this phase now
+ships the mechanism that protects all of it, so the threat model moved in four ways:
+
+- **Encryption at rest is real and demonstrated on Windows**, not assumed: the file header is
+  encrypted, a raw byte scan finds no plaintext, and both an unkeyed and a wrong-key reopen are
+  rejected. Android's native library is packaged but the run is outstanding.
+- **Three ways of "verifying" encryption were found to be false witnesses** and are now named traps
+  in D-020. The dangerous one is `PRAGMA cipher_version`: it reads as "not encrypted" on a perfectly
+  encrypted database, so anyone asserting on it would eventually "fix" the wrong thing.
+- **The key-handling failure mode is now fail-loud rather than fail-silent** (D-023): the secure
+  storage default would have deleted the database key on a read error, silently destroying every
+  record. Disabled.
+- **The single-opener rule is enforced by a test**, so a future call site that opens a database its
+  own way — unkeyed, unencrypted, and entirely ordinary-looking in review — fails the build.
+
+The three earlier items remain closed or bounded:
 
 - The encryption package named in the project spec was end-of-life. Resolved by D-010 — encryption now
   comes from the maintained `package:sqlite3` build hooks, whose downloads are sha256-pinned and
@@ -103,8 +143,10 @@ nonetheless affected in three ways, all now closed or explicitly bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `NOT_STARTED` — decisions are settled; blocked on the Phase 0 verifications above
-(pub.dev reachability, the AndroidX probe, and the encryption proof).
+**Status:** `NOT_STARTED` — decisions are settled and the encryption foundation is built and proven
+on Windows. The connection layer (D-020, D-023) already exists and must be built on, not rebuilt:
+Phase 1 adds the schema, DAOs and repositories behind `openEncryptedDatabase`, and wires
+`assertDatabaseFileIsEncrypted` into app startup.
 
 **Goal.** The complete skeleton — structure, theme, localization, database, repositories, routing,
 money engine, responsive shell, and four screens reading real data. No feature depth.
