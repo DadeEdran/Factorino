@@ -9,145 +9,144 @@
 
 **Phase 0 — Environment and Setup · `IN_PROGRESS`**
 
-All four owner decisions are now settled (D-010, D-014, D-015/D-016, D-019). Phase 0 is **not**
-complete because two required verifications cannot run: **`pub.dev` is still returning HTTP 403 from
-this machine**, and every remaining Phase 0 item depends on package resolution.
+All decisions settled. The AndroidX resolution probe **passed**. The D-020 encryption proof is
+**blocked on two items that need the owner**, both requiring administrator rights or hardware:
 
-## The one thing blocking everything
-
-`pub.dev` returned **403** when re-measured on 2026-08-23, from egress IP `195.74.93.35`. The VPN
-chosen in D-014 is either not running, not routing this traffic, or exiting somewhere Google also
-blocks.
-
-Check before doing anything else:
-
-```sh
-curl -s -o /dev/null -w '%{http_code}\n' https://pub.dev/api/packages/drift   # want 200, currently 403
-```
-
-While that returns 403: no `flutter pub get`, no lockfile regeneration, no dependency probe, no
-encryption proof, no Phase 1. `flutter doctor`'s `[✓] Network resources` line is **not** a valid
-substitute for this check — it passed while pub.dev was blocked.
+1. **Windows: Developer Mode is off.** `flutter build windows` fails with *"Building with plugins
+   requires symlink support"*. Enabling it needs an administrator
+   (`start ms-settings:developers`, or the `AppModelUnlock` registry key). No plugin-using Windows
+   build is possible until then.
+2. **Android: no device and no emulator.** `flutter devices` lists only Windows, Chrome and Edge;
+   `flutter emulators` reports none. A physical device over USB, or an emulator system image
+   (fetchable from the Tencent SDK mirror), is required.
 
 ## Verification status
 
 ```
-flutter analyze: PASS   (No issues found)          — as of 2026-08-22, template code only
-flutter test:    PASS   (1/1 template smoke test)  — as of 2026-08-22, template code only
-Android build:   PASS   (flutter build apk --debug) — template app, zero plugins, warm Gradle cache
-Web build:       PASS   (flutter build web)
-Windows build:   PASS   (flutter build windows --debug)
-
-AndroidX plugin resolution:  NOT_TESTED  — blocked on pub.dev
-Encryption end-to-end proof: NOT_TESTED  — blocked on pub.dev
+flutter analyze:            PASS   (No issues found)
+flutter test:               PASS   (1/1 template smoke test)
+Android build (plugins):    PASS   flutter build apk --debug with flutter_secure_storage
+Web build:                  NOT_RETESTED since the plugin was added
+Windows build (plugins):    BLOCKED  Developer Mode off - symlink support
+AndroidX plugin resolution: PASS   <- the D-014 probe; this was the open risk
+sqlite3mc encryption:       PASS on the Dart VM (Windows) - NOT the D-020 proof
+D-020 end-to-end proof:     BLOCKED  needs Windows Developer Mode + an Android target
 ```
-
-The PASS lines above were produced through a mirror and describe the **template** app. They are not
-evidence that Phase 1 dependencies resolve.
 
 ## What was completed this session (2026-08-23)
 
-**Owner decisions recorded.** D-010, D-014, D-015, D-016 and D-019 moved from `PROPOSED` to
-`ACCEPTED` in `DECISIONS.md`, each with the owner's reasoning. Three new entries added:
+**Git history — three commits, working tree clean.**
 
-- **D-020** — `PRAGMA key` must be the first statement on every connection, with the two silent
-  failure modes spelled out and the end-to-end verification requirement attached.
-- **D-021** — گزارش‌ها omitted from Phase 1 navigation entirely; its route is not registered either.
-- **D-022** — Vazirmatn standard variant, static TTFs, weights 400/500/700, and why not the
-  Farsi-digit variant.
+```
+b480aa1  Add flutter_secure_storage and pin compileSdk 37; Android plugin build verified
+0f163c8  Normalize line endings to LF and add .gitattributes
+bebb414  Initial commit: Flutter scaffold, project docs, and repository guardrails
+```
 
-**The project spec reworded** (§2, §7, §16, §17, §19) from "SQLCipher / `sqlcipher_flutter_libs`" to
-"encrypted SQLite (SQLite3 Multiple Ciphers via `package:sqlite3` build hooks)", per the owner's
-D-010 override. §7 also gained the `PRAGMA key` ordering rule.
+**Mirrors configured, user-global, nothing in the repository** (D-014 amendment):
+`PUB_HOSTED_URL` and `FLUTTER_STORAGE_BASE_URL` via `setx`; Google Maven via
+`~/.gradle/init.d/cn-google-maven-mirror.gradle`. Only blocked hosts are mirrored — Maven Central
+and the Gradle plugin portal both return 200 and are untouched.
 
-**Build-hook flag question answered.** `flutter config --list` reports `enable-native-assets:
-(Not set)` and `flutter config` documents it as `(defaults to on)`. **No experimental flag is
-required** on Flutter 3.47.1 stable.
+**`tools/sanitize_lockfile`** written, committed, and proven: 24 URLs rewritten, all 24 `sha256`
+lines byte-identical, idempotent. **Finding: every `flutter pub get` re-contaminates the lockfile**,
+so this is a mandatory post-step, not a one-time cleanup.
 
-**Flutter/Dart version question answered.** Raw output pasted in `docs/ENVIRONMENT.md`. Flutter
-3.47.1 / Dart 3.13.1 is consistent with the established cadence of ~3 Flutter minors per Dart minor
-(3.35→3.9, 3.38→3.10, 3.41→3.11, 3.44→3.12, 3.47→3.13). Not a mismatch.
+**Application ID** set to `io.github.erysaw.factorino` across the Gradle namespace/applicationId,
+the Kotlin package path, and the Windows `Runner.rc` identifiers.
 
-**Git initialized.** Branch `main`, `core.autocrlf=false`, `core.hooksPath=.githooks`.
-`.gitignore` hardened first (keystores, `*.jks`, `key.properties`, `.env*`, exported backups, local
-`.db`/`.sqlite` files, build outputs). **Nothing committed yet** — see Next Action.
+**AndroidX resolution probe PASSED** — the open risk from D-014 is closed. Three environment
+problems were found and fixed outside the repository along the way:
 
-**Pre-commit hook written and proven to fire.** `.githooks/pre-commit` (versioned, so it survives a
-clone) fails the commit on: a `pubspec.lock` host other than `pub.dev`; staged signing material,
-secrets or local databases; and the template application ID. Run against the current tree it
-correctly blocked on two of the three.
+- Google Maven unreachable → mirrored via the init script.
+- `jni` (pulled in by **`path_provider_android`**, not by `flutter_secure_storage`) compiles against
+  `android-35`, which was absent and undownloadable because `dl.google.com` is fully blocked.
+  Installed from the Tencent SDK mirror, SHA-1 verified against the SDK manifest.
+- The same plugin needs CMake 3.22.1, absent entirely. Installed the same way, SHA-1 verified.
 
-**Vazirmatn obtained.** Release `v33.003` from GitHub (reachable), standard variant static TTFs at
-400/500/700 plus `OFL.txt`, in `assets/fonts/`. sha256 of every file recorded in
-`docs/ENVIRONMENT.md`. Not yet declared in `pubspec.yaml` — that is Phase 1 task 8.
+The built APK contains `libdartjni.so`, so the CMake/NDK native path is exercised, not just JVM
+dependency resolution.
 
-**`docs/ENVIRONMENT.md` created.** Toolchain, the network situation, the VPN verification procedure,
-the Android-licence false positive, and font provenance.
+**`compileSdk` pinned to 37** (above `flutter.compileSdkVersion` 36) because
+`flutter_secure_storage` requires it, with `android.suppressUnsupportedCompileSdk=37` for AGP 9.1.0.
+`targetSdk` and `minSdk` untouched.
+
+**`.gitattributes` added** after discovering that script edits were flipping CRLF to LF and turning
+a five-line change into a 183-line diff. Normalization was committed separately from content.
+
+**Encryption de-risked on the Dart VM** (`sqlite3` 3.5.2 + `sqlite3mc`, Windows): encrypted header,
+sentinel absent from the raw file, unkeyed reopen rejected, keyed reopen returns the row.
+**The D-020 ordering hazard is now empirically confirmed** — a statement before `PRAGMA key`
+produces a file whose header reads `SQLite format 3` (plaintext) *and* an exception that says
+"file is not a database", pointing the developer at corruption rather than at the real cause.
+**`PRAGMA cipher_version` returns empty under `sqlite3mc`** and must not be used as the runtime
+assertion that encryption is on; assert on the file header instead.
 
 ## Known issues
 
 | # | Issue | Impact |
 |---|---|---|
-| 1 | **pub.dev returns 403** — VPN not yet effective | **Blocking everything.** |
-| 2 | Google Maven unreachable (404) | **High.** Phase 1 plugins need new AndroidX artifacts; only a warm Gradle cache is masking it. This is what the `flutter_secure_storage` probe exists to test. |
-| 3 | `pubspec.lock` records the Tsinghua mirror | Must be **deleted and regenerated** against pub.dev, not edited. Pre-commit hook enforces this. |
-| 4 | `flutter doctor` "Android license status unknown" | **Not a real failure — a stale check.** `--licenses` is removed from the new Android CLI; the canonical licence hash file is present and `flutter build apk` succeeds. No licence files were fabricated to silence it. Details in `ENVIRONMENT.md`. |
-| 5 | Application ID still `com.example.factorino` | **Blocks the first commit.** Awaiting the owner's reverse-domain ID. |
+| 1 | **Windows Developer Mode off** | **Blocking the D-020 proof and all Windows plugin builds.** Needs an administrator. |
+| 2 | **No Android device or emulator** | **Blocking the Android half of the D-020 proof.** Needs a USB device or an emulator system image. |
+| 3 | `pub.dev` 403; `dl.google.com` fully blocked | Worked around by mirrors (D-014 amendment). SDK packages must be installed by hand from the Tencent mirror with SHA-1 verification. |
+| 4 | Every `flutter pub get` re-contaminates `pubspec.lock` | Run `sh tools/sanitize_lockfile` after **every** resolve. The pre-commit hook is the backstop. |
+| 5 | `flutter doctor` "Android license status unknown" | **Not a real failure — a stale check.** `--licenses` is removed from the new Android CLI; the canonical licence hash file is present and `flutter build apk` succeeds. No licence files were fabricated to silence it. Details in `ENVIRONMENT.md`. |
 | 6 | Release builds signed with debug keys | Template `TODO` in `android/app/build.gradle.kts`. Phase 15. |
+| 7 | Web build not retested since plugins were added | Low. `flutter_secure_storage` has a web implementation; re-verify during Phase 1. |
 
 ## Important context for a future session
 
-- **Do not hand-edit `pubspec.lock`.** D-014 requires deleting it and regenerating from pub.dev.
-  Nothing real depends on it yet.
-- **Do not fabricate Android licence-hash files** to make `flutter doctor` green. Issue #4 is a
-  tooling false positive, documented as such.
+- **`sh tools/sanitize_lockfile` after every `flutter pub get`.** Not optional, not one-time — pub
+  rewrites the mirror host back into the lockfile on every resolve.
+- **Do not fabricate Android licence-hash files** to make `flutter doctor` green (issue #5).
+- **Do not assert encryption with `PRAGMA cipher_version`** — it returns *empty* under `sqlite3mc`
+  even on a correctly encrypted database. Assert on the file header instead.
+- **`PRAGMA key` must be the first statement on the connection.** This is now empirically confirmed,
+  not theoretical: a statement before it yields a plaintext file *and* a misleading
+  "file is not a database" exception. See D-020.
 - The `sqlite3mc` choice is an owner override of this project's earlier `sqlcipher` recommendation,
   and it is the better call — SQLCipher has no Web support, and Web is a target platform. Do not
   "correct" it back.
-- Resolved Phase 1 versions (measured 2026-08-22 via mirror, to be re-confirmed against pub.dev):
-  drift 2.34.3 · drift_dev 2.34.5 · sqlite3 3.5.2 · flutter_riverpod 3.4.2 · riverpod_annotation
-  4.0.6 · riverpod_generator 4.0.8 · go_router 17.5.0 · flutter_secure_storage 11.0.0 ·
-  shamsi_date 1.1.1 · path_provider 2.1.6 · intl 0.20.3 · uuid 4.6.0 · crypto 3.0.7 ·
-  build_runner 2.16.0 · analyzer 13.3.0.
-- Enable the hook after any fresh clone: `git config core.hooksPath .githooks`.
+- Mirror configuration is **user-global only** and must never enter the repository. The tree must
+  build unmodified where pub.dev is reachable.
+- SDK packages installed by hand (not via `sdkmanager`, which cannot reach Google):
+  `platforms/android-35` and `cmake/3.22.1`, both SHA-1 verified against the SDK manifest served by
+  `https://mirrors.cloud.tencent.com/AndroidSDK/repository2-1.xml`.
 
 ## Recently changed files
 
-| File | Change |
+Committed in `b480aa1`, `0f163c8`, `bebb414`. Working tree clean. Uncommitted doc updates from this
+report are the only pending change.
+
+Outside the repository (deliberately not committed):
+
+| Path | Purpose |
 |---|---|
-| The project spec | §2/§7/§16/§17/§19 reworded for `sqlite3mc`; §7 gained the PRAGMA ordering rule |
-| `docs/DECISIONS.md` | D-010/014/015/016/019 → ACCEPTED; D-020, D-021, D-022 appended |
-| `docs/ENVIRONMENT.md` | **Created** |
-| `docs/ARCHITECTURE.md` | §A refreshed; B.5 PRAGMA order; B.7 reports omission; B.11 cipher row |
-| `docs/CURRENT_STATE.md` | Rewritten (this file) |
-| `docs/ROADMAP.md` | Phase 0 remaining-items list updated |
-| `.gitignore` | Security hardening block appended |
-| `.githooks/pre-commit` | **Created** |
-| `assets/fonts/` | **Created** — Vazirmatn 400/500/700 + OFL.txt |
-| `.git/` | **Created** — `git init`, branch `main`, no commits yet |
+| `~/.gradle/init.d/cn-google-maven-mirror.gradle` | Rewrites Google Maven to the Aliyun mirror |
+| user env `PUB_HOSTED_URL`, `FLUTTER_STORAGE_BASE_URL` | Package and engine-artifact mirrors |
+| `%LOCALAPPDATA%/Android/Sdk/platforms/android-35` | Required by the `jni` plugin |
+| `%LOCALAPPDATA%/Android/Sdk/cmake/3.22.1` | Required by the `jni` plugin native build |
 
 No application code has been written. `lib/` and `test/` are untouched template files.
 
 ## Last completed action
 
-Recorded all owner decisions, reworded the project spec for `sqlite3mc`, initialized git with a hardened
-`.gitignore` and a working pre-commit gate, obtained the Vazirmatn fonts, and answered the
-build-hook-flag and SDK-version questions. Attempted the two required proofs and found both blocked
-by pub.dev still returning 403.
+Configured mirrors, regenerated and sanitized the lockfile, set the application ID, made the first
+three commits, and **passed the AndroidX resolution probe** — `flutter build apk --debug` succeeds
+with `flutter_secure_storage`. Confirmed `sqlite3mc` encryption works on the Dart VM and that the
+D-020 ordering hazard is real. Found the D-020 end-to-end proof blocked on Windows Developer Mode
+and on the absence of any Android target.
 
 ## Next action
 
-**Bring the VPN up and confirm `curl -s -o /dev/null -w '%{http_code}' https://pub.dev/api/packages/drift`
-returns `200`.** Then, in this order:
+**Unblock the two D-020 prerequisites, then run the proof.**
 
-1. `rm pubspec.lock && flutter pub get` (with `PUB_HOSTED_URL` unset) — regenerate against pub.dev,
-   then verify no non-pub.dev `url:` remains.
-2. Replace `com.example.factorino` with the owner's reverse-domain ID (still needed), then make the
-   first commit — scaffold + `docs/`, before any Phase 1 code.
-3. Add `flutter_secure_storage` and run `flutter build apk --debug` — the AndroidX resolution probe
-   that either confirms Android is viable or surfaces known issue #2.
-4. Build the throwaway encryption proof: a real Flutter app opening an encrypted DB through Drift on
-   **Android and Windows**, writing a row, closing, reopening without the key, and confirming
-   rejection (D-020).
+1. Enable Windows Developer Mode (administrator): `start ms-settings:developers`, or set
+   `HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\AppModelUnlock\AllowDevelopmentWithoutDevLicense = 1`.
+   Verify with `flutter build windows --debug`.
+2. Provide an Android target — a device over USB with debugging enabled, or an emulator system
+   image from the Tencent SDK mirror plus an AVD.
 
-Report on 3 and 4 before starting Phase 1 implementation.
+Then build the throwaway Flutter app that opens an encrypted database through Drift, writes a row,
+closes, reopens **without** the key, and confirms rejection — on **both** Windows and Android — and
+report before starting Phase 1 implementation.

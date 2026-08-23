@@ -607,6 +607,49 @@ Drift, write a row, close, reopen **without** the key, and confirm the reopen is
 standalone native probe does not count — it does not exercise Flutter's asset, plugin and
 packaging path, which is where the native library actually has to be found at runtime.
 
+**That requirement is still outstanding.** As of 2026-08-23 it cannot be run: the Windows target
+needs Developer Mode for plugin symlink support (administrator required), and no Android device or
+emulator is available.
+
+### Empirically confirmed on the Dart VM, 2026-08-23 — the silent failure is real
+
+A Dart-VM probe (`sqlite3` 3.5.2, `source: sqlite3mc`, Windows) does **not** satisfy the requirement
+above, but it does settle whether the hazard this decision describes is real. It is:
+
+```
+sqlite3 version : 3.53.4
+header bytes: b5 f3 0c 0e ee 47 cc 2f b4 93 3b 48 64 2a 6f d4
+encrypted: YES          (header is not "SQLite format 3"; differs every run)
+sentinel on disk: not found    (plaintext scan of the raw file)
+unkeyed reopen: REJECTED     SqliteException(26): file is not a database
+keyed reopen: 1 row(s), value=sentinel-value-42
+OVERALL: PASS
+```
+
+And the ordering case — one `CREATE TABLE` executed *before* `PRAGMA key`:
+
+```
+outcome: threw - SqliteException(26): file is not a database
+header ascii: "SQLite format 3"
+result: PLAINTEXT DATABASE
+```
+
+Both failure modes predicted above occurred together, which is worse than either alone: the
+`PRAGMA key` throws an error that names *corruption*, while the file already on disk is **plaintext**.
+A developer debugging that exception is being pointed away from the actual cause, and the obvious
+remedy — delete the "corrupt" file and retry — destroys data while leaving the database unencrypted.
+This is the concrete justification for implementing the open sequence in exactly one place.
+
+**Caveat on `PRAGMA cipher_version`.** Under `sqlite3mc` this pragma returns **empty**, unlike
+SQLCipher where it reports e.g. `4.18.0 community`. Do not use `cipher_version` as the runtime
+assertion that encryption is active — it will read as "not encrypted" on a correctly encrypted
+database. Assert on the file header instead (a real SQLite file starts with the ASCII bytes
+`SQLite format 3`; an encrypted one does not), which is what the probe above does.
+
+**Build hooks confirmed working.** The probe resolved and built `sqlite3` with
+`source: sqlite3mc` through Dart build hooks with no experimental flag and no manual native setup,
+downloading from GitHub releases as D-010 assumed.
+
 ---
 
 ## D-021 — "گزارش‌ها" is omitted from navigation entirely in Phase 1

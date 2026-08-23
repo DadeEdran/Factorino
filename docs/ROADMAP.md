@@ -11,8 +11,8 @@
 
 ## Phase 0 — Environment and Setup
 
-**Status:** `IN_PROGRESS` — all four owner decisions settled 2026-08-23; **blocked** on `pub.dev`
-returning HTTP 403, which stops the two remaining verifications.
+**Status:** `IN_PROGRESS` — decisions settled and the AndroidX probe passed; **blocked** on the
+D-020 encryption proof, which needs Windows Developer Mode and an Android device or emulator.
 
 **Goal.** Establish the toolchain, verify every target platform builds, document the architecture and
 seed `docs/`.
@@ -49,26 +49,41 @@ seed `docs/`.
 - **Build hooks need no experimental flag** on Flutter 3.47.1 — `enable-native-assets` defaults to on.
 - Flutter 3.47.1 / Dart 3.13.1 pairing confirmed correct against the release cadence.
 
+**Completed later on 2026-08-23**
+
+- Mirrors configured user-globally (D-014 amendment); nothing mirror-related in the repository.
+- `tools/sanitize_lockfile` written and verified; lockfile regenerated and canonical.
+- Application ID set to `io.github.erysaw.factorino`.
+- First three commits made; working tree clean.
+- `.gitattributes` added after CRLF/LF churn was found corrupting diffs.
+- **AndroidX resolution probe PASSED** — `flutter build apk --debug` succeeds with
+  `flutter_secure_storage`; the APK carries `libdartjni.so`, so the native path is exercised.
+  Required installing `android-35` and `cmake;3.22.1` by hand from the Tencent SDK mirror
+  (SHA-1 verified), because `dl.google.com` is fully blocked.
+- `compileSdk` pinned to 37 for `flutter_secure_storage`.
+- `sqlite3mc` encryption verified on the Dart VM, and the D-020 ordering hazard **empirically
+  confirmed** — a statement before `PRAGMA key` yields a plaintext file plus a misleading
+  "file is not a database" error.
+
 **Remaining (blocking Phase 1)**
 
-- **`pub.dev` returns HTTP 403** — the VPN is not yet carrying this traffic. Everything below waits
-  on this.
-- Delete and regenerate `pubspec.lock` against pub.dev; verify no other host appears.
-- Owner's reverse-domain application ID, to replace `com.example.factorino` **before the first
-  commit**.
-- First commit: scaffold + `docs/`, before any Phase 1 code.
-- **AndroidX resolution probe** — add `flutter_secure_storage`, run `flutter build apk --debug`.
+- **Windows Developer Mode** — administrator required. Without it no plugin-using Windows build
+  runs at all.
+- **An Android device or emulator** — none currently available.
 - **End-to-end encryption proof** — a real Flutter app, Drift, Android **and** Windows: write, close,
-  reopen without the key, confirm rejection (D-020).
+  reopen without the key, confirm rejection (D-020). Blocked on the two items above.
 
 **Known issues**
 
-- The Android build currently succeeds only because a populated Gradle cache exists locally; adding
-  new AndroidX-dependent plugins in Phase 1 is unvalidated (D-014). Google Maven returns 404 here.
-- `pubspec.lock` still records the Tsinghua mirror and must be regenerated, not edited.
+- Windows Developer Mode is off; no plugin-using Windows build is possible until an administrator
+  enables it.
+- No Android device or emulator is available.
+- Every `flutter pub get` re-contaminates `pubspec.lock` with the mirror host. `sanitize_lockfile`
+  must be run after each resolve; the pre-commit hook is the backstop.
 - `flutter doctor`'s "Android license status unknown" is a **stale check, not a failure**: the
   `--licenses` option is removed from the new Android CLI, the canonical licence hash file is
   present, and `flutter build apk --debug` succeeds. No licence files were fabricated to silence it.
+- Web has not been rebuilt since plugins were added.
 
 **Security note.** No user data is stored yet and no new inputs are accepted. The threat model is
 nonetheless affected in three ways, all now closed or explicitly bounded:
