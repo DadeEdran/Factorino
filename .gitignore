@@ -1,0 +1,90 @@
+# Miscellaneous
+*.class
+*.log
+*.pyc
+*.swp
+.DS_Store
+.atom/
+.build/
+.buildlog/
+.history
+.svn/
+.swiftpm/
+migrate_working_dir/
+
+# IntelliJ related
+*.iml
+*.ipr
+*.iws
+.idea/
+
+# The .vscode folder contains launch configuration and tasks you configure in
+# VS Code which you may wish to be included in version control, so this line
+# is commented out by default.
+#.vscode/
+
+# Flutter/Dart/Pub related
+**/doc/api/
+**/ios/Flutter/.last_build_id
+.dart_tool/
+.flutter-plugins-dependencies
+.pub-cache/
+.pub/
+/build/
+/coverage/
+
+# Symbolication related
+app.*.symbols
+
+# Obfuscation related
+app.*.map.json
+
+# Android Studio will place build artifacts here
+/android/app/debug
+/android/app/profile
+/android/app/release
+
+# Widget Preview related
+.widget_preview/
+
+# ---------------------------------------------------------------------------
+# Factorino security hardening (the project spec "Secrets")
+# Nothing below this line may ever be committed.
+# ---------------------------------------------------------------------------
+
+# Signing material — release keystores and their passwords
+*.jks
+*.keystore
+*.p12
+*.pfx
+key.properties
+android/key.properties
+android/app/upload-keystore.jks
+
+# Local configuration and secrets (--dart-define-from-file).
+# Committed counterparts must use the *.example suffix and contain placeholders only.
+.env
+.env.*
+!.env.example
+config/*.json
+!config/*.example.json
+dart_define.json
+!dart_define.example.json
+
+# Exported backups — an encrypted backup is still the entire customer and
+# invoice database in one portable artifact.
+*.factorino-backup
+backups/
+exports/
+
+# Local database files — these contain real user financial data
+*.db
+*.db-journal
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+
+# Native build-hook download cache / artifacts
+.dart_tool/native_assets/
+

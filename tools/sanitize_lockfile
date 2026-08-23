@@ -1,0 +1,115 @@
+#!/bin/sh
+# ---------------------------------------------------------------------------
+# sanitize_lockfile — rewrite hosted package URLs in pubspec.lock back to pub.dev
+#
+# WHY THIS EXISTS
+#
+# pub.dev is unreachable from the primary development machine (HTTP 403, a
+# geo-block presenting as an authorization error), so packages are resolved
+# through a mirror via PUB_HOSTED_URL. pub writes that mirror's host into every
+# hosted package entry in pubspec.lock.
+#
+# A committed lockfile naming a third-party mirror would impose that mirror on
+# every other environment that checks this repository out. The requirement is
+# that this repository builds unmodified on a machine with normal pub.dev
+# access, so the lockfile must name pub.dev and nothing else.
+#
+# This rewrite is safe because the integrity guarantee does not live in the URL.
+# Each hosted entry carries a `sha256` of the package archive, and a mirror
+# serves byte-identical archives — that is what makes it a mirror. pub verifies
+# the hash on download regardless of which host it came from. Rewriting the URL
+# changes where a future resolve looks; it does not weaken what is verified.
+#
+# Run after every `flutter pub get` / `dart pub get`. Idempotent.
+#
+# USAGE
+#     sh tools/sanitize_lockfile [path-to-pubspec.lock]
+#
+# Exits non-zero if any non-pub.dev host survives, so it is safe to chain:
+#     flutter pub get && sh tools/sanitize_lockfile
+#
+# See docs/DECISIONS.md D-014. The .githooks/pre-commit hook is the backstop
+# that catches a lockfile which was never sanitized.
+# ---------------------------------------------------------------------------
+
+set -e
+
+LOCKFILE="${1:-pubspec.lock}"
+CANONICAL="https://pub.dev"
+
+if [ ! -f "$LOCKFILE" ]; then
+    echo "sanitize_lockfile: no such file: $LOCKFILE" >&2
+    exit 1
+fi
+
+TMP="${LOCKFILE}.sanitize.$$"
+trap 'rm -f "$TMP"' EXIT INT TERM
+
+# Rewrite `url:` only inside a description block belonging to `source: hosted`.
+#
+# Package entries look like:
+#
+#   package_name:
+#     dependency: transitive
+#     description:
+#       name: package_name
+#       sha256: "..."
+#       url: "https://mirror.example/"      <- rewritten
+#     source: hosted
+#     version: "1.2.3"
+#
+# `source: git` entries also carry a `url:` field, and a git URL is a real
+# code location rather than a redistribution host — rewriting one would point
+# the build at the wrong repository. Anchoring on `source: hosted` is what
+# keeps this script from corrupting those. Same for `sdk` and `path` sources.
+awk -v canonical="$CANONICAL" '
+    { line[NR] = $0 }
+    END {
+        rewritten = 0
+        for (i = 1; i <= NR; i++) {
+            if (line[i] ~ /^[[:space:]]*source:[[:space:]]*hosted[[:space:]]*$/) {
+                # Walk back to this entry`s description block and fix its url.
+                for (j = i - 1; j >= 1; j--) {
+                    if (line[j] ~ /^[[:space:]]*description:[[:space:]]*$/) break
+                    if (line[j] ~ /^[[:space:]]*url:[[:space:]]/) {
+                        indent = line[j]
+                        sub(/url:.*$/, "", indent)
+                        replacement = indent "url: \"" canonical "\""
+                        if (line[j] != replacement) {
+                            line[j] = replacement
+                            rewritten++
+                        }
+                    }
+                }
+            }
+        }
+        for (i = 1; i <= NR; i++) print line[i] > "/dev/stdout"
+        print rewritten > "/dev/stderr"
+    }
+' "$LOCKFILE" > "$TMP" 2> "${TMP}.count"
+
+COUNT=$(cat "${TMP}.count" 2>/dev/null || echo 0)
+rm -f "${TMP}.count"
+
+# Never leave a truncated lockfile behind if awk failed partway.
+if [ ! -s "$TMP" ]; then
+    echo "sanitize_lockfile: refusing to write an empty lockfile" >&2
+    exit 1
+fi
+
+mv "$TMP" "$LOCKFILE"
+trap - EXIT INT TERM
+
+# Verify: no hosted entry may name any host other than pub.dev.
+REMAINING=$(grep -nE '^[[:space:]]*url:' "$LOCKFILE" | grep -v "$CANONICAL" || true)
+if [ -n "$REMAINING" ]; then
+    echo "sanitize_lockfile: non-pub.dev host still present after rewrite:" >&2
+    echo "$REMAINING" >&2
+    exit 1
+fi
+
+if [ "$COUNT" -eq 0 ]; then
+    echo "sanitize_lockfile: already canonical ($LOCKFILE)"
+else
+    echo "sanitize_lockfile: rewrote $COUNT url field(s) to $CANONICAL ($LOCKFILE)"
+fi

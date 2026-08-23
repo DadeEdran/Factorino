@@ -1,0 +1,49 @@
+#!/bin/sh
+# Factorino pre-commit checks. See docs/ENVIRONMENT.md and DECISIONS.md D-014.
+#
+# Enabled via a versioned hooks path, so it survives a fresh clone:
+#     git config core.hooksPath .githooks
+#
+# Bypassing this hook (--no-verify) is not acceptable for the lockfile check:
+# a mirror URL in pubspec.lock pins every other environment to a third-party
+# package host and silently changes the project's supply chain.
+
+set -e
+fail=0
+
+# ---------------------------------------------------------------------------
+# 1. pubspec.lock must resolve exclusively against pub.dev (D-014).
+# ---------------------------------------------------------------------------
+if [ -f pubspec.lock ]; then
+    foreign=$(grep -nE '^[[:space:]]*url:' pubspec.lock | grep -v 'https://pub.dev' || true)
+    if [ -n "$foreign" ]; then
+        echo "pre-commit: pubspec.lock references a package host other than pub.dev:" >&2
+        echo "$foreign" >&2
+        echo "" >&2
+        echo "  Regenerate it against the canonical host with the VPN up:" >&2
+        echo "    unset PUB_HOSTED_URL && rm pubspec.lock && flutter pub get" >&2
+        fail=1
+    fi
+fi
+
+# ---------------------------------------------------------------------------
+# 2. No signing material, secrets, or local databases may be staged.
+# ---------------------------------------------------------------------------
+staged=$(git diff --cached --name-only --diff-filter=ACM)
+secrets=$(printf '%s\n' "$staged" | grep -iE '(\.jks|\.keystore|\.p12|\.pfx|key\.properties|(^|/)\.env($|\.)|\.db|\.sqlite3?|\.factorino-backup)$' || true)
+if [ -n "$secrets" ]; then
+    echo "pre-commit: refusing to commit signing material, secrets, or local databases:" >&2
+    printf '  %s\n' $secrets >&2
+    fail=1
+fi
+
+# ---------------------------------------------------------------------------
+# 3. The template application ID must not reach a commit.
+# ---------------------------------------------------------------------------
+if [ -f android/app/build.gradle.kts ] && grep -q 'com\.example\.factorino' android/app/build.gradle.kts; then
+    echo "pre-commit: android/app/build.gradle.kts still uses the template application ID" >&2
+    echo "  com.example.factorino must be replaced with the real reverse-domain ID." >&2
+    fail=1
+fi
+
+exit $fail
