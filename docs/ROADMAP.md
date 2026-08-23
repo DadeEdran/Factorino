@@ -11,9 +11,9 @@
 
 ## Phase 0 — Environment and Setup
 
-**Status:** `IN_PROGRESS` — decisions settled, the AndroidX probe passed, and the **D-020 encryption
-proof passes end to end on Windows**. One item remains: the same proof on Android, blocked on the
-device refusing installation (MIUI "Install via USB"), not on anything in the project.
+**Status:** `COMPLETED` — 2026-08-23. Toolchain established, all three platform scaffolds building,
+`docs/` populated, and the **D-020 encryption proof passes end to end on both Android and Windows**.
+Web remains the untested target and is addressed in Phase 12.
 
 **Goal.** Establish the toolchain, verify every target platform builds, document the architecture and
 seed `docs/`.
@@ -88,20 +88,22 @@ seed `docs/`.
 - **Windows proof PASSES 5/5** — encrypted header, no plaintext on disk, unkeyed and wrong-key
   reopens both rejected, keyed reopen intact, hazard reproduced and caught by the startup assertion,
   database under `%APPDATA%`.
-- **Android build path proven**: the debug APK carries `lib/arm64-v8a/libsqlite3mc.so` (1.9 MB), so
-  the `package:sqlite3` build hook does produce and package the native library for Android.
+- **Android proof PASSES 5/5** on a Redmi Note 8 Pro (Android 11, API 30, arm64) — same results as
+  Windows, database under `/data/user/0/io.github.erysaw.factorino/files`, native library supplied
+  by `lib/arm64-v8a/libsqlite3mc.so` (1.9 MB) packaged by the build hook with no manual native
+  setup. Both traps and the ordering hazard reproduce identically on both platforms, so they are
+  properties of sqlite3mc rather than of one platform's build.
 
-**Remaining (blocking Phase 1)**
+**Remaining**
 
-- **The Android run of the D-020 proof.** The APK builds and contains the native library, but the
-  device refuses installation with `INSTALL_FAILED_USER_RESTRICTED` via every route (`flutter test`,
-  `adb install`, `adb shell pm install`). Fix is on the device: Developer options ->
-  **Install via USB** (MIUI). Nothing to change in the project.
+- Nothing blocking. Web is deliberately deferred: it has not been rebuilt since the plugins were
+  added, and it gets no encryption at rest at all (D-012). Both belong to Phase 12.
 
 **Known issues**
 
-- MIUI refuses `adb`-driven installation on the Redmi (`INSTALL_FAILED_USER_RESTRICTED`), so the
-  Android half of the D-020 proof has not run. Device-side setting, not a project defect.
+- MIUI refuses `adb`-driven installation until Developer options -> **Install via USB** is enabled.
+  Worth knowing for any future device: the failure is `INSTALL_FAILED_USER_RESTRICTED` and it looks
+  identical through `flutter test`, `adb install` and `pm install`.
 - Drift's debug-only "database opened twice" warning appears in the proof run, because the test
   deliberately opens the same file several times in sequence to check rejection. Harmless here.
 - Every `flutter pub get` re-contaminates `pubspec.lock` with the mirror host. `sanitize_lockfile`
@@ -114,9 +116,9 @@ seed `docs/`.
 **Security note.** No user data is stored yet and no new inputs are accepted, but this phase now
 ships the mechanism that protects all of it, so the threat model moved in four ways:
 
-- **Encryption at rest is real and demonstrated on Windows**, not assumed: the file header is
-  encrypted, a raw byte scan finds no plaintext, and both an unkeyed and a wrong-key reopen are
-  rejected. Android's native library is packaged but the run is outstanding.
+- **Encryption at rest is real and demonstrated on both Android and Windows**, not assumed: the file
+  header is encrypted, a raw byte scan finds no plaintext, and both an unkeyed and a wrong-key
+  reopen are rejected on each platform.
 - **Three ways of "verifying" encryption were found to be false witnesses** and are now named traps
   in D-020. The dangerous one is `PRAGMA cipher_version`: it reads as "not encrypted" on a perfectly
   encrypted database, so anyone asserting on it would eventually "fix" the wrong thing.
@@ -144,7 +146,7 @@ The three earlier items remain closed or bounded:
 ## Phase 1 — Foundation and Architecture
 
 **Status:** `NOT_STARTED` — decisions are settled and the encryption foundation is built and proven
-on Windows. The connection layer (D-020, D-023) already exists and must be built on, not rebuilt:
+on both target platforms. The connection layer (D-020, D-023) already exists and must be built on, not rebuilt:
 Phase 1 adds the schema, DAOs and repositories behind `openEncryptedDatabase`, and wires
 `assertDatabaseFileIsEncrypted` into app startup.
 

@@ -7,14 +7,13 @@
 
 ## Phase
 
-**Phase 0 — Environment and Setup · `IN_PROGRESS`**
+**Phase 0 — Environment and Setup · `COMPLETED`**
+**Phase 1 — Foundation and Architecture · `NOT_STARTED`** ← start here
 
 Both blockers from the previous session were cleared by the owner (Windows Developer Mode on; a
-Redmi Note 8 Pro attached over USB). The **D-020 encryption proof now passes end to end on Windows**,
-and the encryption slice it proves is committed production code, not a throwaway.
-
-One item is left in Phase 0: the same proof on Android. The APK builds and **contains the native
-library**, but the device refuses to install it — a MIUI setting, not a project defect.
+Redmi Note 8 Pro attached over USB, and "Install via USB" enabled when MIUI refused the install).
+The **D-020 encryption proof passes end to end on both Android and Windows**, and the encryption
+slice it proves is committed production code, not a throwaway.
 
 ## Verification status
 
@@ -26,7 +25,7 @@ Windows build (plugins):    PASS   Developer Mode enabled; builds and runs
 Web build:                  NOT_RETESTED since plugins were added
 AndroidX plugin resolution: PASS
 D-020 proof - Windows:      PASS   5/5 integration tests on the real Windows build
-D-020 proof - Android:      BLOCKED  builds and packages; install refused by MIUI
+D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (API 30, arm64)
 ```
 
 ## What was completed this session (2026-08-23, proof run)
@@ -86,16 +85,31 @@ out-of-order: plaintext file + "file is not a database" - hazard reproduced on t
 startup assert: caught the plaintext database and refused to open it
 ```
 
-**Android:** `flutter build apk --debug` succeeds and the APK carries
-`lib/arm64-v8a/libsqlite3mc.so` (1.9 MB) — the build hook produces and packages the native library,
-which was the main technical risk. Installation is refused identically by `flutter test`,
-`adb install` and `adb shell pm install`.
+Android, 5/5, on a Redmi Note 8 Pro (Android 11, API 30, arm64):
+
+```
+database dir: /data/user/0/io.github.erysaw.factorino/files   (app-private, per §7)
+keystore: Android Keystore returns a stable 256-bit key across calls
+header bytes: c4 93 43 23 a6 f7 67 27 8a 9a ee af 90 12 49 75   -> encrypted
+sentinel on disk: absent from a raw byte scan
+unkeyed reopen: REJECTED     wrong-key reopen: REJECTED     keyed reopen: 1 row, intact
+out-of-order: hazard reproduced; startup assertion caught the plaintext database
+```
+
+The native library comes from `lib/arm64-v8a/libsqlite3mc.so` (1.9 MB), packaged by the build hook
+with no manual native setup — the main technical risk this proof existed to settle. **Both traps and
+the ordering hazard reproduce identically on Android and Windows**, so they are properties of
+sqlite3mc, not of one platform's build. Header bytes differ every run: the salt is random.
+
+The first install attempt was refused by MIUI (`INSTALL_FAILED_USER_RESTRICTED`) through every route
+— `flutter test`, `adb install`, `adb shell pm install`. Enabling Developer options → **Install via
+USB** on the device fixed it.
 
 ## Known issues
 
 | # | Issue | Impact |
 |---|---|---|
-| 1 | **MIUI refuses adb installation** (`INSTALL_FAILED_USER_RESTRICTED`) | **Blocks the Android half of the D-020 proof.** Fix on the device: Developer options -> **Install via USB**. Not a project defect. |
+| 1 | MIUI refuses adb installation until Developer options -> **Install via USB** is enabled | Resolved on this device. Worth knowing for the next one: it fails as `INSTALL_FAILED_USER_RESTRICTED` through every install route. |
 | 2 | `pub.dev` 403; `dl.google.com` fully blocked | Worked around by mirrors (D-014 amendment). SDK packages installed by hand from the Tencent mirror with SHA-1 verification. |
 | 3 | Every `flutter pub get` re-contaminates `pubspec.lock` | Run `sh tools/sanitize_lockfile` after **every** resolve — 66 URLs were rewritten this session. Pre-commit hook is the backstop. |
 | 4 | `flutter doctor` "Android license status unknown" | **Not a real failure — a stale check.** Details in `ENVIRONMENT.md`. No licence files were fabricated. |
@@ -142,18 +156,21 @@ docs/CURRENT_STATE.md                                 this file
 ## Last completed action
 
 Corrected the D-020 ordering after disproving it empirically, built and committed the encryption
-slice with its enforcement tests, and **passed the D-020 proof 5/5 on Windows**. Confirmed the
-Android build packages `libsqlite3mc.so`, and found the Android run blocked by MIUI's install
-restriction.
+slice with its enforcement tests, and **passed the D-020 proof 5/5 on Windows and 5/5 on the Android
+device**. Phase 0 is complete.
 
 ## Next action
 
-**Run the Android half of the proof, then start Phase 1.**
+**Begin Phase 1 with the Drift schema.** Define the six tables from the project spec — `customers`,
+`products`, `invoices`, `invoice_items`, `payments`, `settings` — each carrying the sync-ready
+columns from D-011 (`id` TEXT UUID v4, `created_at`, `updated_at`, `deleted_at`, `sync_status`,
+`last_synced_at`), behind the **existing** `openEncryptedDatabase`. Do not rebuild the connection
+layer; it is proven. Concretely, in order:
 
-1. On the Redmi: Settings -> Additional settings -> Developer options -> enable **Install via USB**
-   (and **USB debugging (Security settings)** if present). It may require a signed-in Mi account.
-2. `flutter test integration_test/d020_encryption_proof_test.dart -d dmbyayb6rombo7ci` — expect the
-   same 5/5, and confirm the database path is under `/data/user/0/io.github.erysaw.factorino`.
-3. Record the Android result in D-020 and this file, then begin Phase 1 with the Drift schema:
-   define the six tables from the project spec with the sync-ready columns behind the existing
-   `openEncryptedDatabase`, and wire `assertDatabaseFileIsEncrypted` into app startup.
+1. Add `drift_dev` + `build_runner` (dev), then write `lib/data/database/tables/*.dart` and the
+   `AppDatabase` class with `schemaVersion = 1`.
+2. Add the single soft-delete query helper required by the project spec, so `deleted_at IS NULL`
+   cannot be forgotten per call site.
+3. Wire startup: resolve the key via `SecureStorageDatabaseKeyStore`, open through
+   `openEncryptedDatabase(file: await defaultDatabaseFile(), ...)`, run the first query, then call
+   `assertDatabaseFileIsEncrypted` — currently defined and tested but not yet called from `main.dart`.

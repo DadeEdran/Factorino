@@ -695,13 +695,35 @@ cipher_version: (empty)                                        <- Trap 1 reprodu
 cipher echo: 'sqlcipher' on an unkeyed in-memory database   <- Trap 2 reproduced
 ```
 
-**Android - the build path is proven; the run is blocked on a device setting.**
-`flutter build apk --debug` succeeds and the APK carries **`lib/arm64-v8a/libsqlite3mc.so`
-(1.9 MB)**, so the build hook does produce and package the native library for Android - the main
-technical risk this proof existed to settle. Installation is refused by MIUI with
+**Android - PASS, 2026-08-23**, Redmi Note 8 Pro, Android 11 (API 30, arm64-v8a),
+`flutter test integration_test/... -d dmbyayb6rombo7ci`, 5/5:
+
+```
+sqlite3 library : 3.53.4, from lib/arm64-v8a/libsqlite3mc.so (1.9 MB) packaged in the APK
+database dir: /data/user/0/io.github.erysaw.factorino/files   (app-private, per §7)
+keystore: Android Keystore returns a stable 256-bit key across calls
+header bytes: c4 93 43 23 a6 f7 67 27 8a 9a ee af 90 12 49 75   -> encrypted
+sentinel on disk: absent from a raw byte scan
+unkeyed reopen: REJECTED  SqliteException(26): file is not a database
+wrong-key reopen: REJECTED
+keyed reopen: 1 row, value intact
+out-of-order: plaintext file produced + "file is not a database" - hazard reproduced
+startup assert: caught the plaintext database and refused to open it
+cipher_version: (empty)                                        <- Trap 1 reproduced
+cipher echo: 'sqlcipher' on an unkeyed in-memory database   <- Trap 2 reproduced
+```
+
+Both traps and the ordering hazard behave identically on Android and Windows, so they are properties
+of sqlite3mc rather than of one platform's build.
+
+The build hook produces and packages the native library for Android with no manual native setup -
+the main technical risk this proof existed to settle. Note that the header bytes differ on every
+run: the salt is random, as it should be.
+
+**Installation note.** The first attempt was refused by MIUI with
 `INSTALL_FAILED_USER_RESTRICTED: Install canceled by user`, identically via `flutter test`,
-`adb install`, and `adb shell pm install`. This is the Redmi's "Install via USB" developer setting,
-not a project defect. The Android run remains outstanding.
+`adb install` and `adb shell pm install`. That is the device's "Install via USB" developer setting,
+not a project defect; once enabled, installation and the run both succeed.
 
 **Alternatives considered.** Asserting on `cipher_version` (rejected: Trap 1 - it is empty under
 sqlite3mc, so the assertion would be permanently wrong in the unsafe direction). Documenting the

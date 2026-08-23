@@ -55,8 +55,8 @@ decided by the file header, never by a pragma - see the three named traps in D-0
 - **Routing:** none (a single `MaterialApp` home).
 - **Localization:** none - the template is English and LTR.
 - **Theme:** the default Material 3 `ColorScheme.fromSeed`.
-- **Security:** encryption at rest is implemented and proven on Windows; the startup assertion
-  exists. Manifest hardening, app lock, CSP and secure logging are not built. Repository hygiene is
+- **Security:** encryption at rest is implemented and proven on Android and Windows; the startup
+  assertion exists but is not yet called from `main.dart`. Manifest hardening, app lock, CSP and secure logging are not built. Repository hygiene is
   in place (hardened `.gitignore`, pre-commit gate).
 - **Version control:** `main`, four commits, application ID `io.github.erysaw.factorino`.
 
@@ -143,8 +143,8 @@ encrypted native library supplied by `package:sqlite3` build hooks configured fo
 Implemented in exactly one place — `openEncryptedDatabase`, the Drift `NativeDatabase(setup:)`
 callback — so no call site can open a connection differently; `single_open_path_test.dart` fails the
 build if one tries. Getting the order wrong silently produces an unencrypted database on a new file,
-or an undiagnosable `file is not a database` on an existing one. **Built and proven on Windows as of
-2026-08-23** (§A); the Android run is outstanding.
+or an undiagnosable `file is not a database` on an existing one. **Built and proven on both Android
+and Windows as of 2026-08-23** (§A).
 
 Windows stores the file under `%APPDATA%`, never beside the executable.
 
