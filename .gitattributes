@@ -1,0 +1,33 @@
+# Line-ending policy.
+#
+# The repository stores text as LF. Without this, editing a file with a tool
+# that rewrites it wholesale (a script, a formatter) silently flips CRLF to LF
+# and produces a diff where every line appears changed, burying the real edit.
+#
+# Windows-native build inputs are the exception: some Microsoft toolchain
+# parsers are unhappy with LF, so those keep CRLF in the working tree.
+
+* text=auto eol=lf
+
+# Windows toolchain files that want CRLF
+*.bat       text eol=crlf
+*.cmd       text eol=crlf
+*.ps1       text eol=crlf
+*.rc        text eol=crlf
+*.sln       text eol=crlf
+*.vcxproj   text eol=crlf
+*.props     text eol=crlf
+
+# Binary assets — never touched, never diffed as text
+*.ttf       binary
+*.otf       binary
+*.png       binary
+*.jpg       binary
+*.jpeg      binary
+*.ico       binary
+*.jar       binary
+*.keystore  binary
+*.jks       binary
+
+# Generated lockfile: diff it, but do not let anyone mistake it for hand-authored
+pubspec.lock  text eol=lf linguist-generated=true
