@@ -24,19 +24,36 @@
 
 (f) was split in two after the owner pulled the create/edit forms forward into it (D-036).
 
+## Where the project stands, in one paragraph
+
+**Phase 1 is finished and accepted; no work is in progress.** The application builds and runs on
+Windows and Android against a real encrypted SQLite database. Five screens work end to end on real
+data — Dashboard, Invoices, Customers, Products, Settings — reached through a Persian, RTL,
+three-tier responsive shell. Customers and products can be created, searched, edited and
+soft-deleted from the UI. Invoices, payments, the money engine, Jalali periods and invoice numbering
+all exist and are tested **in the data layer**, but there is still **no UI to create an invoice**:
+that is Phase 4, and it is the largest single gap in the product today.
+
+**Working tree is clean.** `HEAD` is `51fdb72` "Close Phase 1; re-scope Phases 2 and 3 to what
+remains", on `main`; `0287dc2` is increment (f2) and `30e53a3` is (f1). Nothing is uncommitted and
+nothing is half-done — a fresh session starts from a settled tree.
+
 ## Verification status
 
 ```
 flutter analyze:            PASS   (No issues found)
 flutter test:               PASS   (483/483, was 432)
-Android build:              PASS   (not re-run this session)
+Android build:              PASS   (last run in increment e; not re-run since)
 Windows build:              PASS   flutter build windows --debug, RUN and screenshotted
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (API 30, arm64)
 ```
 
-## What was completed this session — increment (f2)
+## What the last delivered increment (f2) contains
+
+Kept because it is the newest code in the repository and the most likely to be built on or
+misunderstood — not because it is in progress. It is finished and accepted.
 
 **Five live aggregate reads, all computed in SQL.** `watchCount` on all three repositories,
 `watchTotalIssuedRial`, `watchIssuedCountInPeriod`, `watchOutstandingRial` and `watchList`. Streams
@@ -115,6 +132,35 @@ committed fixture.
 - **Report period selection.** The dashboard covers the current Jalali month only; choosing a period
   belongs with گزارش‌ها in Phase 8, still absent from navigation entirely (D-021).
 
+## Commands that matter
+
+Written down because two of them are non-obvious and one of them has cost two sessions.
+
+```sh
+# The gate. Both must be clean before any phase is marked COMPLETED.
+flutter analyze
+flutter test
+
+# Regenerate after touching a table, an @riverpod provider, or the ARB.
+# --offline when the pub mirror is down; sanitize LAST or the next resolve hangs.
+dart pub get --offline
+dart run build_runner build
+flutter gen-l10n
+sh tools/sanitize_lockfile
+
+# The only reliable way to get a window on Windows (known issue 9).
+flutter run -d windows --debug
+
+# The encryption proof, on the real target.
+flutter test integration_test/d020_encryption_proof_test.dart -d windows
+```
+
+**To see a screen with data in it:** the Windows dev database already holds twelve demo invoices and
+twelve customers (see below). There is no invoice-creation UI until Phase 4, so new invoices have to
+be written by a throwaway `integration_test/` script through the **real repositories** — never by raw
+inserts, or the totals and numbers would not be the ones the app produces. The script used for (f2)
+was deleted after use, deliberately.
+
 ## Known issues
 
 | # | Issue | Impact |
@@ -127,7 +173,7 @@ committed fixture.
 | 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. |
 | 7 | ~~No live `count()` on the repositories~~ | **Resolved in (f2)**: `watchCount` on customers, products and invoices. |
 | 8 | `nowProvider` does not tick | Deliberate (D-041). A Jalali month boundary or a due date crossing midnight while the app sits open does not update until relaunch. One `invalidate` on resume fixes it if a later phase needs it. |
-| 9 | The Windows debug exe shows no window when launched **directly** | Observed this session: the process starts and the VM service listens, but no window is presented. Under `flutter run -d windows` it is fine. Not caused by (f2) — screenshot via `flutter run`. Worth a look in Phase 12. |
+| 9 | The Windows debug exe shows no window when launched **directly** | Observed 2026-08-24: the process starts and the VM service listens, but no window is ever presented. Under `flutter run -d windows` it is fine, so **launch the app that way** to screenshot it. Not caused by (f2). Worth a look in Phase 12. |
 | 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install | `adb install -r` once by hand. Developer options → Install via USB. |
 | 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last** — the rule now lives in `tools/sanitize_lockfile`'s own header, where the mistake happens. |
 | 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
@@ -175,12 +221,14 @@ committed fixture.
 - **Where the source encoding is not guaranteed, name characters by code point.** Bitten three times:
   the fold tables, the Windows window title, and the bidi isolate constants.
 - **Sanitize the lockfile after anything that resolves — and sanitize it LAST.** Sanitizing before
-  `build_runner` makes pub re-resolve against the network, which hung this session too. The rule is
-  now documented in `tools/sanitize_lockfile` itself as well as in `ENVIRONMENT.md`.
+  `build_runner` makes pub re-resolve against the network, and it has now hung two sessions this
+  way. When it hangs at *"Resolving dependencies..."*, the fix is
+  `dart pub get --offline && dart run build_runner build`, then sanitize. The full rule now lives in
+  `tools/sanitize_lockfile`'s own header as well as in `ENVIRONMENT.md`.
 - **Run `dart run build_runner build` after touching a table or an `@riverpod`, and
   `flutter gen-l10n` after touching the ARB**, then commit the regenerated files.
 
-## Recently changed files (increment f2)
+## Recently changed files (increment f2, commit `0287dc2`)
 
 ```
 lib/core/utils/clock.dart                     NEW  nowProvider, read once per frame (D-041)
@@ -217,7 +265,8 @@ Phase 7** — to be taken on the commit immediately before the PDF dependency is
 afterwards the figures cannot be attributed. Phases 5 and 8 got the same "already delivered"
 paragraph, since both also describe work that partly landed in (f2).
 
-No code changed. 483/483 tests pass, analyzer clean.
+No code changed; the re-scope is commit `51fdb72`, touching `ROADMAP.md`, `DECISIONS.md` and this
+file only. 483/483 tests pass, analyzer clean.
 
 ## Next action
 
