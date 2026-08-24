@@ -145,12 +145,15 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increments (a) through (f1) complete, (a)–(f1) **accepted**; (f) was
-split in two after the owner pulled the create/edit forms forward (D-036). (f2) is complete and
-**awaiting review**; it is the last increment of the phase. See `CURRENT_STATE.md`.
+**Status:** `COMPLETED` 2026-08-24 — all seven increments delivered and **accepted** by the owner.
+(f) was split in two after the owner pulled the create/edit forms forward (D-036); (f2) was the last.
 
-Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
-stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
+Note for anyone planning Phase 2 or Phase 3: **(f1) delivered most of what those phases originally
+named.** Both entries were re-scoped accordingly (D-042) — read their "already delivered" lists
+before planning, and do not rebuild the customer or product screens.
+
+Phase 1 was delivered in reviewable increments (owner, 2026-08-23) -- six planned, seven delivered
+after (f) was split -- each reported and stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
 connection layer (D-020, D-023); it is built on.
 
 | # | Increment | Status |
@@ -162,6 +165,8 @@ connection layer (D-020, D-023); it is built on.
 | e | Theme, localization, routing, responsive shell | `COMPLETED` 2026-08-24 |
 | f1 | Logging wrapper, Customers and Products on real data | `COMPLETED` 2026-08-24 |
 | f2 | Invoices list and Dashboard, on real data | `COMPLETED` 2026-08-24 |
+
+All seven increments are **accepted**. Phase 1 is closed.
 
 (a) and (b) come before any UI work: everything else reads from the schema and the money engine, and
 both are far cheaper to correct now than after screens depend on them.
@@ -598,27 +603,91 @@ logging wrapper that keeps national IDs, phone numbers, names and amounts out of
 
 ## Phase 2 — Customers
 
-**Status:** `NOT_STARTED`
+**Status:** `NOT_STARTED` — **re-scoped 2026-08-24 (D-042)** after increment (f1) delivered most of
+what this phase originally named. Read the "already delivered" list before planning: rebuilding any
+of it would be work that produces no change.
 
-**Goal.** Full customer management: list with search, create, edit, soft delete, detail view.
+**Already delivered in Phase 1 (f1), accepted, and not to be rebuilt:**
 
-Includes normalization-insensitive Persian search (ی/ي, ک/ك, ZWNJ), Iranian mobile validation with
-`+98` / `0098` handling, and national-ID checksum validation.
+- The customer list — cards on mobile and tablet, virtualized table on desktop, query-level paging.
+- Normalization-insensitive Persian search (ی/ي, ک/ك, ZWNJ) through the one `searchKey`, over the
+  denormalized `search_name` column that create *and* update both rewrite (D-025, D-029).
+- Create and edit forms (D-036), with Iranian mobile validation including `+98` / `0098` handling,
+  and national-ID checksum validation that calls a failing value invalid and says **nothing
+  affirmative** about a passing one (D-030).
+- Soft delete behind Persian copy that explains what survives it (D-003).
+- Two distinct empty states, skeleton loaders, and a Persian-only error path.
 
-**Security note.** First storage of third-party personal identifiers — national ID, economic ID,
-phone numbers. These are the highest-sensitivity fields in the product and must never appear in any
-log or error message. Field-level length and character-class limits are enforced at the boundary.
+**Goal — what actually remains.**
+
+1. **The customer detail screen, at `/customers/:id`.** The one substantial piece still missing, and
+   the only screen in the product that answers "what is my history with this customer".
+   - The full record, with the national ID and economic ID rendered through
+     `formatIdentifierForDisplay` so they cannot reorder inside Persian text (§9).
+   - **That customer's invoices.** `InvoiceRepository.watchForCustomer` already exists and has **no
+     call site** — it was built in (d) for exactly this. Reuse `InvoiceCard` / `InvoiceTableRow` so
+     an invoice looks the same here as in the invoice list.
+   - Per-customer totals — billed, and still outstanding — as **SQL aggregates**, not by folding the
+     invoice list in Dart (§13). This needs one new repository read, scoped by customer.
+   - Register the route **with the screen**, never before it (D-021).
+   - The invoice rows stay **non-tappable** here until `/invoices/:id` exists in Phase 5, for the
+     same reason they are non-tappable in the invoice list. Assert the absence with a test, as (f2)
+     does, so it reads as deliberate.
+
+2. **Field-level limits at the form boundary** (§7: *"Enforce field-level limits (length, character
+   class) on customer/product free-text fields"*). This is a **real gap, not a formality.** The
+   schema carries `withLength` on every text column, but the forms do not, so a name longer than 120
+   characters is not prevented — it is accepted, sent to the repository, and rejected by drift with
+   an `InvalidDataException` that `describeFailure` does not recognise and therefore reports as the
+   generic "خطایی رخ داد". The user is told something went wrong and not which field or why.
+   - Add `maxLength` to each field, derived from **one** place shared with the table definition so
+     the two cannot drift apart — the schema limit and the form limit disagreeing silently is the
+     failure mode worth designing out.
+   - Constrain the character class where one is meaningful: the national ID and economic ID are
+     digits after normalization, and the field should not accept letters at all.
+   - Cover both this phase's forms and Phase 3's product form with the same helper.
+
+3. **Navigating from an invoice to its customer.** Once `/customers/:id` exists, the invoice list and
+   the dashboard's recent-invoice rows have somewhere to go. Whether they *should* link there is a
+   design call to make when the screen exists, not now.
+
+**Security note.** Unchanged from the original entry in what it covers, but the storage it warned
+about already happened in (f1): national IDs, economic IDs and phone numbers are accepted, stored in
+the encrypted database, and never logged. What this phase adds is the **boundary enforcement** that
+was named there and not built — length and character-class limits — plus one screen that displays
+those identifiers, which must use the bidi-isolating formatters rather than raw `Text`.
 
 ---
 
 ## Phase 3 — Products and Services
 
-**Status:** `NOT_STARTED`
+**Status:** `NOT_STARTED` — **re-scoped 2026-08-24 (D-042)**. Very little remains; this is now a
+small phase, and saying so is more useful than leaving a full-looking entry that is mostly done.
 
-**Goal.** Product and service catalogue: list, create, edit, soft delete, units, pricing.
+**Already delivered in Phase 1 (f1), accepted, and not to be rebuilt:** the catalogue list at all
+three tiers, normalization-insensitive search, create and edit forms, product/service type, free-text
+units, pricing, and soft delete behind Persian copy that explains the price snapshot (D-004). The
+original security note's one requirement — *"numeric input validation against the `kMaxAmountRial`
+ceiling begins here"* — **is already done**: the product form rejects an over-ceiling price with
+`validationAmountTooLarge` rather than truncating it (D-002).
 
-**Security note.** No new sensitive data classes; commercial pricing only. Numeric input validation
-against the `kMaxAmountRial` ceiling begins here.
+**Goal — what actually remains.**
+
+1. **Field-level limits at the form boundary**, applied to the product form using the same helper
+   Phase 2 builds. Same gap, same failure: an over-long name reaches drift and comes back as the
+   generic Persian error.
+
+**Deliberately not in this phase.**
+
+- **A product detail screen.** §11 lists the route, but the edit form already shows every field a
+  product has. The only question a detail screen could answer that the form cannot is "where has
+  this been sold, and at what price" — and that is a *report*, which belongs in **Phase 8** with the
+  rest of them. Building a detail screen here to satisfy the route list would produce a page that
+  duplicates the form. If Phase 8's per-product sales figures want a home, that is where the route
+  gets registered, with the screen, per D-021.
+
+**Security note.** No new sensitive data classes; commercial pricing only. The amount ceiling is
+already enforced. This phase adds no new input surface beyond tightening one that exists.
 
 ---
 
@@ -643,6 +712,14 @@ invoice-number sequence allocation must be transactional to avoid a race.
 
 **Goal.** Invoice list with filters, detail view, status lifecycle, cancellation, and payment
 recording with derived `partiallyPaid` / `paid` status recomputed on every payment write.
+
+**Partly delivered already, and not to be rebuilt.** The invoice **list** landed in Phase 1 (f2) —
+both layouts, query-level paging, status badges and the derived `overdue`. The whole write side
+landed in (d): `issue`, `cancel`, `softDeleteDraft`, `PaymentRepository.record` and the derived-status
+recomputation inside the payment's own transaction all exist and are tested. What remains here is the
+**detail screen** at `/invoices/:id` (registered with the screen, per D-021 — the list's rows are
+deliberately non-tappable until it exists, asserted by a test), the **filters** over status, customer
+and date range, and the **UI** for recording a payment and for cancelling an invoice.
 
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
 a data-integrity control: only `draft` invoices are editable or deletable.
@@ -676,6 +753,31 @@ Exported files must be covered by `.gitignore`.
 Toman/Rial and a professional invoice layout. The renderer receives a fully computed, already
 formatted view model and never recomputes totals.
 
+**Entry gate — take the size and startup baseline BEFORE adding the PDF dependency.**
+
+The PDF library is the heaviest thing this application will ever add. Measured only afterwards, the
+figures are unattributable: whatever the binary weighs and however long it takes to start, there is
+no way to say how much of it is the renderer and how much is everything else that accumulated since
+Phase 1. The baseline is worth almost nothing to take and cannot be recovered later.
+
+Take it on the commit **immediately before** the `pubspec.yaml` entry, record the commit hash, and
+re-take it on the commit immediately after the renderer works. Both sets go in `DECISIONS.md` as part
+of the dependency justification §2 already requires.
+
+What to measure — release builds only; a debug build's size and startup time mean nothing:
+
+| Measurement | How |
+|---|---|
+| Android APK, arm64 | `flutter build apk --release --split-per-abi`, record the byte size of the `arm64-v8a` APK |
+| Windows bundle | `flutter build windows --release`, record the total byte size of the Release directory |
+| Android cold start | `adb shell am start -W -n <package>/.MainActivity`, record `TotalTime` over five cold starts, taken after `adb shell am force-stop` each time |
+
+Deferred, deliberately: taking it **now**. The application is close to empty, so today's numbers
+would describe a shell rather than a product, and a baseline nobody trusts is worse than none — it
+invites attributing later growth to whatever happened to be measured. This gate is the right place
+for it (owner, 2026-08-24).
+
+
 **Security note.** Generated PDFs contain full customer and financial data and are written to
 user-accessible storage. Temporary files must be cleaned up, and any share/print intent on Android is
 a new outbound data surface.
@@ -687,6 +789,14 @@ a new outbound data surface.
 **Status:** `NOT_STARTED`
 
 **Goal.** Real aggregates over Jalali periods, computed in SQL rather than Dart loops.
+
+**Partly delivered already.** The **dashboard** landed in Phase 1 (f2): four live SQL aggregates over
+Jalali month boundaries, composed into one `DashboardSummary`, plus a recent-invoices list. This
+phase is now about **گزارش‌ها** — the reports destination — rather than the dashboard, and the two
+things it must add that the dashboard deliberately does not have are **period selection** (the
+dashboard covers the current Jalali month only) and **per-entity breakdowns**: sales by customer, and
+**sales by product**, which is where the product-usage question moved when Phase 3 was re-scoped
+(D-042). Registering `/products/:id` belongs here too, if that breakdown wants a per-product page.
 
 **This is where "گزارش‌ها" enters the product.** Per D-021 it is omitted from navigation entirely
 until this phase — no disabled item, no coming-soon placeholder, and no registered route. Adding the

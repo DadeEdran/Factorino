@@ -8,8 +8,9 @@
 ## Phase
 
 **Phase 0 — Environment and Setup · `COMPLETED`**
-**Phase 1 — Foundation and Architecture · `IN_PROGRESS`** — every increment is built; (f2) awaits
-review. **When (f2) is accepted, Phase 1 is complete.**
+**Phase 1 — Foundation and Architecture · `COMPLETED`** — all seven increments accepted by the owner
+(2026-08-24).
+**Phase 2 — Customers · `NOT_STARTED`** — re-scoped (D-042); awaiting the owner's go-ahead.
 
 | # | Increment | Status |
 |---|---|---|
@@ -19,7 +20,7 @@ review. **When (f2) is accepted, Phase 1 is complete.**
 | d | Repositories and domain models | `COMPLETED` — **accepted** (`36493d3`) |
 | e | Theme, localization, routing, responsive shell | `COMPLETED` — **accepted** (`ea3b7b0`) |
 | f1 | Logging wrapper; Customers and Products on real data | `COMPLETED` — **accepted** (`30e53a3`) |
-| f2 | Invoices list and Dashboard, on real data | `COMPLETED` — **awaiting review** |
+| f2 | Invoices list and Dashboard, on real data | `COMPLETED` — **accepted** (`0287dc2`) |
 
 (f) was split in two after the owner pulled the create/edit forms forward into it (D-036).
 
@@ -209,23 +210,34 @@ docs/*                                        D-039..D-041; ROADMAP; ARCHITECTUR
 
 ## Last completed action
 
-Delivered Phase 1 increment (f2): the Invoices list and the Dashboard on real data, five live SQL
-aggregates behind them, and the two data-layer defects listed above corrected. Verified on the real
-Windows build with every dashboard figure reconciled by hand against the rows that produced it.
+Increment (f2) was accepted and **Phase 1 is complete**. Then, on the owner's instruction, re-scoped
+**Phase 2** and **Phase 3** in `ROADMAP.md` to what increment (f1) did not already deliver, recorded
+the re-scope as **D-042**, and added the size/startup baseline to `ROADMAP.md` as an **entry gate on
+Phase 7** — to be taken on the commit immediately before the PDF dependency is added, because
+afterwards the figures cannot be attributed. Phases 5 and 8 got the same "already delivered"
+paragraph, since both also describe work that partly landed in (f2).
 
-483/483 tests pass, analyzer clean, Windows builds and runs.
+No code changed. 483/483 tests pass, analyzer clean.
 
 ## Next action
 
-**Await the owner's review of increment (f2).** If it is accepted, **Phase 1 is complete** — mark it
-`COMPLETED` in `ROADMAP.md` and `CURRENT_STATE.md`, and open **Phase 2 — Customers**.
+**Await the owner's confirmation before starting Phase 2 proper.** The re-scope is reported and
+recorded; the owner said they would confirm before work begins.
 
-Note before opening Phase 2: most of what Phase 2's scope names is already built in (f1) — the list,
-search, create/edit forms and soft delete all exist and are accepted. Phase 2 should be re-scoped
-against what is actually there rather than rebuilding it: the customer **detail** screen (with that
-customer's invoices, which `watchForCustomer` already serves), field-level validation limits (§7),
-and the "this customer cannot be hard-deleted" explanation where it is still missing. Put that
-re-scoping question to the owner rather than deciding it alone.
+When confirmed, Phase 2 is exactly two things — see `ROADMAP.md` and D-042, and **read the
+"already delivered" list there first**:
+
+1. **The customer detail screen at `/customers/:id`.** Start from
+   `InvoiceRepository.watchForCustomer`, which already exists and has no call site — it was built in
+   (d) for this screen. Reuse `InvoiceCard` / `InvoiceTableRow`; per-customer totals are SQL
+   aggregates, needing one new repository read. Register the route **with** the screen (D-021), and
+   keep the invoice rows non-tappable until `/invoices/:id` exists in Phase 5 — asserting that
+   absence with a test, as (f2) does.
+2. **Field-level limits at the form boundary** (§7), shared from one place with the table
+   definitions, and applied to the product form too (which is all that remains of Phase 3).
+
+**Do not rebuild the customer list, its search, its forms or its soft delete.** They shipped in (f1)
+and were accepted. This is the specific mistake D-042 exists to prevent.
 
 ### Standing rules that outlive this handoff
 

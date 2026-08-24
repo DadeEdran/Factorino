@@ -1637,3 +1637,55 @@ same UTC date, which is exactly what an instant comparison gets wrong.
 wrong the moment the clock passed midnight and nothing wrote to the row. And it applies only to
 `unpaid` and `partiallyPaid` — a paid or cancelled invoice past its due date is paid or cancelled,
 because nobody is late on it.
+
+---
+
+## D-042 — Phases 2 and 3 are re-scoped to what Phase 1 did not already deliver
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · **Owner's ruling**
+
+**Decision.** `ROADMAP.md`'s entries for **Phase 2 — Customers** and **Phase 3 — Products and
+Services** are rewritten to name only the work that genuinely remains. Each now opens with an
+explicit "already delivered in Phase 1, and not to be rebuilt" list. Phase 5 and Phase 8 get the same
+treatment in one paragraph each, for the same reason.
+
+**Reason.** Increment (f1) built the customer and product screens end to end — list,
+normalization-insensitive search, create and edit forms, soft delete with its Persian explanation,
+mobile validation, national-ID checksum — because the owner pulled the create/edit forms forward
+into Phase 1 (D-036). Phase 2 and Phase 3 were written before that happened and still described all
+of it as future work.
+
+A roadmap entry that describes finished work is not merely stale. The project spec tells a fresh
+session to read the roadmap and continue from it, and §15 forbids recreating existing architecture —
+so an entry saying "build the customer list with search" is an instruction to rebuild a screen that
+exists, issued to the one reader least able to tell. The cost is not a wasted afternoon; it is a
+second implementation of a screen, diverging from the first, with the guard tests passing on both.
+
+**What actually remains, and why each item is real rather than invented.**
+
+- **The customer detail screen** (`/customers/:id`). The only substantial piece missing. The strongest
+  evidence it is real: `InvoiceRepository.watchForCustomer` was built in (d) and **has no call site**
+  — it was designed for exactly this screen and nothing else has needed it since.
+- **Field-level limits at the form boundary** (§7). Not a formality. The schema carries `withLength`
+  on every text column and the forms carry nothing, so an over-long name is accepted by the form,
+  rejected by drift, and reported to the user as the generic "خطایی رخ داد" — the failure is real,
+  the message is useless, and the user is not told which field. The limits must come from one place
+  shared with the table definition, because a schema limit and a form limit that disagree silently is
+  the failure worth designing out rather than fixing twice.
+
+**What was removed from Phase 3, and where it went.** Phase 3's original entry is otherwise complete,
+including the one requirement in its security note — the `kMaxAmountRial` ceiling is already enforced
+on the price field. §11 lists a product-detail route, but the edit form already shows every field a
+product has; the only question a detail screen could answer that the form cannot is "where has this
+been sold, and at what price", which is a **report**. It moves to Phase 8 with the other reports, and
+`/products/:id` gets registered there, with the screen, per D-021. Building a detail page here to
+satisfy a route list would produce a page that duplicates the form — fake functionality in the
+precise sense §15 prohibits, because it would look finished.
+
+**Alternatives considered.** Leave the entries and rely on `CURRENT_STATE.md` to warn the next
+session — rejected: `CURRENT_STATE` is about the current increment and turns over every session,
+while the roadmap is the durable record; the warning would be gone in two sessions and the wrong
+entry would still be there. Merge Phase 3 into Phase 2, since one item remains — rejected: the phase
+numbering is referenced from the project spec and from a dozen cross-references, and renumbering to
+save one heading trades a real cost for a cosmetic gain. A phase that is honestly small is better
+recorded as small than dissolved.
