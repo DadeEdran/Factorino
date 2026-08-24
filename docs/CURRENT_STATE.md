@@ -27,29 +27,36 @@ those items are built, so both phases are closed.
 ## Where the project stands, in one paragraph
 
 **Phase 4 increment (a) is delivered and awaiting review; nothing else is in progress.** Six screens
-work end to end on real data — Dashboard, Invoices,
-Customers, **Customer detail**, Products, Settings — inside a Persian, RTL, three-tier responsive
-shell, over an encrypted SQLite database. Customers and products can be created, searched, edited
-and soft-deleted; every form field now carries the same length and character-class limits its column
-does. **There is still no UI to create an invoice** — that is Phase 4, and it is the one thing
-standing between this and a usable product. The invoice write path, the money engine, Jalali periods,
-numbering and payment status all exist and are tested in the data layer.
+work end to end on real data — Dashboard, Invoices, Customers, **Customer detail**, Products,
+Settings — inside a Persian, RTL, three-tier responsive shell, over an encrypted SQLite database.
+Customers and products can be created, searched, edited and soft-deleted; every form field now
+carries the same length and character-class limits its column does. **There is still no UI to create
+an invoice** — increment (a) built the arithmetic spine behind it and nothing visible, so the three
+remaining increments (b, c, d) are what closes the gap. The invoice write path, the money engine,
+Jalali periods, numbering and payment status all exist and are tested in the data layer.
 
-**Working tree is clean.** `main`, everything committed.
+**Working tree is clean.** `main` at **`bf4c02f`** "Phase 4 (a): the invoice draft model, and one
+path to the arithmetic"; `d8682ee` is Phases 2 and 3. Nothing uncommitted, nothing half-done.
+
+**Increment (a) has not been accepted** — it was reported and the owner stopped the session there.
+Do not treat it as approved, and do not start (b) without a go-ahead.
 
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)
-flutter test:               PASS   (584/584, was 529)
-Windows build:              PASS   flutter build windows --debug
+flutter analyze:            PASS   (No issues found)          as of bf4c02f
+flutter test:               PASS   (584/584, was 529)         as of bf4c02f
+Windows build:              PASS   flutter build windows --debug   run during Phases 2/3, before (a)
 Windows run:                PASS   customer detail exercised against the real encrypted database
                                    at 1400x900 and 400x800, light and dark, figures reconciled
-Android build:              PASS   flutter build apk --debug
+Android build:              PASS   flutter build apk --debug       run during Phases 2/3, before (a)
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
 ```
+
+Increment (a) added no UI and no dependency, so the platform builds were **not** re-run after it.
+Re-run them before marking Phase 4 complete (§15 step 6).
 
 ## What Phase 4 increment (a) delivered
 
@@ -75,6 +82,26 @@ UI increments will hang off.
   applied, with a 1-based line number.
 - **`InvoiceEditor`** watches `appSettingsProvider` rather than capturing it, so the tax default and
   rounding unit follow a settings change mid-edit.
+
+### The surface increment (b) builds on
+
+Four files, all documented in place — read them rather than re-deriving the design:
+
+```
+lib/features/invoices/domain/invoice_editor_state.dart      InvoiceEditorState, InvoiceLineEntry
+lib/features/invoices/domain/invoice_warning_message.dart   invoiceWarningMessage(s)
+lib/features/invoices/application/invoice_editor.dart       InvoiceEditor (family, keyed by openedAt)
+lib/core/money/invoice_calculator.dart                      the engine; grossTotal is new
+```
+
+The controller's intents: `selectCustomer`, `setIssueDate`, `setDueDate`, `setNotes`,
+`setDiscountAmount`, `setDiscountPercent`, `setTaxRate`, and for lines `addLine`, `replaceLine`,
+`updateLine`, `removeLine`, `moveLine`.
+
+**It has no `save` or `issue` yet, and that is deliberate.** Persistence lands in increment (c),
+because it cannot be written before the numbering change D-048 proposes — a `save` built on today's
+`create()` would allocate a number for every draft, which is the defect (c) exists to fix. Do not add
+one in (b).
 
 ## What Phase 2 and Phase 3 delivered
 
@@ -176,7 +203,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 | # | Issue | Impact |
 |---|---|---|
-| 1 | `onUpgrade` throws by design — no v1→v2 path exists | The first schema change needs a migration step **and** a test (§6, §14). |
+| 1 | `onUpgrade` throws by design — no v1→v2 path exists | The first schema change needs a migration step **and** a test (§6, §14). **Issue 17 is what will trigger it.** |
 | 2 | The database opens on the main isolate | Phase 13. The `setup` closure must stay isolate-sendable — `ARCHITECTURE.md` §B.5. |
 | 3 | The national-ID checksum cannot catch every transposition | Official algorithm, not a defect. Now enforced by test over the ARB, the form **and** the detail screen. |
 | 4 | `watchDetail` re-reads on any invoice-table change | Correct but not minimal. Revisit in Phase 13. |
@@ -190,6 +217,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 14 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
 | 15 | Android manifest hardening not done | Phase 9. |
 | 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
+| 17 | **Creating a draft allocates an invoice number, so an abandoned draft burns one permanently** | Measured, not inferred: `INV-1405-0001` -> abandon -> `INV-1405-0002`. The unique index deliberately covers soft-deleted rows (D-013), which is right for an issued invoice and wrong for a draft nobody saw. Fixed in Phase 4(c) per **D-048** (`PROPOSED`), which needs the three number columns nullable — `schemaVersion = 2` and the project's first migration. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -309,7 +337,11 @@ UI. 584 tests pass, analyzer clean. Both new guards were verified to bite before
 
 ## Next action
 
-**Await the owner's review of increment (a) before starting (b).**
+**Do not write code. Summarize increment (a) for the owner, put the two open rulings below to them,
+and wait for a go-ahead on (b).**
+
+The full (a) write-up is in `ROADMAP.md` under Phase 4 and the reasoning is in D-046, D-047 and
+D-048 — a fresh session can report from those without re-deriving anything.
 
 Two things need a ruling before (c), and one of them is a schema change:
 
