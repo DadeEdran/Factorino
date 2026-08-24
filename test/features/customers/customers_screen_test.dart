@@ -454,6 +454,9 @@ class _FakeCustomerRepository implements CustomerRepository {
   Future<int> count() async => _all.length;
 
   @override
+  Stream<int> watchCount() => Stream<int>.value(_all.length);
+
+  @override
   Future<Customer> create(CustomerDraft draft) =>
       throw UnimplementedError('not exercised by these tests');
 

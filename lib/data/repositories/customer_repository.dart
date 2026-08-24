@@ -33,6 +33,16 @@ abstract interface class CustomerRepository {
 
   Future<int> count();
 
+  /// The number of customers, as a **live** query.
+  ///
+  /// A `Future` behind a provider answers once and is then wrong: the next
+  /// create or delete does not invalidate it, so a dashboard tile keeps showing
+  /// a number that was true a minute ago. A count on a dashboard is either live
+  /// or it is a lie with a plausible value, which is worse than no tile at all.
+  /// Counted in SQL through `countAlive`, never by taking the length of a list
+  /// (§13).
+  Stream<int> watchCount();
+
   /// Creates a customer and returns it as stored.
   ///
   /// The repository normalizes the mobile number and writes `search_name`; a

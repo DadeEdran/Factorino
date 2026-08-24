@@ -67,6 +67,9 @@ class DriftCustomerRepository implements CustomerRepository {
   Future<int> count() => _db.countAlive(_db.customers).getSingle();
 
   @override
+  Stream<int> watchCount() => _db.countAlive(_db.customers).watchSingle();
+
+  @override
   Future<Customer> create(CustomerDraft draft) async {
     final row = await _db
         .into(_db.customers)

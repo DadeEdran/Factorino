@@ -50,6 +50,7 @@ Future<void> pumpScreen(
       // nothing: the assertion is that the app asked to go there, not what is
       // on the other side.
       for (final String path in <String>[
+        '/invoices',
         '/customers',
         '/customers/new',
         '/customers/:id/edit',

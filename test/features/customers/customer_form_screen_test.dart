@@ -237,6 +237,9 @@ class _RecordingCustomerRepository implements CustomerRepository {
   Future<int> count() async => created.length;
 
   @override
+  Stream<int> watchCount() => Stream<int>.value(created.length);
+
+  @override
   Future<Customer?> findById(String id) async => null;
 
   @override

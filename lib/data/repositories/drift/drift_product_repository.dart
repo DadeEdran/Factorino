@@ -55,6 +55,9 @@ class DriftProductRepository implements ProductRepository {
   Future<int> count() => _db.countAlive(_db.products).getSingle();
 
   @override
+  Stream<int> watchCount() => _db.countAlive(_db.products).watchSingle();
+
+  @override
   Future<Product> create(ProductDraft draft) async {
     final row = await _db
         .into(_db.products)

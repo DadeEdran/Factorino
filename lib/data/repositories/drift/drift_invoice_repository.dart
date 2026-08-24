@@ -10,6 +10,7 @@ import '../../models/app_settings.dart';
 import '../../models/invoice.dart';
 import '../../models/invoice_detail.dart';
 import '../../models/invoice_draft.dart';
+import '../../models/invoice_list_item.dart';
 import '../../models/invoice_number.dart';
 import '../../models/invoice_status.dart';
 import '../invoice_repository.dart';
@@ -69,6 +70,41 @@ class DriftInvoiceRepository implements InvoiceRepository {
   }
 
   @override
+  Stream<List<InvoiceListItem>> watchList({int limit = 100, int offset = 0}) {
+    // One join, not one query per row. `_aliveQuery` already carries the
+    // ordering, the soft-delete filter and the LIMIT, and `join` keeps all
+    // three -- drift copies them onto the joined statement -- so the paging
+    // still reaches SQL exactly as it does for the plain list.
+    //
+    // The customers side is deliberately **not** filtered by `deleted_at`. A
+    // customer referenced by an invoice is soft-deleted only, never removed
+    // (D-003), and the Persian copy on the delete dialog promises the invoices
+    // survive untouched. Filtering here would drop those invoices out of the
+    // list entirely the moment their customer was deleted -- making that
+    // promise false, silently, and only for the users who took it at its word.
+    final JoinedSelectStatement<HasResultSet, dynamic> query =
+        _aliveQuery(limit: limit, offset: offset).join(
+          <Join<HasResultSet, dynamic>>[
+            innerJoin(
+              _db.customers,
+              _db.customers.id.equalsExp(_db.invoices.customerId),
+            ),
+          ],
+        );
+
+    return query.watch().map(
+      (List<TypedResult> rows) => rows
+.map(
+            (TypedResult row) => InvoiceListItem(
+              invoice: invoiceFromRow(row.readTable(_db.invoices)),
+              customerName: row.readTable(_db.customers).fullName,
+            ),
+          )
+.toList(),
+    );
+  }
+
+  @override
   Future<Invoice?> findById(String id) async {
     final row = await _findRow(id);
     return row == null ? null : invoiceFromRow(row);
@@ -76,6 +112,62 @@ class DriftInvoiceRepository implements InvoiceRepository {
 
   @override
   Future<int> count() => _db.countAlive(_db.invoices).getSingle();
+
+  @override
+  Stream<int> watchCount() => _db.countAlive(_db.invoices).watchSingle();
+
+  @override
+  Stream<int> watchIssuedCountInPeriod(InstantRange period) {
+    final Expression<int> counter = _db.invoices.id.count();
+    final JoinedSelectStatement<HasResultSet, dynamic> query =
+        _db.selectOnlyAlive(_db.invoices)
+..addColumns(<Expression<Object>>[counter])
+..where(_issuedInPeriod(period));
+
+    // Counted in SQL, over exactly the population `totalIssuedRial` sums, so
+    // the two tiles that sit beside each other describe the same documents.
+    return query.watchSingle().map((TypedResult row) => row.read(counter) ?? 0);
+  }
+
+  @override
+  Stream<int> watchOutstandingRial() {
+    // What is still owed, in one statement:
+    //
+    //   SELECT SUM(grand_total_rial
+    //              - COALESCE((SELECT SUM(amount_rial) FROM payments
+    //                          WHERE deleted_at IS NULL
+    //                            AND invoice_id = invoices.id), 0))
+    //   FROM invoices
+    //   WHERE deleted_at IS NULL AND status IN (unpaid, partiallyPaid)
+    //
+    // A correlated subquery rather than a join to payments, because joining
+    // would multiply each invoice's grand total by its number of payment rows
+    // -- a defect invisible until an invoice takes its second instalment, and
+    // one that then overstates the figure the user trusts most.
+    //
+    // One statement rather than two streams subtracted in Dart: two streams
+    // settle at different moments, and in between the tile would show a number
+    // belonging to neither state.
+    final Expression<int> paidOnThisInvoice = subqueryExpression<int>(
+      _db.selectOnlyAlive(_db.payments)
+..addColumns(<Expression<Object>>[_db.payments.amountRial.sum()])
+..where(_db.payments.invoiceId.equalsExp(_db.invoices.id)),
+    );
+    final Expression<int> owed =
+        (_db.invoices.grandTotalRial -
+                coalesce<int>(<Expression<int>>[
+                  paidOnThisInvoice,
+                  const Constant<int>(0),
+                ]))
+.sum();
+
+    final JoinedSelectStatement<HasResultSet, dynamic> query =
+        _db.selectOnlyAlive(_db.invoices)
+..addColumns(<Expression<Object>>[owed])
+..where(_db.invoices.status.isInValues(kOutstandingInvoiceStatuses));
+
+    return query.watchSingle().map((TypedResult row) => row.read(owed) ?? 0);
+  }
 
   @override
   Future<InvoiceDetail?> findDetail(String id) => _detail(id);
@@ -93,18 +185,41 @@ class DriftInvoiceRepository implements InvoiceRepository {
 
   @override
   Future<int> totalIssuedRial(InstantRange period) async {
-    final total = _db.invoices.grandTotalRial.sum();
-    final query = _db.selectOnlyAlive(_db.invoices)
-..addColumns(<Expression<Object>>[total])
-..where(
-        _db.invoices.status.equalsValue(InvoiceStatus.cancelled).not() &
-            _db.invoices.issueDate.isBiggerOrEqualValue(period.startMillis) &
-            _db.invoices.issueDate.isSmallerThanValue(period.endMillis),
-      );
+    final Expression<int> total = _db.invoices.grandTotalRial.sum();
 
     // Aggregated in SQL rather than by summing rows in Dart (§13).
-    final row = await query.getSingle();
+    final TypedResult row = await _issuedTotalQuery(period, total).getSingle();
     return row.read(total) ?? 0;
+  }
+
+  @override
+  Stream<int> watchTotalIssuedRial(InstantRange period) {
+    final Expression<int> total = _db.invoices.grandTotalRial.sum();
+    // Built by the same helper as the one-shot read above, so the live figure
+    // and the resolved one cannot come to answer differently.
+    return _issuedTotalQuery(
+      period,
+      total,
+    ).watchSingle().map((TypedResult row) => row.read(total) ?? 0);
+  }
+
+  JoinedSelectStatement<HasResultSet, dynamic> _issuedTotalQuery(
+    InstantRange period,
+    Expression<int> total,
+  ) {
+    return _db.selectOnlyAlive(_db.invoices)
+..addColumns(<Expression<Object>>[total])
+..where(_issuedInPeriod(period));
+  }
+
+  /// Issued inside [period] -- drafts and cancellations excluded (D-039).
+  ///
+  /// The range arrives already computed in the Jalali calendar (D-006); this
+  /// only applies it, half-open exactly as it is defined.
+  Expression<bool> _issuedInPeriod(InstantRange period) {
+    return _db.invoices.status.isInValues(kIssuedInvoiceStatuses) &
+        _db.invoices.issueDate.isBiggerOrEqualValue(period.startMillis) &
+        _db.invoices.issueDate.isSmallerThanValue(period.endMillis);
   }
 
   // ---- writes -------------------------------------------------------------
@@ -310,7 +425,13 @@ class DriftInvoiceRepository implements InvoiceRepository {
     final invoiceRow = await _findRow(id);
     if (invoiceRow == null) return null;
 
-    final customerRow = await (_db.selectAlive(
+    // soft-delete-exempt: an invoice's customer is part of the document. §6
+    // guarantees a referenced customer is soft-deleted only, and the delete
+    // dialog tells the user in Persian that their invoices survive untouched.
+    // Filtering on deleted_at here made an invoice unopenable the moment its
+    // customer was deleted -- the promise broken silently, and only for the
+    // users who took the app at its word.
+    final customerRow = await (_db.select(
       _db.customers,
     )..where((r) => r.id.equals(invoiceRow.customerId))).getSingleOrNull();
     if (customerRow == null) return null;

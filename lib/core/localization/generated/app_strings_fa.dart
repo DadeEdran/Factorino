@@ -61,7 +61,11 @@ class AppStringsFa extends AppStrings {
   String get dashboardOutstanding => 'مانده دریافتنی';
 
   @override
-  String get dashboardInvoiceCount => 'فاکتورهای این ماه';
+  String get dashboardInvoiceCount => 'فاکتورهای صادرشده';
+
+  @override
+  String get dashboardOutstandingCaption =>
+      'فاکتورهای پرداخت‌نشده و پرداخت جزئی';
 
   @override
   String get dashboardCustomerCount => 'مشتریان';
@@ -217,6 +221,9 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get actionLoadMore => 'نمایش بیشتر';
+
+  @override
+  String get actionViewAll => 'مشاهدهٔ همه';
 
   @override
   String get actionMore => 'گزینه‌های بیشتر';

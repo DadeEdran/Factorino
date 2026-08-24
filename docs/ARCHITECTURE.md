@@ -240,7 +240,7 @@ lib/
     widgets/        # shared design-system components
     responsive/     # breakpoints + adaptive shell
     errors/         # failure types, error mapping
-    utils/
+    utils/          # uuid, ListQuery paging window, the clock provider
   data/
     database/       # Drift tables, DAOs, migrations, connection setup
     models/         # domain entities (not Drift rows)
@@ -279,11 +279,21 @@ providers, never a repository or a database directly. `appSettingsProvider` is t
 - The database and repositories are exposed as providers, which makes them overridable in tests
   against an in-memory database.
 
-## B.4 Data flow — **built** (increment d), minus the widget half
+## B.4 Data flow — **built** (increments d and f)
 
 Reads are reactive: drift query streams surface through repositories as streams of **domain models**
-(`watchAll`, `watchSearch`, `watchInPeriod`, `watchDetail`). They will reach widgets as `AsyncValue`
-once there are widgets.
+(`watchAll`, `watchSearch`, `watchInPeriod`, `watchDetail`, `watchList`), and reach widgets as
+`AsyncValue` through a feature provider. A widget never holds a repository.
+
+**Aggregates are live too, and that is not a detail.** `watchCount`, `watchTotalIssuedRial`,
+`watchIssuedCountInPeriod` and `watchOutstandingRial` are streams rather than futures because a
+`Future` behind a provider answers once and is then quietly wrong: the next write does not invalidate
+it, so a dashboard tile keeps showing a number that was true a minute ago. A count on a dashboard is
+either live or it is a plausible lie, which is worse than no tile at all.
+
+The dashboard composes them into a single `DashboardSummary` by awaiting each stream provider's
+`.future`, so the whole page has one loading state, one error state, and one moment: it cannot show a
+sales total from before a write beside a count from after it.
 
 Writes own their transaction boundary, and two of them are the reason the boundary is there:
 
@@ -296,7 +306,20 @@ Writes own their transaction boundary, and two of them are the reason the bounda
   a crash inside that window would make it permanent.
 
 Reporting queries take an `InstantRange` from `core/date/` rather than a month number, which keeps
-the Jalali decision in one place instead of in every query, and aggregate in SQL (§13).
+the Jalali decision in one place instead of in every query, and aggregate in SQL (§13). The dashboard
+gets its range from `dashboardPeriodProvider`, which is `jalaliMonthOf(now)` and nothing else — the
+only place in the application that decides what "این ماه" means.
+
+**One reading of the clock.** "Now" is `nowProvider` (`core/utils/clock.dart`), read once per frame
+and passed down (D-041). Two independent `DateTime.now()` calls inside one frame can straddle
+midnight, and the visible result would be a tile reporting one Jalali month while the list beneath it
+ages an invoice into the next.
+
+**What the presentation layer is not given.** `InvoiceListItem` carries the invoice and the
+customer's name — and no payment information. The `paid`/`partiallyPaid` determination is made in
+`PaymentRepository` inside the payment's own transaction and persisted (§6); the UI cannot arrive at
+a second, contradicting answer because it is not handed the inputs. The one thing it *does* derive is
+`overdue`, which is not a stored status and must not be.
 
 ## B.5 Database design
 

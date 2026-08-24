@@ -39,6 +39,30 @@
 # commit, whatever you ran**. The pre-commit hook is the backstop and it does
 # fire — this script is what makes satisfying it one reproducible command.
 #
+# ORDER MATTERS, AND IT IS THE OPPOSITE OF THE OBVIOUS ONE
+#
+# Run this LAST, after every command that resolves — never before one.
+#
+# The rewrite is what makes the next resolve reach for the network. pub does not
+# accept a pub.dev entry as satisfying a mirror-sourced lock; it treats it as a
+# different source and re-resolves. So a sanitized lockfile followed by
+# `dart run build_runner build` sends pub to pub.dev, which is unreachable from
+# this machine, and the build hangs at "Resolving dependencies..." with no error
+# and no timeout of its own.
+#
+# That is not hypothetical. It cost most of a session (2026-08-24) and it cost
+# part of another (2026-08-24, increment f2), because the symptom is "code
+# generation hangs forever" rather than "the network is down" — `build_runner`
+# resolves before it generates, so the failure surfaces in the wrong place.
+#
+# Right:   dart pub get --offline && dart run build_runner build
+#          flutter gen-l10n && sh tools/sanitize_lockfile
+# Wrong:   sh tools/sanitize_lockfile && dart run build_runner build
+#
+# When the mirror itself is unreachable, `dart pub get --offline` resolves the
+# whole graph from the local pub cache with no network at all. See
+# docs/ENVIRONMENT.md, "When the mirror is down".
+#
 # Measured: running `pub get` against an already-sanitized lockfile does not
 # accept it. pub treats a pub.dev entry as a different source from a mirror
 # entry, re-resolves, and reports "Changed N dependencies". The contamination

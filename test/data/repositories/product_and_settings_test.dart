@@ -81,6 +81,7 @@ void main() {
 
       expect(await harness.products.findById(product.id), isNull);
       expect(await harness.products.count(), 0);
+      expect(await harness.products.watchCount().first, 0);
 
       // soft-delete-exempt: proving the row survives is the point.
       final rows = await harness.db.select(harness.db.products).get();

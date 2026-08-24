@@ -196,11 +196,17 @@ abstract class AppStrings {
   /// **'مانده دریافتنی'**
   String get dashboardOutstanding;
 
-  /// Dashboard tile: number of invoices issued in the current Jalali month.
+  /// Dashboard tile: how many invoices were issued in the period named by the caption beneath it. It counts exactly the invoices dashboardSalesThisMonth sums -- drafts and cancellations excluded (D-039) -- so the two tiles reconcile. The title says 'issued' rather than 'this month' because the caption already carries the month.
   ///
   /// In fa, this message translates to:
-  /// **'فاکتورهای این ماه'**
+  /// **'فاکتورهای صادرشده'**
   String get dashboardInvoiceCount;
+
+  /// Caption under the outstanding-balance tile, naming which invoices it covers. Without it the figure is a number the user cannot reconcile against anything.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتورهای پرداخت‌نشده و پرداخت جزئی'**
+  String get dashboardOutstandingCaption;
 
   /// Dashboard tile: number of customers on record.
   ///
@@ -501,6 +507,12 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'نمایش بیشتر'**
   String get actionLoadMore;
+
+  /// Opens the full list behind a short preview of it -- the dashboard's recent-invoices section.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشاهدهٔ همه'**
+  String get actionViewAll;
 
   /// Tooltip for a row's overflow menu.
   ///

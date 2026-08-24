@@ -71,9 +71,13 @@
   "@dashboardOutstanding": {
     "description": "Dashboard tile: the total still owed across unpaid invoices."
   },
-  "dashboardInvoiceCount": "فاکتورهای این ماه",
+  "dashboardInvoiceCount": "فاکتورهای صادرشده",
   "@dashboardInvoiceCount": {
-    "description": "Dashboard tile: number of invoices issued in the current Jalali month."
+    "description": "Dashboard tile: how many invoices were issued in the period named by the caption beneath it. It counts exactly the invoices dashboardSalesThisMonth sums -- drafts and cancellations excluded (D-039) -- so the two tiles reconcile. The title says 'issued' rather than 'this month' because the caption already carries the month."
+  },
+  "dashboardOutstandingCaption": "فاکتورهای پرداخت‌نشده و پرداخت جزئی",
+  "@dashboardOutstandingCaption": {
+    "description": "Caption under the outstanding-balance tile, naming which invoices it covers. Without it the figure is a number the user cannot reconcile against anything."
   },
   "dashboardCustomerCount": "مشتریان",
   "@dashboardCustomerCount": {
@@ -198,6 +202,10 @@
   "actionLoadMore": "نمایش بیشتر",
   "@actionLoadMore": {
     "description": "Loads the next page. Lists are paginated at the query level, so this widens the window the database is asked for rather than filtering something already loaded."
+  },
+  "actionViewAll": "مشاهدهٔ همه",
+  "@actionViewAll": {
+    "description": "Opens the full list behind a short preview of it -- the dashboard's recent-invoices section."
   },
   "actionMore": "گزینه‌های بیشتر",
   "@actionMore": {

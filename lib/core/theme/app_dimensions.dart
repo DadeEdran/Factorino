@@ -176,7 +176,26 @@ abstract final class AppLayout {
   /// filled: the figures hug the column's leading edge so their last digits
   /// line up, and a flexed column would leave that alignment floating at a
   /// different place on every window width.
-  static const double tablePriceWidth = 190;
+  /// Widened from 190 when the invoice list arrived: a product's unit price
+  /// and an invoice's grand total are not the same magnitude, and the column
+  /// sized for the first overflows on the second. Sized for a ten-digit Toman
+  /// figure with its unit label beside it -- and measured under the widget
+  /// tests' fallback font, whose glyphs are wider than Vazirmatn's, so the
+  /// shipped layout has margin rather than sitting exactly on the limit.
+  static const double tablePriceWidth = 232;
+
+  /// A table column holding a Jalali date.
+  ///
+  /// Fixed, and wide enough for the zero-padded `۱۴۰۵/۰۶/۰۲` form. Dates are
+  /// padded precisely so a column of them aligns, and a flexed column would
+  /// undo that at every window width.
+  static const double tableDateWidth = 120;
+
+  /// A table column holding a status badge.
+  ///
+  /// Sized to the longest label -- `سررسید گذشته` -- rather than to the
+  /// shortest, so the badge never wraps at exactly one status.
+  static const double tableStatusWidth = 112;
 
   /// The measure a wrapped rail label is given inside
   /// [navigationRailCompactWidth], leaving the rail its own side padding.

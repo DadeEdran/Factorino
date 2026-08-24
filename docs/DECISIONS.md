@@ -1528,3 +1528,112 @@ pages in between. One widening window over one stream stays consistent with itse
 **Why an explicit control rather than infinite scroll.** A list that keeps loading as you scroll
 gives no way to tell a long list from a slow one, and no way to reach the end of anything. On a
 financial record, "is that all of them?" is a real question.
+
+---
+
+## D-039 — "Issued" excludes drafts, so a sales figure does not move while the user types
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · **Corrects (d)**
+
+**Decision.** `InvoiceRepository.totalIssuedRial` and `watchIssuedCountInPeriod` count only invoices
+in `unpaid`, `partiallyPaid` or `paid`. Drafts and cancellations are both excluded. The set is named
+once, as `kIssuedInvoiceStatuses` in `data/models/invoice_status.dart`.
+
+**What it corrects.** As delivered in increment (d), `totalIssuedRial` excluded only cancelled
+invoices, and a test asserted that behaviour explicitly. So a draft counted as revenue. Nothing on
+screen depended on it until (f2), which is why it survived review — but the moment the dashboard
+existed, "فروش این ماه" would have climbed as the user typed an invoice they had not issued, and
+dropped again when they cleared it. A sales figure that moves while nothing has been sold is the
+kind of wrong number that gets believed, because it moves for a reason the user can half-explain.
+
+**Reason.** The method already promised this in its name: a draft is by definition not issued. The
+codebase says so elsewhere too — `PaymentRepository.record` refuses money against a draft on the
+grounds that it is "not yet a claim on anyone". Revenue recognised on a document that is not a claim
+on anyone is not revenue.
+
+**Why a positive list rather than "not draft and not cancelled".** The two read identically today and
+fail differently tomorrow. If a status is ever appended to the enum, a negation folds it silently
+into every revenue figure, while the list silently leaves it out. Of two silent outcomes, an
+understated total someone questions beats an overstated one nobody does.
+
+**Consequence for the dashboard.** The count tile counts exactly the population the sales tile sums,
+which is why its label is "فاکتورهای صادرشده" and not "فاکتورهای این ماه" — the caption underneath
+already names the month, and a count over one population beside a total over another is a pair of
+numbers the user cannot reconcile. Reconciling is the only thing a dashboard is for.
+
+**Alternatives considered.** Leave it and filter in the feature layer — rejected: the same wrong
+figure would then be one call site away from returning, and the repository would still be answering
+a question wrongly. Rename the method to `totalRial` — rejected: the name was right and the
+behaviour was wrong.
+
+---
+
+## D-040 — The invoice list resolves its customer name in the query, as `InvoiceListItem`
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** `InvoiceRepository.watchList` returns `InvoiceListItem` — an `Invoice` plus the
+customer's name — produced by one joined query. `Invoice` itself is unchanged and still carries only
+`customerId`.
+
+**Reason.** A list of invoices showing customer ids is useless, and a list that resolves each id
+separately is an N+1 read issued from the presentation layer: invisible at ten invoices, ruinous at
+five thousand, and forbidden by §13 and by §3's rule that widgets do not reach the data layer. One
+join, one query, one stream.
+
+**Why a new model rather than a field on `Invoice`.** `Invoice` is the header as stored. A customer
+name is not stored on it and must not appear to be — the detail aggregate already resolves the
+customer separately, and D-004's snapshot rule turns on being able to say precisely which fields are
+historical and which are live. A separate list-shaped model keeps that line visible.
+
+**What it deliberately does not carry: payments.** Nothing on `InvoiceListItem` would let a widget
+compare payments against a total and decide for itself whether an invoice is paid. That
+determination is made in `PaymentRepository` inside the same transaction as the payment write and
+persisted (§6); a second, independent answer computed at display time is exactly how a badge comes to
+contradict the payments listed beneath it. The UI cannot recompute it because the UI is not given the
+inputs — design by impossibility rather than by convention.
+
+**The customer side of the join is not filtered by `deleted_at`.** This is the one place a read
+deliberately bypasses D-003, and it corrects a defect found while building (f2): `findDetail` used
+`selectAlive` on the customer and returned `null` when the customer had been soft-deleted, so an
+invoice became unopenable the moment its customer was removed — and the invoice list would have
+dropped it entirely. Meanwhile the delete dialog promises the user, in Persian, that invoices already
+issued to that customer "stay untouched and their amounts do not change". §6 guarantees such a
+customer is soft-deleted only and never removed, so the row is always there to read. Both call sites
+now read it, and a repository test covers the case.
+
+---
+
+## D-041 — One clock reading per frame, and overdue compared on Jalali days
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** "Now" is a Riverpod provider (`core/utils/clock.dart`), read once and passed down.
+`overdue` is derived from it at display time by `invoiceStatusViewOf`, and an invoice is overdue only
+once the **Jalali day** of its due date has ended in Tehran.
+
+**Why a provider rather than `DateTime.now()` at each site.** Two readings inside one frame can
+straddle midnight. The dashboard resolves a Jalali month from now and the invoice list ages invoices
+from now; with separate readings a tile could report Shahrivar while the list beneath it aged an
+invoice into Mehr. One value keeps everything on screen internally consistent — and makes both
+testable against a fixed date, which is what lets the Jalali-boundary tests assert anything at all.
+
+**It does not tick, and that is deliberate.** Resolved once and kept, so a month boundary or a due
+date crossing midnight while the app sits open does not update until the next launch. A clock that
+rebuilt every screen showing a date would be a timer running for the life of the process to correct a
+figure nobody is looking at. A later phase can invalidate the provider on resume — one call, in one
+place, precisely because the reading is not scattered.
+
+**Why whole days rather than instants.** `now.isAfter(dueDate)` marks an invoice due at
+midnight-Tehran as overdue for the entire day it is actually due. That is a red badge on a document
+nobody is late on, and the cost is not cosmetic: it teaches the user that red does not mean anything.
+The end of the due date's Jalali day is the first instant at which the invoice genuinely is late, and
+`jalaliDayOf(due).end` computes it in the same calendar and the same offset as everything else
+(D-006, D-028). The off-by-one is subtle enough to be worth a test at the minute: a due instant of
+`2026-08-24T00:00Z` is 03:30 on 2 Shahrivar in Tehran, so its day ends at `2026-08-24T20:30Z` — the
+same UTC date, which is exactly what an instant comparison gets wrong.
+
+**Overdue is still never stored** (as `status_badge.dart` already said): a stored `overdue` would be
+wrong the moment the clock passed midnight and nothing wrote to the row. And it applies only to
+`unpaid` and `partiallyPaid` — a paid or cancelled invoice past its due date is paid or cancelled,
+because nobody is late on it.

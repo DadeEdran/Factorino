@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:factorino/core/formatting/persian_text.dart';
 import 'package:factorino/data/models/customer.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -230,5 +232,27 @@ void main() {
 
     await harness.customers.softDelete(second.id);
     expect(await harness.customers.count(), 1);
+  });
+
+  test('watchCount is live, so a dashboard tile cannot go stale', () async {
+    // The reason the dashboard needs a stream rather than a Future behind a
+    // provider: a Future answers once and is then quietly wrong, and a count
+    // that is quietly wrong is worse than no tile at all.
+    final List<int> seen = <int>[];
+    final StreamSubscription<int> subscription = harness.customers
+        .watchCount()
+        .listen(seen.add);
+    addTearDown(subscription.cancel);
+
+    await pumpEventQueue();
+    expect(seen, <int>[0]);
+
+    final created = await harness.customer(name: 'علی');
+    await pumpEventQueue();
+    expect(seen.last, 1);
+
+    await harness.customers.softDelete(created.id);
+    await pumpEventQueue();
+    expect(seen.last, 0);
   });
 }

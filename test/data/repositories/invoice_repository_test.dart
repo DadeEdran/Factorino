@@ -1,8 +1,13 @@
+import 'dart:async';
+
 import 'package:factorino/core/date/jalali_period.dart';
 import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
+import 'package:factorino/data/models/invoice_list_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
+import 'package:factorino/data/models/payment.dart';
+import 'package:factorino/data/models/payment_method.dart';
 import 'package:factorino/data/models/product.dart';
 import 'package:factorino/data/repositories/invoice_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -378,25 +383,252 @@ void main() {
       },
     );
 
-    test('totalIssuedRial aggregates in SQL and excludes cancelled', () async {
+    test('totalIssuedRial counts only issued invoices, in SQL', () async {
+      // D-039. A draft is not yet a claim on anyone -- the payment path
+      // already refuses money against one -- so it is not revenue. Before the
+      // correction this summed drafts too, which made the dashboard's sales
+      // figure move while the user was still typing an invoice.
       final first = await harness.invoices.create(
         harness.draft(customerId, unitPriceRial: 1000000),
       );
       final second = await harness.invoices.create(
         harness.draft(customerId, unitPriceRial: 2000000),
       );
-      await harness.invoices.issue(second.invoice.id);
-
       final period = jalaliMonth(1405, 6);
+
+      // Both are drafts.
+      expect(await harness.invoices.totalIssuedRial(period), 0);
+
+      await harness.invoices.issue(second.invoice.id);
+      expect(await harness.invoices.totalIssuedRial(period), 2200000);
+
+      await harness.invoices.issue(first.invoice.id);
       expect(await harness.invoices.totalIssuedRial(period), 3300000);
 
       await harness.invoices.cancel(first.invoice.id);
       expect(await harness.invoices.totalIssuedRial(period), 2200000);
     });
 
+    test('the live total and the resolved total agree', () async {
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      await harness.invoices.issue(created.invoice.id);
+      final period = jalaliMonth(1405, 6);
+
+      expect(
+        await harness.invoices.watchTotalIssuedRial(period).first,
+        await harness.invoices.totalIssuedRial(period),
+      );
+    });
+
+    test('the live total re-emits after a write', () async {
+      // The whole reason this is a stream and not a Future: a provider over a
+      // Future answers once, and the dashboard then shows a figure that was
+      // true before the invoice the user just issued.
+      final period = jalaliMonth(1405, 6);
+      final List<int> seen = <int>[];
+      final StreamSubscription<int> subscription = harness.invoices
+          .watchTotalIssuedRial(period)
+          .listen(seen.add);
+      addTearDown(subscription.cancel);
+
+      await pumpEventQueue();
+      expect(seen, <int>[0]);
+
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      await harness.invoices.issue(created.invoice.id);
+      await pumpEventQueue();
+
+      expect(seen.last, 1100000);
+    });
+
+    test('watchIssuedCountInPeriod counts the same population', () async {
+      final draftOnly = await harness.invoices.create(
+        harness.draft(customerId),
+      );
+      final issued = await harness.invoices.create(harness.draft(customerId));
+      await harness.invoices.issue(issued.invoice.id);
+
+      final period = jalaliMonth(1405, 6);
+      expect(await harness.invoices.watchIssuedCountInPeriod(period).first, 1);
+
+      await harness.invoices.issue(draftOnly.invoice.id);
+      expect(await harness.invoices.watchIssuedCountInPeriod(period).first, 2);
+
+      await harness.invoices.cancel(draftOnly.invoice.id);
+      expect(await harness.invoices.watchIssuedCountInPeriod(period).first, 1);
+    });
+
+    test('a Jalali period excludes an invoice one hour outside it', () async {
+      // D-006. The boundary is the thing worth testing: an invoice issued in
+      // the last hour of Mordad must not count towards Shahrivar.
+      final inMonth = await harness.invoices.create(
+        harness.draft(customerId, issueDate: DateTime.utc(2026, 8, 24, 12)),
+      );
+      await harness.invoices.issue(inMonth.invoice.id);
+
+      final DateTime before = jalaliMonth(
+        1405,
+        6,
+      ).start.subtract(const Duration(hours: 1));
+      final earlier = await harness.invoices.create(
+        harness.draft(customerId, issueDate: before, unitPriceRial: 5000000),
+      );
+      await harness.invoices.issue(earlier.invoice.id);
+
+      expect(
+        await harness.invoices.totalIssuedRial(jalaliMonth(1405, 6)),
+        1100000,
+      );
+      expect(
+        await harness.invoices.totalIssuedRial(jalaliMonth(1405, 5)),
+        5500000,
+      );
+    });
+
     test('a period with no invoices totals zero, not null', () async {
       await harness.invoices.create(harness.draft(customerId));
       expect(await harness.invoices.totalIssuedRial(jalaliMonth(1403, 1)), 0);
+    });
+
+    test('watchCount is live and excludes soft-deleted invoices', () async {
+      expect(await harness.invoices.watchCount().first, 0);
+
+      final created = await harness.invoices.create(harness.draft(customerId));
+      expect(await harness.invoices.watchCount().first, 1);
+
+      await harness.invoices.softDeleteDraft(created.invoice.id);
+      expect(await harness.invoices.watchCount().first, 0);
+    });
+  });
+
+  group('outstanding balance', () {
+    Future<void> pay(String invoiceId, int rial, int day) {
+      return harness.payments.record(
+        invoiceId,
+        PaymentDraft(
+          amount: Money.rial(rial),
+          paidAt: DateTime.utc(2026, 8, day),
+          method: PaymentMethod.cash,
+        ),
+      );
+    }
+
+    test('is grand total less payments, in one query', () async {
+      final first = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      final second = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 2000000),
+      );
+      await harness.invoices.issue(first.invoice.id);
+      await harness.invoices.issue(second.invoice.id);
+
+      expect(await harness.invoices.watchOutstandingRial().first, 3300000);
+
+      await pay(first.invoice.id, 100000, 25);
+      expect(await harness.invoices.watchOutstandingRial().first, 3200000);
+
+      // Two instalments on one invoice. A join to payments instead of the
+      // correlated subquery would double that invoice's grand total here, and
+      // the tile would climb as the customer paid.
+      await pay(first.invoice.id, 200000, 26);
+      expect(await harness.invoices.watchOutstandingRial().first, 3000000);
+    });
+
+    test('a fully paid invoice leaves nothing outstanding', () async {
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      await harness.invoices.issue(created.invoice.id);
+      await pay(created.invoice.id, 1100000, 25);
+
+      // The invoice is now `paid`, so it and its payments leave the aggregate
+      // together -- which is why the payments side is scoped by the invoice
+      // rather than summed on its own.
+      expect(await harness.invoices.watchOutstandingRial().first, 0);
+    });
+
+    test('a draft owes nothing, and a cancellation stops owing', () async {
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      expect(await harness.invoices.watchOutstandingRial().first, 0);
+
+      await harness.invoices.issue(created.invoice.id);
+      expect(await harness.invoices.watchOutstandingRial().first, 1100000);
+
+      await harness.invoices.cancel(created.invoice.id);
+      expect(await harness.invoices.watchOutstandingRial().first, 0);
+    });
+  });
+
+  group('list with customer names', () {
+    test('resolves the customer name in one query', () async {
+      final created = await harness.invoices.create(harness.draft(customerId));
+
+      final List<InvoiceListItem> items = await harness.invoices
+          .watchList()
+          .first;
+      expect(items, hasLength(1));
+      expect(items.single.invoice.id, created.invoice.id);
+      expect(items.single.customerName, isNotEmpty);
+    });
+
+    test('the limit reaches SQL', () async {
+      for (var i = 0; i < 5; i++) {
+        await harness.invoices.create(harness.draft(customerId));
+      }
+
+      expect(await harness.invoices.watchList(limit: 2).first, hasLength(2));
+    });
+
+    test('newest first, by issue date then sequence', () async {
+      final older = await harness.invoices.create(
+        harness.draft(customerId, issueDate: DateTime.utc(2026, 8, 20, 12)),
+      );
+      final newer = await harness.invoices.create(
+        harness.draft(customerId, issueDate: DateTime.utc(2026, 8, 24, 12)),
+      );
+
+      final List<InvoiceListItem> items = await harness.invoices
+          .watchList()
+          .first;
+      expect(
+        items.map((InvoiceListItem item) => item.invoice.id).toList(),
+        <String>[newer.invoice.id, older.invoice.id],
+      );
+    });
+
+    test('an invoice survives its customer being soft-deleted', () async {
+      // The delete dialog promises, in Persian, that invoices already issued
+      // to this customer stay untouched. Filtering the join on `deleted_at`
+      // would make the invoice vanish from the list instead, and `findDetail`
+      // returned null -- the promise broken silently.
+      final created = await harness.invoices.create(harness.draft(customerId));
+      final String name = (await harness.customers.findById(customerId))!
+          .fullName;
+      await harness.customers.softDelete(customerId);
+
+      final List<InvoiceListItem> items = await harness.invoices
+          .watchList()
+          .first;
+      expect(items, hasLength(1));
+      expect(items.single.customerName, name);
+
+      final detail = await harness.invoices.findDetail(created.invoice.id);
+      expect(detail, isNotNull);
+      expect(detail!.customer.id, customerId);
+    });
+
+    test('a soft-deleted invoice leaves the list', () async {
+      final created = await harness.invoices.create(harness.draft(customerId));
+      await harness.invoices.softDeleteDraft(created.invoice.id);
+
+      expect(await harness.invoices.watchList().first, isEmpty);
     });
   });
 

@@ -8,7 +8,8 @@
 ## Phase
 
 **Phase 0 — Environment and Setup · `COMPLETED`**
-**Phase 1 — Foundation and Architecture · `IN_PROGRESS`** — one increment remains.
+**Phase 1 — Foundation and Architecture · `IN_PROGRESS`** — every increment is built; (f2) awaits
+review. **When (f2) is accepted, Phase 1 is complete.**
 
 | # | Increment | Status |
 |---|---|---|
@@ -17,8 +18,8 @@
 | c | Jalali date layer and digit normalization + tests | `COMPLETED` — **accepted** (`b70c1fc`) |
 | d | Repositories and domain models | `COMPLETED` — **accepted** (`36493d3`) |
 | e | Theme, localization, routing, responsive shell | `COMPLETED` — **accepted** (`ea3b7b0`) |
-| f1 | Logging wrapper; Customers and Products on real data | `COMPLETED` — **awaiting review** |
-| f2 | Invoices list and Dashboard, on real data | `NOT_STARTED` |
+| f1 | Logging wrapper; Customers and Products on real data | `COMPLETED` — **accepted** (`30e53a3`) |
+| f2 | Invoices list and Dashboard, on real data | `COMPLETED` — **awaiting review** |
 
 (f) was split in two after the owner pulled the create/edit forms forward into it (D-036).
 
@@ -26,7 +27,7 @@
 
 ```
 flutter analyze:            PASS   (No issues found)
-flutter test:               PASS   (432/432, was 378)
+flutter test:               PASS   (483/483, was 432)
 Android build:              PASS   (not re-run this session)
 Windows build:              PASS   flutter build windows --debug, RUN and screenshotted
 Web build:                  NOT_RETESTED since plugins were added
@@ -34,54 +35,84 @@ D-020 proof - Windows:      PASS   5/5
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (API 30, arm64)
 ```
 
-## What was completed this session — increment (f1)
+## What was completed this session — increment (f2)
 
-**The logging wrapper first** (D-035), because it is what makes every screen after it safe. One
-sink; **closure messages**, so a release build never even forms the string; **everything stripped in
-release** by a compile-time constant, not merely silenced; a shape-based scrubber as a backstop; and
-a `lib/`-scanning guard that fails the build on a `print` or on a sensitive field name inside an
-`AppLog` call. Verified to bite by introducing both violations, including across a
-formatter-wrapped multi-line call.
+**Five live aggregate reads, all computed in SQL.** `watchCount` on all three repositories,
+`watchTotalIssuedRial`, `watchIssuedCountInPeriod`, `watchOutstandingRial` and `watchList`. Streams
+rather than futures, because a `Future` behind a provider answers once and is then quietly wrong —
+known issue 7 from (f1) is closed. Nothing is summed or counted in Dart.
 
-**The scrubber is honest about its limits.** It catches digit runs of ten or more, hex runs of 32 or
-more, and the wrapped key form. It cannot catch a customer name — names have no shape. The static
-guard is the control; the scrubber only catches what arrives inside something the guard cannot see
-through, such as a database exception's message.
+**The outstanding balance is one statement.** A correlated subquery sums each invoice's payments
+*inside* the aggregate. A join to `payments` would multiply each invoice's grand total by its number
+of payment rows — invisible until an invoice takes its second instalment, and then overstating the
+figure the user trusts most. A repository test records two instalments on one invoice to pin it.
 
-**`platformDispatcher.onError` returns false.** Returning `true` was tried and swallowed a startup
-failure: `runApp` was never reached, and because the Windows runner shows its window only after the
-first frame, the app ran forever with no window and no message. D-020's fail-loud startup restored.
+**The Invoices list, on real data.** Cards on mobile and tablet, a virtualized table on desktop
+(D-037), query-level paging from the first commit (D-038), a designed empty state with **no** create
+action. The customer name is resolved by the same query as the invoice (D-040) through a new
+`InvoiceListItem` — never a lookup per row.
 
-**Customers and Products, end to end on real data.** Debounced normalization-insensitive search
-through the one `searchKey`; **query-level paging** (D-038) where the limit reaches SQL; skeleton
-loaders shaped like the rows they replace and honouring reduced motion; two distinct empty states
-(no data vs. no match); soft delete behind Persian copy that explains what survives; and create/edit
-forms (D-036).
+**The Dashboard, on real Jalali aggregates.** Four tiles plus the five most recent invoices in the
+same row widgets the list uses. Both period tiles carry the Jalali month as a caption, so the user
+can see which month the app meant. The figures arrive as **one** `DashboardSummary`, so the page
+cannot show a sales total from before a write beside a count from after it.
 
-**Three genuinely different layouts held.** Cards on mobile and tablet, a **virtualized** table on
-desktop (D-037) — `DataTable` builds every row it is handed, so it is not used, and a test asserts
-that a full page of rows does not build a full page of widgets.
+**`overdue` is derived from one clock reading, compared on whole Jalali days** (D-041). An invoice
+due today is not overdue until today is over — comparing instants would put a red badge on a document
+nobody is late on, which teaches the user that red means nothing. Red stays reserved for it.
 
-**D-030 now has a live call site.** A failing national-ID checksum is called invalid plainly; a
-passing one produces **no affirmative message at all**, and the form test asserts the absence of the
-"format is valid" string and of any tick or verified icon.
+**The UI cannot recompute `paid`/`partiallyPaid`, structurally.** `InvoiceListItem` carries no
+payment information, so there is nothing to recompute *from*. The stored answer, written inside the
+payment's own transaction, is the only one that reaches a badge.
 
-## Three defects found by running the Windows build
+## Two data-layer defects corrected
 
-None would have been caught by a test, and all three are Persian- or RTL-specific.
+1. **`totalIssuedRial` counted drafts as revenue** (D-039). The name said "issued"; the query
+   excluded only cancellations. Nothing depended on it until the dashboard existed — at which point
+   "فروش این ماه" would have climbed while the user typed an invoice they had not issued, and dropped
+   when they cleared it. A test had asserted the old behaviour; it asserts the corrected one now.
+2. **An invoice became unopenable when its customer was soft-deleted.** `findDetail` filtered the
+   customer read with `selectAlive` and returned `null` — while the delete dialog promises the user,
+   in Persian, that invoices already issued to that customer stay untouched. The list would have
+   dropped them entirely. Both reads now take the customer row without the alive filter, marked
+   `// soft-delete-exempt:` with the reason (D-040).
 
-1. **The money column was aligned the wrong way in RTL.** `alignEnd` resolves to the *left* edge in
-   RTL, and numbers render left-to-right regardless — so figures lined up by their first digit and
-   the units digits were ragged, exactly what tabular numerals exist to prevent. Fixed with leading
-   alignment in a fixed-width column; the trap is documented on the flag (D-037).
-2. **The autofocused field's floating label was clipped.** An outlined field's label floats *outside*
-   the field's box; the first field sits flush against the top of a scroll viewport; a viewport clips
-   its children. In Persian only the ascenders and the dots vanish, so it reads as a misspelled word
-   rather than a layout fault. Two wrong hypotheses (line height, content padding) were tried and
-   reverted before the cause was found.
-3. **The mobile FAB covered the last row of every list.** Found by a widget test whose tap on the
-   load-more control landed on the button instead — the same thing that happens to a user, with no
-   warning printed.
+## Two layout defects found by the new widget tests
+
+1. **The amount column was too narrow for an invoice total.** `tablePriceWidth` was sized in (f1)
+   against product *unit prices*; a grand total is a different magnitude and overflowed it. Widened,
+   with the measurement recorded on the token so it is not trimmed back.
+2. **The number-and-date line on the mobile card overflowed at 400 logical pixels.** Both runs are
+   fixed-width and neither may be truncated — an ellipsised invoice number is not an invoice number —
+   so the row became a `Wrap`.
+
+## What the Windows run proved, beyond the tests
+
+Twelve invoices covering all five stored statuses plus a derived overdue, captured at desktop and
+mobile widths and in dark mode. **Every tile was reconciled by hand against the rows:**
+
+- Sales came to ۴۷٬۷۴۰٬۰۰۰ تومان — the sum of the three invoices *issued* in Shahrivar, excluding the
+  draft, the cancellation, and the one issued in Mordad. D-039 and D-006 both visible in one figure.
+- Outstanding came to exactly double the figure from a half-sized data set, which is what an
+  aggregate that is neither double-counting nor dropping rows should do.
+
+The rows were written through the **real repositories** by a throwaway integration script — the money
+engine computed every total, `_allocateNumber` allocated every number, `PaymentRepository` derived
+every status — because Phase 1 has no way to *create* an invoice. **The script was deleted after
+use.** The Windows dev database therefore holds twelve demo invoices and twelve customers; if a
+future session needs to reproduce it, write the equivalent again rather than reaching for a
+committed fixture.
+
+## Deferred out of (f2), deliberately
+
+- **Search and filtering on the invoice list.** Customers and products have a search field; invoices
+  do not. Filtering by status, customer and date range is Phase 5, and a half-version here would have
+  to be replaced there.
+- **Tapping an invoice.** `/invoices/:id` is **not registered** and rows are not tappable — asserted
+  by a test, so the absence is deliberate rather than forgotten. Detail is Phase 5.
+- **Creating or editing an invoice.** Phase 4. The empty state explains and stops.
+- **Report period selection.** The dashboard covers the current Jalali month only; choosing a period
+  belongs with گزارش‌ها in Phase 8, still absent from navigation entirely (D-021).
 
 ## Known issues
 
@@ -91,15 +122,17 @@ None would have been caught by a test, and all three are Persian- or RTL-specifi
 | 2 | The database opens on the main isolate | Phase 13. The `setup` closure must stay isolate-sendable — `ARCHITECTURE.md` §B.5. |
 | 3 | The national-ID checksum cannot catch every transposition | Official algorithm, not a defect. Enforced by test over the ARB **and** over the form's behaviour. |
 | 4 | `watchDetail` re-reads on any invoice-table change | Correct but not minimal. Revisit in Phase 13. |
-| 5 | Dashboard and Invoices still show their empty state unconditionally | That is increment (f2). |
-| 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` now exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. |
-| 7 | No live `count()` on the repositories | (f2)'s dashboard needs one. A `Future` provider would go stale; add `watchCount()` to the repositories rather than working around it. |
-| 8 | MIUI re-blocks `flutter test`'s install on a *fresh* install | `adb install -r` once by hand. Developer options → Install via USB. |
-| 9 | **The pub mirror went unreachable mid-session** | `dart pub get --offline` resolves from the local cache. See `ENVIRONMENT.md` — and sanitize the lockfile **last**, or it forces a network re-resolve. |
-| 10 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
-| 11 | Release builds signed with debug keys | Phase 15. |
-| 12 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
-| 13 | Android manifest hardening not done | Phase 9. |
+| 5 | ~~Dashboard and Invoices show their empty state unconditionally~~ | **Resolved in (f2).** |
+| 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. |
+| 7 | ~~No live `count()` on the repositories~~ | **Resolved in (f2)**: `watchCount` on customers, products and invoices. |
+| 8 | `nowProvider` does not tick | Deliberate (D-041). A Jalali month boundary or a due date crossing midnight while the app sits open does not update until relaunch. One `invalidate` on resume fixes it if a later phase needs it. |
+| 9 | The Windows debug exe shows no window when launched **directly** | Observed this session: the process starts and the VM service listens, but no window is presented. Under `flutter run -d windows` it is fine. Not caused by (f2) — screenshot via `flutter run`. Worth a look in Phase 12. |
+| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install | `adb install -r` once by hand. Developer options → Install via USB. |
+| 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last** — the rule now lives in `tools/sanitize_lockfile`'s own header, where the mistake happens. |
+| 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
+| 13 | Release builds signed with debug keys | Phase 15. |
+| 14 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
+| 15 | Android manifest hardening not done | Phase 9. |
 
 ## Important context for a future session
 
@@ -114,85 +147,85 @@ None would have been caught by a test, and all three are Persian- or RTL-specifi
   4. no drift import in `data/models/` or the interfaces in `data/repositories/` (D-031);
   5. no literal colour or dimension outside `core/theme/` (D-033) — `// tokens-exempt:`;
   6. no Arabic-script character in code outside `core/localization/` (D-034) — `// l10n-exempt:`;
-  7. **no output outside `AppLog`, and no sensitive field name inside a log call** (D-035) —
+  7. no output outside `AppLog`, and no sensitive field name inside a log call (D-035) —
      `// logging-exempt:`.
-- **The D-020 scan reads comments too.** It fired on a doc comment in `app_log.dart` that merely
-  mentioned the key pragma. The comment was reworded; the guard was not weakened.
-- **A widget never calls a repository.** Feature `application/` folders hold an editor controller
-  per feature (`CustomerEditor`, `ProductEditor`) that owns the write, the logging and the error
-  handling; the screen only decides what the user is told.
+- **There are now exactly two soft-delete exemptions on read paths, and both are the same one:** the
+  customer row behind an invoice, in `watchList` and in `findDetail`. §6 guarantees that row survives,
+  and the Persian delete copy promises the invoice does. Do not "fix" them back.
+- **A widget never calls a repository.** Feature `application/` folders hold the providers; the
+  screen only decides what the user is told.
+- **`AmountText` everywhere money appears**, and a money column in a table is **leading-aligned in a
+  fixed-width column**, never `alignEnd` — see D-037's RTL note. `AmountText` is the only widget that
+  renders a monetary figure.
+- **Money is never accent-coloured** (D-033). Prominence comes from the type scale; colour means
+  status, and red means overdue and nothing else.
 - **`Override` is not exported by `flutter_riverpod` in 3.4.2.** It lives in
-  `package:flutter_riverpod/misc.dart`. A test that types a list of overrides needs that import, and
-  the error — *"The name 'Override' isn't a type"* — does not hint at it.
+  `package:flutter_riverpod/misc.dart`. The error — *"The name 'Override' isn't a type"* — does not
+  hint at it.
 - **Riverpod 3 wraps a provider's error in `ProviderException`** — assert on the message, not the
   inner type (`ARCHITECTURE.md` §B.3).
+- **Private `@riverpod` providers work.** The five underlying dashboard queries are private
+  (`_outstandingRial` and friends) so nothing outside the summary can watch a single figure and
+  reintroduce the "tiles from different moments" problem.
+- **Widget tests render with a fallback font whose glyphs are much wider than Vazirmatn's.** A
+  fixed-width column that passes a widget test has margin in the shipped layout, not the other way
+  round — which is why `tablePriceWidth` is sized against the test, deliberately.
 - **Nothing in `core/money/`, `core/date/` or `core/formatting/` may import Flutter.**
-- **Where the source encoding is not guaranteed, name characters by code point.** Bitten three times
-  now: the fold tables, the Windows window title, and the bidi isolate constants.
+- **Where the source encoding is not guaranteed, name characters by code point.** Bitten three times:
+  the fold tables, the Windows window title, and the bidi isolate constants.
 - **Sanitize the lockfile after anything that resolves — and sanitize it LAST.** Sanitizing before
-  `build_runner` makes pub re-resolve against the network, which is what hung this session.
+  `build_runner` makes pub re-resolve against the network, which hung this session too. The rule is
+  now documented in `tools/sanitize_lockfile` itself as well as in `ENVIRONMENT.md`.
 - **Run `dart run build_runner build` after touching a table or an `@riverpod`, and
   `flutter gen-l10n` after touching the ARB**, then commit the regenerated files.
 
-## Recently changed files (increment f1)
+## Recently changed files (increment f2)
 
 ```
-lib/core/security/app_log.dart          NEW  THE logging wrapper (D-035)
-lib/core/errors/failure_message.dart    NEW  exception -> ARB copy, and nothing else
-lib/core/utils/list_query.dart          NEW  the paging window (D-038)
-lib/core/formatting/jalali_display.dart NEW  Jalali dates, phones, ids, bidi isolation
-lib/core/widgets/app_table.dart         NEW  virtualized desktop table (D-037)
-lib/core/widgets/{skeleton,search_field,load_more_footer,form_scaffold,async_error_view}.dart NEW
-lib/core/widgets/page_body.dart         + floatingAction, for the mobile primary action
-lib/core/theme/*                        + fieldLabel style, skeleton/table/FAB-clearance tokens
-lib/core/router/*                       + AppRoutes, and the four form routes
-lib/features/customers/**               NEW  providers, editor controller, list, form
-lib/features/products/**                NEW  providers, editor controller, list, form
-lib/main.dart                           framework + platform errors through AppLog; onError false
-lib/core/localization/arb/app_fa.arb    +58 strings (120 total), incl. the twelve month names
-test/core/security/logging_path_test.dart NEW  the two scans + the scrubber
-test/features/**                        NEW  harness + customer list and form tests
-docs/*                                  D-035..D-038; ROADMAP; ARCHITECTURE §A; ENVIRONMENT
+lib/core/utils/clock.dart                     NEW  nowProvider, read once per frame (D-041)
+lib/core/localization/month_names.dart        NEW  ARB -> the twelve names jalali_display wants
+lib/data/models/invoice_list_item.dart        NEW  invoice + customer name, and no payments (D-040)
+lib/data/models/invoice_status.dart           + kIssuedInvoiceStatuses / kOutstandingInvoiceStatuses
+lib/data/repositories/*_repository.dart       + watchCount; invoice: watchList, watch* aggregates
+lib/data/repositories/drift/drift_invoice_repository.dart
+                                              + the join, the correlated-subquery outstanding sum,
+                                                D-039's issued filter, and the findDetail fix
+lib/data/repositories/drift/drift_{customer,product}_repository.dart  + watchCount
+lib/features/invoices/domain/invoice_status_view.dart      NEW  the one stored -> displayed mapping
+lib/features/invoices/application/invoices_providers.dart  NEW
+lib/features/invoices/presentation/invoices_screen.dart    rewritten on real data
+lib/features/dashboard/domain/dashboard_summary.dart       NEW  every figure, from one moment
+lib/features/dashboard/application/dashboard_providers.dart NEW
+lib/features/dashboard/presentation/{dashboard_screen,stat_tile}.dart  rewritten / NEW
+lib/core/theme/app_dimensions.dart            + tableDateWidth, tableStatusWidth; tablePriceWidth 232
+lib/core/localization/arb/app_fa.arb          +2 strings, 1 reworded (122 total)
+test/features/invoices/{invoices_screen,invoice_status_view}_test.dart  NEW
+test/features/invoices/fake_invoice_repository.dart        NEW  shared by both screen suites
+test/features/dashboard/dashboard_screen_test.dart         NEW
+test/data/repositories/invoice_repository_test.dart        +13 tests, 1 corrected (D-039)
+tools/sanitize_lockfile                       + the ordering rule, where the mistake happens
+docs/*                                        D-039..D-041; ROADMAP; ARCHITECTURE §B.2, §B.4
 ```
 
 ## Last completed action
 
-Delivered Phase 1 increment (f1): the §7 logging wrapper with its build-failing guard, and Customers
-and Products working end to end on real data — search, query-level paging, skeletons, empty states,
-soft delete with explanatory Persian copy, and create/edit forms.
+Delivered Phase 1 increment (f2): the Invoices list and the Dashboard on real data, five live SQL
+aggregates behind them, and the two data-layer defects listed above corrected. Verified on the real
+Windows build with every dashboard figure reconciled by hand against the rows that produced it.
 
-Verified on the real Windows build, not only in tests: both tiers captured with real rows in the
-encrypted database, the customer form captured, and dark mode captured. That is what surfaced the
-three defects above, all three fixed.
-
-432/432 tests pass, analyzer clean, Windows builds and runs.
+483/483 tests pass, analyzer clean, Windows builds and runs.
 
 ## Next action
 
-**Await the owner's review of increment (f1).** Then begin increment **(f2): the Invoices list and
-the Dashboard, on real data** — the last increment of Phase 1.
+**Await the owner's review of increment (f2).** If it is accepted, **Phase 1 is complete** — mark it
+`COMPLETED` in `ROADMAP.md` and `CURRENT_STATE.md`, and open **Phase 2 — Customers**.
 
-Specifically, (f2) is:
-
-- **Invoices list.** Cards on mobile, a virtualized table on desktop reusing `AppTableRow`. Columns:
-  number, customer, date, status, amount. The status badge already exists; `overdue` is **derived at
-  display time** from an unpaid invoice's due date and is never stored (`status_badge.dart`).
-- **Dashboard.** Real aggregates over **Jalali** period boundaries (D-006) — use `jalaliMonthOf`,
-  never a Gregorian boundary — computed in SQL, never as Dart loops. `totalIssuedRial(InstantRange)`
-  already exists and already excludes cancelled invoices.
-
-Constraints carried into (f2):
-
-- **The repositories need a live `watchCount()`** before the dashboard can show a customer or
-  product count. `count()` is a `Future` and a provider over it goes stale on the next write; add
-  the stream to the repository rather than working around it in the feature layer (known issue 7).
-- **Amounts go through `AmountText`**, which carries the unit label and Persian digits.
-- **Money is never accent-coloured** (D-033). Prominence comes from the type scale; colour means
-  status.
-- **A money column in a table is leading-aligned, not `alignEnd`** — see D-037's RTL note.
-- **Register `/invoices/:id` only with the screen that opens it** (D-021, one level down).
-- Reuse `ListQuery`, `SkeletonList`, `SearchField`, `LoadMoreFooter`, `AsyncErrorView` and
-  `AppTable*`; all five were built against two call sites in (f1) and need no new abstractions.
+Note before opening Phase 2: most of what Phase 2's scope names is already built in (f1) — the list,
+search, create/edit forms and soft delete all exist and are accepted. Phase 2 should be re-scoped
+against what is actually there rather than rebuilding it: the customer **detail** screen (with that
+customer's invoices, which `watchForCustomer` already serves), field-level validation limits (§7),
+and the "this customer cannot be hard-deleted" explanation where it is still missing. Put that
+re-scoping question to the owner rather than deciding it alone.
 
 ### Standing rules that outlive this handoff
 

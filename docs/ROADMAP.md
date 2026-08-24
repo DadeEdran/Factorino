@@ -145,9 +145,9 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increments (a) through (e) complete and **accepted**; (f) split in two
-after the owner pulled the create/edit forms forward (D-036). (f1) is complete and awaiting review;
-(f2) remains. See `CURRENT_STATE.md`.
+**Status:** `IN_PROGRESS` — increments (a) through (f1) complete, (a)–(f1) **accepted**; (f) was
+split in two after the owner pulled the create/edit forms forward (D-036). (f2) is complete and
+**awaiting review**; it is the last increment of the phase. See `CURRENT_STATE.md`.
 
 Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
 stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
@@ -161,7 +161,7 @@ connection layer (D-020, D-023); it is built on.
 | d | Repositories and domain models | `COMPLETED` 2026-08-24 |
 | e | Theme, localization, routing, responsive shell | `COMPLETED` 2026-08-24 |
 | f1 | Logging wrapper, Customers and Products on real data | `COMPLETED` 2026-08-24 |
-| f2 | Invoices list and Dashboard, on real data | `NOT_STARTED` |
+| f2 | Invoices list and Dashboard, on real data | `COMPLETED` 2026-08-24 |
 
 (a) and (b) come before any UI work: everything else reads from the schema and the money engine, and
 both are far cheaper to correct now than after screens depend on them.
@@ -363,9 +363,99 @@ both are far cheaper to correct now than after screens depend on them.
    whose tap on the load-more control landed on the button instead — the same thing that happens to a
    user, with no warning printed. Fixed with a clearance token on the scrolling lists.
 
+**Increment (f2) — completed 2026-08-24 · the last increment of Phase 1**
+
+- **The Invoices list, end to end on real data.** Cards on mobile and tablet, a **virtualized**
+  table on desktop reusing `AppTable*` (D-037), query-level paging from the first commit (D-038),
+  skeletons shaped like the rows they replace, and a designed empty state that offers **no** create
+  action — because the invoice form is Phase 4 and an affordance leading nowhere is worse than its
+  absence (D-021, one level down).
+- **The customer name is resolved by the same query as the invoice** (D-040), through a new
+  `InvoiceListItem` domain model. Not a lookup per row: an N+1 read issued from a widget is
+  invisible at ten invoices and ruinous at five thousand.
+- **The Dashboard, on real SQL aggregates over Jalali periods.** Four tiles — sales, issued count,
+  outstanding balance, customers — plus the five most recent invoices in the same row widgets the
+  invoice list uses. Every figure is a `SUM` or a `COUNT` executed in SQLite; nothing is folded in
+  Dart (§13). The two period tiles carry the Jalali month as a caption, so the user can see which
+  month the app meant rather than trusting "این ماه".
+- **All five reads are live** (`watchCount`, `watchIssuedCountInPeriod`, `watchOutstandingRial`,
+  `watchTotalIssuedRial`, `watchList`), and they arrive as **one** `DashboardSummary` rather than as
+  four providers — so the page cannot show a sales total from before a write beside a count from
+  after it. Known issue 7 from (f1) is closed.
+- **The outstanding balance is one statement**, not two subtracted in Dart: a correlated subquery
+  sums each invoice's payments inside the aggregate. A join to `payments` would have multiplied each
+  invoice's grand total by its number of payment rows — a defect invisible until an invoice takes its
+  second instalment, and one that then overstates the figure the user trusts most. A repository test
+  records two instalments against one invoice specifically to pin it.
+- **`overdue` is derived, never stored** (D-041), from a single clock reading shared by the whole
+  frame, and compared on **whole Jalali days**: an invoice due today is not overdue until today is
+  over. Red is reserved for it alone.
+- **The UI cannot recompute `paid`/`partiallyPaid`, structurally**: `InvoiceListItem` carries no
+  payment information at all, so there is nothing to recompute from. The stored answer — written by
+  `PaymentRepository` inside the payment's own transaction — is the only one that reaches the badge.
+- 51 new tests; **483 pass in total**. Decisions recorded: **D-039**, **D-040**, **D-041**.
+
+**Two defects corrected in the data layer, both found while building on it**
+
+1. **`totalIssuedRial` counted drafts as revenue** (D-039). The name said "issued"; the query
+   excluded only cancellations. Nothing depended on it until the dashboard existed — at which point
+   "فروش این ماه" would have climbed as the user typed an invoice they had not issued. A test had
+   asserted the old behaviour; it now asserts the corrected one, including that two drafts total zero.
+2. **An invoice became unopenable when its customer was soft-deleted.** `findDetail` filtered the
+   customer read with `selectAlive` and returned `null` when it found nothing — while the delete
+   dialog promises the user in Persian that invoices already issued to that customer stay untouched.
+   The invoice list would have dropped those invoices entirely. Both reads now take the customer row
+   without the alive filter, marked `// soft-delete-exempt:` with the reason, and a repository test
+   soft-deletes a customer and asserts the invoice still lists and still opens (D-040).
+
+**Two layout defects found by the new widget tests, both RTL- or magnitude-specific**
+
+1. **The amount column was too narrow for an invoice total.** `tablePriceWidth` was sized in (f1)
+   against product *unit prices*; an invoice *grand total* is a different magnitude and overflowed
+   it. Widened, with the reason recorded on the token so it is not trimmed back.
+2. **The number-and-date line on the mobile card overflowed at 400 logical pixels.** Both runs are
+   fixed-width and neither may be truncated — an ellipsised invoice number is not an invoice number
+   — so the row became a `Wrap`. It costs eighteen pixels of height on the narrowest phones and
+   cannot fail.
+
+**Verified on the real Windows build**, not only in tests: dashboard and invoice list captured at
+desktop and mobile widths and in dark mode, against twelve invoices covering all five stored statuses
+plus a derived overdue. **Every tile was reconciled by hand against the seeded rows** — sales
+excludes the draft, the cancellation and the invoice issued in the previous Jalali month; outstanding
+came to exactly double the figure from a half-sized data set. The rows were written through the real
+repositories by a throwaway script (the money engine computed every total, `_allocateNumber`
+allocated every number), since Phase 1 has no way to *create* an invoice; the script was deleted
+after use.
+
+**Deferred out of (f2), deliberately**
+
+- **Search and filtering on the invoice list.** Customers and products have a search field; invoices
+  do not. Filtering by status, customer and date range is Phase 5 work (Invoice Management), and
+  adding a half-version here would have to be replaced there.
+- **Tapping an invoice.** `/invoices/:id` is **not registered**, and rows are not tappable — asserted
+  by a test, so the absence is deliberate rather than forgotten. The detail screen is Phase 5.
+- **Creating or editing an invoice.** Phase 4. The invoice list's empty state explains and stops
+  rather than offering a button.
+- **Report period selection.** The dashboard covers the current Jalali month only; choosing a period
+  belongs with گزارش‌ها in Phase 8, which is still absent from navigation entirely (D-021).
+
+**Security note (increment f2).** No new data is stored and no new input is accepted — every write
+path in this increment already existed and was reviewed in (d). What changes is what is *displayed*:
+
+- **Monetary totals and customer names now appear on two more screens.** Both go through the
+  existing paths — `AmountText` for money, the ARB for every word — and neither is logged. The only
+  log lines these screens can produce come from `AsyncErrorView`, which logs a provider failure once
+  and carries no value.
+- **No new permission, platform surface or dependency.** No package was added; the four new
+  aggregate queries run on the same encrypted connection through the same Drift API, all
+  parameterized, with no `customStatement` anywhere.
+- **The threat model is unchanged.** The Android manifest hardening (§7) and the web CSP remain
+  Phase 9 and Phase 12 work and are still **not** done.
+
 **Remaining in Phase 1**
 
-- Increment (f2): the Invoices list and the Dashboard, on real data.
+- Nothing. (f2) was the last increment; the phase is complete pending the owner's review of it.
+  What was deliberately **not** built in Phase 1, and where it goes, is listed under (f2) above.
 
 **Known issues**
 

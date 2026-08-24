@@ -21,6 +21,10 @@ abstract interface class ProductRepository {
 
   Future<int> count();
 
+  /// The number of catalogue entries, as a **live** query — see the note on
+  /// `CustomerRepository.watchCount`.
+  Stream<int> watchCount();
+
   Future<Product> create(ProductDraft draft);
 
   /// Replaces the editable fields of [id], **rewriting `search_name`** from the
