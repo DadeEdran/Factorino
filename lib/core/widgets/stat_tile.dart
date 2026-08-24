@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 
-import '../../../core/theme/app_dimensions.dart';
-import '../../../core/theme/app_typography.dart';
-import '../../../core/widgets/app_card.dart';
-import '../../../core/widgets/skeleton.dart';
+import '../theme/app_dimensions.dart';
+import '../theme/app_typography.dart';
+import 'app_card.dart';
+import 'skeleton.dart';
 
-/// One dashboard figure: a quiet label, the figure itself, and a caption
+/// One headline figure: a quiet label, the figure itself, and a caption
 /// saying what population the figure covers.
 ///
-/// **The caption is not decoration.** A number on a dashboard that the user
+/// Shared rather than owned by the dashboard, because the customer detail
+/// screen asks the same question of one customer that the dashboard asks of
+/// the business, and two tiles that looked slightly different would suggest
+/// they meant slightly different things.
+///
+/// **The caption is not decoration.** A number the user
 /// cannot reconcile against anything is a number they learn to distrust —
 /// "sales" over which month, "outstanding" across which invoices. Each tile
 /// here names its own scope, which is the whole difference between a figure and
@@ -79,6 +84,55 @@ class StatTile extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+/// Tiles laid out [columns] to a row.
+///
+/// Explicit rows rather than a `GridView`: the tiles have unequal natural
+/// height, and a grid would force them all to the tallest cell's aspect ratio —
+/// which on a phone means tiles of whitespace to accommodate the one with a
+/// two-line caption.
+class TileGrid extends StatelessWidget {
+  const TileGrid({required this.tiles, required this.columns, super.key});
+
+  final List<Widget> tiles;
+  final int columns;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> rows = <Widget>[];
+
+    for (int start = 0; start < tiles.length; start += columns) {
+      if (rows.isNotEmpty) {
+        rows.add(const SizedBox(height: AppSpacing.lg));
+      }
+      rows.add(
+        IntrinsicHeight(
+          child: Row(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              for (int column = 0; column < columns; column++) ...<Widget>[
+                if (column > 0) const SizedBox(width: AppSpacing.lg),
+                Expanded(
+                  // The last row of an uneven grid keeps its empty cells, so a
+                  // lone tile stays the width of its neighbours instead of
+                  // stretching across the page and reading as more important.
+                  child: start + column < tiles.length
+                      ? tiles[start + column]
+                      : const SizedBox.shrink(),
+                ),
+              ],
+            ],
+          ),
+        ),
+      );
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: rows,
     );
   }
 }

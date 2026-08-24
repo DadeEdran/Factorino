@@ -13,6 +13,15 @@ import 'sync_columns.dart';
 class Customers extends Table with SyncColumns {
   /// Length limits are enforced at the schema boundary as well as in the UI,
   /// because the UI is not the only writer -- import (Phase 6) is another.
+  ///
+  /// **Every `max:` below must equal the matching constant in
+  /// `data/models/field_limits.dart`, which is what the forms use.** They
+  /// cannot reference it directly: `drift_dev` reads this argument with
+  /// `readIntLiteral`, which returns `null` for anything but an integer
+  /// literal, so a constant here would generate a column with *no* length
+  /// constraint at all -- silently. `test/data/database/field_limits_test.dart`
+  /// asks each generated column where it actually starts rejecting values and
+  /// fails if the two disagree.
   TextColumn get fullName => text().withLength(min: 1, max: 120)();
 
   /// Iranian mobile, normalized to `09xxxxxxxxx` before storage (§9). Stored

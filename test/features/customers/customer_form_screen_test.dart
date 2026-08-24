@@ -1,5 +1,7 @@
 import 'package:factorino/core/localization/generated/app_strings.dart';
+import 'package:factorino/core/widgets/app_text_field.dart';
 import 'package:factorino/data/models/customer.dart';
+import 'package:factorino/data/models/field_limits.dart';
 import 'package:factorino/data/providers.dart';
 import 'package:factorino/data/repositories/customer_repository.dart';
 import 'package:factorino/features/customers/presentation/customer_form_screen.dart';
@@ -205,6 +207,125 @@ void main() {
 
       expect(find.text(strings.validationMobileInvalid), findsOneWidget);
       expect(repository.created, isEmpty);
+    });
+  });
+
+  group('field-level limits (§7)', () {
+    testWidgets('a name longer than the column allows cannot be typed', (
+      WidgetTester tester,
+    ) async {
+      // The failure this replaces: the form accepted it, the repository sent
+      // it, and drift refused it with an `InvalidDataException` that
+      // `describeFailure` does not recognise -- so the user saw the generic
+      // «خطایی رخ داد», with no indication of which field or why (D-042).
+      final _RecordingCustomerRepository repository =
+          _RecordingCustomerRepository();
+      await pumpForm(tester, repository: repository);
+      final AppStrings strings = stringsOf(tester, CustomerFormScreen);
+
+      await tester.enterText(
+        fieldFor(tester, strings.customerFieldFullName),
+        'ا' * (CustomerLimits.fullName + 40),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.actionSave));
+      await tester.pumpAndSettle();
+
+      // Truncated at the boundary rather than refused after the fact, so the
+      // save succeeds with exactly what the column can hold.
+      expect(repository.created, hasLength(1));
+      expect(
+        repository.created.single.fullName.length,
+        CustomerLimits.fullName,
+      );
+    });
+
+    testWidgets('the limit is the column\'s, field by field', (
+      WidgetTester tester,
+    ) async {
+      // Reads the limit off the widget rather than off a number copied into
+      // this test: a test carrying its own copy of 120 would keep passing
+      // after the column changed, which is the whole failure being designed
+      // out.
+      await pumpForm(tester);
+      final AppStrings strings = stringsOf(tester, CustomerFormScreen);
+
+      // Read off `AppTextField`, which is the thing that carries the rule.
+      int limitOf(String label) => tester
+          .widget<AppTextField>(
+            find.ancestor(
+              of: find.text(label),
+              matching: find.byType(AppTextField),
+            ),
+          )
+          .maxLength;
+
+      expect(limitOf(strings.customerFieldFullName), CustomerLimits.fullName);
+      expect(limitOf(strings.customerFieldCompany), CustomerLimits.companyName);
+      expect(limitOf(strings.customerFieldMobile), CustomerLimits.mobile);
+      expect(
+        limitOf(strings.customerFieldNationalId),
+        CustomerLimits.nationalId,
+      );
+      expect(
+        limitOf(strings.customerFieldEconomicId),
+        CustomerLimits.economicId,
+      );
+      expect(limitOf(strings.customerFieldAddress), CustomerLimits.address);
+      expect(limitOf(strings.customerFieldNotes), CustomerLimits.notes);
+    });
+
+    testWidgets('the national ID field refuses letters (§7 character class)', (
+      WidgetTester tester,
+    ) async {
+      // A field that accepts letters into a کد ملی accepts a value the
+      // checksum then calls invalid without explaining which part was wrong.
+      await pumpForm(tester);
+      final AppStrings strings = stringsOf(tester, CustomerFormScreen);
+
+      final Finder field = fieldFor(tester, strings.customerFieldNationalId);
+      await tester.enterText(field, 'ابc۱۲۳٤٥');
+      await tester.pumpAndSettle();
+
+      // Digits survive in whichever set they were typed -- Persian, Arabic and
+      // ASCII alike -- and are folded at parse time, not under the cursor.
+      expect(find.text('۱۲۳٤٥'), findsOneWidget);
+    });
+
+    testWidgets('the counter appears only near a long field\'s limit', (
+      WidgetTester tester,
+    ) async {
+      // A permanent «۰/۲۰۰۰» under every field is decoration (§10). A field
+      // that silently stops accepting keystrokes is worse, so the counter
+      // arrives once the limit is the reason.
+      await pumpForm(tester);
+      final AppStrings strings = stringsOf(tester, CustomerFormScreen);
+
+      final Finder notes = fieldFor(tester, strings.customerFieldNotes);
+      await tester.enterText(notes, 'ا' * 10);
+      await tester.pumpAndSettle();
+      expect(find.textContaining('/'), findsNothing);
+
+      await tester.enterText(notes, 'ا' * (CustomerLimits.notes - 5));
+      await tester.pumpAndSettle();
+      expect(find.textContaining('/'), findsOneWidget);
+    });
+
+    testWidgets('a short format field never shows a counter', (
+      WidgetTester tester,
+    ) async {
+      // A ten-digit کد ملی stops at ten because that is what a کد ملی is.
+      // Counting toward a limit the user is not worried about is noise.
+      await pumpForm(tester);
+      final AppStrings strings = stringsOf(tester, CustomerFormScreen);
+
+      await tester.enterText(
+        fieldFor(tester, strings.customerFieldNationalId),
+        '0079542311',
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.textContaining('/'), findsNothing);
     });
   });
 }

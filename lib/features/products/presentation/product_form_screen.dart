@@ -7,8 +7,10 @@ import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/money/money.dart';
 import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
+import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/async_error_view.dart';
 import '../../../core/widgets/form_scaffold.dart';
+import '../../../data/models/field_limits.dart';
 import '../../../data/models/product.dart';
 import '../../../data/models/product_type.dart';
 import '../application/products_providers.dart';
@@ -27,6 +29,9 @@ import '../application/products_providers.dart';
 /// * An amount past `kMaxAmountRial` is **rejected with a Persian message**
 ///   rather than truncated (D-002). The engine already refuses it; this is the
 ///   screen that explains the refusal instead of letting an exception surface.
+///
+/// Every field is an [AppTextField], whose `maxLength` is required and comes
+/// from [ProductLimits] — the same numbers the columns carry (§7, D-042).
 class ProductFormScreen extends ConsumerWidget {
   const ProductFormScreen({this.productId, super.key});
 
@@ -157,11 +162,12 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
           // Found by screenshotting the running form and zooming in.
           padding: const EdgeInsets.only(top: AppSpacing.sm),
           children: <Widget>[
-            TextFormField(
+            AppTextField(
               controller: _name,
+              label: strings.productFieldName,
+              maxLength: ProductLimits.name,
               autofocus: true,
               textInputAction: TextInputAction.next,
-              decoration: InputDecoration(labelText: strings.productFieldName),
               validator: (String? value) =>
                   (value == null || value.trim().isEmpty)
                   ? strings.validationRequired
@@ -189,41 +195,42 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
                   setState(() => _type = selection.first),
             ),
             const SizedBox(height: AppSpacing.lg),
-            TextFormField(
+            AppTextField(
               controller: _price,
+              label: strings.productFieldPrice,
+              // No column length to match -- money is an integer (D-002) --
+              // but there is still a ceiling, and stopping entry at the widest
+              // amount that can exist says so before the validator has to.
+              maxLength: AmountLimits.tomanDigits,
+              // The unit is always shown beside an amount (§9): a bare number
+              // here is ambiguous by a factor of ten.
+              suffixText: strings.unitToman,
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: false,
               ),
               textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: strings.productFieldPrice,
-                // The unit is always shown beside an amount (§9): a bare
-                // number here is ambiguous by a factor of ten.
-                suffixText: strings.unitToman,
-              ),
+              digitsOnly: true,
               validator: _validatePrice,
             ),
             const SizedBox(height: AppSpacing.lg),
-            TextFormField(
+            AppTextField(
               controller: _unit,
+              label: strings.productFieldUnit,
+              maxLength: ProductLimits.unit,
+              hintText: strings.productFieldUnitHint,
               textInputAction: TextInputAction.next,
-              decoration: InputDecoration(
-                labelText: strings.productFieldUnit,
-                hintText: strings.productFieldUnitHint,
-              ),
               validator: (String? value) =>
                   (value == null || value.trim().isEmpty)
                   ? strings.validationRequired
                   : null,
             ),
             const SizedBox(height: AppSpacing.lg),
-            TextFormField(
+            AppTextField(
               controller: _description,
+              label: strings.productFieldDescription,
+              maxLength: ProductLimits.description,
+              helperText: strings.fieldOptional,
               maxLines: 3,
-              decoration: InputDecoration(
-                labelText: strings.productFieldDescription,
-                helperText: strings.fieldOptional,
-              ),
             ),
             const SizedBox(height: AppSpacing.xxl),
           ],

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/utils/list_query.dart';
 import 'package:factorino/core/widgets/app_table.dart';
@@ -8,7 +6,6 @@ import 'package:factorino/core/widgets/load_more_footer.dart';
 import 'package:factorino/core/widgets/skeleton.dart';
 import 'package:factorino/data/models/customer.dart';
 import 'package:factorino/data/providers.dart';
-import 'package:factorino/data/repositories/customer_repository.dart';
 import 'package:factorino/features/customers/application/customers_providers.dart';
 import 'package:factorino/features/customers/presentation/customers_screen.dart';
 import 'package:flutter/material.dart';
@@ -17,6 +14,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../screen_harness.dart';
+import 'fake_customer_repository.dart';
 
 /// The customer list, at each of the four states it can be in and at both
 /// layouts it has.
@@ -39,7 +37,7 @@ void main() {
     );
   }
 
-  List<Override> withRepository(_FakeCustomerRepository repository) {
+  List<Override> withRepository(FakeCustomerRepository repository) {
     return <Override>[customerRepositoryProvider.overrideWithValue(repository)];
   }
 
@@ -50,8 +48,8 @@ void main() {
       // §10 asks for skeleton loaders over full-screen spinners. Asserting the
       // absence of the spinner as well, because "we added a skeleton" and "we
       // replaced the spinner" are different claims.
-      final _FakeCustomerRepository repository =
-          _FakeCustomerRepository.pending();
+      final FakeCustomerRepository repository =
+          FakeCustomerRepository.pending();
       await pumpScreen(
         tester,
         const CustomersScreen(),
@@ -66,7 +64,7 @@ void main() {
     testWidgets('shows the designed empty state with a call to action', (
       WidgetTester tester,
     ) async {
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[],
       );
       await pumpScreen(
@@ -97,7 +95,7 @@ void main() {
       // "You have no customers" in response to a search that matched nothing
       // would be false, and offering "add a customer" there would be answering
       // a question nobody asked.
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[],
       );
       late WidgetRef capturedRef;
@@ -137,10 +135,9 @@ void main() {
     ) async {
       // §7: no stack trace, SQL statement, path or raw exception string may
       // reach the user.
-      final _FakeCustomerRepository repository =
-          _FakeCustomerRepository.failing(
-            StateError('SELECT * FROM customers -- C:\\Users\\x\\factorino.db'),
-          );
+      final FakeCustomerRepository repository = FakeCustomerRepository.failing(
+        StateError('SELECT * FROM customers -- C:\\Users\\x\\factorino.db'),
+      );
       await pumpScreen(
         tester,
         const CustomersScreen(),
@@ -160,7 +157,7 @@ void main() {
     testWidgets('mobile renders cards, not a table', (
       WidgetTester tester,
     ) async {
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[customer('a', 'مریم احمدی', mobile: '09123456789')],
       );
       await pumpScreen(
@@ -178,7 +175,7 @@ void main() {
     testWidgets('desktop renders a real table with a header', (
       WidgetTester tester,
     ) async {
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[
           customer('a', 'مریم احمدی', mobile: '09123456789', company: 'پارس'),
         ],
@@ -206,7 +203,7 @@ void main() {
       // builds only what fits on screen. The gap is invisible at forty rows
       // and fatal at five thousand, which is why it is asserted here rather
       // than left to be discovered.
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[for (int i = 0; i < 400; i++) customer('c$i', 'مشتری $i')],
       );
       await pumpScreen(
@@ -232,7 +229,7 @@ void main() {
       // §13: the limit reaches SQL. If it did not, this list would work at
       // fifty rows and die at five thousand -- a defect shipped rather than
       // discovered.
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[for (int i = 0; i < 200; i++) customer('c$i', 'مشتری $i')],
       );
       await pumpScreen(
@@ -248,7 +245,7 @@ void main() {
     testWidgets('load more widens the query window by one page', (
       WidgetTester tester,
     ) async {
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[for (int i = 0; i < 200; i++) customer('c$i', 'مشتری $i')],
       );
       await pumpScreen(
@@ -292,7 +289,7 @@ void main() {
     testWidgets('no load-more control once the last page is short', (
       WidgetTester tester,
     ) async {
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[for (int i = 0; i < 3; i++) customer('c$i', 'مشتری $i')],
       );
       await pumpScreen(
@@ -308,7 +305,7 @@ void main() {
     testWidgets('searching resets the window to one page', (
       WidgetTester tester,
     ) async {
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[for (int i = 0; i < 200; i++) customer('c$i', 'مشتری $i')],
       );
       late WidgetRef capturedRef;
@@ -340,7 +337,7 @@ void main() {
     testWidgets('a missing mobile number says so rather than showing blank', (
       WidgetTester tester,
     ) async {
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[customer('a', 'مریم احمدی')],
       );
       await pumpScreen(
@@ -360,7 +357,7 @@ void main() {
       // §9. Without the isolate the number can reorder against the Persian
       // text beside it, and the same customer's number then reads differently
       // in a card and in a table.
-      final _FakeCustomerRepository repository = _FakeCustomerRepository(
+      final FakeCustomerRepository repository = FakeCustomerRepository(
         <Customer>[customer('a', 'مریم احمدی', mobile: '09123456789')],
       );
       await pumpScreen(
@@ -373,97 +370,75 @@ void main() {
       expect(find.text('\u2068۰۹۱۲ ۳۴۵ ۶۷۸۹\u2069'), findsOneWidget);
     });
   });
-}
 
-/// A [CustomerRepository] that answers from a list.
-///
-/// Implements the interface rather than mocking it, so this file would stop
-/// compiling if the interface changed — which is the notification a test should
-/// give when the contract underneath it moves.
-class _FakeCustomerRepository implements CustomerRepository {
-  _FakeCustomerRepository(this._all) : _pending = false, _failure = null;
+  group('delete', () {
+    testWidgets('explains what survives, then completes the write', (
+      WidgetTester tester,
+    ) async {
+      // This path shipped in (f1) untested, and it was broken: nothing on this
+      // screen watches `customerEditorProvider`, so the auto-disposed
+      // controller was collected during the await and the state write after it
+      // threw `UnmountedRefException`. The delete itself had already happened,
+      // so the user was shown nothing for something that did occur. The
+      // controller now holds a `keepAlive` link for the duration of the write.
+      final FakeCustomerRepository repository = FakeCustomerRepository(
+        <Customer>[customer('a', 'مریم احمدی')],
+      );
+      await pumpScreen(
+        tester,
+        const CustomersScreen(),
+        overrides: withRepository(repository),
+      );
+      await tester.pumpAndSettle();
 
-  /// A query that never answers, for the loading state.
-  _FakeCustomerRepository.pending()
-    : _all = const <Customer>[],
-      _pending = true,
-      _failure = null;
+      final AppStrings strings = stringsOf(tester, CustomersScreen);
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.actionDelete));
+      await tester.pumpAndSettle();
 
-  _FakeCustomerRepository.failing(this._failure)
-    : _all = const <Customer>[],
-      _pending = false;
+      // The Persian copy §6 requires: the customer leaves the list, and the
+      // invoices already issued to them keep their snapshotted figures (D-004).
+      expect(find.text(strings.customerDeleteTitle), findsOneWidget);
+      expect(find.text(strings.customerDeleteBody), findsOneWidget);
 
-  final List<Customer> _all;
-  final bool _pending;
-  final Object? _failure;
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(FilledButton, strings.actionDelete),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-  /// What the last query actually asked the database for. This is the
-  /// assertion that paging reaches SQL rather than stopping in Dart.
-  int? lastLimit;
-  String? lastSearchTerm;
+      expect(repository.deleted, <String>['a']);
+      expect(find.text(strings.customerDeleted), findsOneWidget);
+    });
 
-  @override
-  Stream<List<Customer>> watchAll({int limit = 100, int offset = 0}) {
-    lastLimit = limit;
-    lastSearchTerm = null;
-    return _emit(_all.skip(offset).take(limit).toList());
-  }
+    testWidgets('cancelling deletes nothing', (WidgetTester tester) async {
+      final FakeCustomerRepository repository = FakeCustomerRepository(
+        <Customer>[customer('a', 'مریم احمدی')],
+      );
+      await pumpScreen(
+        tester,
+        const CustomersScreen(),
+        overrides: withRepository(repository),
+      );
+      await tester.pumpAndSettle();
 
-  @override
-  Stream<List<Customer>> watchSearch(
-    String term, {
-    int limit = 100,
-    int offset = 0,
-  }) {
-    lastLimit = limit;
-    lastSearchTerm = term;
-    final List<Customer> matched = _all
-        .where((Customer c) => c.fullName.contains(term))
-        .skip(offset)
-        .take(limit)
-        .toList();
-    return _emit(matched);
-  }
+      final AppStrings strings = stringsOf(tester, CustomersScreen);
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.actionDelete));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.descendant(
+          of: find.byType(AlertDialog),
+          matching: find.widgetWithText(TextButton, strings.actionCancel),
+        ),
+      );
+      await tester.pumpAndSettle();
 
-  Stream<List<Customer>> _emit(List<Customer> value) {
-    if (_failure != null) {
-      return Stream<List<Customer>>.error(_failure);
-    }
-    if (_pending) {
-      // Never emits and never closes, so the provider stays in its loading
-      // state for as long as the test wants to look at it.
-      return StreamController<List<Customer>>().stream;
-    }
-    return Stream<List<Customer>>.value(value);
-  }
-
-  @override
-  Future<List<Customer>> search(
-    String term, {
-    int limit = 100,
-    int offset = 0,
-  }) => watchSearch(term, limit: limit, offset: offset).first;
-
-  @override
-  Future<Customer?> findById(String id) async {
-    final Iterable<Customer> found = _all.where((Customer c) => c.id == id);
-    return found.isEmpty ? null : found.first;
-  }
-
-  @override
-  Future<int> count() async => _all.length;
-
-  @override
-  Stream<int> watchCount() => Stream<int>.value(_all.length);
-
-  @override
-  Future<Customer> create(CustomerDraft draft) =>
-      throw UnimplementedError('not exercised by these tests');
-
-  @override
-  Future<Customer> update(String id, CustomerDraft draft) =>
-      throw UnimplementedError('not exercised by these tests');
-
-  @override
-  Future<void> softDelete(String id) async {}
+      expect(repository.deleted, isEmpty);
+    });
+  });
 }

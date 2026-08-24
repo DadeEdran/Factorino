@@ -15,7 +15,7 @@ import 'package:factorino/data/models/invoice_status.dart';
 import 'package:factorino/data/providers.dart';
 import 'package:factorino/data/repositories/customer_repository.dart';
 import 'package:factorino/features/dashboard/presentation/dashboard_screen.dart';
-import 'package:factorino/features/dashboard/presentation/stat_tile.dart';
+import 'package:factorino/core/widgets/stat_tile.dart';
 import 'package:factorino/features/invoices/presentation/invoices_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart';

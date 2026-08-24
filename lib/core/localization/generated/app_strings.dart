@@ -562,6 +562,12 @@ abstract class AppStrings {
   /// **'مبلغ واردشده بیش از حد مجاز است'**
   String get validationAmountTooLarge;
 
+  /// Shown when a field's value is longer than its column allows. Names the limit rather than only refusing, because the point of the field-level limits is that the user is told which field and why -- the failure this replaces was a generic error with neither. The count arrives already rendered in Persian digits by core/formatting, so digit rendering stays in one place (D-022).
+  ///
+  /// In fa, this message translates to:
+  /// **'حداکثر {max} نویسه مجاز است'**
+  String validationTooLong(String max);
+
   /// Search covers the customer name and the company name, which are the two fields search_name is built from (D-025).
   ///
   /// In fa, this message translates to:
@@ -657,6 +663,84 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'مشتری ذخیره شد'**
   String get customerSaved;
+
+  /// Heading over the customer's stored record on the detail screen.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشخصات'**
+  String get customerDetailsSection;
+
+  /// Tooltip on the control that expands or collapses the customer's record on a phone, where it is collapsed by default so it cannot push the invoice list down the page.
+  ///
+  /// In fa, this message translates to:
+  /// **'نمایش یا پنهان کردن مشخصات'**
+  String get customerDetailsToggle;
+
+  /// Heading over the list of invoices issued to this customer.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتورهای این مشتری'**
+  String get customerInvoicesSection;
+
+  /// Detail-screen tile: the sum of grand totals over invoices ISSUED to this customer. Drafts and cancellations are excluded (D-039), which is what the caption underneath says -- a figure the user cannot reconcile against the list beneath it is one they learn to distrust.
+  ///
+  /// In fa, this message translates to:
+  /// **'مجموع فاکتورهای صادرشده'**
+  String get customerTotalBilled;
+
+  /// Caption under customerTotalBilled, naming exactly which invoices it covers.
+  ///
+  /// In fa, this message translates to:
+  /// **'به‌جز پیش‌نویس‌ها و فاکتورهای لغوشده'**
+  String get customerTotalBilledCaption;
+
+  /// Detail-screen tile: what this customer still owes -- grand total less payments received, over invoices that are unpaid or partially paid. Its own key rather than a shared one with the dashboard tile, because the two cover different populations and a later wording change should not have to be right for both.
+  ///
+  /// In fa, this message translates to:
+  /// **'مانده دریافتنی'**
+  String get customerTotalOutstanding;
+
+  /// No description provided for @customerTotalOutstandingCaption.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتورهای پرداخت‌نشده و پرداخت جزئی'**
+  String get customerTotalOutstandingCaption;
+
+  /// No description provided for @customerEmptyInvoicesTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'هنوز فاکتوری برای این مشتری صادر نشده است'**
+  String get customerEmptyInvoicesTitle;
+
+  /// Empty state for a customer with no invoices. Offers no create action: the invoice form is Phase 4, and an affordance leading nowhere is worse than its absence (D-021, one level down).
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتورهایی که برای این مشتری صادر کنید، همراه با وضعیت پرداختشان اینجا نمایش داده می‌شوند.'**
+  String get customerEmptyInvoicesBody;
+
+  /// Shown when a customer id in the URL does not resolve -- a stale deep link, or a customer deleted while the page was opening.
+  ///
+  /// In fa, this message translates to:
+  /// **'این مشتری پیدا نشد'**
+  String get customerNotFoundTitle;
+
+  /// No description provided for @customerNotFoundBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'ممکن است حذف شده باشد. به فهرست مشتریان برگردید.'**
+  String get customerNotFoundBody;
+
+  /// No description provided for @customerBackToList.
+  ///
+  /// In fa, this message translates to:
+  /// **'فهرست مشتریان'**
+  String get customerBackToList;
+
+  /// Placeholder for a record field the user has not filled in. Shown rather than hiding the row, so the detail screen says what is missing instead of quietly looking complete -- the user can then decide whether to add it.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت نشده'**
+  String get fieldNotRecorded;
 
   /// No description provided for @productsSearchHint.
   ///

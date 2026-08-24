@@ -12,6 +12,10 @@ import 'sync_columns.dart';
 @TableIndex(name: 'idx_products_search_name', columns: {#searchName})
 @DataClassName('ProductRow')
 class Products extends Table with SyncColumns {
+  /// Every `max:` below must equal the matching constant in
+  /// `data/models/field_limits.dart` -- see the note on `Customers.fullName`
+  /// for why the constant cannot be referenced here and what enforces the
+  /// agreement instead.
   TextColumn get name => text().withLength(min: 1, max: 160)();
 
   IntColumn get type => intEnum<ProductType>()();

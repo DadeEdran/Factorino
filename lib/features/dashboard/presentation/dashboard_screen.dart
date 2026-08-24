@@ -17,11 +17,11 @@ import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/async_error_view.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/page_body.dart';
+import '../../../core/widgets/stat_tile.dart';
 import '../../../data/models/invoice_list_item.dart';
 import '../../invoices/presentation/invoices_screen.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/dashboard_summary.dart';
-import 'stat_tile.dart';
 
 /// The dashboard.
 ///
@@ -97,7 +97,7 @@ class _DashboardBody extends StatelessWidget {
 
     return ListView(
       children: <Widget>[
-        _TileGrid(
+        TileGrid(
           columns: switch (tier) {
             LayoutTier.mobile => 1,
             LayoutTier.tablet => 2,
@@ -176,55 +176,6 @@ class _CountText extends StatelessWidget {
   }
 }
 
-/// The tiles, laid out [columns] to a row.
-///
-/// Explicit rows rather than a `GridView`: there are four tiles of unequal
-/// natural height, and a grid would force them all to the tallest cell's aspect
-/// ratio — which on a phone means three tiles of whitespace to accommodate the
-/// one with a two-line caption.
-class _TileGrid extends StatelessWidget {
-  const _TileGrid({required this.tiles, required this.columns});
-
-  final List<Widget> tiles;
-  final int columns;
-
-  @override
-  Widget build(BuildContext context) {
-    final List<Widget> rows = <Widget>[];
-
-    for (int start = 0; start < tiles.length; start += columns) {
-      if (rows.isNotEmpty) {
-        rows.add(const SizedBox(height: AppSpacing.lg));
-      }
-      rows.add(
-        IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              for (int column = 0; column < columns; column++) ...<Widget>[
-                if (column > 0) const SizedBox(width: AppSpacing.lg),
-                Expanded(
-                  // The last row of an uneven grid keeps its empty cells, so a
-                  // lone tile stays the width of its neighbours instead of
-                  // stretching across the page and reading as more important.
-                  child: start + column < tiles.length
-                      ? tiles[start + column]
-                      : const SizedBox.shrink(),
-                ),
-              ],
-            ],
-          ),
-        ),
-      );
-    }
-
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rows,
-    );
-  }
-}
-
 /// The handful of most recent invoices, in the same row widgets the invoice
 /// list uses.
 ///
@@ -297,7 +248,7 @@ class _DashboardSkeleton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return _TileGrid(
+    return TileGrid(
       columns: switch (context.tier) {
         LayoutTier.mobile => 1,
         LayoutTier.tablet => 2,

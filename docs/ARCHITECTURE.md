@@ -9,10 +9,13 @@
 
 ---
 
-# §A — What exists today (2026-08-23)
+# §A — What exists today (2026-08-25)
 
-The scaffold plus **one real slice of the target architecture**: the encrypted database connection
-and its key management. Nothing else of the application has been built.
+The whole of Phase 1 plus Phases 2 and 3: the encrypted connection and its key management, the money
+and date engines, the schema and repository layer, the design system and Persian shell, and six
+screens on real data — Dashboard, Invoices, Customers, Customer detail, Products, Settings. What does
+not exist yet is invoice **creation** (Phase 4), invoice **detail** and payment entry (Phase 5), and
+everything from Phase 6 on.
 
 ```
 Factorino/
@@ -38,6 +41,7 @@ Factorino/
         jalali_period.dart                        #   InstantRange + day/month/year boundaries
       formatting/                                 # the input boundary (§9)
         persian_text.dart                         #   THE normalizer: searchKey (D-025, D-029)
+                                                  #   + keepDigitsOnly, the digit character class
         number_input.dart                         #   digit folding + exact scaled parsing
         iranian_phone.dart                        #   09xxxxxxxxx, from +98 / 0098 / bare
         national_id.dart                          #   checksum; the field stays optional
@@ -57,6 +61,8 @@ Factorino/
         soft_delete.dart                          # selectAlive / selectOnlyAlive / countAlive
         tables/                                   # six tables + SyncColumns mixin
       models/                                     # domain entities -- NO drift import (D-031)
+        field_limits.dart                         # THE field lengths, shared with the forms (D-043)
+        customer_totals.dart                      # billed + outstanding, from one query (D-044)
         customer.dart  product.dart  invoice.dart  invoice_item.dart
         payment.dart   invoice_detail.dart  invoice_draft.dart
         app_settings.dart  invoice_number.dart
@@ -84,12 +90,17 @@ Factorino/
         app_card.dart  status_badge.dart  empty_state.dart
         amount_text.dart  page_body.dart
         app_table.dart                            #   virtualized desktop table (D-037)
+        app_text_field.dart                       #   THE text field; maxLength required (D-043)
+        stat_tile.dart                            #   StatTile + TileGrid, shared by two features
         skeleton.dart  search_field.dart  load_more_footer.dart
         form_scaffold.dart  async_error_view.dart
     features/<feature>/
       presentation/                               # screens and forms
       application/                                # feature providers + the write-path controller
                                                   #   settings, customers, products
+      domain/                                     # feature-shaped values assembled from models
+                                                  #   dashboard_summary, customer_detail_view,
+                                                  #   invoice_status_view
     app.dart             # MaterialApp.router: themes, locale, RTL, router
     main.dart            # opens the database, overrides the provider, runs the app
   test/
@@ -98,8 +109,12 @@ Factorino/
     core/formatting/jalali_display_test.dart        # dates, phones, ids, bidi isolation
     features/screen_harness.dart                    # locale + RTL + tier + router, as the app gives them
     features/customers/customers_screen_test.dart   # four states, two layouts, paging reaches SQL
-    features/customers/customer_form_screen_test.dart # D-030 against behaviour, not only the ARB
+    features/customers/customer_form_screen_test.dart # D-030 + the field limits, against behaviour
+    features/customers/customer_detail_screen_test.dart # the record, the totals, the empty states
+    features/customers/fake_customer_repository.dart  # shared by both customer screen suites
+    features/products/product_form_screen_test.dart   # the limits on the remaining form
     core/theme/theme_tokens_only_test.dart          # scans lib/ for literal colours and sizes
+    core/widgets/field_limit_path_test.dart         # scans lib/ for raw text fields, literal limits
     core/localization/no_hardcoded_strings_test.dart # scans lib/ for Persian in code; checks D-030
     core/money/                                     # §4 cases, the invariant, D-027 clamps
     core/date/jalali_period_test.dart               # boundaries vs known Nowruz dates
@@ -111,6 +126,7 @@ Factorino/
     data/database/single_open_path_test.dart        # scans lib/ for bypass routes
     data/database/soft_delete_usage_test.dart       # scans lib/ for unguarded reads
     data/database/schema_shape_test.dart            # D-011 columns on every table
+    data/database/field_limits_test.dart            # where each column ACTUALLY refuses (D-043)
     data/database/app_database_test.dart            # schema behaviour, real encrypted file
     data/database/search_name_roundtrip_test.dart   # write -> LIKE, through the real file
     data/providers_test.dart                        # the override seam
@@ -149,13 +165,16 @@ decided by the file header, never by a pragma - see the three named traps in D-0
   number inside the write transaction (D-013); payment writes recompute the derived invoice status in
   the same transaction (§6).
 - **Routing:** `go_router` with a `StatefulShellRoute` over five destinations, each keeping its own
-  stack and scroll position. Only routes whose screens exist are registered — as of (f1) that
-  includes `/customers/new`, `/customers/:id/edit`, `/products/new` and `/products/:id/edit`, each
-  a child of its destination so the URL reads as a hierarchy and the shell keeps the right item
-  selected. گزارش‌ها is absent from navigation *and* from the router (D-021).
-- **Screens:** Customers and Products read real data end to end — search, query-level paging,
-  skeletons, two empty states, soft delete and create/edit forms. Dashboard and Invoices are still
-  the unconditional empty states from (e) and arrive in (f2).
+  stack and scroll position. Only routes whose screens exist are registered: `/customers/new`,
+  `/customers/:id/edit`, `/customers/:id`, `/products/new` and `/products/:id/edit`, each a child of
+  its destination so the URL reads as a hierarchy and the shell keeps the right item selected.
+  **`:id` is declared after the literal `new`**, or it would swallow it. گزارش‌ها is absent from
+  navigation *and* from the router (D-021), and so are `/invoices/:id` and `/products/:id`.
+- **Screens:** six, all on real data. Customers and Products list, search, page, create, edit and
+  soft delete; the Dashboard and the Invoice list read live SQL aggregates over Jalali periods; the
+  **customer detail** screen shows one customer's record, two per-customer aggregates and their
+  invoices (D-044). Every text field goes through `AppTextField`, whose `maxLength` is required and
+  comes from the same constants the columns carry (D-043).
 - **Localization:** both halves exist. The **input boundary** in `core/formatting/` -- digit folding,
   the letter folds, the single `searchKey` normalizer, phone normalization, the national-ID checksum,
   and display formatting for grouped numbers, percentages and quantities. The **presentation side**
@@ -172,6 +191,12 @@ decided by the file header, never by a pragma - see the three named traps in D-0
   `core/theme/` (D-033). One Persian-turquoise accent, warm neutrals, six semantic status pairs as a
   `StatusPalette` theme extension, and a type scale whose largest style is the financial numeral
   style. Enforced: a literal colour or dimension outside the token files fails the build.
+- **Form input:** one text field, `core/widgets/app_text_field.dart`, with a **required**
+  `maxLength` drawn from `data/models/field_limits.dart` — the same numbers the columns carry
+  (D-043). A `lib/` scan fails the build on a raw `TextFormField`/`TextField` or on a limit written
+  as a number, and a schema test asks each generated column where it actually starts refusing
+  values. That second test exists because the obvious sharing — referencing the constant from
+  `withLength(max:)` — silently produces a column with **no** length constraint at all.
 - **Logging:** one wrapper, `core/security/app_log.dart` (D-035). Closure messages, everything
   stripped from release builds by a compile-time constant, a shape-based scrubber, and the
   framework's own error path routed through it. A `lib/` scan fails the build on any other output

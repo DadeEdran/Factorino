@@ -159,9 +159,16 @@ class _InvoiceList extends StatelessWidget {
 /// Pushing them to the trailing edge of an RTL row lines up their *first*
 /// digits instead and leaves the units ragged — undoing exactly what the
 /// tabular figures in [AppTypography] exist to provide (D-037).
-List<TableColumnSpec> invoiceColumns(AppStrings strings) => <TableColumnSpec>[
+///
+/// [includeCustomer] is false on a customer's own page, where the name would be
+/// the same on every row — see the note on [InvoiceCard.showCustomer].
+List<TableColumnSpec> invoiceColumns(
+  AppStrings strings, {
+  bool includeCustomer = true,
+}) => <TableColumnSpec>[
   TableColumnSpec(label: strings.tableColumnNumber, flex: 2),
-  TableColumnSpec(label: strings.tableColumnCustomer, flex: 3),
+  if (includeCustomer)
+    TableColumnSpec(label: strings.tableColumnCustomer, flex: 3),
   TableColumnSpec(
     label: strings.tableColumnDate,
     width: AppLayout.tableDateWidth,
@@ -183,6 +190,7 @@ class InvoiceTableRow extends StatelessWidget {
     required this.item,
     required this.strings,
     required this.now,
+    this.showCustomer = true,
     super.key,
   });
 
@@ -192,6 +200,9 @@ class InvoiceTableRow extends StatelessWidget {
   /// Read from the clock provider by the screen, not by this widget, so every
   /// row on the page ages against the same instant.
   final DateTime now;
+
+  /// See [InvoiceCard.showCustomer].
+  final bool showCustomer;
 
   @override
   Widget build(BuildContext context) {
@@ -203,7 +214,7 @@ class InvoiceTableRow extends StatelessWidget {
     );
 
     return AppTableRow(
-      columns: invoiceColumns(strings),
+      columns: invoiceColumns(strings, includeCustomer: showCustomer),
       cells: <Widget>[
         Text(
           // Bidi-isolated: `INV-1405-0001` mixes a Latin prefix with digits and
@@ -213,11 +224,12 @@ class InvoiceTableRow extends StatelessWidget {
           overflow: TextOverflow.ellipsis,
           style: muted,
         ),
-        Text(
-          item.customerName,
-          overflow: TextOverflow.ellipsis,
-          style: theme.textTheme.bodyLarge,
-        ),
+        if (showCustomer)
+          Text(
+            item.customerName,
+            overflow: TextOverflow.ellipsis,
+            style: theme.textTheme.bodyLarge,
+          ),
         Text(
           formatJalaliDate(item.invoice.issueDate),
           overflow: TextOverflow.ellipsis,
@@ -244,12 +256,25 @@ class InvoiceCard extends StatelessWidget {
     required this.item,
     required this.strings,
     required this.now,
+    this.showCustomer = true,
     super.key,
   });
 
   final InvoiceListItem item;
   final AppStrings strings;
   final DateTime now;
+
+  /// Whether the customer's name is the card's heading.
+  ///
+  /// False on that customer's own page, where it would be the same name on
+  /// every row — twenty repetitions of something the reader already knows,
+  /// pushing the invoice number, which is what actually identifies the row,
+  /// into second place. §10 removes what does not aid comprehension.
+  ///
+  /// The card is otherwise unchanged: same shape, same order, same emphasis, so
+  /// an invoice still looks like an invoice wherever it is seen. The heading
+  /// slot takes the number instead, and the run beneath it keeps the date.
+  final bool showCustomer;
 
   @override
   Widget build(BuildContext context) {
@@ -267,11 +292,17 @@ class InvoiceCard extends StatelessWidget {
           Row(
             children: <Widget>[
               Expanded(
-                child: Text(
-                  item.customerName,
-                  overflow: TextOverflow.ellipsis,
-                  style: theme.textTheme.titleSmall,
-                ),
+                child: showCustomer
+                    ? Text(
+                        item.customerName,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall,
+                      )
+                    : Text(
+                        isolate(item.invoice.number),
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleSmall,
+                      ),
               ),
               StatusBadge(
                 status: view,
@@ -290,7 +321,8 @@ class InvoiceCard extends StatelessWidget {
             spacing: AppSpacing.md,
             runSpacing: AppSpacing.xxs,
             children: <Widget>[
-              Text(isolate(item.invoice.number), style: muted),
+              if (showCustomer)
+                Text(isolate(item.invoice.number), style: muted),
               Text(formatJalaliDate(item.invoice.issueDate), style: muted),
             ],
           ),

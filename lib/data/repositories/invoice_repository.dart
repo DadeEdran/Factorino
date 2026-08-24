@@ -1,5 +1,6 @@
 import '../../core/date/jalali_period.dart';
 import '../../core/money/invoice_calculator.dart';
+import '../models/customer_totals.dart';
 import '../models/invoice.dart';
 import '../models/invoice_detail.dart';
 import '../models/invoice_draft.dart';
@@ -71,6 +72,13 @@ abstract interface class InvoiceRepository {
   /// streams settle at different moments, and the tile would show a figure that
   /// belongs to neither state for as long as it took the second to arrive.
   Stream<int> watchOutstandingRial();
+
+  /// What one customer has been billed and what they still owe, live.
+  ///
+  /// Both figures in **one** statement — see [CustomerTotals] for why they may
+  /// not be two — and computed in SQL over every invoice that customer has,
+  /// not over the page of them the detail screen happens to be showing.
+  Stream<CustomerTotals> watchCustomerTotals(String customerId);
 
   Future<Invoice?> findById(String id);
 

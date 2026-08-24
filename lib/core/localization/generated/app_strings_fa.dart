@@ -251,6 +251,11 @@ class AppStringsFa extends AppStrings {
   String get validationAmountTooLarge => 'مبلغ واردشده بیش از حد مجاز است';
 
   @override
+  String validationTooLong(String max) {
+    return 'حداکثر $max نویسه مجاز است';
+  }
+
+  @override
   String get customersSearchHint => 'جستجوی نام یا شرکت';
 
   @override
@@ -298,6 +303,50 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get customerSaved => 'مشتری ذخیره شد';
+
+  @override
+  String get customerDetailsSection => 'مشخصات';
+
+  @override
+  String get customerDetailsToggle => 'نمایش یا پنهان کردن مشخصات';
+
+  @override
+  String get customerInvoicesSection => 'فاکتورهای این مشتری';
+
+  @override
+  String get customerTotalBilled => 'مجموع فاکتورهای صادرشده';
+
+  @override
+  String get customerTotalBilledCaption =>
+      'به‌جز پیش‌نویس‌ها و فاکتورهای لغوشده';
+
+  @override
+  String get customerTotalOutstanding => 'مانده دریافتنی';
+
+  @override
+  String get customerTotalOutstandingCaption =>
+      'فاکتورهای پرداخت‌نشده و پرداخت جزئی';
+
+  @override
+  String get customerEmptyInvoicesTitle =>
+      'هنوز فاکتوری برای این مشتری صادر نشده است';
+
+  @override
+  String get customerEmptyInvoicesBody =>
+      'فاکتورهایی که برای این مشتری صادر کنید، همراه با وضعیت پرداختشان اینجا نمایش داده می‌شوند.';
+
+  @override
+  String get customerNotFoundTitle => 'این مشتری پیدا نشد';
+
+  @override
+  String get customerNotFoundBody =>
+      'ممکن است حذف شده باشد. به فهرست مشتریان برگردید.';
+
+  @override
+  String get customerBackToList => 'فهرست مشتریان';
+
+  @override
+  String get fieldNotRecorded => 'ثبت نشده';
 
   @override
   String get productsSearchHint => 'جستجوی محصول یا خدمت';

@@ -3,10 +3,12 @@ import 'package:drift/drift.dart';
 import '../../../core/date/jalali_instant.dart';
 import '../../../core/date/jalali_period.dart';
 import '../../../core/money/invoice_calculator.dart';
+import '../../../core/money/money.dart';
 import '../../database/app_database.dart';
 import '../../database/soft_delete.dart';
 import '../../database/tables/sync_columns.dart';
 import '../../models/app_settings.dart';
+import '../../models/customer_totals.dart';
 import '../../models/invoice.dart';
 import '../../models/invoice_detail.dart';
 import '../../models/invoice_draft.dart';
@@ -167,6 +169,67 @@ class DriftInvoiceRepository implements InvoiceRepository {
 ..where(_db.invoices.status.isInValues(kOutstandingInvoiceStatuses));
 
     return query.watchSingle().map((TypedResult row) => row.read(owed) ?? 0);
+  }
+
+  @override
+  Stream<CustomerTotals> watchCustomerTotals(String customerId) {
+    // Two aggregates over two different populations, in one statement:
+    //
+    //   SELECT SUM(grand_total_rial) FILTER (WHERE status IN (issued)),
+    //          SUM(grand_total_rial - COALESCE((SELECT SUM(amount_rial)
+    //                                           FROM payments
+    //                                           WHERE deleted_at IS NULL
+    //                                             AND invoice_id = invoices.id),
+    //                                          0))
+    //            FILTER (WHERE status IN (unpaid, partiallyPaid))
+    //   FROM invoices
+    //   WHERE deleted_at IS NULL AND customer_id = ?
+    //
+    // `FILTER` rather than two queries, because the two figures sit beside each
+    // other on screen and a user reads them together: settled at two instants
+    // they would occasionally show a pair that never existed. SQLite has
+    // supported it since 3.30 and this application ships 3.53.
+    //
+    // The correlated subquery is the same one `watchOutstandingRial` uses, and
+    // for the same reason: joining to payments would multiply an invoice's
+    // grand total by its number of payment rows, which is invisible until an
+    // invoice takes its second instalment and then overstates what is owed.
+    final Expression<int> paidOnThisInvoice = subqueryExpression<int>(
+      _db.selectOnlyAlive(_db.payments)
+..addColumns(<Expression<Object>>[_db.payments.amountRial.sum()])
+..where(_db.payments.invoiceId.equalsExp(_db.invoices.id)),
+    );
+
+    // Issued only (D-039). A draft is not yet a claim on anyone, so a
+    // customer's billed history must not climb while the user is still typing.
+    final Expression<int> billed = _db.invoices.grandTotalRial.sum(
+      filter: _db.invoices.status.isInValues(kIssuedInvoiceStatuses),
+    );
+    final Expression<int> outstanding =
+        (_db.invoices.grandTotalRial -
+                coalesce<int>(<Expression<int>>[
+                  paidOnThisInvoice,
+                  const Constant<int>(0),
+                ]))
+.sum(
+              filter: _db.invoices.status.isInValues(
+                kOutstandingInvoiceStatuses,
+              ),
+            );
+
+    final JoinedSelectStatement<HasResultSet, dynamic> query =
+        _db.selectOnlyAlive(_db.invoices)
+..addColumns(<Expression<Object>>[billed, outstanding])
+..where(_db.invoices.customerId.equals(customerId));
+
+    return query.watchSingle().map(
+      (TypedResult row) => CustomerTotals(
+        // A customer with no invoices produces one row of nulls rather than no
+        // row, so the zero is a real answer and not a missing one.
+        billed: Money.rial(row.read(billed) ?? 0),
+        outstanding: Money.rial(row.read(outstanding) ?? 0),
+      ),
+    );
   }
 
   @override

@@ -106,6 +106,35 @@ String toPersianDigits(String input) {
   return out.toString();
 }
 
+/// Drops everything that is not a digit, in any of the three sets.
+///
+/// The **character-class** half of the project spec's field-level limits, for the
+/// fields where one is meaningful: کد ملی and کد اقتصادی are digits and nothing
+/// else, so a field that accepts letters into them accepts a value the checksum
+/// will then call invalid without saying why.
+///
+/// Digits are kept **as typed** rather than folded to ASCII. A form field
+/// filters what the user is allowed to enter; it does not get to rewrite what
+/// they see while they are still typing it — a cursor that jumps because the
+/// text under it changed length is a worse failure than the one being
+/// prevented. Folding happens at parse time, in [normalizePersianDigits],
+/// exactly as it does for every other numeric input.
+///
+/// Lives here rather than beside the widget that uses it because this is the
+/// only directory permitted to name a digit code point
+/// (`single_normalizer_path_test.dart`) — and because the alternative, a second
+/// definition of "what counts as a digit", is precisely the drift D-029 exists
+/// to prevent.
+String keepDigitsOnly(String input) {
+  if (input.isEmpty) return input;
+
+  final out = StringBuffer();
+  for (final rune in input.runes) {
+    if (_asciiDigitOf(rune) != null) out.writeCharCode(rune);
+  }
+  return out.toString();
+}
+
 /// Folds Arabic letter forms to their Persian spelling, leaving spacing,
 /// ZWNJ and digits untouched.
 ///

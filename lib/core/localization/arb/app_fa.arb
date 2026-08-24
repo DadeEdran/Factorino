@@ -231,6 +231,15 @@
   "@validationAmountTooLarge": {
     "description": "The money engine rejects values above kMaxAmountRial rather than truncating them (D-002)."
   },
+  "validationTooLong": "حداکثر {max} نویسه مجاز است",
+  "@validationTooLong": {
+    "description": "Shown when a field's value is longer than its column allows. Names the limit rather than only refusing, because the point of the field-level limits is that the user is told which field and why -- the failure this replaces was a generic error with neither. The count arrives already rendered in Persian digits by core/formatting, so digit rendering stays in one place (D-022).",
+    "placeholders": {
+      "max": {
+        "type": "String"
+      }
+    }
+  },
 
   "customersSearchHint": "جستجوی نام یا شرکت",
   "@customersSearchHint": {
@@ -268,6 +277,50 @@
   "@customerDeleted": {},
   "customerSaved": "مشتری ذخیره شد",
   "@customerSaved": {},
+  "customerDetailsSection": "مشخصات",
+  "@customerDetailsSection": {
+    "description": "Heading over the customer's stored record on the detail screen."
+  },
+  "customerDetailsToggle": "نمایش یا پنهان کردن مشخصات",
+  "@customerDetailsToggle": {
+    "description": "Tooltip on the control that expands or collapses the customer's record on a phone, where it is collapsed by default so it cannot push the invoice list down the page."
+  },
+  "customerInvoicesSection": "فاکتورهای این مشتری",
+  "@customerInvoicesSection": {
+    "description": "Heading over the list of invoices issued to this customer."
+  },
+  "customerTotalBilled": "مجموع فاکتورهای صادرشده",
+  "@customerTotalBilled": {
+    "description": "Detail-screen tile: the sum of grand totals over invoices ISSUED to this customer. Drafts and cancellations are excluded (D-039), which is what the caption underneath says -- a figure the user cannot reconcile against the list beneath it is one they learn to distrust."
+  },
+  "customerTotalBilledCaption": "به‌جز پیش‌نویس‌ها و فاکتورهای لغوشده",
+  "@customerTotalBilledCaption": {
+    "description": "Caption under customerTotalBilled, naming exactly which invoices it covers."
+  },
+  "customerTotalOutstanding": "مانده دریافتنی",
+  "@customerTotalOutstanding": {
+    "description": "Detail-screen tile: what this customer still owes -- grand total less payments received, over invoices that are unpaid or partially paid. Its own key rather than a shared one with the dashboard tile, because the two cover different populations and a later wording change should not have to be right for both."
+  },
+  "customerTotalOutstandingCaption": "فاکتورهای پرداخت‌نشده و پرداخت جزئی",
+  "@customerTotalOutstandingCaption": {},
+  "customerEmptyInvoicesTitle": "هنوز فاکتوری برای این مشتری صادر نشده است",
+  "@customerEmptyInvoicesTitle": {},
+  "customerEmptyInvoicesBody": "فاکتورهایی که برای این مشتری صادر کنید، همراه با وضعیت پرداختشان اینجا نمایش داده می‌شوند.",
+  "@customerEmptyInvoicesBody": {
+    "description": "Empty state for a customer with no invoices. Offers no create action: the invoice form is Phase 4, and an affordance leading nowhere is worse than its absence (D-021, one level down)."
+  },
+  "customerNotFoundTitle": "این مشتری پیدا نشد",
+  "@customerNotFoundTitle": {
+    "description": "Shown when a customer id in the URL does not resolve -- a stale deep link, or a customer deleted while the page was opening."
+  },
+  "customerNotFoundBody": "ممکن است حذف شده باشد. به فهرست مشتریان برگردید.",
+  "@customerNotFoundBody": {},
+  "customerBackToList": "فهرست مشتریان",
+  "@customerBackToList": {},
+  "fieldNotRecorded": "ثبت نشده",
+  "@fieldNotRecorded": {
+    "description": "Placeholder for a record field the user has not filled in. Shown rather than hiding the row, so the detail screen says what is missing instead of quietly looking complete -- the user can then decide whether to add it."
+  },
 
   "productsSearchHint": "جستجوی محصول یا خدمت",
   "@productsSearchHint": {},

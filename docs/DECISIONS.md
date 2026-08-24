@@ -1689,3 +1689,195 @@ entry would still be there. Merge Phase 3 into Phase 2, since one item remains �
 numbering is referenced from the project spec and from a dozen cross-references, and renumbering to
 save one heading trades a real cost for a cosmetic gain. A phase that is honestly small is better
 recorded as small than dissolved.
+
+---
+
+## D-043 — Field limits are named once, and drift cannot be told about it
+
+**Date:** 2026-08-25 · **Status:** ACCEPTED · implements the project spec's field-level limits.
+
+**Decision.** Every free-text field's maximum length is named once, in
+`lib/data/models/field_limits.dart`, and read from there by the forms. Every text field in `lib/`
+goes through `AppTextField`, whose `maxLength` is a **required** parameter.
+`test/core/widgets/field_limit_path_test.dart` fails the build on a raw `TextFormField`/`TextField`
+or on a `maxLength` that is a bare number rather than a `*Limits.` reference.
+`test/data/database/field_limits_test.dart` asks each generated column where it actually starts
+rejecting values and fails if that disagrees with the constant.
+
+**The gap this closes.** The schema has carried `withLength` on every text column since increment
+(a); the forms carried nothing. So an over-long name was accepted by the form, sent to the
+repository, and refused by drift with an `InvalidDataException` that `describeFailure` does not
+recognise — surfacing as the generic «خطایی رخ داد». The user was told something went wrong, not
+which field or why, and the value they had typed was still on screen looking perfectly reasonable
+(D-042 named this; this entry is its implementation).
+
+### The obvious way to share the constant does not work, and fails silently
+
+The natural design is `withLength(max: CustomerLimits.fullName)`. **It compiles, generates, and
+produces a column with no length constraint at all.** `drift_dev` reads that argument with
+`readIntLiteral`, which accepts an `IntegerLiteral` and returns `null` for anything else
+(`drift_dev-2.34.5/lib/src/analysis/resolver/dart/helper.dart:206`).
+
+This was verified rather than inferred. Changing the one column and regenerating produced:
+
+```
+-    additionalChecks: GeneratedColumn.checkTextLength(
+-      minTextLength: 1,
+-      maxTextLength: 120,
+-    ),
++    additionalChecks: GeneratedColumn.checkTextLength(minTextLength: 1),
+```
+
+`build_runner` reported no error and no warning. Sharing the constant would therefore have left the
+schema **weaker** than before the sharing was introduced — the exact shape of failure this project
+keeps writing guards against.
+
+**So the tables keep their integer literals, and a test closes the loop instead.** It is the
+stronger of the two checks: asking `isAcceptableValue` where the column starts refusing proves the
+constraint exists *and* where it bites, rather than proving two source files contain the same token.
+Confirmed to bite — with the constant reference in place it failed naming `full_name` and the exact
+cause.
+
+### Why a required parameter rather than a lint or a convention
+
+A wrapper whose limit is optional is a wrapper someone omits on the field that needed it. Making
+`maxLength` required moves half the rule to the compiler: a new field cannot exist without a limit.
+The scan covers the other half — a field that bypasses the wrapper, and a limit written as a number.
+Same treatment as the single database opener (D-020), the single normalizer (D-029) and the logging
+wrapper (D-035), for the same reason: **the failure is silent**, and review is what missed it for all
+of Phase 1.
+
+**One exemption exists**: the search field (`core/widgets/search_field.dart`). A search term is never
+stored, so there is no column whose limit it could disagree with; it reaches SQL as a bound parameter
+through `searchKey` (D-018, D-029), and a length limit would only decide how much of their own query
+the user can see. Marked `// field-limit-exempt:` with that reason, which is the escape hatch working
+as intended.
+
+### Three details that are easy to get subtly wrong
+
+**The validator measures what drift measures.** `maxLength` stops the *user* at the limit counting
+grapheme clusters; `GeneratedColumn.checkTextLength` counts `String.length`, UTF-16 code units. For
+Persian carrying combining marks those differ, so a name of 120 clusters can be 130 code units and
+still be refused by the column. `AppTextField`'s validator uses `String.length`, closing the gap in
+the column's own unit, and says which field and what the limit is.
+
+**Digits are filtered, not folded.** `digitsOnly` keeps digits in whichever of the three sets the
+user typed rather than normalizing under the cursor — a caret that jumps because the text beneath it
+changed length is a worse failure than the one being prevented. Folding still happens at parse time,
+in `normalizePersianDigits`. The filter itself is `keepDigitsOnly` in `core/formatting/`, because
+that is the only directory permitted to know what a digit is (D-029).
+
+**The counter appears only near the limit**, and never on a field shorter than 40 characters. A
+permanent «۰/۲۰۰۰» under every field is decoration, which §10 removes; a field that silently stops
+accepting keystrokes is worse. A ten-digit کد ملی stops at ten because that is what a کد ملی is, and
+counting toward it would be counting something the user is not worried about.
+
+**Alternatives considered.** Referencing the constant from `withLength` (rejected: it silently drops
+the constraint — see above). Duplicating the numbers and adding a test that compares the two source
+files (rejected: it proves the tokens match, not that the constraint is applied). A lint rule
+(rejected: `custom_lint` is the package D-015 excludes for dragging the analyzer, and with it drift
+and sqlite3, backwards). Truncating silently with no validator (rejected: the grapheme/code-unit gap
+would still reach the database).
+
+---
+
+## D-044 — The customer detail screen composes one view, and shows the record differently per tier
+
+**Date:** 2026-08-25 · **Status:** ACCEPTED
+
+**Decision.** `/customers/:id` renders a single `CustomerDetailView` — the customer, one
+`CustomerTotals`, and that customer's invoices — assembled in `customerDetailProvider` and rendered
+as one loading state, one error state, one moment.
+
+**Why one value.** The same reason `DashboardSummary` is one value: the totals and the invoice list
+sit on the same page and the user reads them together to reconcile. Settled independently they would
+occasionally show a balance from before a payment beside the list from after it — a pair that never
+existed, which is worse than either figure being late.
+
+**The totals are one SQL statement, using `FILTER`.** Billed and outstanding cover *different*
+populations — issued invoices (D-039) and outstanding ones — so they are two aggregates with two
+predicates:
+
+```sql
+SELECT SUM(grand_total_rial) FILTER (WHERE status IN (issued)),
+       SUM(grand_total_rial - COALESCE((SELECT SUM(amount_rial) FROM payments
+                                        WHERE deleted_at IS NULL
+                                          AND invoice_id = invoices.id), 0))
+         FILTER (WHERE status IN (unpaid, partiallyPaid))
+FROM invoices WHERE deleted_at IS NULL AND customer_id = ?
+```
+
+`FILTER` needs SQLite 3.30; this application ships 3.53.4, and the clause was exercised on the real
+Windows build rather than only in tests. The correlated subquery is the one `watchOutstandingRial`
+already uses, for the reason recorded there: a join to `payments` multiplies an invoice's grand total
+by its number of payment rows, which is invisible until the second instalment.
+
+**Billed excludes drafts and cancellations, and the caption says so.** Without the caption the figure
+does not match the rows beneath it — the demo customer's page shows a 55,000,000 draft in the list
+and 21,230,000 billed — and a figure the user cannot reconcile is one they learn to distrust (D-039).
+
+**`watchForCustomer` is reused rather than replaced.** It was built in increment (d) and had no call
+site until now. The customer's name for each row is the one already loaded above, not a per-row
+lookup: this is the one screen where the join `watchList` performs is genuinely unnecessary, because
+there is exactly one name and it is in hand.
+
+**`InvoiceCard`/`InvoiceTableRow` gain `showCustomer`, defaulting to true.** On a customer's own page
+the name is identical on every row — repetition of something the reader already knows, pushing the
+invoice number, which is what identifies the row, into second place. §10 removes what does not aid
+comprehension. The widget is otherwise unchanged: same shape, same order, same emphasis, so an
+invoice still looks like an invoice wherever it is seen; the heading slot takes the number instead.
+
+**The record card is collapsible on mobile and open on desktop.** Its height has no upper bound the
+layout can be designed around — notes run to two thousand characters — so above the invoice list it
+can push that list arbitrarily far down the page, on the one screen whose purpose is to show it.
+Below the list it would be just as unreachable, past however many invoices the customer has.
+Collapsing keeps both answers in reach; desktop has room for a panel and keeps it open.
+
+**Empty fields say «ثبت نشده» rather than being hidden.** A record that omits what is missing looks
+complete, and the user cannot tell "no company recorded" from "companies are not shown here" — which
+matters when the missing field is the one an invoice needs.
+
+**D-030 binds here too.** This screen *displays* a stored national ID. A passing checksum was never
+an identity, so there is no tick, no badge and no affirmative word anywhere near the value, and the
+screen test asserts the absence of both the copy and the iconography.
+
+**Invoice rows stay non-tappable**, asserted by a test, until `/invoices/:id` exists in Phase 5
+(D-021, one level down).
+
+**On linking an invoice to its customer** — the third item in D-042's Phase 2 scope, left as a design
+call for when the screen existed. **Decided: no link.** An invoice row's primary target must be the
+invoice, which arrives in Phase 5; making the row open the customer instead would put the wrong
+destination on the obvious affordance and then have to be taken away. The customer list is one
+navigation click away, and it searches.
+
+---
+
+## D-045 — A write outlives the widget that started it
+
+**Date:** 2026-08-25 · **Status:** ACCEPTED · **Corrects (f1)**
+
+**Decision.** `CustomerEditor` and `ProductEditor` take a `ref.keepAlive()` link for the duration of
+`save` and `delete`, and close it in a `finally`.
+
+**What it corrects.** Soft-deleting a customer or a product from a list row threw
+`UnmountedRefException`. Nothing on a list screen watches the editor provider — the row reads the
+notifier and awaits it — so the auto-disposed controller was collected during the await, and the
+`state = ...` write after it threw. **The delete had already happened**: the row left the list on the
+next stream emission, but the user was shown no confirmation for something that did occur, and an
+unhandled exception reached the zone.
+
+**Why it survived (f1).** The one call site that was exercised was the form, which watches the
+controller for its in-flight flag and therefore keeps it alive. The list's delete path shipped
+untested; it was found by writing the equivalent test for the detail screen and then, once the cause
+was understood, for the list where it originally shipped. Both are now covered.
+
+**Why a scoped link rather than `keepAlive: true` on the provider.** the project spec prefers scoped,
+auto-disposed providers. The link expresses exactly what is true — this controller must survive for
+as long as its write is in flight, and no longer — rather than keeping a controller alive for the
+life of the process to fix a window of a few milliseconds.
+
+**Alternatives considered.** Having every acting widget `ref.watch` the editor (rejected: it is
+per-call-site discipline, which is what failed here, and it rebuilds a list row on every state
+change). Checking `ref.mounted` after the await and skipping the state write (rejected: it silences
+the symptom and still loses the error state that a failed write needs to report). Making the provider
+`keepAlive` (rejected above).

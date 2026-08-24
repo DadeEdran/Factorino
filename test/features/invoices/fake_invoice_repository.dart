@@ -1,6 +1,8 @@
 import 'dart:async';
 
 import 'package:factorino/core/date/jalali_period.dart';
+import 'package:factorino/core/money/money.dart';
+import 'package:factorino/data/models/customer_totals.dart';
 import 'package:factorino/data/models/invoice.dart';
 import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
@@ -20,6 +22,10 @@ class FakeInvoiceRepository implements InvoiceRepository {
     this.outstandingRial = 0,
     this.issuedTotalRial = 0,
     this.issuedCount = 0,
+    this.customerTotals = const CustomerTotals(
+      billed: Money.zero,
+      outstanding: Money.zero,
+    ),
   }) : _pending = false,
        _failure = null;
 
@@ -29,6 +35,10 @@ class FakeInvoiceRepository implements InvoiceRepository {
       outstandingRial = 0,
       issuedTotalRial = 0,
       issuedCount = 0,
+      customerTotals = const CustomerTotals(
+        billed: Money.zero,
+        outstanding: Money.zero,
+      ),
       _pending = true,
       _failure = null;
 
@@ -37,6 +47,10 @@ class FakeInvoiceRepository implements InvoiceRepository {
       outstandingRial = 0,
       issuedTotalRial = 0,
       issuedCount = 0,
+      customerTotals = const CustomerTotals(
+        billed: Money.zero,
+        outstanding: Money.zero,
+      ),
       _pending = false;
 
   final List<InvoiceListItem> _items;
@@ -46,6 +60,7 @@ class FakeInvoiceRepository implements InvoiceRepository {
   final int outstandingRial;
   final int issuedTotalRial;
   final int issuedCount;
+  final CustomerTotals customerTotals;
 
   /// What the last list query actually asked for. This is the assertion that
   /// paging reaches the database rather than stopping in Dart (D-038).
@@ -54,6 +69,10 @@ class FakeInvoiceRepository implements InvoiceRepository {
   /// The period the last aggregate was asked for, so a test can assert the
   /// dashboard resolved a **Jalali** month rather than a Gregorian one.
   InstantRange? lastPeriod;
+
+  /// Which customer the last totals query was scoped to -- the assertion that a
+  /// customer's page asks about *that* customer rather than about the business.
+  String? lastCustomerTotalsId;
 
   @override
   Stream<List<InvoiceListItem>> watchList({int limit = 100, int offset = 0}) {
@@ -90,6 +109,12 @@ class FakeInvoiceRepository implements InvoiceRepository {
 
   @override
   Stream<int> watchOutstandingRial() => _emit(outstandingRial);
+
+  @override
+  Stream<CustomerTotals> watchCustomerTotals(String customerId) {
+    lastCustomerTotalsId = customerId;
+    return _emit(customerTotals);
+  }
 
   @override
   Stream<int> watchTotalIssuedRial(InstantRange period) {

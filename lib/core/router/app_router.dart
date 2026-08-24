@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/customers/presentation/customer_detail_screen.dart';
 import '../../features/customers/presentation/customer_form_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
@@ -14,12 +15,18 @@ import 'destinations.dart';
 
 /// The router (D-009).
 ///
-/// **Only routes whose screens exist are registered.** The detail and create
-/// routes named in the project spec — customer detail, product detail, invoice
-/// detail, create/edit invoice — arrive with the screens they open, in later
-/// increments. Registering them now would mean a typed URL or a restored deep
-/// link could land on a route that resolves to nothing, which is the same
-/// failure D-021 rejects for گزارش‌ها, one level down.
+/// **Only routes whose screens exist are registered.** The remaining routes
+/// named in the project spec — product detail, invoice detail, create/edit
+/// invoice — arrive with the screens they open, in later phases. Registering
+/// them now would mean a typed URL or a restored deep link could land on a
+/// route that resolves to nothing, which is the same failure D-021 rejects for
+/// گزارش‌ها, one level down.
+///
+/// Customer detail arrived in Phase 2, with its screen. `/products/:id` did
+/// not: the edit form already shows every field a product has, and the one
+/// question a detail page could answer that the form cannot — where has this
+/// been sold, and at what price — is a report, so it registers in Phase 8 with
+/// the screen that answers it (D-042).
 ///
 /// گزارش‌ها itself is absent from both the destination list and this file
 /// (D-021), and arrives in Phase 8.
@@ -64,6 +71,11 @@ GoRouter createRouter() {
             // The forms are children of the destination, so the URL reads as a
             // hierarchy and the shell keeps مشتریان selected while one is open.
             children: <RouteBase>[
+              // `new` before `:id`: go_router matches in declaration order, so
+              // the reverse would resolve /customers/new to a detail page for a
+              // customer whose id is the word "new" -- which renders the
+              // not-found state rather than the form, and looks like the form
+              // is broken.
               GoRoute(
                 path: 'new',
                 builder: (BuildContext context, GoRouterState state) =>
@@ -73,6 +85,13 @@ GoRouter createRouter() {
                 path: ':id/edit',
                 builder: (BuildContext context, GoRouterState state) =>
                     CustomerFormScreen(customerId: state.pathParameters['id']),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (BuildContext context, GoRouterState state) =>
+                    CustomerDetailScreen(
+                      customerId: state.pathParameters['id']!,
+                    ),
               ),
             ],
           ),

@@ -71,6 +71,10 @@ class _SearchFieldState extends State<SearchField> {
   Widget build(BuildContext context) {
     final bool hasText = _controller.text.isNotEmpty;
 
+    // field-limit-exempt: a search term is never stored, so there is no column
+    // whose limit this could disagree with. It reaches SQL as a bound
+    // parameter through searchKey (D-018, D-029), and the only thing a length
+    // limit would change is how much of their own query the user can see.
     return TextField(
       controller: _controller,
       onChanged: _onChanged,

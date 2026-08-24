@@ -258,6 +258,355 @@ final class CustomerByIdFamily extends $Family
   String toString() => r'customerByIdProvider';
 }
 
+/// Everything the customer detail screen shows, read together.
+///
+/// Composed here rather than in the screen, so the page has one loading state,
+/// one error state and one moment — see [CustomerDetailView]. Each
+/// `ref.watch(...future)` below is a **live** query underneath, so a recorded
+/// payment or an edited record updates the page without it having to know why.
+///
+/// Returns null when the id does not resolve: a stale deep link, or a customer
+/// soft-deleted while the page was opening. The screen says so in Persian and
+/// offers the way back; rendering an empty record would be worse, because it
+/// looks like a customer with no details rather than no customer.
+
+@ProviderFor(customerDetail)
+final customerDetailProvider = CustomerDetailFamily._();
+
+/// Everything the customer detail screen shows, read together.
+///
+/// Composed here rather than in the screen, so the page has one loading state,
+/// one error state and one moment — see [CustomerDetailView]. Each
+/// `ref.watch(...future)` below is a **live** query underneath, so a recorded
+/// payment or an edited record updates the page without it having to know why.
+///
+/// Returns null when the id does not resolve: a stale deep link, or a customer
+/// soft-deleted while the page was opening. The screen says so in Persian and
+/// offers the way back; rendering an empty record would be worse, because it
+/// looks like a customer with no details rather than no customer.
+
+final class CustomerDetailProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<CustomerDetailView?>,
+          CustomerDetailView?,
+          FutureOr<CustomerDetailView?>
+        >
+    with
+        $FutureModifier<CustomerDetailView?>,
+        $FutureProvider<CustomerDetailView?> {
+  /// Everything the customer detail screen shows, read together.
+  ///
+  /// Composed here rather than in the screen, so the page has one loading state,
+  /// one error state and one moment — see [CustomerDetailView]. Each
+  /// `ref.watch(...future)` below is a **live** query underneath, so a recorded
+  /// payment or an edited record updates the page without it having to know why.
+  ///
+  /// Returns null when the id does not resolve: a stale deep link, or a customer
+  /// soft-deleted while the page was opening. The screen says so in Persian and
+  /// offers the way back; rendering an empty record would be worse, because it
+  /// looks like a customer with no details rather than no customer.
+  CustomerDetailProvider._({
+    required CustomerDetailFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'customerDetailProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$customerDetailHash();
+
+  @override
+  String toString() {
+    return r'customerDetailProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $FutureProviderElement<CustomerDetailView?> $createElement(
+    $ProviderPointer pointer,
+  ) => $FutureProviderElement(pointer);
+
+  @override
+  FutureOr<CustomerDetailView?> create(Ref ref) {
+    final argument = this.argument as String;
+    return customerDetail(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CustomerDetailProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$customerDetailHash() => r'9b3b45ae35a171614b1b7530d9832efea9edb807';
+
+/// Everything the customer detail screen shows, read together.
+///
+/// Composed here rather than in the screen, so the page has one loading state,
+/// one error state and one moment — see [CustomerDetailView]. Each
+/// `ref.watch(...future)` below is a **live** query underneath, so a recorded
+/// payment or an edited record updates the page without it having to know why.
+///
+/// Returns null when the id does not resolve: a stale deep link, or a customer
+/// soft-deleted while the page was opening. The screen says so in Persian and
+/// offers the way back; rendering an empty record would be worse, because it
+/// looks like a customer with no details rather than no customer.
+
+final class CustomerDetailFamily extends $Family
+    with $FunctionalFamilyOverride<FutureOr<CustomerDetailView?>, String> {
+  CustomerDetailFamily._()
+    : super(
+        retry: null,
+        name: r'customerDetailProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// Everything the customer detail screen shows, read together.
+  ///
+  /// Composed here rather than in the screen, so the page has one loading state,
+  /// one error state and one moment — see [CustomerDetailView]. Each
+  /// `ref.watch(...future)` below is a **live** query underneath, so a recorded
+  /// payment or an edited record updates the page without it having to know why.
+  ///
+  /// Returns null when the id does not resolve: a stale deep link, or a customer
+  /// soft-deleted while the page was opening. The screen says so in Persian and
+  /// offers the way back; rendering an empty record would be worse, because it
+  /// looks like a customer with no details rather than no customer.
+
+  CustomerDetailProvider call(String id) =>
+      CustomerDetailProvider._(argument: id, from: this);
+
+  @override
+  String toString() => r'customerDetailProvider';
+}
+
+/// The two figures, as one live SQL aggregate.
+///
+/// Private, like the dashboard's: a widget that watched this on its own could
+/// render a balance from a different moment than the list beside it, which is
+/// what [CustomerDetailView] exists to prevent.
+
+@ProviderFor(_customerTotals)
+final _customerTotalsProvider = _CustomerTotalsFamily._();
+
+/// The two figures, as one live SQL aggregate.
+///
+/// Private, like the dashboard's: a widget that watched this on its own could
+/// render a balance from a different moment than the list beside it, which is
+/// what [CustomerDetailView] exists to prevent.
+
+final class _CustomerTotalsProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<CustomerTotals>,
+          CustomerTotals,
+          Stream<CustomerTotals>
+        >
+    with $FutureModifier<CustomerTotals>, $StreamProvider<CustomerTotals> {
+  /// The two figures, as one live SQL aggregate.
+  ///
+  /// Private, like the dashboard's: a widget that watched this on its own could
+  /// render a balance from a different moment than the list beside it, which is
+  /// what [CustomerDetailView] exists to prevent.
+  _CustomerTotalsProvider._({
+    required _CustomerTotalsFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'_customerTotalsProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$_customerTotalsHash();
+
+  @override
+  String toString() {
+    return r'_customerTotalsProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<CustomerTotals> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<CustomerTotals> create(Ref ref) {
+    final argument = this.argument as String;
+    return _customerTotals(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _CustomerTotalsProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$_customerTotalsHash() => r'3d61c63ce0e8cbe4d28997939d4aea0d6fc96b8d';
+
+/// The two figures, as one live SQL aggregate.
+///
+/// Private, like the dashboard's: a widget that watched this on its own could
+/// render a balance from a different moment than the list beside it, which is
+/// what [CustomerDetailView] exists to prevent.
+
+final class _CustomerTotalsFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<CustomerTotals>, String> {
+  _CustomerTotalsFamily._()
+    : super(
+        retry: null,
+        name: r'_customerTotalsProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The two figures, as one live SQL aggregate.
+  ///
+  /// Private, like the dashboard's: a widget that watched this on its own could
+  /// render a balance from a different moment than the list beside it, which is
+  /// what [CustomerDetailView] exists to prevent.
+
+  _CustomerTotalsProvider call(String id) =>
+      _CustomerTotalsProvider._(argument: id, from: this);
+
+  @override
+  String toString() => r'_customerTotalsProvider';
+}
+
+/// This customer's invoices.
+///
+/// `watchForCustomer` was built in increment (d) for this screen and had no
+/// call site until now. Using it rather than adding a parallel read is
+/// deliberate: a second query answering the same question is a second place for
+/// the soft-delete filter and the ordering to be got wrong.
+
+@ProviderFor(_customerInvoices)
+final _customerInvoicesProvider = _CustomerInvoicesFamily._();
+
+/// This customer's invoices.
+///
+/// `watchForCustomer` was built in increment (d) for this screen and had no
+/// call site until now. Using it rather than adding a parallel read is
+/// deliberate: a second query answering the same question is a second place for
+/// the soft-delete filter and the ordering to be got wrong.
+
+final class _CustomerInvoicesProvider
+    extends
+        $FunctionalProvider<
+          AsyncValue<List<Invoice>>,
+          List<Invoice>,
+          Stream<List<Invoice>>
+        >
+    with $FutureModifier<List<Invoice>>, $StreamProvider<List<Invoice>> {
+  /// This customer's invoices.
+  ///
+  /// `watchForCustomer` was built in increment (d) for this screen and had no
+  /// call site until now. Using it rather than adding a parallel read is
+  /// deliberate: a second query answering the same question is a second place for
+  /// the soft-delete filter and the ordering to be got wrong.
+  _CustomerInvoicesProvider._({
+    required _CustomerInvoicesFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'_customerInvoicesProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$_customerInvoicesHash();
+
+  @override
+  String toString() {
+    return r'_customerInvoicesProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  $StreamProviderElement<List<Invoice>> $createElement(
+    $ProviderPointer pointer,
+  ) => $StreamProviderElement(pointer);
+
+  @override
+  Stream<List<Invoice>> create(Ref ref) {
+    final argument = this.argument as String;
+    return _customerInvoices(ref, argument);
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is _CustomerInvoicesProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$_customerInvoicesHash() => r'b3f1ed70e7769384ea7c3d82471215cb37ad94e9';
+
+/// This customer's invoices.
+///
+/// `watchForCustomer` was built in increment (d) for this screen and had no
+/// call site until now. Using it rather than adding a parallel read is
+/// deliberate: a second query answering the same question is a second place for
+/// the soft-delete filter and the ordering to be got wrong.
+
+final class _CustomerInvoicesFamily extends $Family
+    with $FunctionalFamilyOverride<Stream<List<Invoice>>, String> {
+  _CustomerInvoicesFamily._()
+    : super(
+        retry: null,
+        name: r'_customerInvoicesProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// This customer's invoices.
+  ///
+  /// `watchForCustomer` was built in increment (d) for this screen and had no
+  /// call site until now. Using it rather than adding a parallel read is
+  /// deliberate: a second query answering the same question is a second place for
+  /// the soft-delete filter and the ordering to be got wrong.
+
+  _CustomerInvoicesProvider call(String id) =>
+      _CustomerInvoicesProvider._(argument: id, from: this);
+
+  @override
+  String toString() => r'_customerInvoicesProvider';
+}
+
 /// The customer write path.
 ///
 /// Exists so that **no widget calls a repository** (`ARCHITECTURE.md` §B.1:

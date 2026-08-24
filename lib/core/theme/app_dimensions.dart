@@ -197,6 +197,16 @@ abstract final class AppLayout {
   /// shortest, so the badge never wraps at exactly one status.
   static const double tableStatusWidth = 112;
 
+  /// The side panel on a desktop detail page — the customer's record beside
+  /// their invoices.
+  ///
+  /// Fixed rather than flexed, and narrow rather than half the page: it holds
+  /// label-and-value pairs, which are read down a column rather than across, so
+  /// extra width only puts the value further from its label. The main column
+  /// keeps the rest, because the invoice table is the part that needs room for
+  /// five columns without truncating.
+  static const double detailPanelWidth = 320;
+
   /// The measure a wrapped rail label is given inside
   /// [navigationRailCompactWidth], leaving the rail its own side padding.
   static const double navigationRailLabelWidth = 88;

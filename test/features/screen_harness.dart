@@ -54,6 +54,9 @@ Future<void> pumpScreen(
         '/customers',
         '/customers/new',
         '/customers/:id/edit',
+        // After the two above, exactly as the real router declares it: `:id`
+        // would otherwise swallow `/customers/new`.
+        '/customers/:id',
         '/products',
         '/products/new',
         '/products/:id/edit',

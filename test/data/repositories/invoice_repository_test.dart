@@ -566,6 +566,140 @@ void main() {
     });
   });
 
+  group('per-customer totals', () {
+    Future<void> pay(String invoiceId, int rial, int day) {
+      return harness.payments.record(
+        invoiceId,
+        PaymentDraft(
+          amount: Money.rial(rial),
+          paidAt: DateTime.utc(2026, 8, day),
+          method: PaymentMethod.cash,
+        ),
+      );
+    }
+
+    test('billed counts issued invoices only (D-039)', () async {
+      final draft = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      final issued = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 2000000),
+      );
+      final cancelled = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 4000000),
+      );
+      await harness.invoices.issue(issued.invoice.id);
+      await harness.invoices.issue(cancelled.invoice.id);
+      await harness.invoices.cancel(cancelled.invoice.id);
+
+      final totals = await harness.invoices
+          .watchCustomerTotals(customerId)
+          .first;
+
+      // Only the second invoice: the draft is not yet a claim on anyone and
+      // the cancellation is no longer one. A customer's billed history must
+      // not climb while the user is still typing an invoice.
+      expect(totals.billed, Money.rial(2200000));
+      expect(draft.invoice.status, InvoiceStatus.draft);
+    });
+
+    test('outstanding is grand total less payments, per instalment', () async {
+      final first = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      final second = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 2000000),
+      );
+      await harness.invoices.issue(first.invoice.id);
+      await harness.invoices.issue(second.invoice.id);
+
+      expect(
+        (await harness.invoices.watchCustomerTotals(customerId).first)
+            .outstanding,
+        Money.rial(3300000),
+      );
+
+      // Two instalments against one invoice. A join to payments rather than
+      // the correlated subquery would double that invoice's grand total here,
+      // so the figure would climb as the customer paid.
+      await pay(first.invoice.id, 100000, 25);
+      await pay(first.invoice.id, 200000, 26);
+
+      final totals = await harness.invoices
+          .watchCustomerTotals(customerId)
+          .first;
+      expect(totals.outstanding, Money.rial(3000000));
+      // Billed does not move when money arrives: the invoice was issued for
+      // that amount whether or not it has been paid. The two figures answer
+      // different questions and neither is derivable from the other.
+      expect(totals.billed, Money.rial(3300000));
+    });
+
+    test('a fully paid customer has billed history and owes nothing', () async {
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      await harness.invoices.issue(created.invoice.id);
+      await pay(created.invoice.id, 1100000, 25);
+
+      final totals = await harness.invoices
+          .watchCustomerTotals(customerId)
+          .first;
+      expect(totals.billed, Money.rial(1100000));
+      expect(totals.outstanding, Money.rial(0));
+      expect(totals.isEmpty, isFalse);
+    });
+
+    test('another customer\'s invoices are not counted', () async {
+      // The scoping is the whole point of the read: without the customer
+      // predicate this returns the dashboard's figures on every customer's
+      // page, which would look plausible on the first customer entered.
+      final other = await harness.customer(name: 'مشتری دیگر');
+      final mine = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      final theirs = await harness.invoices.create(
+        harness.draft(other.id, unitPriceRial: 5000000),
+      );
+      await harness.invoices.issue(mine.invoice.id);
+      await harness.invoices.issue(theirs.invoice.id);
+
+      expect(
+        (await harness.invoices.watchCustomerTotals(customerId).first).billed,
+        Money.rial(1100000),
+      );
+      expect(
+        (await harness.invoices.watchCustomerTotals(other.id).first).billed,
+        Money.rial(5500000),
+      );
+    });
+
+    test('a customer with no invoices reads zero, not an absent row', () async {
+      // `SUM` over no rows is null, and the query still returns one row. If
+      // that null reached the screen as an absent value the tile would show a
+      // loading state forever on every new customer.
+      final fresh = await harness.customer(name: 'مشتری تازه');
+
+      final totals = await harness.invoices.watchCustomerTotals(fresh.id).first;
+      expect(totals.billed, Money.rial(0));
+      expect(totals.outstanding, Money.rial(0));
+      expect(totals.isEmpty, isTrue);
+    });
+
+    test('a soft-deleted invoice leaves both figures', () async {
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      await harness.invoices.softDeleteDraft(created.invoice.id);
+
+      final totals = await harness.invoices
+          .watchCustomerTotals(customerId)
+          .first;
+      expect(totals.billed, Money.rial(0));
+      expect(totals.outstanding, Money.rial(0));
+    });
+  });
+
   group('list with customer names', () {
     test('resolves the customer name in one query', () async {
       final created = await harness.invoices.create(harness.draft(customerId));

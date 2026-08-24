@@ -52,26 +52,45 @@ class ProductEditor extends _$ProductEditor {
 
   /// Creates when [id] is null, otherwise replaces.
   Future<Product?> save({String? id, required ProductDraft draft}) async {
-    state = const AsyncValue<void>.loading();
+    // A write must outlive the widget that started it.
+    //
+    // Nothing watches this controller from a list row or a detail page -- they
+    // read the notifier and await it -- so without this link the provider
+    // auto-disposes during the await, and the `state` write below throws
+    // `UnmountedRefException`. The delete had already happened by then, so the
+    // user saw no confirmation for something that did occur. The form does not
+    // hit this because it watches the controller for its in-flight flag, which
+    // is exactly why the defect survived (f1): the one call site that was
+    // exercised was the one that happened to keep it alive.
+    //
+    // Scoped rather than `keepAlive: true` on the provider (§3 prefers
+    // auto-disposed): the link is held for the duration of the write and
+    // closed after it.
+    final link = ref.keepAlive();
     try {
-      final repository = ref.read(productRepositoryProvider);
-      final Product saved = id == null
-          ? await repository.create(draft)
-          : await repository.update(id, draft);
+      state = const AsyncValue<void>.loading();
+      try {
+        final repository = ref.read(productRepositoryProvider);
+        final Product saved = id == null
+            ? await repository.create(draft)
+            : await repository.update(id, draft);
 
-      // The id only: a price is a monetary amount, which §7 forbids logging.
-      AppLog.info(() => 'product saved: ${saved.id}', scope: 'products');
-      state = const AsyncValue<void>.data(null);
-      return saved;
-    } catch (error, stack) {
-      AppLog.error(
-        () => 'product save failed',
-        error: error,
-        stackTrace: stack,
-        scope: 'products',
-      );
-      state = AsyncValue<void>.error(error, stack);
-      return null;
+        // The id only: a price is a monetary amount, which §7 forbids logging.
+        AppLog.info(() => 'product saved: ${saved.id}', scope: 'products');
+        state = const AsyncValue<void>.data(null);
+        return saved;
+      } catch (error, stack) {
+        AppLog.error(
+          () => 'product save failed',
+          error: error,
+          stackTrace: stack,
+          scope: 'products',
+        );
+        state = AsyncValue<void>.error(error, stack);
+        return null;
+      }
+    } finally {
+      link.close();
     }
   }
 
@@ -79,21 +98,40 @@ class ProductEditor extends _$ProductEditor {
   /// though the invoice would be unaffected either way, because it snapshotted
   /// the title, unit and price when it was issued (D-004).
   Future<bool> delete(String id) async {
-    state = const AsyncValue<void>.loading();
+    // A write must outlive the widget that started it.
+    //
+    // Nothing watches this controller from a list row or a detail page -- they
+    // read the notifier and await it -- so without this link the provider
+    // auto-disposes during the await, and the `state` write below throws
+    // `UnmountedRefException`. The delete had already happened by then, so the
+    // user saw no confirmation for something that did occur. The form does not
+    // hit this because it watches the controller for its in-flight flag, which
+    // is exactly why the defect survived (f1): the one call site that was
+    // exercised was the one that happened to keep it alive.
+    //
+    // Scoped rather than `keepAlive: true` on the provider (§3 prefers
+    // auto-disposed): the link is held for the duration of the write and
+    // closed after it.
+    final link = ref.keepAlive();
     try {
-      await ref.read(productRepositoryProvider).softDelete(id);
-      AppLog.info(() => 'product soft-deleted: $id', scope: 'products');
-      state = const AsyncValue<void>.data(null);
-      return true;
-    } catch (error, stack) {
-      AppLog.error(
-        () => 'product delete failed',
-        error: error,
-        stackTrace: stack,
-        scope: 'products',
-      );
-      state = AsyncValue<void>.error(error, stack);
-      return false;
+      state = const AsyncValue<void>.loading();
+      try {
+        await ref.read(productRepositoryProvider).softDelete(id);
+        AppLog.info(() => 'product soft-deleted: $id', scope: 'products');
+        state = const AsyncValue<void>.data(null);
+        return true;
+      } catch (error, stack) {
+        AppLog.error(
+          () => 'product delete failed',
+          error: error,
+          stackTrace: stack,
+          scope: 'products',
+        );
+        state = AsyncValue<void>.error(error, stack);
+        return false;
+      }
+    } finally {
+      link.close();
     }
   }
 }

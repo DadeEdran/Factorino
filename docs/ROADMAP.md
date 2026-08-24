@@ -603,91 +603,127 @@ logging wrapper that keeps national IDs, phone numbers, names and amounts out of
 
 ## Phase 2 — Customers
 
-**Status:** `NOT_STARTED` — **re-scoped 2026-08-24 (D-042)** after increment (f1) delivered most of
-what this phase originally named. Read the "already delivered" list before planning: rebuilding any
-of it would be work that produces no change.
+**Status:** `COMPLETED` 2026-08-25. Both items D-042 re-scoped this phase down to are delivered:
+the customer detail screen, and the field-level limits at the form boundary.
 
-**Already delivered in Phase 1 (f1), accepted, and not to be rebuilt:**
+**Already delivered in Phase 1 (f1), accepted, and not rebuilt:** the customer list at all three
+tiers with query-level paging, normalization-insensitive Persian search through the one `searchKey`,
+create and edit forms with Iranian mobile and national-ID validation (D-030), soft delete behind
+Persian copy that explains what survives, two distinct empty states and a Persian-only error path.
 
-- The customer list — cards on mobile and tablet, virtualized table on desktop, query-level paging.
-- Normalization-insensitive Persian search (ی/ي, ک/ك, ZWNJ) through the one `searchKey`, over the
-  denormalized `search_name` column that create *and* update both rewrite (D-025, D-029).
-- Create and edit forms (D-036), with Iranian mobile validation including `+98` / `0098` handling,
-  and national-ID checksum validation that calls a failing value invalid and says **nothing
-  affirmative** about a passing one (D-030).
-- Soft delete behind Persian copy that explains what survives it (D-003).
-- Two distinct empty states, skeleton loaders, and a Persian-only error path.
+**Completed**
 
-**Goal — what actually remains.**
+- **The customer detail screen at `/customers/:id`** (D-044), registered **with** the screen (D-021)
+  and after `/customers/new` in the router, because `:id` would otherwise swallow the literal `new`.
+  - The full record, with the national ID, economic ID and mobile rendered through the
+    bidi-isolating formatters so they cannot reorder inside Persian text (§9).
+  - **That customer's invoices, through `InvoiceRepository.watchForCustomer`** — the method built in
+    (d) that had no call site until now. Reused rather than replaced, and the customer name on each
+    row is the one already loaded rather than a lookup per row.
+  - **Per-customer totals as one SQL statement**, not a fold over the invoice list: billed and
+    outstanding as two `FILTER`ed aggregates over different populations, with the outstanding side
+    using the same correlated subquery `watchOutstandingRial` does. Billed excludes drafts and
+    cancellations (D-039) and the caption on the tile says so, so the figure reconciles against the
+    rows beneath it.
+  - `InvoiceCard` / `InvoiceTableRow` reused, with `showCustomer: false` — the name would be
+    identical on every row of that customer's own page (D-044).
+  - **Invoice rows stay non-tappable**, asserted by a test, until `/invoices/:id` exists in Phase 5.
+  - A designed empty state for a customer with no invoices, offering **no** create action: the
+    invoice form is Phase 4.
+  - Two genuinely different layouts: a sticky record panel beside a virtualized table on desktop; on
+    a phone, one sliver-backed scroll with the record **collapsed by default**, so a record whose
+    height has no upper bound cannot push the invoice list off the page.
+  - `StatTile` and `TileGrid` moved to `core/widgets/`, now that two features use them.
+- **Field-level limits at the form boundary** (D-043), the §7 requirement that was named in Phase 1
+  and not built.
+  - One source of truth, `data/models/field_limits.dart`, read by every form field.
+  - `AppTextField` with a **required** `maxLength`, so half the rule is the compiler's.
+  - `field_limit_path_test.dart` fails the build on a raw `TextFormField`/`TextField` in `lib/`, or
+    on a `maxLength` written as a number rather than a shared constant.
+  - `field_limits_test.dart` asks each generated column where it actually begins refusing values and
+    fails if that disagrees with the constant — which is what stands in for the sharing that drift
+    cannot express (see below).
+  - Character class where one is meaningful: the national ID, economic ID and price fields accept
+    digits only, in whichever of the three sets the user types.
+  - A length validator in drift's own unit (`String.length`), because `maxLength` counts grapheme
+    clusters and the two differ for Persian carrying combining marks.
+- **Applied to the product form too**, which is all that remained of Phase 3.
 
-1. **The customer detail screen, at `/customers/:id`.** The one substantial piece still missing, and
-   the only screen in the product that answers "what is my history with this customer".
-   - The full record, with the national ID and economic ID rendered through
-     `formatIdentifierForDisplay` so they cannot reorder inside Persian text (§9).
-   - **That customer's invoices.** `InvoiceRepository.watchForCustomer` already exists and has **no
-     call site** — it was built in (d) for exactly this. Reuse `InvoiceCard` / `InvoiceTableRow` so
-     an invoice looks the same here as in the invoice list.
-   - Per-customer totals — billed, and still outstanding — as **SQL aggregates**, not by folding the
-     invoice list in Dart (§13). This needs one new repository read, scoped by customer.
-   - Register the route **with the screen**, never before it (D-021).
-   - The invoice rows stay **non-tappable** here until `/invoices/:id` exists in Phase 5, for the
-     same reason they are non-tappable in the invoice list. Assert the absence with a test, as (f2)
-     does, so it reads as deliberate.
+**A finding worth carrying forward.** The obvious way to share the limits — referencing the constant
+from `withLength(max:)` — **compiles and silently produces a column with no length constraint at
+all**, because `drift_dev` reads that argument with `readIntLiteral`. Verified by doing it and
+diffing the generated code; `build_runner` reported nothing. Full detail in D-043.
 
-2. **Field-level limits at the form boundary** (§7: *"Enforce field-level limits (length, character
-   class) on customer/product free-text fields"*). This is a **real gap, not a formality.** The
-   schema carries `withLength` on every text column, but the forms do not, so a name longer than 120
-   characters is not prevented — it is accepted, sent to the repository, and rejected by drift with
-   an `InvalidDataException` that `describeFailure` does not recognise and therefore reports as the
-   generic "خطایی رخ داد". The user is told something went wrong and not which field or why.
-   - Add `maxLength` to each field, derived from **one** place shared with the table definition so
-     the two cannot drift apart — the schema limit and the form limit disagreeing silently is the
-     failure mode worth designing out.
-   - Constrain the character class where one is meaningful: the national ID and economic ID are
-     digits after normalization, and the field should not accept letters at all.
-   - Cover both this phase's forms and Phase 3's product form with the same helper.
+**A defect corrected on the way through.** Deleting a customer or product **from a list row** threw
+`UnmountedRefException`: the auto-disposed editor controller was collected during the await, so the
+state write after it failed — after the delete had already happened. It shipped in (f1) because the
+only exercised call site was the form, which watches the controller and therefore keeps it alive.
+Fixed with a scoped `ref.keepAlive()` link around each write (D-045), and both list delete paths now
+have tests.
 
-3. **Navigating from an invoice to its customer.** Once `/customers/:id` exists, the invoice list and
-   the dashboard's recent-invoice rows have somewhere to go. Whether they *should* link there is a
-   design call to make when the screen exists, not now.
+**Decided, not deferred.** D-042's third item asked whether an invoice row should link to its
+customer once this screen existed. **It should not** — an invoice row's primary target must be the
+invoice, which arrives in Phase 5, and putting the customer there would be an affordance that has to
+be taken away again (D-044).
 
-**Security note.** Unchanged from the original entry in what it covers, but the storage it warned
-about already happened in (f1): national IDs, economic IDs and phone numbers are accepted, stored in
-the encrypted database, and never logged. What this phase adds is the **boundary enforcement** that
-was named there and not built — length and character-class limits — plus one screen that displays
-those identifiers, which must use the bidi-isolating formatters rather than raw `Text`.
+**Verified**
+
+```
+flutter analyze : PASS (No issues found)
+flutter test: PASS (529, was 483)
+Windows build: PASS  built, and the screen exercised against the real encrypted database at
+                  1400x900 and 400x800, in light and dark, with both figures reconciled by hand
+Android build: PASS  flutter build apk --debug
+```
+
+**Security note.** No new data is stored and no new sensitive class is introduced, but two things in
+the threat model genuinely move:
+
+- **§7's field-level limits are now enforced**, which is the requirement this phase existed to
+  close. Length and character class are applied at the form boundary, from the same constants the
+  columns carry, and a new field cannot be added without a limit. The boundary is no longer "the
+  database will refuse it eventually, with a message the user cannot act on".
+- **The whole customer record appears on one screen for the first time** — name, company, mobile,
+  national ID, economic ID, address, notes. That makes it the likeliest place for an innocuous debug
+  line to violate §7's logging rule, so the guard was **verified to cover it**: a plausible
+  `AppLog.debug` interpolating `fullName`, `nationalId` and `mobile`, wrapped across lines as the
+  formatter would leave it, was introduced and `logging_path_test.dart` failed on all three
+  accessors by name. The screen makes no log call of its own; the only line it can produce comes
+  from `AsyncErrorView`, which logs a provider failure once and carries no value.
+- **No new permission, platform surface or dependency.** The new aggregate runs on the same
+  encrypted connection through the same parameterized Drift API, with no `customStatement`. Android
+  manifest hardening (§7) and the web CSP remain Phase 9 and Phase 12 and are still **not** done.
 
 ---
 
 ## Phase 3 — Products and Services
 
-**Status:** `NOT_STARTED` — **re-scoped 2026-08-24 (D-042)**. Very little remains; this is now a
-small phase, and saying so is more useful than leaving a full-looking entry that is mostly done.
+**Status:** `COMPLETED` 2026-08-25. The one item D-042 left in this phase is delivered.
 
-**Already delivered in Phase 1 (f1), accepted, and not to be rebuilt:** the catalogue list at all
-three tiers, normalization-insensitive search, create and edit forms, product/service type, free-text
-units, pricing, and soft delete behind Persian copy that explains the price snapshot (D-004). The
-original security note's one requirement — *"numeric input validation against the `kMaxAmountRial`
-ceiling begins here"* — **is already done**: the product form rejects an over-ceiling price with
-`validationAmountTooLarge` rather than truncating it (D-002).
+**Already delivered in Phase 1 (f1), accepted, and not rebuilt:** the catalogue list at all three
+tiers, normalization-insensitive search, create and edit forms, product/service type, free-text
+units, pricing with the `kMaxAmountRial` ceiling enforced in Persian (D-002), and soft delete behind
+Persian copy that explains the price snapshot (D-004).
 
-**Goal — what actually remains.**
+**Completed**
 
-1. **Field-level limits at the form boundary**, applied to the product form using the same helper
-   Phase 2 builds. Same gap, same failure: an over-long name reaches drift and comes back as the
-   generic Persian error.
+- **Field-level limits on the product form**, using the same `AppTextField` and the same shared
+  constants Phase 2 built (D-043). Name, unit and description take their column's limit; the price
+  field takes `AmountLimits.tomanDigits`, which is the width of the largest amount that can exist
+  rather than a column length — money is stored as an integer (D-002) — and the ceiling validator
+  that was already there still refuses anything past `kMaxAmountRial`.
+- The product form's first tests: the limits read off the widget rather than compared against a
+  number copied into the test, the truncation at the boundary, the digits-only price field, and the
+  ceiling still refusing in Persian.
 
-**Deliberately not in this phase.**
+**Deliberately not in this phase.** A product detail screen. §11 lists the route, but the edit form
+already shows every field a product has, and the only question a detail screen could answer that the
+form cannot — "where has this been sold, and at what price" — is a **report**. It belongs to Phase 8,
+and `/products/:id` gets registered there, with the screen, per D-021 (D-042).
 
-- **A product detail screen.** §11 lists the route, but the edit form already shows every field a
-  product has. The only question a detail screen could answer that the form cannot is "where has
-  this been sold, and at what price" — and that is a *report*, which belongs in **Phase 8** with the
-  rest of them. Building a detail screen here to satisfy the route list would produce a page that
-  duplicates the form. If Phase 8's per-product sales figures want a home, that is where the route
-  gets registered, with the screen, per D-021.
-
-**Security note.** No new sensitive data classes; commercial pricing only. The amount ceiling is
-already enforced. This phase adds no new input surface beyond tightening one that exists.
+**Security note.** No new sensitive data classes; commercial pricing only. The amount ceiling was
+already enforced. What this phase adds is the length and character-class boundary described in Phase
+2's note, applied to the one remaining form.
 
 ---
 

@@ -19,6 +19,7 @@ import '../../../core/widgets/search_field.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../data/models/customer.dart';
 import '../application/customers_providers.dart';
+import 'customer_delete_dialog.dart';
 
 /// The customer list.
 ///
@@ -220,7 +221,10 @@ class _CustomerCard extends StatelessWidget {
     final ThemeData theme = Theme.of(context);
 
     return AppCard(
-      onTap: () => context.go(AppRoutes.customerEditFor(customer.id)),
+      // The record, not the form. Tapping a row asks "who is this and what is
+      // my history with them"; editing is a deliberate act and stays behind
+      // the row's menu.
+      onTap: () => context.go(AppRoutes.customerDetailFor(customer.id)),
       child: Row(
         children: <Widget>[
           Expanded(
@@ -273,7 +277,7 @@ class _CustomerTableRow extends StatelessWidget {
 
     return AppTableRow(
       columns: _columns(strings),
-      onTap: () => context.go(AppRoutes.customerEditFor(customer.id)),
+      onTap: () => context.go(AppRoutes.customerDetailFor(customer.id)),
       trailingWidth: AppLayout.tableActionsWidth,
       trailing: _CustomerActions(customer: customer, strings: strings),
       cells: <Widget>[
@@ -320,7 +324,11 @@ class _CustomerActions extends ConsumerWidget {
       icon: const Icon(Icons.more_vert, size: AppIconSize.md),
       onSelected: (_RowAction action) => switch (action) {
         _RowAction.edit => context.go(AppRoutes.customerEditFor(customer.id)),
-        _RowAction.delete => _confirmDelete(context, ref),
+        _RowAction.delete => confirmAndDeleteCustomer(
+          context,
+          ref,
+          customer.id,
+        ),
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<_RowAction>>[
         PopupMenuItem<_RowAction>(
@@ -332,47 +340,6 @@ class _CustomerActions extends ConsumerWidget {
           child: Text(strings.actionDelete),
         ),
       ],
-    );
-  }
-
-  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
-    final bool confirmed =
-        await showDialog<bool>(
-          context: context,
-          builder: (BuildContext context) => AlertDialog(
-            title: Text(strings.customerDeleteTitle),
-            // The Persian copy explains what a soft delete actually does
-            // (§6): the customer leaves the list, and the invoices already
-            // issued to them keep their snapshotted figures (D-004). Without
-            // this the user has to guess whether deleting a customer damages
-            // their financial history.
-            content: Text(strings.customerDeleteBody),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () => Navigator.of(context).pop(false),
-                child: Text(strings.actionCancel),
-              ),
-              FilledButton(
-                onPressed: () => Navigator.of(context).pop(true),
-                child: Text(strings.actionDelete),
-              ),
-            ],
-          ),
-        ) ??
-        false;
-
-    if (!confirmed || !context.mounted) return;
-
-    final bool deleted = await ref
-        .read(customerEditorProvider.notifier)
-        .delete(customer.id);
-    if (!context.mounted) return;
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(
-          deleted ? strings.customerDeleted : strings.errorGenericBody,
-        ),
-      ),
     );
   }
 }

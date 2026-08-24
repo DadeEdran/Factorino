@@ -69,6 +69,15 @@ abstract final class AppRoutes {
   /// The new-customer form.
   static const String customerCreate = '/customers/new';
 
+  /// One customer's record, totals and invoices.
+  ///
+  /// Declared **after** [customerCreate] in the router, because `:id` would
+  /// otherwise match the literal `new` and open a detail page for a customer
+  /// whose id is the word "new".
+  static const String customerDetail = '/customers/:id';
+
+  static String customerDetailFor(String id) => '/customers/$id';
+
   /// The edit form for one customer.
   static const String customerEdit = '/customers/:id/edit';
 
