@@ -21,14 +21,25 @@ class PageBody extends StatelessWidget {
     required this.title,
     required this.child,
     this.actions = const <Widget>[],
+    this.floatingAction,
     super.key,
   });
 
   final String title;
   final Widget child;
 
-  /// Page-level actions, shown beside the title.
+  /// Page-level actions, shown beside the title. Used on tiers with the width
+  /// for them; mobile puts its primary action in [floatingAction] instead.
   final List<Widget> actions;
+
+  /// The primary action on mobile, floated over the content.
+  ///
+  /// It lives here rather than on the shell's `Scaffold` because it belongs to
+  /// the destination, not to the application: the dashboard has none, and a
+  /// button that changed meaning as the user switched tabs would be worse than
+  /// no button. Floating over the list rather than sitting above it keeps it
+  /// thumb-reachable on a phone, which is the whole reason mobile uses one.
+  final Widget? floatingAction;
 
   @override
   Widget build(BuildContext context) {
@@ -41,7 +52,7 @@ class PageBody extends StatelessWidget {
       LayoutTier.desktop => AppSpacing.xxxl,
     };
 
-    return Center(
+    final Widget content = Center(
       child: ConstrainedBox(
         constraints: const BoxConstraints(maxWidth: AppLayout.maxContentWidth),
         child: Padding(
@@ -68,6 +79,19 @@ class PageBody extends StatelessWidget {
           ),
         ),
       ),
+    );
+
+    if (floatingAction == null) return content;
+
+    return Stack(
+      children: <Widget>[
+        content,
+        PositionedDirectional(
+          end: AppSpacing.lg,
+          bottom: AppSpacing.lg,
+          child: floatingAction!,
+        ),
+      ],
     );
   }
 }

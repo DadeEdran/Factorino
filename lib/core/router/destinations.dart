@@ -54,3 +54,30 @@ enum AppDestination {
     AppDestination.settings => Icons.settings,
   };
 }
+
+/// Routes that are not navigation destinations: the forms a destination opens.
+///
+/// Registered **with the screens they open**, never before. A route that
+/// resolves to nothing is the same failure D-021 rejects for گزارش‌ها, one
+/// level down — a typed web URL or a restored deep link would land on a blank
+/// page rather than being refused.
+///
+/// The paths sit under their destination so the browser URL reads as a
+/// hierarchy (`/customers/<id>/edit`) and the shell keeps the right navigation
+/// item selected.
+abstract final class AppRoutes {
+  /// The new-customer form.
+  static const String customerCreate = '/customers/new';
+
+  /// The edit form for one customer.
+  static const String customerEdit = '/customers/:id/edit';
+
+  static String customerEditFor(String id) => '/customers/$id/edit';
+
+  /// The new product or service form.
+  static const String productCreate = '/products/new';
+
+  static const String productEdit = '/products/:id/edit';
+
+  static String productEditFor(String id) => '/products/$id/edit';
+}

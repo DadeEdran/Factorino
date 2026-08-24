@@ -82,6 +82,26 @@ abstract final class AppTypography {
   );
 
   /// Secondary information: a date under a title, a hint under a field.
+  /// A text field's label, and only that.
+  ///
+  /// **The one style in this scale with no line-height multiplier**, and the
+  /// reason is Persian. Every other style here sets a generous `height` because
+  /// the script needs the leading (see the note above). A `TextField` label is
+  /// the opposite case: Material paints the floating label into a gap cut in
+  /// the field's border, and it clips that gap to the label's reported line
+  /// box. Give the label a 1.65 line box and the glyphs sit high inside it, the
+  /// clip lands below their tops, and every ascender and every dot above a
+  /// letter is sliced off -- legibly enough to read, wrongly enough to look
+  /// broken. Leaving `height` unset uses Vazirmatn's own ascent and descent,
+  /// which contain the glyphs exactly.
+  ///
+  /// Found by screenshotting the running form, like the two defects in
+  /// increment (e); no test would have caught it.
+  static const TextStyle fieldLabel = TextStyle(
+    fontSize: 15,
+    fontWeight: FontWeight.w400,
+  );
+
   static const TextStyle caption = TextStyle(
     fontSize: 13,
     height: 1.6,

@@ -1373,3 +1373,158 @@ point.
 app already renders its own name in Persian, so the title bar would be the one place it did not).
 `intl_utils` or another string-management package (rejected: `gen-l10n` ships with Flutter and does
 this, and §2 asks whether the framework already provides it).
+
+---
+
+## D-035 — One logging wrapper: closure messages, nothing in release, and a guard that is the real control
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · implements the project spec.
+
+**Decision.** All logging goes through `AppLog` in `lib/core/security/app_log.dart`.
+`test/core/security/logging_path_test.dart` fails the build if anything in `lib/` writes output
+another way, or if a sensitive field name appears inside an `AppLog` call.
+
+**Four properties, in the order they matter.**
+
+1. **Nothing is emitted in a release build — not even an error.** The guard is `kReleaseMode`, a
+   `const bool`, so the body is removed by the compiler rather than skipped at runtime. This is
+   deliberately stronger than §7's "debug logging is stripped": in a release build the only
+   destinations are logcat on Android and stdout on Windows, and both are readable by exactly the
+   person the threat model is worried about. A line the developer cannot read but the holder of the
+   device can is worse than no line.
+
+2. **The message is a closure.** `AppLog.debug(() => '...')`, not `AppLog.debug('...')`. With an
+   eager argument the interpolation runs at the call site *before* the call, so a sensitive value is
+   materialized into a string in a release build even though nothing prints it. The closure is never
+   invoked when the release guard returns first.
+
+3. **The static guard is the control, not the scrubber.** `logging_path_test.dart` scans every
+   `AppLog` call — following it across line breaks by balancing parentheses, because the formatter
+   wraps these calls and a line-at-a-time scan would see `AppLog.debug(` on one line and
+   `customer.fullName` on the next and match neither. The banned accessors are the §7 list:
+   `nationalId`, `economicId`, `mobile`, `fullName`, `companyName`, `address`, `notes`,
+   `grandTotal`, `subtotal`, `unitPrice`, `hex`, and their neighbours.
+
+4. **The runtime scrubber is a backstop for shapes only, and says so.** `scrubForLogging` replaces
+   runs of ten or more digits (national ID, economic ID, mobile, large amounts), runs of 32 or more
+   hex characters (key material), and the wrapped key form the opener builds. It **cannot** catch a
+   customer name, a company name, an address, or an amount below ten digits — those have no shape,
+   and the entry says so rather than implying coverage it does not have. What it does catch is the
+   value that arrives inside something the guard could not see through: a database exception's
+   message, most plausibly.
+
+**Two supporting decisions.**
+
+*The framework's own error path is routed through it.* `FlutterError.onError` and
+`platformDispatcher.onError` are set in `main()`. This is not hypothetical: a layout overflow dumps
+the offending widget subtree, and in this application that subtree contains `Text` widgets holding
+customer names and amounts. On the default path it reaches logcat verbatim, on any build.
+
+*`platformDispatcher.onError` returns **false**.* It logs and then lets the platform terminate.
+Returning `true` was tried and is recorded here as the mistake it was: a failure inside
+`openAppDatabase` was swallowed, `runApp` was never reached, and because the Windows runner shows
+its window only after the first frame, the result was a process running forever with no window and
+no message anywhere — the exact silent degradation D-020's fail-loud startup exists to prevent.
+Found by building and running it.
+
+**Where the guard fired first.** On its own author: a doc comment in `app_log.dart` mentioning
+`PRAGMA key` tripped `single_open_path_test.dart`, which scans comments as well as code. The comment
+was reworded. The older guard was right to be broad and was not weakened.
+
+**Alternatives considered.** `package:logging` (rejected: §2 asks whether the framework already
+provides it, and `dart:developer` does — plus a package would have to be wrapped anyway to hold the
+release strip and the scrubber). Relying on review (rejected: the failure is silent by construction —
+a logged phone number produces no error, no crash and no visible defect).
+
+---
+
+## D-036 — The create/edit forms move into Phase 1 increment (f)
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED · **Owner ruling.**
+
+**Decision.** Minimal create/edit forms for customers and for products ship in increment (f), rather
+than waiting for Phase 2 and Phase 3.
+
+**Reason.** Two requirements already in force could not be met without them, and the conflict was
+put to the owner rather than resolved by quietly dropping one:
+
+- **§10 requires every empty state to carry a clear call to action**, and §15 forbids fake
+  functionality. A "افزودن مشتری" button that opened nothing would violate the second to satisfy the
+  first; omitting it would violate the first. Only a real form satisfies both.
+- **D-030 requires the national-ID copy to state the format and never the identity.** That
+  constraint was enforced against the ARB by `no_hardcoded_strings_test.dart`, which cannot tell
+  whether the copy is *used* correctly — an ARB entry that says the right thing is worthless beside
+  a green "verified" tick. The form is the call site that makes the rule checkable against
+  behaviour, and `customer_form_screen_test.dart` now checks it there.
+
+There is also a plain practical reason: with no way to enter data, the four screens could only ever
+be reviewed empty.
+
+**Scope kept deliberately small.** Required-field validation, Iranian mobile validation accepting
+`0`/`+98`/`0098` and any digit set, the national-ID checksum, and Toman-entry money parsing that
+never touches a `double`. Detail views, filters, sorting, bulk actions and the rest of Phases 2 and
+3 are untouched.
+
+**Consequence for the ROADMAP.** Phases 2 and 3 keep their entries and lose only the form slice.
+They are not complete and must not be marked so.
+
+---
+
+## D-037 — The desktop data table is a virtualized list, not `DataTable`
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** `core/widgets/app_table.dart` provides `AppTableHeader` + `AppTableRow`, laid out from
+one shared list of `TableColumnSpec`s and rendered over a `ListView.builder`. Material's `DataTable`
+and `PaginatedDataTable` are not used.
+
+**Reason.** `DataTable` builds every row it is handed. A list of five thousand invoices would build
+five thousand rows of widgets to show twenty — the O(n) UI-thread work §13 forbids, invisible at
+fifty rows and fatal at five thousand, which is the definition of a defect shipped rather than
+discovered. A header plus a builder-backed list is a real table that is also virtualized, and
+`customers_screen_test.dart` asserts that a full page of rows does not build a full page of widgets.
+
+Sharing one column list between the header and every row is the second half: a hand-built table
+whose header drifts out of alignment with its columns looks like a data error rather than a layout
+one.
+
+**An RTL finding, recorded because it is counter-intuitive.** The amount column must **not** be
+end-aligned. `AlignmentDirectional.centerEnd` resolves to the *left* edge in RTL, and numbers render
+left-to-right whatever the surrounding direction — so pushing an amount to the trailing edge lines
+figures up by their *first* digit and leaves the units digit ragged, which is exactly what tabular
+numerals (D-033) exist to prevent. Leading alignment in RTL puts the digits' right edge on a common
+line. The flag is documented on `TableColumnSpec.alignEnd` as the trap it is. Found by looking at
+the running build; no test would have caught it.
+
+**Alternatives considered.** `DataTable` with pagination controls (rejected: it solves the build
+cost by refusing to scroll, and a paged table is a worse reading experience than a scrolling one for
+a list the user is scanning). `TwoDimensionalScrollView` (rejected: the extra axis is not needed —
+these tables scroll vertically only).
+
+---
+
+## D-038 — Lists page at the query level, through one widening window
+
+**Date:** 2026-08-24 · **Status:** ACCEPTED
+
+**Decision.** Every list screen drives its query from a `ListQuery` (`core/utils/list_query.dart`)
+carrying the search term and a row limit. The limit reaches SQL. "Load more" widens the window by
+one page; **starting a search resets it to one page.**
+
+**Reason.** §13 requires lists to work at thousands of rows. Virtualized rendering alone does not
+achieve that: a `ListView.builder` over ten thousand rows builds only the visible widgets, but the
+query behind it still loaded ten thousand rows, mapped them all to domain models and holds them in
+memory. The limit has to reach the database, and `ListQuery` is what carries it there.
+
+**Why one value rather than two providers.** The term and the limit change together or they are
+wrong together: a user who scrolled through two thousand rows and then typed three letters must not
+have the app ask for two thousand matches of those letters. Held as two providers they could differ
+for a frame, and the symptom would be a needlessly enormous query rather than an error.
+
+**Why a widening window rather than an offset.** The underlying read is a live query. A stream per
+offset page would have to be merged and re-merged on every write, with rows able to shift between
+pages in between. One widening window over one stream stays consistent with itself.
+
+**Why an explicit control rather than infinite scroll.** A list that keeps loading as you scroll
+gives no way to tell a long list from a slow one, and no way to reach the end of anything. On a
+financial record, "is that all of them?" is a real question.

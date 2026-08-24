@@ -41,8 +41,14 @@ Factorino/
         number_input.dart                         #   digit folding + exact scaled parsing
         iranian_phone.dart                        #   09xxxxxxxxx, from +98 / 0098 / bare
         national_id.dart                          #   checksum; the field stays optional
-      security/database_encryption_key.dart       # key type + OS-keystore key store (D-023)
-      utils/uuid.dart                             # wrapper over package:uuid (D-024)
+        jalali_display.dart                       #   Jalali dates, phones, ids + bidi isolation
+      security/                                   # (§7)
+        database_encryption_key.dart              #   key type + OS-keystore key store (D-023)
+        app_log.dart                              #   THE logging wrapper (D-035)
+      errors/failure_message.dart                 # exception -> Persian copy; ARB only (§7)
+      utils/
+        uuid.dart                                 #   wrapper over package:uuid (D-024)
+        list_query.dart                           #   the paging window (D-038)
     data/
       database/
         encrypted_database.dart                   # THE single database opener (D-020)
@@ -77,12 +83,22 @@ Factorino/
       widgets/                                    # shared design-system components
         app_card.dart  status_badge.dart  empty_state.dart
         amount_text.dart  page_body.dart
+        app_table.dart                            #   virtualized desktop table (D-037)
+        skeleton.dart  search_field.dart  load_more_footer.dart
+        form_scaffold.dart  async_error_view.dart
     features/<feature>/
-      presentation/                               # screens
-      application/                                # feature providers (settings only, so far)
+      presentation/                               # screens and forms
+      application/                                # feature providers + the write-path controller
+                                                  #   settings, customers, products
     app.dart             # MaterialApp.router: themes, locale, RTL, router
     main.dart            # opens the database, overrides the provider, runs the app
   test/
+    core/security/logging_path_test.dart            # scans lib/ for output outside AppLog (D-035)
+    core/utils/list_query_test.dart                 # the paging window (D-038)
+    core/formatting/jalali_display_test.dart        # dates, phones, ids, bidi isolation
+    features/screen_harness.dart                    # locale + RTL + tier + router, as the app gives them
+    features/customers/customers_screen_test.dart   # four states, two layouts, paging reaches SQL
+    features/customers/customer_form_screen_test.dart # D-030 against behaviour, not only the ARB
     core/theme/theme_tokens_only_test.dart          # scans lib/ for literal colours and sizes
     core/localization/no_hardcoded_strings_test.dart # scans lib/ for Persian in code; checks D-030
     core/money/                                     # §4 cases, the invariant, D-027 clamps
@@ -133,9 +149,13 @@ decided by the file header, never by a pragma - see the three named traps in D-0
   number inside the write transaction (D-013); payment writes recompute the derived invoice status in
   the same transaction (§6).
 - **Routing:** `go_router` with a `StatefulShellRoute` over five destinations, each keeping its own
-  stack and scroll position. Only routes whose screens exist are registered; detail and create
-  routes arrive with the screens they open. گزارش‌ها is absent from navigation *and* from the
-  router (D-021).
+  stack and scroll position. Only routes whose screens exist are registered — as of (f1) that
+  includes `/customers/new`, `/customers/:id/edit`, `/products/new` and `/products/:id/edit`, each
+  a child of its destination so the URL reads as a hierarchy and the shell keeps the right item
+  selected. گزارش‌ها is absent from navigation *and* from the router (D-021).
+- **Screens:** Customers and Products read real data end to end — search, query-level paging,
+  skeletons, two empty states, soft delete and create/edit forms. Dashboard and Invoices are still
+  the unconditional empty states from (e) and arrive in (f2).
 - **Localization:** both halves exist. The **input boundary** in `core/formatting/` -- digit folding,
   the letter folds, the single `searchKey` normalizer, phone normalization, the national-ID checksum,
   and display formatting for grouped numbers, percentages and quantities. The **presentation side**
@@ -152,6 +172,10 @@ decided by the file header, never by a pragma - see the three named traps in D-0
   `core/theme/` (D-033). One Persian-turquoise accent, warm neutrals, six semantic status pairs as a
   `StatusPalette` theme extension, and a type scale whose largest style is the financial numeral
   style. Enforced: a literal colour or dimension outside the token files fails the build.
+- **Logging:** one wrapper, `core/security/app_log.dart` (D-035). Closure messages, everything
+  stripped from release builds by a compile-time constant, a shape-based scrubber, and the
+  framework's own error path routed through it. A `lib/` scan fails the build on any other output
+  path or on a sensitive field name inside a log call.
 - **Security:** encryption at rest is implemented and proven on Android and Windows, and the startup
   assertion runs from `main.dart`. Errors reaching the UI are mapped to friendly Persian messages;
   no stack trace, SQL statement or path can surface (§7). Manifest hardening, app lock, CSP and

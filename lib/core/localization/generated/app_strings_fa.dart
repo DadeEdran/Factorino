@@ -171,6 +171,209 @@ class AppStringsFa extends AppStrings {
   String get nationalIdInvalid => 'کد ملی نامعتبر است';
 
   @override
+  String get monthFarvardin => 'فروردین';
+
+  @override
+  String get monthOrdibehesht => 'اردیبهشت';
+
+  @override
+  String get monthKhordad => 'خرداد';
+
+  @override
+  String get monthTir => 'تیر';
+
+  @override
+  String get monthMordad => 'مرداد';
+
+  @override
+  String get monthShahrivar => 'شهریور';
+
+  @override
+  String get monthMehr => 'مهر';
+
+  @override
+  String get monthAban => 'آبان';
+
+  @override
+  String get monthAzar => 'آذر';
+
+  @override
+  String get monthDey => 'دی';
+
+  @override
+  String get monthBahman => 'بهمن';
+
+  @override
+  String get monthEsfand => 'اسفند';
+
+  @override
+  String get actionEdit => 'ویرایش';
+
+  @override
+  String get actionDelete => 'حذف';
+
+  @override
+  String get actionClear => 'پاک کردن';
+
+  @override
+  String get actionLoadMore => 'نمایش بیشتر';
+
+  @override
+  String get actionMore => 'گزینه‌های بیشتر';
+
+  @override
+  String get searchNoResultsTitle => 'نتیجه‌ای یافت نشد';
+
+  @override
+  String get searchNoResultsBody =>
+      'عبارت دیگری را امتحان کنید یا جستجو را پاک کنید.';
+
+  @override
+  String get fieldOptional => 'اختیاری';
+
+  @override
+  String get validationRequired => 'پر کردن این فیلد الزامی است';
+
+  @override
+  String get validationMobileInvalid => 'شماره موبایل معتبر نیست';
+
+  @override
+  String get validationAmountInvalid => 'مبلغ معتبر نیست';
+
+  @override
+  String get validationAmountTooLarge => 'مبلغ واردشده بیش از حد مجاز است';
+
+  @override
+  String get customersSearchHint => 'جستجوی نام یا شرکت';
+
+  @override
+  String get customerAdd => 'افزودن مشتری';
+
+  @override
+  String get customerCreateTitle => 'مشتری جدید';
+
+  @override
+  String get customerEditTitle => 'ویرایش مشتری';
+
+  @override
+  String get customerFieldFullName => 'نام و نام خانوادگی';
+
+  @override
+  String get customerFieldCompany => 'نام شرکت';
+
+  @override
+  String get customerFieldMobile => 'شماره موبایل';
+
+  @override
+  String get customerFieldAddress => 'نشانی';
+
+  @override
+  String get customerFieldNationalId => 'کد ملی';
+
+  @override
+  String get customerFieldEconomicId => 'کد اقتصادی';
+
+  @override
+  String get customerFieldNotes => 'یادداشت';
+
+  @override
+  String get customerNoMobile => 'شماره‌ای ثبت نشده';
+
+  @override
+  String get customerDeleteTitle => 'این مشتری حذف شود؟';
+
+  @override
+  String get customerDeleteBody =>
+      'مشتری از فهرست برداشته می‌شود، اما فاکتورهایی که پیش‌تر برای او صادر شده دست‌نخورده باقی می‌مانند و مبالغ آن‌ها تغییر نمی‌کند.';
+
+  @override
+  String get customerDeleted => 'مشتری حذف شد';
+
+  @override
+  String get customerSaved => 'مشتری ذخیره شد';
+
+  @override
+  String get productsSearchHint => 'جستجوی محصول یا خدمت';
+
+  @override
+  String get productAdd => 'افزودن محصول یا خدمت';
+
+  @override
+  String get productCreateTitle => 'محصول یا خدمت جدید';
+
+  @override
+  String get productEditTitle => 'ویرایش محصول یا خدمت';
+
+  @override
+  String get productFieldName => 'نام';
+
+  @override
+  String get productFieldType => 'نوع';
+
+  @override
+  String get productFieldPrice => 'قیمت';
+
+  @override
+  String get productFieldUnit => 'واحد';
+
+  @override
+  String get productFieldUnitHint => 'عدد، کیلوگرم، ساعت، متر';
+
+  @override
+  String get productFieldDescription => 'توضیحات';
+
+  @override
+  String get productTypeProduct => 'کالا';
+
+  @override
+  String get productTypeService => 'خدمت';
+
+  @override
+  String get productDeleteTitle => 'این مورد حذف شود؟';
+
+  @override
+  String get productDeleteBody =>
+      'این مورد از فهرست برداشته می‌شود، اما فاکتورهایی که آن را دربر دارند با همان نام و قیمت زمان صدور حفظ می‌شوند.';
+
+  @override
+  String get productDeleted => 'حذف شد';
+
+  @override
+  String get productSaved => 'ذخیره شد';
+
+  @override
+  String get tableColumnName => 'نام';
+
+  @override
+  String get tableColumnMobile => 'موبایل';
+
+  @override
+  String get tableColumnCompany => 'شرکت';
+
+  @override
+  String get tableColumnType => 'نوع';
+
+  @override
+  String get tableColumnUnit => 'واحد';
+
+  @override
+  String get tableColumnPrice => 'قیمت';
+
+  @override
+  String get errorInvoiceNotEditableTitle => 'این فاکتور قابل ویرایش نیست';
+
+  @override
+  String get errorInvoiceNotEditableBody =>
+      'فقط پیش‌نویس‌ها را می‌توان تغییر داد. فاکتور صادرشده را باید لغو کرد.';
+
+  @override
+  String get errorPaymentNotAcceptedTitle => 'ثبت پرداخت ممکن نیست';
+
+  @override
+  String get errorPaymentNotAcceptedBody =>
+      'برای این فاکتور در وضعیت فعلی نمی‌توان پرداخت ثبت کرد.';
+
+  @override
   String get errorGenericTitle => 'خطایی رخ داد';
 
   @override

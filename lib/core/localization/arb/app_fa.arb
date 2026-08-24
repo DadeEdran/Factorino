@@ -162,6 +162,166 @@
     "description": "Shown when an entered national ID fails the checksum. A failing value is genuinely invalid and may be called so plainly (D-030)."
   },
 
+  "monthFarvardin": "فروردین",
+  "@monthFarvardin": {
+    "description": "Jalali month 1. The twelve month names are handed to core/formatting/jalali_display.dart, which holds no Persian of its own (D-034)."
+  },
+  "monthOrdibehesht": "اردیبهشت",
+  "@monthOrdibehesht": {},
+  "monthKhordad": "خرداد",
+  "@monthKhordad": {},
+  "monthTir": "تیر",
+  "@monthTir": {},
+  "monthMordad": "مرداد",
+  "@monthMordad": {},
+  "monthShahrivar": "شهریور",
+  "@monthShahrivar": {},
+  "monthMehr": "مهر",
+  "@monthMehr": {},
+  "monthAban": "آبان",
+  "@monthAban": {},
+  "monthAzar": "آذر",
+  "@monthAzar": {},
+  "monthDey": "دی",
+  "@monthDey": {},
+  "monthBahman": "بهمن",
+  "@monthBahman": {},
+  "monthEsfand": "اسفند",
+  "@monthEsfand": {},
+
+  "actionEdit": "ویرایش",
+  "@actionEdit": {},
+  "actionDelete": "حذف",
+  "@actionDelete": {},
+  "actionClear": "پاک کردن",
+  "@actionClear": {},
+  "actionLoadMore": "نمایش بیشتر",
+  "@actionLoadMore": {
+    "description": "Loads the next page. Lists are paginated at the query level, so this widens the window the database is asked for rather than filtering something already loaded."
+  },
+  "actionMore": "گزینه‌های بیشتر",
+  "@actionMore": {
+    "description": "Tooltip for a row's overflow menu."
+  },
+
+  "searchNoResultsTitle": "نتیجه‌ای یافت نشد",
+  "@searchNoResultsTitle": {},
+  "searchNoResultsBody": "عبارت دیگری را امتحان کنید یا جستجو را پاک کنید.",
+  "@searchNoResultsBody": {},
+
+  "fieldOptional": "اختیاری",
+  "@fieldOptional": {
+    "description": "Helper text marking a form field as not required."
+  },
+  "validationRequired": "پر کردن این فیلد الزامی است",
+  "@validationRequired": {},
+  "validationMobileInvalid": "شماره موبایل معتبر نیست",
+  "@validationMobileInvalid": {},
+  "validationAmountInvalid": "مبلغ معتبر نیست",
+  "@validationAmountInvalid": {},
+  "validationAmountTooLarge": "مبلغ واردشده بیش از حد مجاز است",
+  "@validationAmountTooLarge": {
+    "description": "The money engine rejects values above kMaxAmountRial rather than truncating them (D-002)."
+  },
+
+  "customersSearchHint": "جستجوی نام یا شرکت",
+  "@customersSearchHint": {
+    "description": "Search covers the customer name and the company name, which are the two fields search_name is built from (D-025)."
+  },
+  "customerAdd": "افزودن مشتری",
+  "@customerAdd": {},
+  "customerCreateTitle": "مشتری جدید",
+  "@customerCreateTitle": {},
+  "customerEditTitle": "ویرایش مشتری",
+  "@customerEditTitle": {},
+  "customerFieldFullName": "نام و نام خانوادگی",
+  "@customerFieldFullName": {},
+  "customerFieldCompany": "نام شرکت",
+  "@customerFieldCompany": {},
+  "customerFieldMobile": "شماره موبایل",
+  "@customerFieldMobile": {},
+  "customerFieldAddress": "نشانی",
+  "@customerFieldAddress": {},
+  "customerFieldNationalId": "کد ملی",
+  "@customerFieldNationalId": {},
+  "customerFieldEconomicId": "کد اقتصادی",
+  "@customerFieldEconomicId": {},
+  "customerFieldNotes": "یادداشت",
+  "@customerFieldNotes": {},
+  "customerNoMobile": "شماره‌ای ثبت نشده",
+  "@customerNoMobile": {},
+  "customerDeleteTitle": "این مشتری حذف شود؟",
+  "@customerDeleteTitle": {},
+  "customerDeleteBody": "مشتری از فهرست برداشته می‌شود، اما فاکتورهایی که پیش‌تر برای او صادر شده دست‌نخورده باقی می‌مانند و مبالغ آن‌ها تغییر نمی‌کند.",
+  "@customerDeleteBody": {
+    "description": "the project spec requires the UI to explain soft deletion in Persian rather than failing opaquely. A customer referenced by an invoice is never hard-deleted, and the invoices keep their snapshotted figures (D-004)."
+  },
+  "customerDeleted": "مشتری حذف شد",
+  "@customerDeleted": {},
+  "customerSaved": "مشتری ذخیره شد",
+  "@customerSaved": {},
+
+  "productsSearchHint": "جستجوی محصول یا خدمت",
+  "@productsSearchHint": {},
+  "productAdd": "افزودن محصول یا خدمت",
+  "@productAdd": {},
+  "productCreateTitle": "محصول یا خدمت جدید",
+  "@productCreateTitle": {},
+  "productEditTitle": "ویرایش محصول یا خدمت",
+  "@productEditTitle": {},
+  "productFieldName": "نام",
+  "@productFieldName": {},
+  "productFieldType": "نوع",
+  "@productFieldType": {},
+  "productFieldPrice": "قیمت",
+  "@productFieldPrice": {},
+  "productFieldUnit": "واحد",
+  "@productFieldUnit": {},
+  "productFieldUnitHint": "عدد، کیلوگرم، ساعت، متر",
+  "@productFieldUnitHint": {
+    "description": "Examples of units. Free text, because the set of units a workshop uses is not something the app should fix."
+  },
+  "productFieldDescription": "توضیحات",
+  "@productFieldDescription": {},
+  "productTypeProduct": "کالا",
+  "@productTypeProduct": {},
+  "productTypeService": "خدمت",
+  "@productTypeService": {},
+  "productDeleteTitle": "این مورد حذف شود؟",
+  "@productDeleteTitle": {},
+  "productDeleteBody": "این مورد از فهرست برداشته می‌شود، اما فاکتورهایی که آن را دربر دارند با همان نام و قیمت زمان صدور حفظ می‌شوند.",
+  "@productDeleteBody": {
+    "description": "Explains the snapshot rule (D-004) where it matters: deleting a product changes no invoice, because each invoice kept its own copy of the title, unit and price."
+  },
+  "productDeleted": "حذف شد",
+  "@productDeleted": {},
+  "productSaved": "ذخیره شد",
+  "@productSaved": {},
+
+  "tableColumnName": "نام",
+  "@tableColumnName": {},
+  "tableColumnMobile": "موبایل",
+  "@tableColumnMobile": {},
+  "tableColumnCompany": "شرکت",
+  "@tableColumnCompany": {},
+  "tableColumnType": "نوع",
+  "@tableColumnType": {},
+  "tableColumnUnit": "واحد",
+  "@tableColumnUnit": {},
+  "tableColumnPrice": "قیمت",
+  "@tableColumnPrice": {},
+
+  "errorInvoiceNotEditableTitle": "این فاکتور قابل ویرایش نیست",
+  "@errorInvoiceNotEditableTitle": {},
+  "errorInvoiceNotEditableBody": "فقط پیش‌نویس‌ها را می‌توان تغییر داد. فاکتور صادرشده را باید لغو کرد.",
+  "@errorInvoiceNotEditableBody": {
+    "description": "the project spec: only draft invoices are editable; an issued invoice is corrected by cancellation, never by a silent edit."
+  },
+  "errorPaymentNotAcceptedTitle": "ثبت پرداخت ممکن نیست",
+  "@errorPaymentNotAcceptedTitle": {},
+  "errorPaymentNotAcceptedBody": "برای این فاکتور در وضعیت فعلی نمی‌توان پرداخت ثبت کرد.",
+  "@errorPaymentNotAcceptedBody": {},
+
   "errorGenericTitle": "خطایی رخ داد",
   "@errorGenericTitle": {
     "description": "Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user."

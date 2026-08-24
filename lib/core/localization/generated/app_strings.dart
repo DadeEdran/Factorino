@@ -406,6 +406,402 @@ abstract class AppStrings {
   /// **'کد ملی نامعتبر است'**
   String get nationalIdInvalid;
 
+  /// Jalali month 1. The twelve month names are handed to core/formatting/jalali_display.dart, which holds no Persian of its own (D-034).
+  ///
+  /// In fa, this message translates to:
+  /// **'فروردین'**
+  String get monthFarvardin;
+
+  /// No description provided for @monthOrdibehesht.
+  ///
+  /// In fa, this message translates to:
+  /// **'اردیبهشت'**
+  String get monthOrdibehesht;
+
+  /// No description provided for @monthKhordad.
+  ///
+  /// In fa, this message translates to:
+  /// **'خرداد'**
+  String get monthKhordad;
+
+  /// No description provided for @monthTir.
+  ///
+  /// In fa, this message translates to:
+  /// **'تیر'**
+  String get monthTir;
+
+  /// No description provided for @monthMordad.
+  ///
+  /// In fa, this message translates to:
+  /// **'مرداد'**
+  String get monthMordad;
+
+  /// No description provided for @monthShahrivar.
+  ///
+  /// In fa, this message translates to:
+  /// **'شهریور'**
+  String get monthShahrivar;
+
+  /// No description provided for @monthMehr.
+  ///
+  /// In fa, this message translates to:
+  /// **'مهر'**
+  String get monthMehr;
+
+  /// No description provided for @monthAban.
+  ///
+  /// In fa, this message translates to:
+  /// **'آبان'**
+  String get monthAban;
+
+  /// No description provided for @monthAzar.
+  ///
+  /// In fa, this message translates to:
+  /// **'آذر'**
+  String get monthAzar;
+
+  /// No description provided for @monthDey.
+  ///
+  /// In fa, this message translates to:
+  /// **'دی'**
+  String get monthDey;
+
+  /// No description provided for @monthBahman.
+  ///
+  /// In fa, this message translates to:
+  /// **'بهمن'**
+  String get monthBahman;
+
+  /// No description provided for @monthEsfand.
+  ///
+  /// In fa, this message translates to:
+  /// **'اسفند'**
+  String get monthEsfand;
+
+  /// No description provided for @actionEdit.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش'**
+  String get actionEdit;
+
+  /// No description provided for @actionDelete.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف'**
+  String get actionDelete;
+
+  /// No description provided for @actionClear.
+  ///
+  /// In fa, this message translates to:
+  /// **'پاک کردن'**
+  String get actionClear;
+
+  /// Loads the next page. Lists are paginated at the query level, so this widens the window the database is asked for rather than filtering something already loaded.
+  ///
+  /// In fa, this message translates to:
+  /// **'نمایش بیشتر'**
+  String get actionLoadMore;
+
+  /// Tooltip for a row's overflow menu.
+  ///
+  /// In fa, this message translates to:
+  /// **'گزینه‌های بیشتر'**
+  String get actionMore;
+
+  /// No description provided for @searchNoResultsTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'نتیجه‌ای یافت نشد'**
+  String get searchNoResultsTitle;
+
+  /// No description provided for @searchNoResultsBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'عبارت دیگری را امتحان کنید یا جستجو را پاک کنید.'**
+  String get searchNoResultsBody;
+
+  /// Helper text marking a form field as not required.
+  ///
+  /// In fa, this message translates to:
+  /// **'اختیاری'**
+  String get fieldOptional;
+
+  /// No description provided for @validationRequired.
+  ///
+  /// In fa, this message translates to:
+  /// **'پر کردن این فیلد الزامی است'**
+  String get validationRequired;
+
+  /// No description provided for @validationMobileInvalid.
+  ///
+  /// In fa, this message translates to:
+  /// **'شماره موبایل معتبر نیست'**
+  String get validationMobileInvalid;
+
+  /// No description provided for @validationAmountInvalid.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ معتبر نیست'**
+  String get validationAmountInvalid;
+
+  /// The money engine rejects values above kMaxAmountRial rather than truncating them (D-002).
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ واردشده بیش از حد مجاز است'**
+  String get validationAmountTooLarge;
+
+  /// Search covers the customer name and the company name, which are the two fields search_name is built from (D-025).
+  ///
+  /// In fa, this message translates to:
+  /// **'جستجوی نام یا شرکت'**
+  String get customersSearchHint;
+
+  /// No description provided for @customerAdd.
+  ///
+  /// In fa, this message translates to:
+  /// **'افزودن مشتری'**
+  String get customerAdd;
+
+  /// No description provided for @customerCreateTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری جدید'**
+  String get customerCreateTitle;
+
+  /// No description provided for @customerEditTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش مشتری'**
+  String get customerEditTitle;
+
+  /// No description provided for @customerFieldFullName.
+  ///
+  /// In fa, this message translates to:
+  /// **'نام و نام خانوادگی'**
+  String get customerFieldFullName;
+
+  /// No description provided for @customerFieldCompany.
+  ///
+  /// In fa, this message translates to:
+  /// **'نام شرکت'**
+  String get customerFieldCompany;
+
+  /// No description provided for @customerFieldMobile.
+  ///
+  /// In fa, this message translates to:
+  /// **'شماره موبایل'**
+  String get customerFieldMobile;
+
+  /// No description provided for @customerFieldAddress.
+  ///
+  /// In fa, this message translates to:
+  /// **'نشانی'**
+  String get customerFieldAddress;
+
+  /// No description provided for @customerFieldNationalId.
+  ///
+  /// In fa, this message translates to:
+  /// **'کد ملی'**
+  String get customerFieldNationalId;
+
+  /// No description provided for @customerFieldEconomicId.
+  ///
+  /// In fa, this message translates to:
+  /// **'کد اقتصادی'**
+  String get customerFieldEconomicId;
+
+  /// No description provided for @customerFieldNotes.
+  ///
+  /// In fa, this message translates to:
+  /// **'یادداشت'**
+  String get customerFieldNotes;
+
+  /// No description provided for @customerNoMobile.
+  ///
+  /// In fa, this message translates to:
+  /// **'شماره‌ای ثبت نشده'**
+  String get customerNoMobile;
+
+  /// No description provided for @customerDeleteTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این مشتری حذف شود؟'**
+  String get customerDeleteTitle;
+
+  /// the project spec requires the UI to explain soft deletion in Persian rather than failing opaquely. A customer referenced by an invoice is never hard-deleted, and the invoices keep their snapshotted figures (D-004).
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری از فهرست برداشته می‌شود، اما فاکتورهایی که پیش‌تر برای او صادر شده دست‌نخورده باقی می‌مانند و مبالغ آن‌ها تغییر نمی‌کند.'**
+  String get customerDeleteBody;
+
+  /// No description provided for @customerDeleted.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری حذف شد'**
+  String get customerDeleted;
+
+  /// No description provided for @customerSaved.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری ذخیره شد'**
+  String get customerSaved;
+
+  /// No description provided for @productsSearchHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'جستجوی محصول یا خدمت'**
+  String get productsSearchHint;
+
+  /// No description provided for @productAdd.
+  ///
+  /// In fa, this message translates to:
+  /// **'افزودن محصول یا خدمت'**
+  String get productAdd;
+
+  /// No description provided for @productCreateTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'محصول یا خدمت جدید'**
+  String get productCreateTitle;
+
+  /// No description provided for @productEditTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش محصول یا خدمت'**
+  String get productEditTitle;
+
+  /// No description provided for @productFieldName.
+  ///
+  /// In fa, this message translates to:
+  /// **'نام'**
+  String get productFieldName;
+
+  /// No description provided for @productFieldType.
+  ///
+  /// In fa, this message translates to:
+  /// **'نوع'**
+  String get productFieldType;
+
+  /// No description provided for @productFieldPrice.
+  ///
+  /// In fa, this message translates to:
+  /// **'قیمت'**
+  String get productFieldPrice;
+
+  /// No description provided for @productFieldUnit.
+  ///
+  /// In fa, this message translates to:
+  /// **'واحد'**
+  String get productFieldUnit;
+
+  /// Examples of units. Free text, because the set of units a workshop uses is not something the app should fix.
+  ///
+  /// In fa, this message translates to:
+  /// **'عدد، کیلوگرم، ساعت، متر'**
+  String get productFieldUnitHint;
+
+  /// No description provided for @productFieldDescription.
+  ///
+  /// In fa, this message translates to:
+  /// **'توضیحات'**
+  String get productFieldDescription;
+
+  /// No description provided for @productTypeProduct.
+  ///
+  /// In fa, this message translates to:
+  /// **'کالا'**
+  String get productTypeProduct;
+
+  /// No description provided for @productTypeService.
+  ///
+  /// In fa, this message translates to:
+  /// **'خدمت'**
+  String get productTypeService;
+
+  /// No description provided for @productDeleteTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این مورد حذف شود؟'**
+  String get productDeleteTitle;
+
+  /// Explains the snapshot rule (D-004) where it matters: deleting a product changes no invoice, because each invoice kept its own copy of the title, unit and price.
+  ///
+  /// In fa, this message translates to:
+  /// **'این مورد از فهرست برداشته می‌شود، اما فاکتورهایی که آن را دربر دارند با همان نام و قیمت زمان صدور حفظ می‌شوند.'**
+  String get productDeleteBody;
+
+  /// No description provided for @productDeleted.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف شد'**
+  String get productDeleted;
+
+  /// No description provided for @productSaved.
+  ///
+  /// In fa, this message translates to:
+  /// **'ذخیره شد'**
+  String get productSaved;
+
+  /// No description provided for @tableColumnName.
+  ///
+  /// In fa, this message translates to:
+  /// **'نام'**
+  String get tableColumnName;
+
+  /// No description provided for @tableColumnMobile.
+  ///
+  /// In fa, this message translates to:
+  /// **'موبایل'**
+  String get tableColumnMobile;
+
+  /// No description provided for @tableColumnCompany.
+  ///
+  /// In fa, this message translates to:
+  /// **'شرکت'**
+  String get tableColumnCompany;
+
+  /// No description provided for @tableColumnType.
+  ///
+  /// In fa, this message translates to:
+  /// **'نوع'**
+  String get tableColumnType;
+
+  /// No description provided for @tableColumnUnit.
+  ///
+  /// In fa, this message translates to:
+  /// **'واحد'**
+  String get tableColumnUnit;
+
+  /// No description provided for @tableColumnPrice.
+  ///
+  /// In fa, this message translates to:
+  /// **'قیمت'**
+  String get tableColumnPrice;
+
+  /// No description provided for @errorInvoiceNotEditableTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور قابل ویرایش نیست'**
+  String get errorInvoiceNotEditableTitle;
+
+  /// the project spec: only draft invoices are editable; an issued invoice is corrected by cancellation, never by a silent edit.
+  ///
+  /// In fa, this message translates to:
+  /// **'فقط پیش‌نویس‌ها را می‌توان تغییر داد. فاکتور صادرشده را باید لغو کرد.'**
+  String get errorInvoiceNotEditableBody;
+
+  /// No description provided for @errorPaymentNotAcceptedTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت پرداخت ممکن نیست'**
+  String get errorPaymentNotAcceptedTitle;
+
+  /// No description provided for @errorPaymentNotAcceptedBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای این فاکتور در وضعیت فعلی نمی‌توان پرداخت ثبت کرد.'**
+  String get errorPaymentNotAcceptedBody;
+
   /// Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user.
   ///
   /// In fa, this message translates to:

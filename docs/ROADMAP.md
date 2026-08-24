@@ -145,8 +145,9 @@ The three earlier items remain closed or bounded:
 
 ## Phase 1 — Foundation and Architecture
 
-**Status:** `IN_PROGRESS` — increments (a) through (e) complete; (a)–(d) reviewed and **accepted**,
-(e) awaiting review. Only (f) remains. See `CURRENT_STATE.md`.
+**Status:** `IN_PROGRESS` — increments (a) through (e) complete and **accepted**; (f) split in two
+after the owner pulled the create/edit forms forward (D-036). (f1) is complete and awaiting review;
+(f2) remains. See `CURRENT_STATE.md`.
 
 Phase 1 is being delivered in six reviewable increments (owner, 2026-08-23), each reported and
 stopped for review rather than landing as one pile. Nothing built here rebuilds the proven
@@ -159,7 +160,8 @@ connection layer (D-020, D-023); it is built on.
 | c | Jalali date layer and digit normalization + tests | `COMPLETED` 2026-08-24 |
 | d | Repositories and domain models | `COMPLETED` 2026-08-24 |
 | e | Theme, localization, routing, responsive shell | `COMPLETED` 2026-08-24 |
-| f | The four screens, on real data | `NOT_STARTED` |
+| f1 | Logging wrapper, Customers and Products on real data | `COMPLETED` 2026-08-24 |
+| f2 | Invoices list and Dashboard, on real data | `NOT_STARTED` |
 
 (a) and (b) come before any UI work: everything else reads from the schema and the money engine, and
 both are far cheaper to correct now than after screens depend on them.
@@ -316,9 +318,54 @@ both are far cheaper to correct now than after screens depend on them.
   exactly one breakpoint, and the window title was mojibake.
 - 25 new tests; 378 pass in total. Decisions recorded: **D-033**, **D-034**.
 
+**Increment (f1) — completed 2026-08-24**
+
+- **The logging wrapper** (D-035), built first because it is what makes every screen after it safe.
+  One sink, closure messages so a release build never even forms the string, everything stripped in
+  release, a shape-based scrubber as a backstop, and a `lib/`-scanning guard that fails the build on
+  a `print` or on a sensitive field name inside an `AppLog` call. **Verified to bite** by introducing
+  both violations and watching it fail on the exact lines, including across a formatter-wrapped
+  multi-line call.
+- **`platformDispatcher.onError` returns false**, and the entry in D-035 records why: returning
+  `true` swallowed a startup failure, `runApp` was never reached, and the Windows runner — which
+  shows its window only after the first frame — left a process running forever with no window and no
+  message. Fail-loud restored.
+- **Customers and Products, end to end on real data**: search (debounced, normalization-insensitive
+  through the one `searchKey`), query-level paging (D-038), skeleton loaders shaped like the rows
+  they replace, two distinct empty states, soft delete behind Persian copy that explains what
+  survives, and create/edit forms (D-036).
+- **Three genuinely different layouts** held: cards on mobile and tablet, a **virtualized** table on
+  desktop (D-037) — asserted by a test that a full page of rows does not build a full page of
+  widgets.
+- **D-030 now has a live call site.** The national-ID field calls a failing checksum invalid plainly
+  and shows **no affirmative message at all** on success; `customer_form_screen_test.dart` asserts
+  the absence of the "format is valid" string and of any tick or verified icon.
+- **`core/errors/`** arrives: one `describeFailure` that can only return ARB copy, and an
+  `AsyncErrorView` that logs the real error exactly once in `initState` rather than on every rebuild.
+- **Jalali display formatting** (`core/formatting/jalali_display.dart`) with bidi isolation for
+  dates, phone numbers and identifiers, and the twelve month names passed in from the ARB so no
+  Persian literal enters the formatting layer.
+- 54 new tests; **432 pass in total**. Decisions recorded: **D-035**, **D-036**, **D-037**, **D-038**.
+
+**Three defects found by running the Windows build, none of which a test would have caught**
+
+1. **The money column was aligned the wrong way in RTL.** `alignEnd` resolves to the *left* edge in
+   RTL, and numbers render left-to-right regardless — so the figures lined up by their first digit
+   and the units digits were ragged, which is precisely what tabular numerals exist to prevent.
+   Fixed by leading alignment in a fixed-width column, and the trap is documented on the flag.
+2. **The floating label of the autofocused field was clipped.** An outlined field's label floats
+   *outside* the field's box, the first field sits flush against the top of a scroll viewport, and a
+   viewport clips its children. In Persian the failure is nastier than in Latin: the letter bodies
+   survive and only the ascenders and the dots above them vanish, so it reads as a subtly misspelled
+   word rather than as a layout fault. Fixed with room above the first field. Two wrong hypotheses
+   (line height, then content padding) were tried and reverted before the real cause was found.
+3. **The mobile floating action button covered the last row of every list.** Found by a widget test
+   whose tap on the load-more control landed on the button instead — the same thing that happens to a
+   user, with no warning printed. Fixed with a clearance token on the scrolling lists.
+
 **Remaining in Phase 1**
 
-- Increment (f): the four screens, on real data.
+- Increment (f2): the Invoices list and the Dashboard, on real data.
 
 **Known issues**
 
@@ -334,6 +381,28 @@ both are far cheaper to correct now than after screens depend on them.
   the same check digit, so `0079542311` and `0079542131` both validate. That is the official
   algorithm, not a defect here; it is recorded as a test so nobody later invents a stricter rule than
   the one numbers are issued under. The UI must not present a passing value as a verified identity.
+
+**Security note (increment f1).** The increment that makes §7's logging rule load-bearing, and the
+first that displays third-party personal data on screen:
+
+- **The logging wrapper exists and is enforced** (D-035). Nothing in `lib/` can write output another
+  way, no sensitive field name can appear inside a log call, and **no build that ships emits
+  anything at all** — the release strip is a compile-time constant, so the calls are removed rather
+  than silenced.
+- **The framework's own error path is covered.** A layout overflow dumps the offending widget
+  subtree, which on these screens holds customer names and amounts; it now goes through the scrubber
+  and is stripped in release like everything else.
+- **National IDs, economic IDs and phone numbers are now accepted from the user and rendered on
+  screen.** They are validated at the form boundary, stored through the repositories into the
+  encrypted database, and never logged. The one log line a save produces carries the row id and
+  nothing else.
+- **No raw error can reach the user.** `describeFailure` can only return ARB copy, and a widget test
+  asserts that a failure carrying a SQL statement and a database path surfaces as Persian with
+  neither visible.
+- **D-030 is enforced against behaviour**, not only against the ARB.
+- No new permissions, no network, no new platform surface. Android hardening (`allowBackup=false`,
+  `usesCleartextTraffic=false`, `FLAG_SECURE`, R8) and the web CSP remain Phase 9 and Phase 12 and
+  are **not** done.
 
 **Security note (increment e).** The first increment with a user-facing surface, so the threat model
 gains a presentation boundary:

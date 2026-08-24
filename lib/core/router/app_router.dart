@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../features/customers/presentation/customer_form_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
+import '../../features/products/presentation/product_form_screen.dart';
 import '../../features/products/presentation/products_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../responsive/adaptive_scaffold.dart';
@@ -56,8 +58,40 @@ GoRouter createRouter() {
         branches: <StatefulShellBranch>[
           _branch(AppDestination.dashboard, const DashboardScreen()),
           _branch(AppDestination.invoices, const InvoicesScreen()),
-          _branch(AppDestination.customers, const CustomersScreen()),
-          _branch(AppDestination.products, const ProductsScreen()),
+          _branch(
+            AppDestination.customers,
+            const CustomersScreen(),
+            // The forms are children of the destination, so the URL reads as a
+            // hierarchy and the shell keeps مشتریان selected while one is open.
+            children: <RouteBase>[
+              GoRoute(
+                path: 'new',
+                builder: (BuildContext context, GoRouterState state) =>
+                    const CustomerFormScreen(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                builder: (BuildContext context, GoRouterState state) =>
+                    CustomerFormScreen(customerId: state.pathParameters['id']),
+              ),
+            ],
+          ),
+          _branch(
+            AppDestination.products,
+            const ProductsScreen(),
+            children: <RouteBase>[
+              GoRoute(
+                path: 'new',
+                builder: (BuildContext context, GoRouterState state) =>
+                    const ProductFormScreen(),
+              ),
+              GoRoute(
+                path: ':id/edit',
+                builder: (BuildContext context, GoRouterState state) =>
+                    ProductFormScreen(productId: state.pathParameters['id']),
+              ),
+            ],
+          ),
           _branch(AppDestination.settings, const SettingsScreen()),
         ],
       ),
@@ -66,11 +100,16 @@ GoRouter createRouter() {
 }
 
 /// One destination's branch, with a transition that is subtle and fast (§10).
-StatefulShellBranch _branch(AppDestination destination, Widget screen) {
+StatefulShellBranch _branch(
+  AppDestination destination,
+  Widget screen, {
+  List<RouteBase> children = const <RouteBase>[],
+}) {
   return StatefulShellBranch(
     routes: <RouteBase>[
       GoRoute(
         path: destination.path,
+        routes: children,
         pageBuilder: (BuildContext context, GoRouterState state) {
           return CustomTransitionPage<void>(
             key: state.pageKey,

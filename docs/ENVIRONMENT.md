@@ -157,6 +157,38 @@ byte-identical, file length unchanged, second run reports "already canonical".
 
 `.githooks/pre-commit` is the backstop and fails any commit whose lockfile names another host.
 
+### When the mirror is down: `pub get --offline`
+
+**Measured 2026-08-24: the Tsinghua mirror became unreachable mid-session** — `curl` to
+`mirrors.tuna.tsinghua.edu.cn/dart-pub` timed out, and every pub operation hung at
+*"Resolving dependencies..."* with no error and no timeout of its own.
+
+This is worth writing down because of how it presents. `flutter analyze`, `flutter test` and
+`flutter gen-l10n` all kept working, because they use the existing `.dart_tool/package_config.json`
+and never resolve. What broke was **`dart run build_runner`**, which triggers a `pub get` first — so
+the symptom was "code generation hangs forever", not "the network is down". It cost most of an hour
+before the cause was found. `dart run build_runner --help` hangs identically, which is the quickest
+way to tell this apart from a build_runner problem.
+
+**The fix is `--offline`.** Every package the project needs is already in the local pub cache, so:
+
+```sh
+dart pub get --offline && dart run build_runner build
+```
+
+resolves from the cache with no network at all, and generation then completes in seconds.
+
+**Ordering matters, and it is the opposite of the obvious one.** `tools/sanitize_lockfile` rewrites
+the lockfile's hosts back to `pub.dev`, which pub then treats as a different source and re-resolves
+— reaching for the network again. So:
+
+> **Sanitize the lockfile *last*, after every command that resolves.** Sanitizing before running
+> `build_runner` is what makes `build_runner` hang.
+
+A stale `.dart_tool/build/lock` from a killed run makes a subsequent run wait silently and forever;
+delete it if a run was interrupted. Note also that `dart run` buffers stdout when it is redirected,
+so an empty log file is not evidence that nothing is happening.
+
 ### `package:sqlite3` build hooks are unaffected
 
 The build hook downloads prebuilt native binaries from **GitHub releases**, which returns 200 from

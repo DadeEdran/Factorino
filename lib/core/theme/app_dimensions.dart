@@ -104,6 +104,25 @@ abstract final class AppDuration {
 
   /// Page and panel transitions.
   static const Duration medium = Duration(milliseconds: 220);
+
+  /// How long a search field waits after the last keystroke before querying.
+  ///
+  /// Not motion, but it lives here so that every duration in the application
+  /// is nameable in one file — the alternative is a literal in one widget and
+  /// a different literal in the next, which is precisely the drift the token
+  /// rule exists to prevent. 250 ms is below the threshold at which a response
+  /// stops feeling immediate, and above the interval between keystrokes in
+  /// ordinary typing, so a five-letter name produces one query rather than
+  /// five.
+  static const Duration inputDebounce = Duration(milliseconds: 250);
+
+  /// One half-cycle of a skeleton loader's pulse.
+  ///
+  /// Slow on purpose. A skeleton is on screen while the user waits, and a fast
+  /// pulse in the corner of the eye reads as an error indicator rather than as
+  /// patience. Long enough to be perceived as breathing, short enough that a
+  /// list that never loads still looks alive.
+  static const Duration pulse = Duration(milliseconds: 900);
 }
 
 /// Layout constants that are not spacing.
@@ -130,7 +149,59 @@ abstract final class AppLayout {
   /// kind of defect that ships.
   static const double navigationRailCompactWidth = 104;
 
+  /// Bottom padding a scrolling list needs when a floating action button sits
+  /// over it.
+  ///
+  /// Without it the button covers the last row, and the last row is the one a
+  /// user scrolls all the way down to reach. Found by a widget test whose tap
+  /// on the load-more control landed on the button instead -- which is the
+  /// same thing happening to a user, with no warning printed.
+  static const double floatingActionClearance = 88;
+
+  /// Room reserved at the end of a table row for its actions menu, matched by
+  /// the header so the columns above and below stay aligned.
+  static const double tableActionsWidth = 48;
+
+  /// A table column holding a short fixed label -- a product type. Fixed
+  /// rather than flexed so the column does not resize as the rows scroll past
+  /// with longer or shorter values in it.
+  static const double tableTypeWidth = 80;
+
+  /// A table column holding a unit of measure.
+  static const double tableUnitWidth = 96;
+
+  /// A table column holding an amount.
+  ///
+  /// Fixed rather than flexed, because an amount column is aligned rather than
+  /// filled: the figures hug the column's leading edge so their last digits
+  /// line up, and a flexed column would leave that alignment floating at a
+  /// different place on every window width.
+  static const double tablePriceWidth = 190;
+
   /// The measure a wrapped rail label is given inside
   /// [navigationRailCompactWidth], leaving the rail its own side padding.
   static const double navigationRailLabelWidth = 88;
+}
+
+/// Skeleton-loader proportions.
+///
+/// A skeleton is only useful if it is the shape of the content it replaces --
+/// otherwise the layout jumps when the data lands, which is the jarring effect
+/// the skeleton existed to prevent. These are the shapes, named once.
+abstract final class AppSkeleton {
+  /// One line of text. Slightly shorter than the line height it stands for, so
+  /// a stack of them reads as text rather than as solid blocks.
+  static const double lineHeight = 14;
+
+  /// A title line, whose real length is unknown.
+  static const double titleWidth = 168;
+
+  /// A secondary line beneath a title.
+  static const double captionWidth = 112;
+
+  /// A page title standing in for itself.
+  static const double titleHeight = 20;
+
+  /// One text field, including its label row.
+  static const double fieldHeight = 56;
 }

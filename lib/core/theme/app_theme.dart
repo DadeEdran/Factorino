@@ -195,12 +195,27 @@ abstract final class AppTheme {
             width: AppBorders.emphasis,
           ),
         ),
-        labelStyle: AppTypography.body.copyWith(
+        // fieldLabel, not body: a floating label is clipped to its own line
+        // box, and body's Persian line height pushes the glyph tops outside it.
+        // See the note on AppTypography.fieldLabel.
+        labelStyle: AppTypography.fieldLabel.copyWith(
           color: scheme.onSurfaceVariant,
           fontFamily: AppTypography.fontFamily,
         ),
-        hintStyle: AppTypography.body.copyWith(
+        floatingLabelStyle: AppTypography.fieldLabel.copyWith(
+          color: scheme.primary,
+          fontFamily: AppTypography.fontFamily,
+        ),
+        hintStyle: AppTypography.fieldLabel.copyWith(
           color: scheme.onSurfaceVariant,
+          fontFamily: AppTypography.fontFamily,
+        ),
+        helperStyle: AppTypography.caption.copyWith(
+          color: scheme.onSurfaceVariant,
+          fontFamily: AppTypography.fontFamily,
+        ),
+        errorStyle: AppTypography.caption.copyWith(
+          color: scheme.error,
           fontFamily: AppTypography.fontFamily,
         ),
       ),

@@ -16,64 +16,72 @@
 | b | `core/money/` engine + unit tests (§4) | `COMPLETED` — **accepted** (`aa0be65`) |
 | c | Jalali date layer and digit normalization + tests | `COMPLETED` — **accepted** (`b70c1fc`) |
 | d | Repositories and domain models | `COMPLETED` — **accepted** (`36493d3`) |
-| e | Theme, localization, routing, responsive shell | `COMPLETED` — **awaiting review** |
-| f | The four screens, on real data | `NOT_STARTED` |
+| e | Theme, localization, routing, responsive shell | `COMPLETED` — **accepted** (`ea3b7b0`) |
+| f1 | Logging wrapper; Customers and Products on real data | `COMPLETED` — **awaiting review** |
+| f2 | Invoices list and Dashboard, on real data | `NOT_STARTED` |
+
+(f) was split in two after the owner pulled the create/edit forms forward into it (D-036).
 
 ## Verification status
 
 ```
 flutter analyze:            PASS   (No issues found)
-flutter test:               PASS   (378/378, was 360)
-Android build:              PASS   (not re-run this session; manifest label changed only)
-Windows build:              PASS   flutter build windows --debug, and RUN and screenshotted
+flutter test:               PASS   (432/432, was 378)
+Android build:              PASS   (not re-run this session)
+Windows build:              PASS   flutter build windows --debug, RUN and screenshotted
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (API 30, arm64)
 ```
 
-## What was completed this session — increment (e)
+## What was completed this session — increment (f1)
 
-The first increment with a user-facing surface, and the first verified **by running it** rather than
-only by tests.
+**The logging wrapper first** (D-035), because it is what makes every screen after it safe. One
+sink; **closure messages**, so a release build never even forms the string; **everything stripped in
+release** by a compile-time constant, not merely silenced; a shape-based scrubber as a backstop; and
+a `lib/`-scanning guard that fails the build on a `print` or on a sensitive field name inside an
+`AppLog` call. Verified to bite by introducing both violations, including across a
+formatter-wrapped multi-line call.
 
-**Design tokens** (D-033) in three files that are the only places a colour, size or font size may be
-named. One Persian-turquoise accent (`#11726B` light, `#5ED2C5` dark), warm neutrals in light and
-slightly cool ones in dark, borders instead of shadows, six semantic status pairs as a theme
-extension, and a type scale whose largest style is the financial numeral style. **Light and dark are
-built separately, not derived** — every dark value is picked for its own background.
+**The scrubber is honest about its limits.** It catches digit runs of ten or more, hex runs of 32 or
+more, and the wrapped key form. It cannot catch a customer name — names have no shape. The static
+guard is the control; the scrubber only catches what arrives inside something the guard cannot see
+through, such as a database exception's message.
 
-**Colour means status and nothing else.** Money is rendered in the strongest neutral, never in the
-accent: prominence comes from the type scale. A green amount beside a green badge is two signals
-competing, and the badge loses.
+**`platformDispatcher.onError` returns false.** Returning `true` was tried and swallowed a startup
+failure: `runApp` was never reached, and because the Windows runner shows its window only after the
+first frame, the app ran forever with no window and no message. D-020's fail-loud startup restored.
 
-**Tokens are enforced, not offered.** `theme_tokens_only_test.dart` fails the build on a literal
-colour or dimension outside the token files. Verified to bite by introducing both kinds of violation
-and watching it fail on the exact lines.
+**Customers and Products, end to end on real data.** Debounced normalization-insensitive search
+through the one `searchKey`; **query-level paging** (D-038) where the limit reaches SQL; skeleton
+loaders shaped like the rows they replace and honouring reduced motion; two distinct empty states
+(no data vs. no match); soft delete behind Persian copy that explains what survives; and create/edit
+forms (D-036).
 
-**Persian localization** (D-034) through ARB and generated `AppStrings`, locale pinned to `fa` rather
-than followed from the device, RTL set once at the root. `no_hardcoded_strings_test.dart` fails the
-build on any Arabic-script character in code outside `core/localization/` — and additionally checks
-**D-030's national-ID copy mechanically**, so that constraint is no longer only in a decision log.
+**Three genuinely different layouts held.** Cards on mobile and tablet, a **virtualized** table on
+desktop (D-037) — `DataTable` builds every row it is handed, so it is not used, and a test asserts
+that a full page of rows does not build a full page of widgets.
 
-Three `// l10n-exempt:` entries exist, all in `number_display.dart`: the thousands separator, decimal
-separator and percent sign are numeric punctuation, not translatable copy.
+**D-030 now has a live call site.** A failing national-ID checksum is called invalid plainly; a
+passing one produces **no affirmative message at all**, and the form test asserts the absence of the
+"format is valid" string and of any tick or verified icon.
 
-**go_router** with a `StatefulShellRoute` so each destination keeps its own stack and scroll
-position. Only routes whose screens exist are registered. گزارش‌ها is absent from navigation *and*
-the router (D-021).
+## Three defects found by running the Windows build
 
-**Three genuinely different layouts** — bottom bar / compact rail / extended rail, with the desktop
-content column capped rather than stretched.
+None would have been caught by a test, and all three are Persian- or RTL-specific.
 
-**Two defects found by running the app that no test would have caught:**
-
-1. `محصولات و خدمات`, the longest destination, **overflowed the compact rail at exactly one
-   breakpoint**. Fixed by widening the tablet rail to a token width and letting the label wrap to two
-   lines.
-2. The Windows title bar showed **mojibake**. The platform manifests were still English
-   (`factorino`); setting them to `فاکتورینو` fixed Android and web, but MSVC read `main.cpp` with
-   the system ANSI codepage and mangled the wide-string literal. Rewritten as `\u` escapes, which
-   carry no encoding assumption — the same lesson as the fold tables in `persian_text.dart`.
+1. **The money column was aligned the wrong way in RTL.** `alignEnd` resolves to the *left* edge in
+   RTL, and numbers render left-to-right regardless — so figures lined up by their first digit and
+   the units digits were ragged, exactly what tabular numerals exist to prevent. Fixed with leading
+   alignment in a fixed-width column; the trap is documented on the flag (D-037).
+2. **The autofocused field's floating label was clipped.** An outlined field's label floats *outside*
+   the field's box; the first field sits flush against the top of a scroll viewport; a viewport clips
+   its children. In Persian only the ascenders and the dots vanish, so it reads as a misspelled word
+   rather than a layout fault. Two wrong hypotheses (line height, content padding) were tried and
+   reverted before the cause was found.
+3. **The mobile FAB covered the last row of every list.** Found by a widget test whose tap on the
+   load-more control landed on the button instead — the same thing that happens to a user, with no
+   warning printed.
 
 ## Known issues
 
@@ -81,23 +89,23 @@ content column capped rather than stretched.
 |---|---|---|
 | 1 | `onUpgrade` throws by design — no v1→v2 path exists | The first schema change needs a migration step **and** a test (§6, §14). |
 | 2 | The database opens on the main isolate | Phase 13. The `setup` closure must stay isolate-sendable — `ARCHITECTURE.md` §B.5. |
-| 3 | The national-ID checksum cannot catch every transposition | Official algorithm, not a defect. **The UI must never call a passing value verified** (D-030) — now enforced by a test over the ARB. |
-| 4 | `watchDetail` re-reads on any invoice-table change | Correct but not minimal. Revisit in Phase 13 if a detail screen lags. |
-| 5 | The four list screens show their empty state unconditionally | No data layer attached yet — that is increment (f). The repositories and the empty states both exist; they are simply not wired to each other. |
-| 6 | Settings is read-only | It shows the real seeded configuration. Editing controls are later feature work; a form that looked editable and discarded input would be worse. |
-| 7 | No logging wrapper exists | §7 requires one before any screen displays national IDs, phone numbers or amounts — i.e. **before (f) ships**. |
+| 3 | The national-ID checksum cannot catch every transposition | Official algorithm, not a defect. Enforced by test over the ARB **and** over the form's behaviour. |
+| 4 | `watchDetail` re-reads on any invoice-table change | Correct but not minimal. Revisit in Phase 13. |
+| 5 | Dashboard and Invoices still show their empty state unconditionally | That is increment (f2). |
+| 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` now exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. |
+| 7 | No live `count()` on the repositories | (f2)'s dashboard needs one. A `Future` provider would go stale; add `watchCount()` to the repositories rather than working around it. |
 | 8 | MIUI re-blocks `flutter test`'s install on a *fresh* install | `adb install -r` once by hand. Developer options → Install via USB. |
-| 9 | `pub.dev` 403; `dl.google.com` blocked | Mirrors (D-014). See the expanded note in `tools/sanitize_lockfile`: **`build_runner`, `gen-l10n`, `flutter test` and `flutter build` all resolve too**, and all re-contaminate the lockfile. |
+| 9 | **The pub mirror went unreachable mid-session** | `dart pub get --offline` resolves from the local cache. See `ENVIRONMENT.md` — and sanitize the lockfile **last**, or it forces a network re-resolve. |
 | 10 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
 | 11 | Release builds signed with debug keys | Phase 15. |
 | 12 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
-| 13 | Android manifest hardening not done | `allowBackup=false`, `usesCleartextTraffic=false`, `FLAG_SECURE`, R8 — all Phase 9. |
+| 13 | Android manifest hardening not done | Phase 9. |
 
 ## Important context for a future session
 
 - **The cipher pragmas come BEFORE `pragma key`** (D-020). Never assert encryption with
   `PRAGMA cipher_version` or `PRAGMA cipher` — assert on the file header.
-- **Six rules are enforced by tests that scan `lib/`.** If one fails, route through the helper —
+- **Seven rules are enforced by tests that scan `lib/`.** If one fails, route through the helper —
   never weaken the test. Each has a documented escape-hatch comment requiring a reason:
   1. open a database only through `openEncryptedDatabase` (D-020);
   2. read rows only through `selectAlive` / `selectOnlyAlive` / `countAlive` (D-003) —
@@ -105,93 +113,94 @@ content column capped rather than stretched.
   3. normalize text only through `core/formatting/` (D-029) — `// normalizer-exempt:`;
   4. no drift import in `data/models/` or the interfaces in `data/repositories/` (D-031);
   5. no literal colour or dimension outside `core/theme/` (D-033) — `// tokens-exempt:`;
-  6. no Arabic-script character in code outside `core/localization/` (D-034) — `// l10n-exempt:`.
-- **`searchKey` writes and reads the same column.** Both repositories owning a `search_name` call it
-  on create *and* update.
-- **Nothing in `core/money/`, `core/date/` or `core/formatting/` may import Flutter.** A Persian
-  digit `TextInputFormatter` is a legitimate future need and *does* require Flutter; it belongs in a
-  separate file the pure ones do not import.
+  6. no Arabic-script character in code outside `core/localization/` (D-034) — `// l10n-exempt:`;
+  7. **no output outside `AppLog`, and no sensitive field name inside a log call** (D-035) —
+     `// logging-exempt:`.
+- **The D-020 scan reads comments too.** It fired on a doc comment in `app_log.dart` that merely
+  mentioned the key pragma. The comment was reworded; the guard was not weakened.
+- **A widget never calls a repository.** Feature `application/` folders hold an editor controller
+  per feature (`CustomerEditor`, `ProductEditor`) that owns the write, the logging and the error
+  handling; the screen only decides what the user is told.
+- **`Override` is not exported by `flutter_riverpod` in 3.4.2.** It lives in
+  `package:flutter_riverpod/misc.dart`. A test that types a list of overrides needs that import, and
+  the error — *"The name 'Override' isn't a type"* — does not hint at it.
 - **Riverpod 3 wraps a provider's error in `ProviderException`** — assert on the message, not the
   inner type (`ARCHITECTURE.md` §B.3).
-- **Sanitize the lockfile after anything that resolves**, which includes `build_runner`, `gen-l10n`,
-  `flutter test` and `flutter build` — not just `pub get`. The full list is in
-  `tools/sanitize_lockfile`.
+- **Nothing in `core/money/`, `core/date/` or `core/formatting/` may import Flutter.**
+- **Where the source encoding is not guaranteed, name characters by code point.** Bitten three times
+  now: the fold tables, the Windows window title, and the bidi isolate constants.
+- **Sanitize the lockfile after anything that resolves — and sanitize it LAST.** Sanitizing before
+  `build_runner` makes pub re-resolve against the network, which is what hung this session.
 - **Run `dart run build_runner build` after touching a table or an `@riverpod`, and
   `flutter gen-l10n` after touching the ARB**, then commit the regenerated files.
-- **Where the source encoding is not guaranteed, name characters by code point.** Bitten twice now:
-  once by the fold tables, once by the Windows window title.
 
-## Recently changed files (increment e)
+## Recently changed files (increment f1)
 
 ```
-pubspec.yaml / pubspec.lock            + go_router 17.5.0, flutter_localizations, intl;
-                                         Vazirmatn 400/500/700 declared; generate: true
-l10n.yaml                              NEW  gen-l10n config; output committed into lib/
-lib/core/theme/*.dart                  NEW  colours, dimensions, typography, ThemeData (D-033)
-lib/core/localization/arb/app_fa.arb   NEW  every user-facing string (D-034)
-lib/core/localization/generated/*      NEW  gen-l10n output, committed
-lib/core/router/*.dart                 NEW  destinations + go_router shell
-lib/core/responsive/*.dart             NEW  breakpoints + adaptive scaffold
-lib/core/widgets/*.dart                NEW  card, badge, empty state, page frame, AmountText
-lib/core/formatting/number_display.dart NEW display formatting, out of the widgets
-lib/features/*/presentation/*.dart     NEW  five screens
-lib/features/settings/application/*    NEW  the first feature provider
-lib/app.dart                           NEW  MaterialApp.router: themes, locale, RTL, router
-lib/main.dart                          renders the app instead of an empty Scaffold
-windows/runner/main.cpp                Persian window title, as \u escapes
-android/.../AndroidManifest.xml        Persian android:label
-web/index.html, web/manifest.json      Persian title and manifest names
-test/core/theme/, test/core/localization/  NEW  the two guards
-tools/sanitize_lockfile                documents every command that triggers a resolve
-docs/*                                 D-033, D-034; ROADMAP; ARCHITECTURE §A and §B.7-B.10
+lib/core/security/app_log.dart          NEW  THE logging wrapper (D-035)
+lib/core/errors/failure_message.dart    NEW  exception -> ARB copy, and nothing else
+lib/core/utils/list_query.dart          NEW  the paging window (D-038)
+lib/core/formatting/jalali_display.dart NEW  Jalali dates, phones, ids, bidi isolation
+lib/core/widgets/app_table.dart         NEW  virtualized desktop table (D-037)
+lib/core/widgets/{skeleton,search_field,load_more_footer,form_scaffold,async_error_view}.dart NEW
+lib/core/widgets/page_body.dart         + floatingAction, for the mobile primary action
+lib/core/theme/*                        + fieldLabel style, skeleton/table/FAB-clearance tokens
+lib/core/router/*                       + AppRoutes, and the four form routes
+lib/features/customers/**               NEW  providers, editor controller, list, form
+lib/features/products/**                NEW  providers, editor controller, list, form
+lib/main.dart                           framework + platform errors through AppLog; onError false
+lib/core/localization/arb/app_fa.arb    +58 strings (120 total), incl. the twelve month names
+test/core/security/logging_path_test.dart NEW  the two scans + the scrubber
+test/features/**                        NEW  harness + customer list and form tests
+docs/*                                  D-035..D-038; ROADMAP; ARCHITECTURE §A; ENVIRONMENT
 ```
 
 ## Last completed action
 
-Delivered Phase 1 increment (e): the design system, the localization layer, the router and the
-responsive shell — with both new rules enforced structurally (tokens, Persian literals) rather than
-left to discipline, and both guards verified to fail on a real violation before being trusted.
+Delivered Phase 1 increment (f1): the §7 logging wrapper with its build-failing guard, and Customers
+and Products working end to end on real data — search, query-level paging, skeletons, empty states,
+soft delete with explanatory Persian copy, and create/edit forms.
 
-Ran the Windows build and screenshotted three tiers in light plus the settings screen in both
-themes, which is what surfaced the two defects above. Also folded the `build_runner` lockfile
-finding into `tools/sanitize_lockfile` and the Riverpod `ProviderException` finding into
-`ARCHITECTURE.md` §B.3, as the owner asked.
+Verified on the real Windows build, not only in tests: both tiers captured with real rows in the
+encrypted database, the customer form captured, and dark mode captured. That is what surfaced the
+three defects above, all three fixed.
 
-378/378 tests pass, analyzer clean, Windows builds and runs.
+432/432 tests pass, analyzer clean, Windows builds and runs.
 
 ## Next action
 
-**Await the owner's review of increment (e).** Then begin increment **(f): the four screens on real
-data** — the last increment of Phase 1.
+**Await the owner's review of increment (f1).** Then begin increment **(f2): the Invoices list and
+the Dashboard, on real data** — the last increment of Phase 1.
 
-Specifically, (f) is: wire Dashboard, Invoices, Customers and Products to the repositories through
-feature providers, replacing the unconditional empty states with real queries. Everything they need
-already exists — the repositories, the money engine, the Jalali period helpers, the design-system
-components and the empty states themselves.
+Specifically, (f2) is:
 
-Constraints carried into (f):
+- **Invoices list.** Cards on mobile, a virtualized table on desktop reusing `AppTableRow`. Columns:
+  number, customer, date, status, amount. The status badge already exists; `overdue` is **derived at
+  display time** from an unpaid invoice's due date and is never stored (`status_badge.dart`).
+- **Dashboard.** Real aggregates over **Jalali** period boundaries (D-006) — use `jalaliMonthOf`,
+  never a Gregorian boundary — computed in SQL, never as Dart loops. `totalIssuedRial(InstantRange)`
+  already exists and already excludes cancelled invoices.
 
-- **The logging wrapper (§7) must exist before any screen displays a national ID, a phone number or
-  an amount.** It does not exist yet, and (f) is the increment that makes it load-bearing.
-- **Mobile renders invoice lists as cards; desktop renders a real table** (§10). `LayoutTier` already
-  exposes `usesTables` for exactly this.
-- **The dashboard's "این ماه" is the current *Jalali* month** (D-006) — use `jalaliMonthOf`, never a
-  Gregorian boundary.
-- **Aggregates run as SQL, not Dart loops** (§13). `totalIssuedRial` and `countAlive` already do.
-- **Amounts go through `AmountText`**, which carries the unit label and the Persian digits, so no
-  screen can render a bare number.
-- **The national-ID field's copy must say the format is valid, never that the ID is confirmed**
-  (D-030). The strings and the test already exist.
-- Detail routes (`/invoices/:id`, `/customers/:id`) get registered **with** the screens they open,
-  not before.
+Constraints carried into (f2):
+
+- **The repositories need a live `watchCount()`** before the dashboard can show a customer or
+  product count. `count()` is a `Future` and a provider over it goes stale on the next write; add
+  the stream to the repository rather than working around it in the feature layer (known issue 7).
+- **Amounts go through `AmountText`**, which carries the unit label and Persian digits.
+- **Money is never accent-coloured** (D-033). Prominence comes from the type scale; colour means
+  status.
+- **A money column in a table is leading-aligned, not `alignEnd`** — see D-037's RTL note.
+- **Register `/invoices/:id` only with the screen that opens it** (D-021, one level down).
+- Reuse `ListQuery`, `SkeletonList`, `SearchField`, `LoadMoreFooter`, `AsyncErrorView` and
+  `AppTable*`; all five were built against two call sites in (f1) and need no new abstractions.
 
 ### Standing rules that outlive this handoff
 
 - **The cipher pragmas come before `pragma key`** (D-020); assert encryption on the file header.
-- **The six `lib/`-scanning guards** listed above are the project's memory of six silent failure
+- **The seven `lib/`-scanning guards** listed above are the project's memory of seven silent failure
   modes. Route through the helper; never weaken the test.
-- **Sanitize the lockfile after any command that resolves dependencies.** The pre-commit hook is the
-  backstop and it does fire.
+- **Sanitize the lockfile after any command that resolves dependencies, and do it last.** The
+  pre-commit hook is the backstop and it does fire.
 - **Regenerate and commit** after touching a table, a provider, or the ARB.
 - Commit policy (D-019): commit at meaningful milestones, show `git diff --stat` and the message,
   no per-commit approval needed. Never force-push, amend, rebase or reset --hard.
