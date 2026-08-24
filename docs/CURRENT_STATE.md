@@ -11,14 +11,23 @@
 **Phase 1 — Foundation and Architecture · `COMPLETED`** (2026-08-24, seven increments, all accepted)
 **Phase 2 — Customers · `COMPLETED`** (2026-08-25)
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
-**Phase 4 — Invoice Creation · `NOT_STARTED`** — the next phase, and the largest gap in the product.
+**Phase 4 — Invoice Creation · `IN_PROGRESS`** — increment (a) delivered 2026-08-25, **awaiting
+review**. Split into four increments at the owner's instruction:
+
+| # | Increment | Status |
+|---|---|---|
+| a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED`, awaiting review |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
+| c | Invoice-level fields: customer, dates, discount, tax, notes, **numbering on issue** | `NOT_STARTED` |
+| d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
 Phases 2 and 3 were re-scoped by D-042 to what increment (f1) had not already delivered. Both of
-those items are now built, so both phases are closed.
+those items are built, so both phases are closed.
 
 ## Where the project stands, in one paragraph
 
-**Nothing is in progress.** Six screens work end to end on real data — Dashboard, Invoices,
+**Phase 4 increment (a) is delivered and awaiting review; nothing else is in progress.** Six screens
+work end to end on real data — Dashboard, Invoices,
 Customers, **Customer detail**, Products, Settings — inside a Persian, RTL, three-tier responsive
 shell, over an encrypted SQLite database. Customers and products can be created, searched, edited
 and soft-deleted; every form field now carries the same length and character-class limits its column
@@ -32,7 +41,7 @@ numbering and payment status all exist and are tested in the data layer.
 
 ```
 flutter analyze:            PASS   (No issues found)
-flutter test:               PASS   (529/529, was 483)
+flutter test:               PASS   (584/584, was 529)
 Windows build:              PASS   flutter build windows --debug
 Windows run:                PASS   customer detail exercised against the real encrypted database
                                    at 1400x900 and 400x800, light and dark, figures reconciled
@@ -41,6 +50,31 @@ Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
 ```
+
+## What Phase 4 increment (a) delivered
+
+**No UI.** A value type, a controller, and the tests that pin them — the arithmetic spine the three
+UI increments will hang off.
+
+- **`InvoiceEditorState`** (`features/invoices/domain/`) holds the invoice being edited and exposes
+  `totals`, the `CalculatedInvoice` the engine produced. It computes nothing; every edit builds a new
+  state whose constructor re-runs `calculateInvoice`, so a figure on screen cannot belong to an
+  earlier version of the lines (D-046).
+- **The engine is the only calculator, structurally.** `single_calculation_path_test.dart` fails the
+  build on any call to `calculateInvoice` in `lib/` outside `core/money/`, the state model and the
+  repository. **Verified to bite.**
+- **The preview and the write are pinned against each other.**
+  `invoice_preview_matches_write_test.dart` writes a previewed draft through the **real encrypted
+  database** and asserts every stored figure equals the previewed one, down to each line's effective
+  discount, resolved rate, net, tax and total. This is what makes "the number the user agreed to is
+  the number stored" a checked property.
+- **`CalculatedInvoice.grossTotal` was added to the engine** (D-047) with a second runtime invariant,
+  because the summary a document prints has to add up **by hand** — and a subtotal-based one does
+  not, being short by exactly the line discounts.
+- **D-027's warnings have their first consumer**: Persian copy naming both figures, requested and
+  applied, with a 1-based line number.
+- **`InvoiceEditor`** watches `appSettingsProvider` rather than capturing it, so the tax default and
+  rounding unit follow a settings change mid-edit.
 
 ## What Phase 2 and Phase 3 delivered
 
@@ -68,7 +102,20 @@ built. One source of truth in `data/models/field_limits.dart`; `AppTextField` wi
 `maxLength`; two guards; digits-only on the ID and price fields; and a length validator in drift's
 own unit because `maxLength` counts grapheme clusters and drift counts UTF-16 code units.
 
-## Three things found by building this, worth not rediscovering
+## The measured defect Phase 4(c) has to fix
+
+`create()` allocates an invoice number for a **draft**. Measured against the real database, not
+inferred: a draft takes `INV-1405-0001`, is abandoned, and the next takes `INV-1405-0002` — the first
+number is gone permanently, because the unique index deliberately covers soft-deleted rows (D-013).
+A user who opens a form and changes their mind has silently consumed an invoice number.
+
+The fix needs `number`, `number_year` and `number_sequence` to become **nullable** (NULLs are
+distinct in a SQLite unique index; an empty-string sentinel would collide between two drafts), which
+makes it **`schemaVersion = 2` — the first migration in the project**, with the migration test §6 and
+§14 require. Known issue 1 has been waiting for exactly this. Full analysis in **D-048**, which is
+`PROPOSED` and awaiting the owner.
+
+## Three things found by building Phases 2 and 3, worth not rediscovering
 
 1. **`withLength(max: SomeConstant)` silently produces a column with no length limit.** `drift_dev`
    reads that argument with `readIntLiteral`, which returns `null` for anything but an integer
@@ -150,7 +197,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 - **The cipher pragmas come BEFORE `pragma key`** (D-020). Never assert encryption with
   `PRAGMA cipher_version` or `PRAGMA cipher` — assert on the file header.
-- **Eight rules are enforced by tests that scan `lib/`.** If one fails, route through the helper —
+- **Nine rules are enforced by tests that scan `lib/`.** If one fails, route through the helper —
   never weaken the test. Each has a documented escape-hatch comment requiring a reason:
   1. open a database only through `openEncryptedDatabase` (D-020);
   2. read rows only through `selectAlive` / `selectOnlyAlive` / `countAlive` (D-003) —
@@ -163,6 +210,9 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
      `// logging-exempt:`;
   8. **no raw text field, and no `maxLength` that is not a `*Limits.` constant** (D-043) —
      `// field-limit-exempt:`. One exemption exists: the search field, which writes to no column.
+  9. **no call to `calculateInvoice` outside the engine, the editor state and the repository**
+     (D-046) — `// calculation-exempt:`. A third caller is a second answer to the same question, and
+     nothing would compare it against the first.
 - **A field limit cannot be shared with `withLength(max:)`** — see finding 1 above. This is the one
   place in the project where the guard is a behavioural test rather than a shared reference, and the
   reason is recorded on both the constants file and the table definitions.
@@ -178,6 +228,15 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 - **`Override` is not exported by `flutter_riverpod` in 3.4.2.** It lives in
   `package:flutter_riverpod/misc.dart`. The error — *"The name 'Override' isn't a type"* — does not
   hint at it. Hit again in Phase 2.
+- **`AsyncValue.valueOrNull` is gone in Riverpod 3.4.2** — the nullable accessor is `.value`, and
+  `requireValue` is the throwing one. Hit in Phase 4(a).
+- **An auto-disposed provider read without a listener is disposed between reads**, and a
+  `ProviderContainer` test that only calls `read` will fail with *"the provider was disposed during
+  loading state"* from whatever it depends on. Add a `container.listen(..., (_, _) {})`; in the app
+  the watching widget is what holds it. Related to D-045 and the same underlying rule.
+- **The invoice editor is a family keyed by a `DateTime`.** The screen must read the clock **once**
+  and pass the same instant down; a fresh `DateTime.now()` per build addresses a different provider
+  every frame and discards the invoice as it is typed.
 - **Riverpod 3 wraps a provider's error in `ProviderException`** — assert on the message.
 - **Private `@riverpod` providers work**, and both the dashboard summary and the customer detail
   view use them so nothing outside can watch a single figure and reintroduce "tiles from different
@@ -192,7 +251,26 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 - **Run `dart run build_runner build` after touching a table or an `@riverpod`, and
   `flutter gen-l10n` after touching the ARB**, then commit the regenerated files.
 
-## Recently changed files (Phase 2 and 3)
+## Recently changed files
+
+### Phase 4 increment (a)
+
+```
+lib/core/money/invoice_calculator.dart        + grossTotal and the summary invariant (D-047)
+lib/features/invoices/domain/invoice_editor_state.dart      NEW  the state; totals from the engine
+lib/features/invoices/domain/invoice_warning_message.dart   NEW  D-027's first consumer
+lib/features/invoices/application/invoice_editor.dart       NEW  the controller
+lib/core/localization/arb/app_fa.arb          +3 warning strings (139 total)
+test/core/money/single_calculation_path_test.dart           NEW  the ninth lib/ guard
+test/core/money/invoice_calculator_test.dart  +3 for the summary invariant
+test/features/invoices/invoice_editor_state_test.dart       NEW  26 tests
+test/features/invoices/invoice_preview_matches_write_test.dart  NEW  preview == stored, 8 tests
+test/features/invoices/invoice_warning_message_test.dart    NEW  6 tests
+test/features/invoices/invoice_editor_test.dart             NEW  9 tests
+docs/*                                        D-046, D-047, D-048 (proposed); ROADMAP Phase 4
+```
+
+### Phases 2 and 3
 
 ```
 lib/data/models/field_limits.dart             NEW  THE field lengths (D-043)
@@ -226,38 +304,41 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-Phases 2 and 3 delivered, verified and documented. 529 tests pass, analyzer clean, both platforms
-build, and the new screen was exercised and looked at on the real Windows build.
+**Phase 4 increment (a)** — the invoice draft state model and its wiring to `core/money/`, with no
+UI. 584 tests pass, analyzer clean. Both new guards were verified to bite before being trusted.
 
 ## Next action
 
-**Await the owner's review of Phase 2 and 3 before starting Phase 4.**
+**Await the owner's review of increment (a) before starting (b).**
 
-When confirmed, **Phase 4 — Invoice Creation** is the next phase and the largest single gap in the
-product: there is no way to create an invoice from the UI at all. It consumes the Phase 1 money
-engine and must not reimplement any part of it. The write path already exists and is tested —
-`InvoiceRepository.create` resolves the tax chain against settings, runs the engine, allocates the
-number inside the transaction (D-013) and stores every figure as a snapshot (D-004) — so this phase
-is **the form**, not the arithmetic.
+Two things need a ruling before (c), and one of them is a schema change:
 
-Specifically, and in the order that keeps each step reviewable:
+1. **D-048 is `PROPOSED`**: drafts must stop allocating an invoice number, which needs the three
+   number columns to become nullable — `schemaVersion = 2`, the first migration in the project, with
+   the test §6 and §14 require. The defect is measured, not inferred.
+2. **D-047's note for Phase 5**: `grossTotal` is computed but not stored, and per-line gross is not
+   recoverable from what `invoice_items` keeps. The invoice detail screen and the PDF renderer both
+   need it. Phase 5 decides whether to store it or to widen what the engine returns for a stored
+   invoice.
 
-1. **The line editor.** Pick a product (or type a free line), quantity as `quantity_milli`,
-   per-line discount. Money entry goes through `core/formatting/number_input.dart` and never a
-   `double`; every field is an `AppTextField` with a limit from `field_limits.dart` — add an
-   `InvoiceLimits` there for the line title and the notes, matching `invoice_items`.
-2. **Live totals from the engine**, computed by calling `calculateInvoice`, never by the widget.
-   `CalculatedInvoice.warnings` must reach the UI: a clamped discount is surfaced, in Persian, as a
-   question rather than absorbed (D-027).
-3. **Draft first.** Save as `draft`, then issue. Only a draft is editable (§6), which the repository
-   already enforces.
-4. Register `/invoices/new` and `/invoices/:id/edit` **with** the screens (D-021), and give the
-   invoice list and its empty state the create action they deliberately do not have yet.
+**Increment (b) — line item entry** is next when confirmed:
+
+1. A product picker that **copies** title, unit and price in as snapshots (D-004), plus a free-text
+   line for anything not in the catalogue.
+2. Quantity as `quantity_milli` through `tryParseScaledInput(scale: 1000)` — never a `double`, and
+   more precision than milli can hold is refused rather than truncated.
+3. Per-line discount (amount or percentage) and the per-line tax override, with `0` kept distinct
+   from "inherit" all the way from the widget (D-026).
+4. Every field an `AppTextField` (D-043) — **add `InvoiceLimits` to `field_limits.dart`** for the
+   line title (200) and unit (30), matching `invoice_items`, and let the schema test cover them.
+5. The warnings rendered from `invoiceWarningMessage`, already written and tested in (a).
+6. Nothing in the widget may call `calculateInvoice`; read the figures from `InvoiceEditorState`.
+   The guard will fail the build if that slips.
 
 ### Standing rules that outlive this handoff
 
 - **The cipher pragmas come before `pragma key`** (D-020); assert encryption on the file header.
-- **The eight `lib/`-scanning guards** listed above are the project's memory of eight silent failure
+- **The nine `lib/`-scanning guards** listed above are the project's memory of nine silent failure
   modes. Route through the helper; never weaken the test.
 - **Sanitize the lockfile after any command that resolves dependencies, and do it last.**
 - **Regenerate and commit** after touching a table, a provider, or the ARB.

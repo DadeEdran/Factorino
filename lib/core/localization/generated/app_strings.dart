@@ -874,6 +874,28 @@ abstract class AppStrings {
   /// **'قیمت'**
   String get tableColumnPrice;
 
+  /// D-027: a line discount larger than the line was capped. States BOTH figures -- what was entered and what was actually deducted -- because a message that only said some discount was ignored leaves the user unable to tell which line or by how much. Almost always a data-entry slip, so it is surfaced as a question rather than absorbed.
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف سطر {line}: {requested} تومان وارد شده بود، اما این سطر بیش از {applied} تومان ارزش ندارد و تنها همین مبلغ کسر شد.'**
+  String invoiceWarningLineDiscountClamped(
+    String line,
+    String requested,
+    String applied,
+  );
+
+  /// D-027: the invoice-level discount exceeded the subtotal and was capped. This one MUST be capped -- it is part of the reconciliation invariant and an uncapped one produces a negative grand total, which is never a valid document -- but the user is still told, with both figures.
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف کل فاکتور: {requested} تومان وارد شده بود، اما جمع فاکتور بیش از {applied} تومان نیست و تنها همین مبلغ کسر شد.'**
+  String invoiceWarningInvoiceDiscountClamped(String requested, String applied);
+
+  /// Heading over the clamped-input warnings. Deliberately not an error: the totals are correct and the invoice is usable; what is questionable is the input.
+  ///
+  /// In fa, this message translates to:
+  /// **'این مقادیر را بررسی کنید'**
+  String get invoiceWarningsTitle;
+
   /// No description provided for @errorInvoiceNotEditableTitle.
   ///
   /// In fa, this message translates to:

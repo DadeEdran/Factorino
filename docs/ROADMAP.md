@@ -729,16 +729,96 @@ already enforced. What this phase adds is the length and character-class boundar
 
 ## Phase 4 — Invoice Creation
 
-**Status:** `NOT_STARTED`
+**Status:** `IN_PROGRESS` — increment (a) delivered 2026-08-25, awaiting review. The largest and most
+consequential phase in the project, split into four increments at the owner's instruction, each
+reported and stopped for review rather than landing whole.
+
+| # | Increment | Status |
+|---|---|---|
+| a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED` 2026-08-25, **awaiting review** |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
+| c | Invoice-level fields: customer, dates, discount, tax, notes, **numbering on issue** | `NOT_STARTED` |
+| d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
 **Goal.** The core flow: build an invoice from customers and products, per-line and invoice-level
-discounts, tax resolution, live totals, transactional invoice-number allocation.
+discounts, tax resolution, live totals, transactional invoice-number allocation. This phase
+**consumes** the Phase 1 money engine and must not reimplement any part of it.
 
-This phase consumes the Phase 1 money engine; it must not reimplement any part of it. The money
-engine unit tests from the project spec must all pass before this phase can be marked complete.
+**Increment (a) — completed 2026-08-25**
 
-**Security note.** No new data classes; the risk here is correctness rather than confidentiality. The
-invoice-number sequence allocation must be transactional to avoid a race.
+- **`InvoiceEditorState`** (`features/invoices/domain/`): an immutable value holding the invoice
+  being edited — customer, dates, lines, invoice-level discount and tax override, notes — and
+  exposing `totals`, the `CalculatedInvoice` the engine produced for it. It computes nothing itself;
+  every edit produces a new state whose constructor re-runs `calculateInvoice`, so a figure on screen
+  can never belong to an earlier version of the lines (D-046).
+- **`InvoiceLineEntry`**: one line, in parsed typed values only — `Money`, an integer
+  `quantityMilli`, basis points. Title, unit and unit price are carried as **snapshots** even when a
+  product is chosen (D-004).
+- **The engine is the only calculator, structurally.**
+  `test/core/money/single_calculation_path_test.dart` fails the build if anything in `lib/` outside
+  `core/money/` calls `calculateInvoice` other than the state model and the repository. **Verified to
+  bite** with a plausible `previewTotal()` helper on the invoice list screen.
+- **The preview and the write are pinned against each other.**
+  `invoice_preview_matches_write_test.dart` builds a state, writes its draft through the **real
+  encrypted database**, and asserts every stored figure equals the previewed one — totals, warnings,
+  and each line's effective discount, resolved tax rate, net, tax and total. This is the test that
+  makes "the number the user agreed to is the number that was stored" a checked property rather than
+  a hope.
+- **`CalculatedInvoice.grossTotal` added to the engine** (D-047), with a second runtime invariant:
+  `grossTotal − totalDiscount + totalTax + roundingAdjustment == grandTotal`. §4's invariant proves
+  the engine self-consistent; this one proves the **printed summary** adds up by hand, which is a
+  different claim and the only one a customer actually makes. A subtotal-based summary is short by
+  exactly the line discounts, and a test states that trap explicitly.
+- **D-027's warnings finally have a consumer.** `invoiceWarningMessage` maps an `InvoiceWarning` to
+  Persian from the ARB, always naming **both** figures — requested and applied, in Toman, with the
+  1-based line number. A message saying "some discount was ignored" would leave the user to find
+  which line and by how much using the arithmetic they opened the screen to avoid.
+- **`InvoiceEditor` controller**: every intent (`addLine`, `updateLine`, `removeLine`, `moveLine`,
+  the invoice-level setters) funnels through one `_update`, so "no path mutates the state without
+  recomputing the totals" is a property of one method. It **watches** `appSettingsProvider` rather
+  than capturing it, and carries the entries across the rebuild, so changing the VAT rate mid-edit
+  updates the preview instead of leaving it describing a rule that no longer applies.
+- **A percentage and an amount are alternatives**, enforced in the controller: the engine lets a
+  percentage win over an absolute amount (§4 step 2), so a stale percentage would silently override
+  the figure the user had just typed.
+- **`copyWith` carries explicit `clear` flags** for `taxRateBp`, `discountPercentBp` and `productId`,
+  where `null` is a meaningful value. Without them "inherit" would be unreachable once a rate had
+  been chosen — D-026's distinction lost at the UI boundary rather than in the engine.
+- 55 new tests; **584 pass in total** (was 529). Decisions recorded: **D-046**, **D-047**, and
+  **D-048** as a proposal.
+
+**A defect measured, not yet fixed — the shape of increment (c)**
+
+`create()` allocates an invoice number for a **draft**. Verified against the real database: a draft
+takes `INV-1405-0001`, is abandoned, and the next draft takes `INV-1405-0002`. The number is gone
+permanently, because the unique index deliberately covers soft-deleted rows (D-013). A user who
+opens a form and changes their mind has silently consumed an invoice number.
+
+Fixing it means a draft carries **no** number and `issue()` allocates inside its own transaction —
+which requires `number`, `number_year` and `number_sequence` to become **nullable**, because NULLs
+are distinct in a SQLite unique index while an empty-string sentinel would collide between two
+drafts. That is **`schemaVersion = 2`, the first migration in the project**, and per §6 and §14 a
+migration without a test is not done. Known issue 1 has been waiting for exactly this. Full analysis
+and the consequences for the list screens are in **D-048**.
+
+**Remaining**
+
+- (b) line item entry, (c) invoice-level fields and numbering on issue, (d) the assembled screen.
+
+**Security note (increment a).** No new data is stored, no new input is accepted, and no screen
+exists yet — this increment is a value type, a controller and their tests. Three things are worth
+recording anyway:
+
+- **The arithmetic path is narrowed rather than widened.** There are now exactly two callers of the
+  money engine and a build-failing scan that keeps a third from appearing. Integrity, not
+  confidentiality, is the security property this phase is about (as increment (b)'s note said): a
+  wrong total is the product-killing defect, and the preview/write agreement test is the control.
+- **Nothing here logs.** The state model and the controller make no `AppLog` call at all, which
+  matters because an invoice draft holds a customer id and every amount on the document —
+  `grandTotal`, `subtotal` and `unitPrice` are all on `logging_path_test.dart`'s banned list.
+- **No new permission, platform surface or dependency.** The engine extension is pure integer
+  arithmetic with the same overflow guards; `grossTotal` is constructed through `Money`, so it is
+  subject to the same `kMaxAmountRial` ceiling as every other amount (D-002).
 
 ---
 

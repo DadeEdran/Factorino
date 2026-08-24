@@ -65,6 +65,28 @@ void main() {
       (s, l) => s + l.allocatedInvoiceDiscount.rial,
     );
     expect(allocated, invoice.invoiceDiscount.rial);
+
+    // The *printed summary* must add up too, which is a different claim from
+    // the one above and the only one a customer actually checks: gross, less
+    // the discount actually given, plus tax, plus any rounding.
+    //
+    // Starting from `subtotal` here instead would pass while the document
+    // failed, because subtotal is already net of the line discounts -- anyone
+    // reconciling with a pencil would subtract them twice.
+    expect(
+      invoice.grossTotal.rial -
+          invoice.totalDiscount.rial +
+          invoice.totalTax.rial +
+          invoice.roundingAdjustment.rial,
+      invoice.grandTotal.rial,
+      reason:
+          'grossTotal - totalDiscount + totalTax + rounding != grandTotal; '
+          'the summary a document prints would not reconcile by hand',
+    );
+
+    // ...and the gross is the gross: the sum of the lines before anything.
+    final sumOfGross = invoice.lines.fold<int>(0, (s, l) => s + l.gross.rial);
+    expect(sumOfGross, invoice.grossTotal.rial);
   }
 
   group('step 1 - line gross', () {
@@ -424,6 +446,85 @@ void main() {
         defaultTaxRateBp: 1000,
       );
       expect(invoice.subtotal, Money.rial(1000000));
+    });
+  });
+
+  group('the printed summary reconciles by hand', () {
+    test('a subtotal-based summary would double-count line discounts', () {
+      // Why `grossTotal` exists. The engine was already self-consistent; what
+      // it did not offer was a set of figures a *document* could print and a
+      // customer could check with a pencil.
+      final invoice = calculate(
+        <InvoiceLineInput>[
+          line(priceRial: 1000000, quantityMilli: 2000, discountRial: 300000),
+          line(priceRial: 500000, quantityMilli: 1000, discountRial: 50000),
+        ],
+        discountRial: 100000,
+        defaultTaxRateBp: 900,
+      );
+
+      // Gross: 2,000,000 + 500,000 = 2,500,000
+      // Line discounts: 300,000 + 50,000 = 350,000  -> subtotal 2,150,000
+      // Invoice discount: 100,000                   -> net 2,050,000
+      // Tax at 9%: 184,500                          -> total 2,234,500
+      expect(invoice.grossTotal, Money.rial(2500000));
+      expect(invoice.subtotal, Money.rial(2150000));
+      expect(invoice.totalDiscount, Money.rial(450000));
+      expect(invoice.totalTax, Money.rial(184500));
+      expect(invoice.grandTotal, Money.rial(2234500));
+
+      // The summary as printed: it adds up.
+      expect(
+        invoice.grossTotal.rial -
+            invoice.totalDiscount.rial +
+            invoice.totalTax.rial,
+        invoice.grandTotal.rial,
+      );
+
+      // The same summary starting from the subtotal does not, and is short by
+      // exactly the line discounts -- subtracted once into the subtotal and
+      // again as part of totalDiscount. This is the arithmetic a user would do
+      // and get a different answer from the one printed.
+      expect(
+        invoice.subtotal.rial -
+            invoice.totalDiscount.rial +
+            invoice.totalTax.rial,
+        invoice.grandTotal.rial - 350000,
+      );
+    });
+
+    test('it still adds up when rounding moves the total', () {
+      final invoice = calculate(
+        <InvoiceLineInput>[
+          line(priceRial: 333333, quantityMilli: 3000, discountRial: 1234),
+        ],
+        discountRial: 777,
+        defaultTaxRateBp: 900,
+        roundingUnitRial: 1000,
+      );
+
+      expect(invoice.roundingAdjustment, isNot(Money.zero));
+      expect(
+        invoice.grossTotal.rial -
+            invoice.totalDiscount.rial +
+            invoice.totalTax.rial +
+            invoice.roundingAdjustment.rial,
+        invoice.grandTotal.rial,
+      );
+      expectReconciles(invoice);
+    });
+
+    test('a clamped line discount is reported at what was given', () {
+      // D-027: the summary shows the discount actually deducted, so it has to
+      // be the clamped figure or the total will not reconcile.
+      final invoice = calculate(<InvoiceLineInput>[
+        line(priceRial: 1000000, quantityMilli: 1000, discountRial: 1500000),
+      ], defaultTaxRateBp: 0);
+
+      expect(invoice.grossTotal, Money.rial(1000000));
+      expect(invoice.totalDiscount, Money.rial(1000000));
+      expect(invoice.grandTotal, Money.zero);
+      expectReconciles(invoice);
     });
   });
 

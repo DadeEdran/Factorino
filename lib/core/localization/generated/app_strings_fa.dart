@@ -416,6 +416,26 @@ class AppStringsFa extends AppStrings {
   String get tableColumnPrice => 'قیمت';
 
   @override
+  String invoiceWarningLineDiscountClamped(
+    String line,
+    String requested,
+    String applied,
+  ) {
+    return 'تخفیف سطر $line: $requested تومان وارد شده بود، اما این سطر بیش از $applied تومان ارزش ندارد و تنها همین مبلغ کسر شد.';
+  }
+
+  @override
+  String invoiceWarningInvoiceDiscountClamped(
+    String requested,
+    String applied,
+  ) {
+    return 'تخفیف کل فاکتور: $requested تومان وارد شده بود، اما جمع فاکتور بیش از $applied تومان نیست و تنها همین مبلغ کسر شد.';
+  }
+
+  @override
+  String get invoiceWarningsTitle => 'این مقادیر را بررسی کنید';
+
+  @override
   String get errorInvoiceNotEditableTitle => 'این فاکتور قابل ویرایش نیست';
 
   @override

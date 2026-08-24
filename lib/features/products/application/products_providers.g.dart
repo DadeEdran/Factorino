@@ -249,7 +249,7 @@ final class ProductEditorProvider
   ProductEditor create() => ProductEditor();
 }
 
-String _$productEditorHash() => r'939537a43550f91d543ed2b0d763f89d060e5219';
+String _$productEditorHash() => r'04dea81d0d9f88edaf196188bf82d45740786e02';
 
 /// The product write path.
 ///

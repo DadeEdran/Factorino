@@ -100,7 +100,7 @@ Factorino/
                                                   #   settings, customers, products
       domain/                                     # feature-shaped values assembled from models
                                                   #   dashboard_summary, customer_detail_view,
-                                                  #   invoice_status_view
+                                                  #   invoice_status_view, invoice_editor_state
     app.dart             # MaterialApp.router: themes, locale, RTL, router
     main.dart            # opens the database, overrides the provider, runs the app
   test/
@@ -113,8 +113,11 @@ Factorino/
     features/customers/customer_detail_screen_test.dart # the record, the totals, the empty states
     features/customers/fake_customer_repository.dart  # shared by both customer screen suites
     features/products/product_form_screen_test.dart   # the limits on the remaining form
+    features/invoices/invoice_editor_state_test.dart  # the draft model, wired to the engine
+    features/invoices/invoice_preview_matches_write_test.dart # preview == stored, through the DB
     core/theme/theme_tokens_only_test.dart          # scans lib/ for literal colours and sizes
     core/widgets/field_limit_path_test.dart         # scans lib/ for raw text fields, literal limits
+    core/money/single_calculation_path_test.dart    # only the preview and the write calculate (D-046)
     core/localization/no_hardcoded_strings_test.dart # scans lib/ for Persian in code; checks D-030
     core/money/                                     # §4 cases, the invariant, D-027 clamps
     core/date/jalali_period_test.dart               # boundaries vs known Nowruz dates
@@ -413,9 +416,14 @@ creation time and never joins to the live product row for pricing (D-004).
 | `money.dart` | The `Money` value type — integer Rial, never `double` (D-002) — and `kMaxAmountRial` |
 | `rounding.dart` | Half-up division, basis-point application, rounding to a unit, and an overflow-checked multiply |
 | `discount_allocation.dart` | Proportional allocation with largest-remainder distribution |
-| `invoice_calculator.dart` | §4 in order: gross → line discount → net → allocation → tax → totals → optional rounding, plus the clamp warnings (D-027) |
+| `invoice_calculator.dart` | §4 in order: gross → line discount → net → allocation → tax → totals → optional rounding, plus the clamp warnings (D-027) and `grossTotal` (D-047) |
 
 Three properties are worth knowing before touching it:
+
+**Two invariants are enforced at runtime, not just tested.** §4's proves the engine self-consistent;
+the second proves the *printed summary* adds up by hand —
+`grossTotal − totalDiscount + totalTax + roundingAdjustment == grandTotal` — which is a different
+claim and the only one a customer actually makes (D-047).
 
 **The invariant is enforced at runtime, not just tested.** `calculateInvoice` computes the grand
 total twice — by summing the lines, and as `subtotal − invoiceDiscount + totalTax` — and throws

@@ -372,6 +372,27 @@
   "tableColumnPrice": "قیمت",
   "@tableColumnPrice": {},
 
+  "invoiceWarningLineDiscountClamped": "تخفیف سطر {line}: {requested} تومان وارد شده بود، اما این سطر بیش از {applied} تومان ارزش ندارد و تنها همین مبلغ کسر شد.",
+  "@invoiceWarningLineDiscountClamped": {
+    "description": "D-027: a line discount larger than the line was capped. States BOTH figures -- what was entered and what was actually deducted -- because a message that only said some discount was ignored leaves the user unable to tell which line or by how much. Almost always a data-entry slip, so it is surfaced as a question rather than absorbed.",
+    "placeholders": {
+      "line": { "type": "String" },
+      "requested": { "type": "String" },
+      "applied": { "type": "String" }
+    }
+  },
+  "invoiceWarningInvoiceDiscountClamped": "تخفیف کل فاکتور: {requested} تومان وارد شده بود، اما جمع فاکتور بیش از {applied} تومان نیست و تنها همین مبلغ کسر شد.",
+  "@invoiceWarningInvoiceDiscountClamped": {
+    "description": "D-027: the invoice-level discount exceeded the subtotal and was capped. This one MUST be capped -- it is part of the reconciliation invariant and an uncapped one produces a negative grand total, which is never a valid document -- but the user is still told, with both figures.",
+    "placeholders": {
+      "requested": { "type": "String" },
+      "applied": { "type": "String" }
+    }
+  },
+  "invoiceWarningsTitle": "این مقادیر را بررسی کنید",
+  "@invoiceWarningsTitle": {
+    "description": "Heading over the clamped-input warnings. Deliberately not an error: the totals are correct and the invoice is usable; what is questionable is the input."
+  },
   "errorInvoiceNotEditableTitle": "این فاکتور قابل ویرایش نیست",
   "@errorInvoiceNotEditableTitle": {},
   "errorInvoiceNotEditableBody": "فقط پیش‌نویس‌ها را می‌توان تغییر داد. فاکتور صادرشده را باید لغو کرد.",

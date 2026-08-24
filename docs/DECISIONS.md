@@ -1881,3 +1881,153 @@ per-call-site discipline, which is what failed here, and it rebuilds a list row 
 change). Checking `ref.mounted` after the await and skipping the state write (rejected: it silences
 the symptom and still loses the error state that a failed write needs to report). Making the provider
 `keepAlive` (rejected above).
+
+---
+
+## D-046 — The invoice editor previews through the engine, and nothing else may calculate
+
+**Date:** 2026-08-25 · **Status:** ACCEPTED · Phase 4 increment (a).
+
+**Decision.** `InvoiceEditorState` (`features/invoices/domain/`) holds an invoice being edited and
+exposes `totals`, the `CalculatedInvoice` the money engine produced for it. Every figure a screen
+displays comes from there. `test/core/money/single_calculation_path_test.dart` fails the build if
+anything in `lib/` outside `core/money/` calls `calculateInvoice` other than that state model and
+`DriftInvoiceRepository`.
+
+**Why two callers, and why exactly two.** They exist for different reasons and both are necessary:
+the editor computes the **preview** on every edit, and the repository computes the totals again
+**inside the write transaction**, because a caller must not be able to supply a total (D-004). The
+hazard is that they could be fed slightly different inputs — a preview that passes the invoice
+discount but forgets the rounding unit, say. Each answer would look entirely reasonable on its own,
+and the user would agree to one number and receive another with nothing in either path looking wrong.
+
+So the two are pinned against each other by
+`test/features/invoices/invoice_preview_matches_write_test.dart`, which builds a state, writes its
+draft through the **real encrypted database**, and asserts that every stored figure equals the one
+the preview showed — the invoice totals, the warnings, and each line's effective discount, resolved
+tax rate, net, tax and total. The scan exists because a *third* caller would not be covered by that
+test. Verified to bite: a plausible `previewTotal()` helper added to the invoice list screen failed
+it naming the file and line.
+
+**The state computes nothing, and is recomputed rather than mutated.** It is immutable; every edit
+produces a new state whose constructor runs the engine. Caching the totals would be an optimisation
+over a pure integer pass across a handful of lines, with a staleness bug attached.
+
+**Settings are watched, not captured.** `defaultTaxRateBp` and `roundingUnitRial` are the last step
+of §4's chain and they live in settings, so the controller watches `appSettingsProvider` and carries
+the entries across the rebuild. A preview that captured the rate at open time would keep describing
+a rule that no longer applied, and the repository — which re-reads settings inside the transaction —
+would then store something the user was never shown.
+
+**`copyWith` needs explicit `clear` flags.** For `taxRateBp`, `discountPercentBp` and `productId`,
+`null` is a *meaningful value*: inherit, absolute-not-percentage, freehand. The usual "null means
+unchanged" convention would let a caller set those but never unset them, so "inherit" would be
+unreachable the moment anything had been chosen — which is D-026's distinction quietly lost at the
+UI boundary rather than in the engine.
+
+**A percentage and an amount are alternatives, enforced in the controller.** The engine lets a
+percentage win over an absolute amount (§4 step 2), so `setDiscountAmount` clears the percentage and
+`setDiscountPercent` zeroes the amount. Left alone, a stale percentage would silently override the
+figure the user had just typed.
+
+**Alternatives considered.** Letting the screen hold a mutable list and call the engine itself
+(rejected: it is the third caller this decision forbids, and §3 forbids calculation in widgets).
+Having the state hold raw text and parse lazily (rejected: parsing belongs at the field boundary
+through `core/formatting/`, and a model holding unparsed text makes every reader wonder whether a
+value is trustworthy). Computing totals in the repository only and having the screen show nothing
+until save (rejected: a user cannot agree to a figure they were never shown).
+
+---
+
+## D-047 — `CalculatedInvoice.grossTotal`, so the printed summary reconciles by hand
+
+**Date:** 2026-08-25 · **Status:** ACCEPTED · extends increment (b)'s engine.
+
+**Decision.** The engine gained `grossTotal` — `Σ lineGross`, before any discount and before tax —
+and a second runtime invariant beside the §4 one:
+
+```
+grossTotal − totalDiscount + totalTax + roundingAdjustment == grandTotal
+```
+
+**The problem it solves.** §4's invariant is `grandTotal == subtotal − invoiceDiscount + totalTax`.
+That proves the engine is *self-consistent*. It does not give a document a set of figures a customer
+can check with a pencil, because `subtotal` is already net of the **line** discounts while
+`totalDiscount` (D-027) is the sum of the line discounts *and* the invoice discount. A summary
+printing subtotal, total discount, tax and total therefore does not add up — the line discounts are
+subtracted twice by anyone reconciling it. On a worked example: gross 2,500,000, line discounts
+350,000, invoice discount 100,000, tax 184,500 — the subtotal-based arithmetic lands 350,000 short of
+the printed total.
+
+Starting from the gross adds up exactly, which is what the new invariant states.
+
+**Why the engine rather than the screen.** The alternative was to sum the line grosses in the summary
+widget. That is a second implementation of part of §4 living in a widget, which §3 forbids and which
+D-046's scan exists to prevent one level up. The instruction that produced this entry is worth
+recording as the general rule: *if a figure is needed that the engine does not produce, extend the
+engine.*
+
+**Checked at runtime, not only in tests**, exactly like the §4 invariant and for the same reason: the
+alternative to crashing on a summary that does not reconcile is printing one. The engine's own suite
+asserts it on every case including the 450-combination sweep, and one test states the trap
+explicitly by showing the subtotal-based arithmetic being short.
+
+**Not stored.** `invoices` has no `gross_total_rial` column and does not need one yet — nothing reads
+a stored invoice's summary until the invoice detail screen (Phase 5) and the PDF (Phase 7). Both will
+need it, and per-line gross is **not** recoverable from what is stored today: `invoice_items` keeps
+`unit_price_rial`, `quantity_milli`, the effective `discount_rial` and `line_net_rial`, where
+`line_net_rial` is the net *after* the allocated invoice discount. Recomputing gross from price ×
+quantity would re-run §4 step 1 outside the engine, which is the thing D-046 forbids. **Phase 5 must
+decide** whether to store the gross or to widen what the engine returns for a stored invoice; it is
+recorded here rather than solved now because the right answer depends on what the detail screen and
+the renderer actually need.
+
+---
+
+## D-048 — Invoice numbers are allocated on issue, not on draft creation
+
+**Date:** 2026-08-25 · **Status:** PROPOSED — **awaiting the owner**; the change lands in Phase 4
+increment (c).
+
+**The defect, measured.** `DriftInvoiceRepository.create` calls `_allocateNumber` unconditionally,
+including for a draft. Verified against the real database rather than inferred:
+
+```
+draft #1 number = INV-1405-0001
+draft #1 abandoned (softDeleteDraft)
+draft #2 number = INV-1405-0002
+```
+
+`INV-1405-0001` is gone permanently. The unique index deliberately covers soft-deleted rows, because
+a spent number stays spent (D-013) — which is right for an *issued* invoice and wrong for a draft
+nobody ever saw. A user who opens a form, changes their mind and closes it has silently consumed an
+invoice number, and a business whose numbering has gaps has a conversation to have with an auditor.
+
+**Decision.** A draft carries **no** number. Allocation happens in `issue()`, inside its transaction,
+against the Jalali year of the issue date (D-013 unchanged in every other respect).
+
+**What it costs, stated plainly: the first schema migration.** `invoices.number`, `number_year` and
+`number_sequence` are all non-null today. They must become nullable, because:
+
+* an empty-string sentinel does not work — SQLite's unique index treats `''` as equal to `''`, so a
+  second numberless draft would collide, while **NULLs are distinct in a unique index**, which is
+  exactly the behaviour needed;
+* the alternative, a separate drafts table, would duplicate every column and every query.
+
+That makes this `schemaVersion = 2`, the first migration in the project, and per §6 and §14 a
+migration without a test is not done. Known issue 1 has been waiting for this since increment (a),
+and a build is already installed on a real device, so the migration has to run rather than being
+skipped by a reinstall.
+
+**Why it is proposed rather than done.** The owner's split puts numbering in increment (c), and this
+is a schema change touching a table every other feature reads — it deserves its own reviewable step
+rather than being folded into the state model. Recorded now so (c) starts from a measured defect and
+a decided shape.
+
+**Consequences to carry into (c).**
+
+* `InvoiceListItem`, the invoice list and the customer detail screen all render `invoice.number`. A
+  draft's number becomes null and every one of those needs Persian copy for it — not an empty cell.
+* `watchList` orders by `issueDate` then `numberSequence`; a null sequence needs a defined position.
+* The status badge already distinguishes پیش‌نویس, so "this document has no number yet" is
+  consistent with what the user is already told.

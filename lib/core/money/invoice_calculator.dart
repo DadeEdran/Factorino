@@ -187,6 +187,7 @@ class InvoiceWarning {
 class CalculatedInvoice {
   const CalculatedInvoice({
     required this.lines,
+    required this.grossTotal,
     required this.subtotal,
     required this.invoiceDiscount,
     required this.invoiceDiscountRequested,
@@ -199,6 +200,23 @@ class CalculatedInvoice {
   });
 
   final List<CalculatedLine> lines;
+
+  /// `Σ lineGross` — before **any** discount and before tax.
+  ///
+  /// Not one of §4's numbered steps, and it exists for one reason: a summary
+  /// the user can reconcile on paper. [subtotal] is already net of the line
+  /// discounts, so a panel printing subtotal, [totalDiscount], [totalTax] and
+  /// [grandTotal] does **not** add up — the line discounts would be subtracted
+  /// twice by anyone checking it with a pencil. Starting from the gross does
+  /// add up, exactly:
+  ///
+  /// `grossTotal − totalDiscount + totalTax + roundingAdjustment == grandTotal`
+  ///
+  /// which is enforced at runtime beside the §4 invariant. Computed here rather
+  /// than in the screen because the screen must never arrive at a figure of its
+  /// own — if a total is needed that the engine does not produce, the engine is
+  /// what gets extended.
+  final Money grossTotal;
 
   /// `Σ lineNet` — before the invoice discount, before tax (§4 step 8).
   final Money subtotal;
@@ -376,6 +394,23 @@ CalculatedInvoice calculateInvoice(InvoiceInput input) {
   final rounded = roundToUnit(grandTotalFromLines, input.roundingUnitRial);
   final adjustment = rounded - grandTotalFromLines;
 
+  // -- the summary invariant: what the user reconciles by hand -------------
+  //
+  // The §4 invariant above proves the engine is self-consistent. This one
+  // proves the *printed summary* is: the four figures a document shows --
+  // gross, total discount, tax, and any rounding -- must arrive at the grand
+  // total when added up with a pencil. They are different claims, and only the
+  // second one is what a customer checking an invoice actually does.
+  final totalDiscount = totalLineDiscount + invoiceDiscount;
+  final grossTotal = gross.fold<int>(0, (sum, g) => sum + g);
+  if (grossTotal - totalDiscount + totalTax + adjustment != rounded) {
+    throw InvoiceReconciliationError(
+      'the printed summary does not add up: grossTotal $grossTotal - '
+      'totalDiscount $totalDiscount + totalTax $totalTax + rounding '
+      '$adjustment is not grandTotal $rounded. See CalculatedInvoice.grossTotal.',
+    );
+  }
+
   // Appended after the line warnings, so `warnings` reads in document order.
   if (invoiceDiscount != requestedInvoiceDiscount) {
     warnings.add(
@@ -390,11 +425,12 @@ CalculatedInvoice calculateInvoice(InvoiceInput input) {
 
   return CalculatedInvoice(
     lines: lines,
+    grossTotal: Money.rial(grossTotal),
     subtotal: Money.rial(subtotal),
     invoiceDiscount: Money.rial(invoiceDiscount),
     invoiceDiscountRequested: Money.rial(requestedInvoiceDiscount),
     invoiceDiscountPercentBp: input.discountPercentBp,
-    totalDiscount: Money.rial(totalLineDiscount + invoiceDiscount),
+    totalDiscount: Money.rial(totalDiscount),
     totalTax: Money.rial(totalTax),
     roundingAdjustment: Money.rial(adjustment),
     grandTotal: Money.rial(rounded),

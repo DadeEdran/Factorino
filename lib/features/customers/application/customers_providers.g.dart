@@ -677,7 +677,7 @@ final class CustomerEditorProvider
   CustomerEditor create() => CustomerEditor();
 }
 
-String _$customerEditorHash() => r'0c311a9a4af8d103e9ac0746950df32e1472a67b';
+String _$customerEditorHash() => r'cc0099cfb836143a95a61c4238dd42ad4dc23da8';
 
 /// The customer write path.
 ///
