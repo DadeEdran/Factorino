@@ -397,6 +397,114 @@
   "@invoiceWarningsTitle": {
     "description": "Heading over the clamped-input warnings. Deliberately not an error: the totals are correct and the invoice is usable; what is questionable is the input."
   },
+  "invoiceLinesTitle": "سطرهای فاکتور",
+  "@invoiceLinesTitle": {
+    "description": "Heading over the invoice's line items in the create/edit form."
+  },
+  "invoiceLinesEmptyTitle": "هنوز سطری اضافه نشده است",
+  "@invoiceLinesEmptyTitle": {},
+  "invoiceLinesEmptyBody": "یک کالا یا خدمت از فهرست انتخاب کنید، یا سطری دلخواه بنویسید.",
+  "@invoiceLinesEmptyBody": {
+    "description": "Empty state for an invoice with no lines yet. Names both routes in, because the free-text line is not discoverable from the catalogue button alone."
+  },
+  "invoiceLineAddFromCatalogue": "افزودن از فهرست",
+  "@invoiceLineAddFromCatalogue": {
+    "description": "Opens the product picker. Says 'from the list' rather than 'product', because the catalogue holds services too."
+  },
+  "invoiceLineAddCustom": "سطر دلخواه",
+  "@invoiceLineAddCustom": {
+    "description": "Adds a line typed by hand, for work that is not in the catalogue."
+  },
+  "invoiceLineEditTitle": "ویرایش سطر",
+  "@invoiceLineEditTitle": {},
+  "invoiceLineCreateTitle": "سطر جدید",
+  "@invoiceLineCreateTitle": {},
+  "invoiceLineFieldTitle": "شرح",
+  "@invoiceLineFieldTitle": {
+    "description": "The line's title snapshot. 'شرح' (description of the work) rather than 'نام', because a line describes a job as often as it names a thing."
+  },
+  "invoiceLineFieldQuantity": "تعداد",
+  "@invoiceLineFieldQuantity": {},
+  "invoiceLineFieldQuantityHelper": "تا سه رقم اعشار",
+  "@invoiceLineFieldQuantityHelper": {
+    "description": "quantity_milli holds three decimal places (section 4). Stated up front, because the alternative is the user discovering it through a rejection."
+  },
+  "invoiceLineFieldUnitPrice": "قیمت واحد",
+  "@invoiceLineFieldUnitPrice": {},
+  "invoiceLineDiscountSection": "تخفیف سطر",
+  "@invoiceLineDiscountSection": {},
+  "invoiceLineDiscountModeAmount": "مبلغ",
+  "@invoiceLineDiscountModeAmount": {},
+  "invoiceLineDiscountModePercent": "درصد",
+  "@invoiceLineDiscountModePercent": {},
+  "invoiceLineTaxSection": "مالیات سطر",
+  "@invoiceLineTaxSection": {},
+  "invoiceLineTaxInherit": "پیش‌فرض فاکتور",
+  "@invoiceLineTaxInherit": {
+    "description": "The line inherits the invoice's rate, which in turn falls back to the settings default (section 4 step 6). Distinct from an explicit zero, which is a real rate -- see D-026."
+  },
+  "invoiceLineTaxCustom": "نرخ دلخواه",
+  "@invoiceLineTaxCustom": {
+    "description": "An explicit per-line rate. Selecting it and entering 0 marks the line tax-exempt, which is NOT the same as inheriting (D-026)."
+  },
+  "invoiceLineTaxInheritedNote": "نرخ مؤثر: {rate}",
+  "@invoiceLineTaxInheritedNote": {
+    "description": "Shows which rate the engine actually resolved for a line set to inherit, so 'default' is not an unknown quantity. The figure comes from CalculatedLine.resolvedTaxRateBp -- the widget does not resolve it. The placeholder arrives already carrying the percent sign, from formatPercentFromBasisPoints.",
+    "placeholders": { "rate": { "type": "String" } }
+  },
+  "invoiceLineLabelQuantity": "{quantity} {unit} × {price}",
+  "@invoiceLineLabelQuantity": {
+    "description": "The line's quantity, unit and unit price on one row beneath its title. Multiplication sign rather than the word, because it reads the same in Persian and keeps the row short.",
+    "placeholders": {
+      "quantity": { "type": "String" },
+      "unit": { "type": "String" },
+      "price": { "type": "String" }
+    }
+  },
+  "invoiceLineLabelDiscount": "تخفیف {amount}",
+  "@invoiceLineLabelDiscount": {
+    "description": "The discount ACTUALLY applied to a line, from CalculatedLine.discount -- never the amount as entered (section 4 step 9).",
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "invoiceLineLabelTax": "مالیات {rate}",
+  "@invoiceLineLabelTax": {
+    "description": "The resolved tax rate on a line. The placeholder arrives already carrying the percent sign, from formatPercentFromBasisPoints. Shown only when the rate is non-zero.",
+    "placeholders": { "rate": { "type": "String" } }
+  },
+  "invoiceLineActionEdit": "ویرایش سطر",
+  "@invoiceLineActionEdit": {},
+  "invoiceLineActionRemove": "حذف سطر",
+  "@invoiceLineActionRemove": {},
+  "invoiceLineActionMoveUp": "انتقال به بالا",
+  "@invoiceLineActionMoveUp": {},
+  "invoiceLineActionMoveDown": "انتقال به پایین",
+  "@invoiceLineActionMoveDown": {},
+  "invoiceLineColumnDescription": "شرح",
+  "@invoiceLineColumnDescription": {},
+  "invoiceLineColumnQuantity": "تعداد",
+  "@invoiceLineColumnQuantity": {},
+  "invoiceLineColumnUnitPrice": "قیمت واحد",
+  "@invoiceLineColumnUnitPrice": {},
+  "invoiceLineColumnTotal": "جمع سطر",
+  "@invoiceLineColumnTotal": {},
+  "invoiceProductPickerTitle": "انتخاب کالا یا خدمت",
+  "@invoiceProductPickerTitle": {},
+  "invoiceProductPickerSearchHint": "جست‌وجو در کالاها و خدمات",
+  "@invoiceProductPickerSearchHint": {},
+  "invoiceProductPickerEmptyTitle": "کالا یا خدمتی یافت نشد",
+  "@invoiceProductPickerEmptyTitle": {},
+  "invoiceProductPickerEmptyBody": "می‌توانید به جای آن سطری دلخواه بنویسید.",
+  "@invoiceProductPickerEmptyBody": {
+    "description": "Shown when the catalogue search returns nothing. Offers the free-text line rather than sending the user to create a product mid-invoice."
+  },
+  "validationQuantityInvalid": "تعداد را درست وارد کنید.",
+  "@validationQuantityInvalid": {},
+  "validationQuantityTooPrecise": "تعداد حداکثر سه رقم اعشار می‌پذیرد.",
+  "@validationQuantityTooPrecise": {
+    "description": "quantity_milli cannot hold a fourth decimal place, and section 4 requires refusing rather than truncating -- billing 1.234 for an entered 1.2345 is exactly the silent arithmetic error the money rules exist to prevent."
+  },
+  "validationPercentInvalid": "درصد را بین ۰ تا ۱۰۰ وارد کنید.",
+  "@validationPercentInvalid": {},
   "errorInvoiceNotEditableTitle": "این فاکتور قابل ویرایش نیست",
   "@errorInvoiceNotEditableTitle": {},
   "errorInvoiceNotEditableBody": "فقط پیش‌نویس‌ها را می‌توان تغییر داد. فاکتور صادرشده را باید لغو کرد.",

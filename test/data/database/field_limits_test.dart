@@ -95,6 +95,31 @@ void main() {
     });
   });
 
+  group('invoice lines', () {
+    test('every column limit matches InvoiceLimits', () {
+      expectLimit(db.invoiceItems.titleSnapshot, InvoiceLimits.lineTitle);
+      expectLimit(db.invoiceItems.unitSnapshot, InvoiceLimits.lineUnit);
+    });
+
+    test('a product always fits in the line it is copied into', () {
+      // D-004 copies a product's title and unit onto the line. If the line's
+      // columns were ever the narrower pair, that copy would start failing at
+      // the database for exactly the products with the longest names -- a
+      // defect that appears only for some users and only sometimes, which is
+      // the worst shape for one to have.
+      expect(
+        ProductLimits.name,
+        lessThanOrEqualTo(InvoiceLimits.lineTitle),
+        reason: 'a product name must fit in an invoice line title',
+      );
+      expect(
+        ProductLimits.unit,
+        lessThanOrEqualTo(InvoiceLimits.lineUnit),
+        reason: 'a product unit must fit in an invoice line unit',
+      );
+    });
+  });
+
   test('the amount field is as wide as the largest amount that can exist', () {
     // `AmountLimits.tomanDigits` is a literal because Dart cannot take a
     // string's length at compile time. This is what keeps it honest: widen the

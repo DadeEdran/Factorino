@@ -101,3 +101,27 @@ abstract final class ProductLimits {
   /// See [CustomerLimits.searchName].
   static const int searchName = 200;
 }
+
+/// Invoice line fields, matching
+/// `lib/data/database/tables/invoice_items.dart`.
+///
+/// These are limits on **snapshots**, not on references (D-004). The line
+/// carries its own copy of the title and unit, so a line sourced from the
+/// catalogue is bounded by these numbers rather than by [ProductLimits] — and
+/// the two differ: a product name may be 160 characters, an invoice line title
+/// 200. A free-text line is the reason for the difference; a line often says
+/// more than a catalogue entry does, because it describes one job rather than
+/// naming a thing.
+///
+/// The consequence worth stating: copying a product in can never overflow the
+/// line, because every [ProductLimits] value is at or below its counterpart
+/// here. `field_limits_test.dart` asserts that relationship rather than
+/// leaving it to be noticed if it ever stops holding.
+abstract final class InvoiceLimits {
+  /// The line's own title. Longer than [ProductLimits.name] on purpose.
+  static const int lineTitle = 200;
+
+  /// Same as [ProductLimits.unit] — a unit copied from a product must fit, and
+  /// a freehand unit is the same kind of word either way.
+  static const int lineUnit = 30;
+}

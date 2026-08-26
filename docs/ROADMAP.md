@@ -738,7 +738,7 @@ owner's instruction, each reported and stopped for review rather than landing wh
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED` 2026-08-25, **accepted** 2026-08-26 |
 | a2 | **Numbering on issue, and the project's first migration** (D-048) | `COMPLETED` 2026-08-26 — device proof **passed** |
 | a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26, awaiting review |
-| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26, awaiting review |
 | c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
@@ -884,9 +884,39 @@ It is purely an integrity control, and it converts the phase's worst silent fail
 every invoice line and every payment, behind intact-looking invoices — from a documented hazard into
 one the code refuses to perform.
 
+**Increment (b) — completed 2026-08-26 · line item entry**
+
+Three widgets and a limits constant. No screen, no route and no `save`: the lines section is
+composed into a form in (d), and persistence belongs to (c). Decisions in **D-050**.
+
+- The product picker returns a `Product` and nothing else, so the D-004 copy happens at exactly one
+  site. Picking opens the line sheet pre-filled rather than adding a line outright — a picked
+  product still needs a quantity, and the sheet is where the user sees what was copied.
+- The per-line tax control is a mode plus a value, keeping `0` and *inherit* distinct from the
+  widget down (D-026). Under inherit it displays the rate the **engine** resolved.
+- Quantity parses through `tryParseScaledInput(scale: 1000)` — no `double` anywhere — and a fourth
+  decimal place is refused with its own message rather than truncated. Percent fields use the same
+  parser at `scale: 100`, which is basis points exactly.
+- Every figure on a row comes from `CalculatedInvoice`, including the discount **applied** rather
+  than the one entered, with D-027's warnings beneath naming both.
+- `InvoiceLimits` added to `field_limits.dart`, with a test asserting that every product limit is at
+  or below its line counterpart so a copy can never overflow.
+- Cards on mobile and tablet, a real table on desktop (§10). 13 new tests; **619 pass** (was 604).
+  They caught one real defect — the warnings heading overflowed its row at the phone width.
+
+**Security note (increment b).** New **input** but no new stored data class, permission, dependency
+or platform surface — nothing here writes, and the invoice form has no route yet. What changes:
+
+- Free-text fields now accept invoice line titles and units, and they carry the same limits their
+  columns do from the first keystroke (`InvoiceLimits`, D-043) rather than failing at the database.
+- Every numeric field folds Persian and Arabic-Indic digits through the one normalizer (§9) and
+  parses without floating point. The integrity property this phase is about is unchanged: the
+  arithmetic path stays narrowed, and the build-failing scan still permits no widget to calculate.
+
 **Remaining**
 
-- (b) line item entry, (c) invoice-level fields, (d) the assembled screen.
+- (c) invoice-level fields **and the `save`**, (d) the assembled screen.
+- (b)'s widgets have not been exercised on a device, because no route reaches them until (d).
 
 **Security note (increment a).** No new data is stored, no new input is accepted, and no screen
 exists yet — this increment is a value type, a controller and their tests. Three things are worth

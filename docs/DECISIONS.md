@@ -2133,3 +2133,58 @@ tests with an emptied `invoice_items`. The wrapper was then removed.
 **Where it applies next.** Any future migration that rebuilds a table with children must call it.
 The function is named for what it checks rather than for this migration, and it is public so a test
 can call it from inside a transaction and watch it refuse.
+
+---
+
+## D-050 — A line's tax is a three-state field, and the picker copies in two steps
+
+**Date:** 2026-08-26
+**Status:** ACCEPTED
+**Extends:** D-004 (price snapshots), D-026 (zero is not "unset")
+
+**Decision.** Three choices made while building line item entry, recorded because each has a
+plausible simpler alternative that is wrong.
+
+**1. The per-line tax control is a mode plus a value, never one field.** `_TaxMode.inherit` and
+`_TaxMode.custom` sit above the rate field; inherit sends `null`, custom sends whatever was typed
+**including zero**. The obvious simplification — one field where empty means inherit — collapses the
+two states D-026 exists to separate, and it fails in the expensive direction: a line the user marked
+tax-exempt would silently take the default VAT rate. That is a wrong total on a tax document which
+looks right to everyone except the tax authority. Under `inherit` the sheet *shows* the rate the
+engine resolved, read off `CalculatedLine.resolvedTaxRateBp`, because "default" is only reassuring
+if it names a number — and the widget may not resolve the chain itself, so where there is no
+calculated line to read it says nothing rather than guessing.
+
+**2. Picking a product opens the line sheet rather than adding a line directly.** One tap would be
+fewer taps. But a picked product still needs a quantity, and it may need a discount or a rate, so a
+direct add produces a line the user must immediately open anyway. The sheet is also where the copy
+D-004 requires becomes visible: the user sees the title, unit and price that were copied, in fields
+they can change, before the line exists. A price the user can edit on the invoice without editing
+the catalogue is the honest reading of "the price is a snapshot".
+
+**3. Reordering is two buttons, not a drag.** The lines list lives inside the invoice form's own
+scroll view, where a long-press drag competes with the scroll gesture, and on desktop there is no
+drag affordance at all. Two taps that always work beat one gesture that sometimes does. The
+end-of-list buttons are **disabled rather than hidden**, because a control that vanishes shifts the
+two beside it under the user's finger.
+
+**Also settled here.**
+
+- **The percent field is basis points by construction.** Two decimal places of a percent *is* a
+  basis point, so `tryParseScaledInput(text, scale: 100)` gives `9.5% → 950` exactly, with no
+  rounding step and no `double`. The same parser handles quantity at `scale: 1000`.
+- **A fourth decimal place on a quantity is refused with its own message.** `tryParseScaledInput`
+  returns null both for "not a number" and for "too precise", which deserve different messages: the
+  second is a rule the user could not have known, and «نادرست» would leave them retyping the same
+  value. They are told apart by re-parsing at a finer scale.
+- **The field's text is not the display format.** `formatQuantityMilli` renders Persian digits and a
+  Persian decimal separator, which is right for a label and wrong for an editable field: a field's
+  text is re-parsed on submit, and pre-filling it with characters the parser must fold back is how a
+  value the user never touched comes out different from the one that went in. The sheet keeps a
+  small ASCII pair for that, documented beside the display formatters they deliberately are not.
+- **Switching discount mode clears the field.** `10` means ten Toman in one mode and ten percent in
+  the other; carrying the text across would silently change what the user entered.
+- **`InvoiceLimits` is separate from `ProductLimits`.** A line title may be 200 characters and a
+  product name 160, because a free-text line describes a job rather than naming a thing. The
+  relationship that matters — every product limit at or below its line counterpart, so a copy can
+  never overflow — is asserted in `field_limits_test.dart` rather than left to be noticed.

@@ -19,8 +19,8 @@ delivered the same day and **awaiting review**.
 |---|---|---|
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED`, **accepted** |
 | a2 | **Numbering on issue + `schemaVersion = 2`** (D-048) | `COMPLETED` — device proof passed 2026-08-26 |
-| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED`, awaiting review |
-| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
+| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26 |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED`, awaiting review |
 | c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
@@ -33,7 +33,7 @@ those items are built, so both phases are closed.
 
 ## Where the project stands, in one paragraph
 
-**Phase 4 increment (a3) is delivered and awaiting review; nothing else is in progress.** Six screens
+**Phase 4 increment (b) is delivered and awaiting review; nothing else is in progress.** Six screens
 work end to end on real data — Dashboard, Invoices, Customers, **Customer detail**, Products,
 Settings — inside a Persian, RTL, three-tier responsive shell, over an encrypted SQLite database.
 Customers and products can be created, searched, edited and soft-deleted; every form field carries
@@ -52,20 +52,26 @@ the `grossTotal` finding — the printed-summary double-count — as the reason 
 2026-08-26: `user_version 1 -> 2`, foreign keys on, 1 invoice, **2 invoice lines, 1 payment**, file
 encrypted. `flutter build apk --debug` passed in the same session.
 
-**(a3) has not been reviewed.** It is the owner's response to the cascade finding in (a2): the
-defect is now defended structurally rather than only by a comment and one test out of six. See
-D-049.
+**(a3) is delivered**: the owner's response to the cascade finding in (a2), which is now defended
+structurally rather than only by a comment and one test out of six. See D-049.
+
+**(b) has not been reviewed.** Line item entry: the product picker, the line editor sheet and the
+lines section, at all three tiers. **These widgets are not yet reachable from the running app** —
+there is no invoice form route until (d) assembles one, which is the split the owner set. They are
+exercised by 13 widget tests over the real controller and engine with a faked repository, and by
+`flutter build apk --debug`, but not yet by a person tapping them on the Redmi. That is the honest
+limit of what (b) has been verified against.
 
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (a3)
-flutter test:               PASS   (604/604, was 600)                         as of (a3)
+flutter analyze:            PASS   (No issues found)                          as of (b)
+flutter test:               PASS   (619/619, was 604)                         as of (b)
 Windows build:              PASS   flutter run -d windows --debug             (a2)
 Windows run:                PASS   the app opened the REAL dev database and migrated it v1 -> v2
 D-048 proof - Windows:      PASS   integration_test/invoice_number_migration_proof_test.dart
 D-048 proof - Android:      PASS   on the Redmi Note 8 Pro, Android 11 (2026-08-26). CLOSED.
-Android build:              PASS   flutter build apk --debug                  (a3)
+Android build:              PASS   flutter build apk --debug                  (b)
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
@@ -77,7 +83,46 @@ file that has been accumulating rows since Phase 1 went `user_version 1 -> 2` an
 numbers intact and foreign keys still on. A pre-migration copy was taken first and is in this
 session's scratchpad as `factorino.db.v1backup`.
 
-Neither (a2) nor (a3) added UI or a dependency.
+Neither (a2) nor (a3) added UI or a dependency. (b) is all UI and adds no dependency.
+
+## What Phase 4 increment (b) delivered — line item entry
+
+**Three widgets and a limits constant.** No screen, no route, no `save` — the lines section is
+composed into a form in (d).
+
+```
+lib/features/invoices/presentation/widgets/product_picker_sheet.dart
+lib/features/invoices/presentation/widgets/invoice_line_editor_sheet.dart
+lib/features/invoices/presentation/widgets/invoice_lines_section.dart
+lib/features/invoices/application/invoice_product_picker.dart
+```
+
+- **The picker returns a `Product` and nothing else.** Building the line from it happens in one
+  place, so there is exactly one site performing the copy D-004 requires. A picker that returned a
+  half-built line would be a second such site, and the two would eventually disagree about what a
+  snapshot contains. Picking opens the line sheet pre-filled rather than adding a line directly —
+  reasoning in D-050.
+- **The per-line tax control is a mode plus a value**, so `0` and *inherit* stay different states
+  all the way from the widget (D-026). Under *inherit* the sheet shows the rate the engine resolved,
+  read off `CalculatedLine.resolvedTaxRateBp` — the widget resolves nothing, and where there is no
+  calculated line to read it says nothing rather than guessing.
+- **Quantity goes through `tryParseScaledInput(scale: 1000)`.** No `double` at any point. A fourth
+  decimal place is **refused with its own message**, not truncated, because "invalid" would leave
+  the user retyping the same value. The percent fields use the same parser at `scale: 100`, which
+  *is* basis points: `9.5% → 950`, exactly.
+- **Every figure on a row is the engine's**, including the discount — which is the one **applied**,
+  `CalculatedLine.discount`, never the one entered (§4 step 9). Where the two differ, D-027's
+  warnings render beneath, naming both.
+- **`InvoiceLimits` in `field_limits.dart`** (title 200, unit 30), matching the columns. The
+  relationship that matters is asserted rather than assumed: every `ProductLimits` value is at or
+  below its line counterpart, so copying a product in can never overflow the line.
+- **Cards on mobile and tablet, a real table on desktop** (§10), reusing `AppCard` and `AppTable`.
+  Reordering is two buttons rather than a drag, disabled at the ends rather than hidden (D-050).
+- **13 new tests**, over the real controller and engine with a faked repository, at both tiers.
+  They found one real defect: the warnings heading overflowed its row at the phone width, which is
+  why the harness pins a size.
+- **The editor still has no `save`, and (b) did not add one.** It belongs in (c), with the customer
+  and the dates a save needs.
 
 ## What Phase 4 increment (a3) delivered — the cascade defect, made structural
 
@@ -453,22 +498,29 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 4 increment (a3)** — the table-rebuild guard (D-049), plus (a2)'s outstanding device proof.
-604 tests pass, analyzer clean, `flutter build apk --debug` passes. The migration proof ran on the
-Redmi and passed. The guard was verified to bite by wrapping the real migration in a transaction and
-watching it refuse where it used to destroy data.
+**Phase 4 increment (b)** — line item entry (D-050). 619 tests pass, analyzer clean,
+`flutter build apk --debug` passes. Preceded in the same session by (a3), the table-rebuild guard
+(D-049), and by (a2)'s outstanding device proof, which passed on the Redmi.
 
 ## Next action
 
-**Build Phase 4 increment (b), line item entry.** The owner directed it directly after the device
-run passed, which it has. The seven constraints below are the whole brief.
+**Report (b) and wait for a go-ahead on (c), the invoice-level fields.**
+
+(c) is customer, issue date, due date, invoice discount, invoice tax rate and notes — every intent
+`InvoiceEditor` already exposes and (b) did not use — **plus the `save` that (b) deliberately did
+not add**. D-048 removed the blocker: `create()` no longer allocates a number for a draft, so a save
+is now safe to build, and (c) is where the customer and dates it needs are entered.
+
+Worth doing when (d) makes the form reachable: run it on the Redmi. (b)'s widgets are covered by 13
+widget tests and by the APK build, but no person has tapped them on a device, because there is no
+route to them yet.
 
 **Still open for Phase 5, deliberately (owner, 2026-08-26):** D-047's `grossTotal` is computed but
 not stored, and per-line gross is not recoverable from what `invoice_items` keeps. **Do not store it
 now** — decide it in Phase 5 with the invoice detail screen and the PDF renderer both in view, since
 they are the two consumers and storing the wrong shape costs another migration.
 
-**Increment (b) — line item entry**, in detail:
+**Increment (b) — line item entry** — delivered; the brief it was built against was:
 
 1. A product picker that **copies** title, unit and price in as snapshots (D-004), plus a free-text
    line for anything not in the catalogue.

@@ -902,6 +902,222 @@ abstract class AppStrings {
   /// **'این مقادیر را بررسی کنید'**
   String get invoiceWarningsTitle;
 
+  /// Heading over the invoice's line items in the create/edit form.
+  ///
+  /// In fa, this message translates to:
+  /// **'سطرهای فاکتور'**
+  String get invoiceLinesTitle;
+
+  /// No description provided for @invoiceLinesEmptyTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'هنوز سطری اضافه نشده است'**
+  String get invoiceLinesEmptyTitle;
+
+  /// Empty state for an invoice with no lines yet. Names both routes in, because the free-text line is not discoverable from the catalogue button alone.
+  ///
+  /// In fa, this message translates to:
+  /// **'یک کالا یا خدمت از فهرست انتخاب کنید، یا سطری دلخواه بنویسید.'**
+  String get invoiceLinesEmptyBody;
+
+  /// Opens the product picker. Says 'from the list' rather than 'product', because the catalogue holds services too.
+  ///
+  /// In fa, this message translates to:
+  /// **'افزودن از فهرست'**
+  String get invoiceLineAddFromCatalogue;
+
+  /// Adds a line typed by hand, for work that is not in the catalogue.
+  ///
+  /// In fa, this message translates to:
+  /// **'سطر دلخواه'**
+  String get invoiceLineAddCustom;
+
+  /// No description provided for @invoiceLineEditTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش سطر'**
+  String get invoiceLineEditTitle;
+
+  /// No description provided for @invoiceLineCreateTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'سطر جدید'**
+  String get invoiceLineCreateTitle;
+
+  /// The line's title snapshot. 'شرح' (description of the work) rather than 'نام', because a line describes a job as often as it names a thing.
+  ///
+  /// In fa, this message translates to:
+  /// **'شرح'**
+  String get invoiceLineFieldTitle;
+
+  /// No description provided for @invoiceLineFieldQuantity.
+  ///
+  /// In fa, this message translates to:
+  /// **'تعداد'**
+  String get invoiceLineFieldQuantity;
+
+  /// quantity_milli holds three decimal places (section 4). Stated up front, because the alternative is the user discovering it through a rejection.
+  ///
+  /// In fa, this message translates to:
+  /// **'تا سه رقم اعشار'**
+  String get invoiceLineFieldQuantityHelper;
+
+  /// No description provided for @invoiceLineFieldUnitPrice.
+  ///
+  /// In fa, this message translates to:
+  /// **'قیمت واحد'**
+  String get invoiceLineFieldUnitPrice;
+
+  /// No description provided for @invoiceLineDiscountSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف سطر'**
+  String get invoiceLineDiscountSection;
+
+  /// No description provided for @invoiceLineDiscountModeAmount.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ'**
+  String get invoiceLineDiscountModeAmount;
+
+  /// No description provided for @invoiceLineDiscountModePercent.
+  ///
+  /// In fa, this message translates to:
+  /// **'درصد'**
+  String get invoiceLineDiscountModePercent;
+
+  /// No description provided for @invoiceLineTaxSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'مالیات سطر'**
+  String get invoiceLineTaxSection;
+
+  /// The line inherits the invoice's rate, which in turn falls back to the settings default (section 4 step 6). Distinct from an explicit zero, which is a real rate -- see D-026.
+  ///
+  /// In fa, this message translates to:
+  /// **'پیش‌فرض فاکتور'**
+  String get invoiceLineTaxInherit;
+
+  /// An explicit per-line rate. Selecting it and entering 0 marks the line tax-exempt, which is NOT the same as inheriting (D-026).
+  ///
+  /// In fa, this message translates to:
+  /// **'نرخ دلخواه'**
+  String get invoiceLineTaxCustom;
+
+  /// Shows which rate the engine actually resolved for a line set to inherit, so 'default' is not an unknown quantity. The figure comes from CalculatedLine.resolvedTaxRateBp -- the widget does not resolve it. The placeholder arrives already carrying the percent sign, from formatPercentFromBasisPoints.
+  ///
+  /// In fa, this message translates to:
+  /// **'نرخ مؤثر: {rate}'**
+  String invoiceLineTaxInheritedNote(String rate);
+
+  /// The line's quantity, unit and unit price on one row beneath its title. Multiplication sign rather than the word, because it reads the same in Persian and keeps the row short.
+  ///
+  /// In fa, this message translates to:
+  /// **'{quantity} {unit} × {price}'**
+  String invoiceLineLabelQuantity(String quantity, String unit, String price);
+
+  /// The discount ACTUALLY applied to a line, from CalculatedLine.discount -- never the amount as entered (section 4 step 9).
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف {amount}'**
+  String invoiceLineLabelDiscount(String amount);
+
+  /// The resolved tax rate on a line. The placeholder arrives already carrying the percent sign, from formatPercentFromBasisPoints. Shown only when the rate is non-zero.
+  ///
+  /// In fa, this message translates to:
+  /// **'مالیات {rate}'**
+  String invoiceLineLabelTax(String rate);
+
+  /// No description provided for @invoiceLineActionEdit.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش سطر'**
+  String get invoiceLineActionEdit;
+
+  /// No description provided for @invoiceLineActionRemove.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف سطر'**
+  String get invoiceLineActionRemove;
+
+  /// No description provided for @invoiceLineActionMoveUp.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتقال به بالا'**
+  String get invoiceLineActionMoveUp;
+
+  /// No description provided for @invoiceLineActionMoveDown.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتقال به پایین'**
+  String get invoiceLineActionMoveDown;
+
+  /// No description provided for @invoiceLineColumnDescription.
+  ///
+  /// In fa, this message translates to:
+  /// **'شرح'**
+  String get invoiceLineColumnDescription;
+
+  /// No description provided for @invoiceLineColumnQuantity.
+  ///
+  /// In fa, this message translates to:
+  /// **'تعداد'**
+  String get invoiceLineColumnQuantity;
+
+  /// No description provided for @invoiceLineColumnUnitPrice.
+  ///
+  /// In fa, this message translates to:
+  /// **'قیمت واحد'**
+  String get invoiceLineColumnUnitPrice;
+
+  /// No description provided for @invoiceLineColumnTotal.
+  ///
+  /// In fa, this message translates to:
+  /// **'جمع سطر'**
+  String get invoiceLineColumnTotal;
+
+  /// No description provided for @invoiceProductPickerTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتخاب کالا یا خدمت'**
+  String get invoiceProductPickerTitle;
+
+  /// No description provided for @invoiceProductPickerSearchHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'جست‌وجو در کالاها و خدمات'**
+  String get invoiceProductPickerSearchHint;
+
+  /// No description provided for @invoiceProductPickerEmptyTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'کالا یا خدمتی یافت نشد'**
+  String get invoiceProductPickerEmptyTitle;
+
+  /// Shown when the catalogue search returns nothing. Offers the free-text line rather than sending the user to create a product mid-invoice.
+  ///
+  /// In fa, this message translates to:
+  /// **'می‌توانید به جای آن سطری دلخواه بنویسید.'**
+  String get invoiceProductPickerEmptyBody;
+
+  /// No description provided for @validationQuantityInvalid.
+  ///
+  /// In fa, this message translates to:
+  /// **'تعداد را درست وارد کنید.'**
+  String get validationQuantityInvalid;
+
+  /// quantity_milli cannot hold a fourth decimal place, and section 4 requires refusing rather than truncating -- billing 1.234 for an entered 1.2345 is exactly the silent arithmetic error the money rules exist to prevent.
+  ///
+  /// In fa, this message translates to:
+  /// **'تعداد حداکثر سه رقم اعشار می‌پذیرد.'**
+  String get validationQuantityTooPrecise;
+
+  /// No description provided for @validationPercentInvalid.
+  ///
+  /// In fa, this message translates to:
+  /// **'درصد را بین ۰ تا ۱۰۰ وارد کنید.'**
+  String get validationPercentInvalid;
+
   /// No description provided for @errorInvoiceNotEditableTitle.
   ///
   /// In fa, this message translates to:

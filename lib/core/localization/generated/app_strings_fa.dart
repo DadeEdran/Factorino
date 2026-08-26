@@ -439,6 +439,125 @@ class AppStringsFa extends AppStrings {
   String get invoiceWarningsTitle => 'این مقادیر را بررسی کنید';
 
   @override
+  String get invoiceLinesTitle => 'سطرهای فاکتور';
+
+  @override
+  String get invoiceLinesEmptyTitle => 'هنوز سطری اضافه نشده است';
+
+  @override
+  String get invoiceLinesEmptyBody =>
+      'یک کالا یا خدمت از فهرست انتخاب کنید، یا سطری دلخواه بنویسید.';
+
+  @override
+  String get invoiceLineAddFromCatalogue => 'افزودن از فهرست';
+
+  @override
+  String get invoiceLineAddCustom => 'سطر دلخواه';
+
+  @override
+  String get invoiceLineEditTitle => 'ویرایش سطر';
+
+  @override
+  String get invoiceLineCreateTitle => 'سطر جدید';
+
+  @override
+  String get invoiceLineFieldTitle => 'شرح';
+
+  @override
+  String get invoiceLineFieldQuantity => 'تعداد';
+
+  @override
+  String get invoiceLineFieldQuantityHelper => 'تا سه رقم اعشار';
+
+  @override
+  String get invoiceLineFieldUnitPrice => 'قیمت واحد';
+
+  @override
+  String get invoiceLineDiscountSection => 'تخفیف سطر';
+
+  @override
+  String get invoiceLineDiscountModeAmount => 'مبلغ';
+
+  @override
+  String get invoiceLineDiscountModePercent => 'درصد';
+
+  @override
+  String get invoiceLineTaxSection => 'مالیات سطر';
+
+  @override
+  String get invoiceLineTaxInherit => 'پیش‌فرض فاکتور';
+
+  @override
+  String get invoiceLineTaxCustom => 'نرخ دلخواه';
+
+  @override
+  String invoiceLineTaxInheritedNote(String rate) {
+    return 'نرخ مؤثر: $rate';
+  }
+
+  @override
+  String invoiceLineLabelQuantity(String quantity, String unit, String price) {
+    return '$quantity $unit × $price';
+  }
+
+  @override
+  String invoiceLineLabelDiscount(String amount) {
+    return 'تخفیف $amount';
+  }
+
+  @override
+  String invoiceLineLabelTax(String rate) {
+    return 'مالیات $rate';
+  }
+
+  @override
+  String get invoiceLineActionEdit => 'ویرایش سطر';
+
+  @override
+  String get invoiceLineActionRemove => 'حذف سطر';
+
+  @override
+  String get invoiceLineActionMoveUp => 'انتقال به بالا';
+
+  @override
+  String get invoiceLineActionMoveDown => 'انتقال به پایین';
+
+  @override
+  String get invoiceLineColumnDescription => 'شرح';
+
+  @override
+  String get invoiceLineColumnQuantity => 'تعداد';
+
+  @override
+  String get invoiceLineColumnUnitPrice => 'قیمت واحد';
+
+  @override
+  String get invoiceLineColumnTotal => 'جمع سطر';
+
+  @override
+  String get invoiceProductPickerTitle => 'انتخاب کالا یا خدمت';
+
+  @override
+  String get invoiceProductPickerSearchHint => 'جست‌وجو در کالاها و خدمات';
+
+  @override
+  String get invoiceProductPickerEmptyTitle => 'کالا یا خدمتی یافت نشد';
+
+  @override
+  String get invoiceProductPickerEmptyBody =>
+      'می‌توانید به جای آن سطری دلخواه بنویسید.';
+
+  @override
+  String get validationQuantityInvalid => 'تعداد را درست وارد کنید.';
+
+  @override
+  String get validationQuantityTooPrecise =>
+      'تعداد حداکثر سه رقم اعشار می‌پذیرد.';
+
+  @override
+  String get validationPercentInvalid => 'درصد را بین ۰ تا ۱۰۰ وارد کنید.';
+
+  @override
   String get errorInvoiceNotEditableTitle => 'این فاکتور قابل ویرایش نیست';
 
   @override
