@@ -43,8 +43,9 @@ invoice** — (a) built the arithmetic spine, (a2) fixed the numbering underneat
 worst failure mode structural, all three without a screen, so (b, c, d) are what closes the gap. The
 database is now at **schema v2**.
 
-**Working tree is clean.** `main` at **`3164b8f`** "Phase 4 (b): line item entry". Behind it:
-`0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
+**Working tree is clean.** `main` at **`ea4858c`** "Phase 4 (c): invoice-level fields, and the
+save". Behind it: `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f` is (a),
+`d8682ee` is Phases 2 and 3.
 
 **Increment (a) is accepted.** The owner accepted it on 2026-08-26, approved D-048, and confirmed
 the `grossTotal` finding — the printed-summary double-count — as the reason the constraint existed.
