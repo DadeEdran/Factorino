@@ -1,3 +1,4 @@
+import 'package:factorino/core/formatting/jalali_display.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/core/utils/clock.dart';
@@ -39,15 +40,19 @@ void main() {
     int sequence = 1,
     int grandTotalRial = 12000000,
     DateTime? dueDate,
+    // A draft carries no number until it is issued (D-048).
+    bool numbered = true,
   }) {
     final DateTime issued = DateTime.utc(2026, 8, 20, 6);
     return InvoiceListItem(
       customerName: customerName,
       invoice: Invoice(
         id: id,
-        number: 'INV-1405-${sequence.toString().padLeft(4, '0')}',
-        numberYear: 1405,
-        numberSequence: sequence,
+        number: numbered
+            ? 'INV-1405-${sequence.toString().padLeft(4, '0')}'
+            : null,
+        numberYear: numbered ? 1405 : null,
+        numberSequence: numbered ? sequence : null,
         customerId: 'c1',
         issueDate: issued,
         dueDate: dueDate,
@@ -132,6 +137,118 @@ void main() {
       expect(find.text(strings.errorGenericTitle), findsOneWidget);
       expect(find.textContaining('SELECT'), findsNothing);
       expect(find.textContaining('factorino.db'), findsNothing);
+    });
+  });
+
+  group('a draft with no number yet (D-048)', () {
+    testWidgets('the table cell says so in Persian, not blank', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        const InvoicesScreen(),
+        overrides: withRepository(
+          FakeInvoiceRepository(<InvoiceListItem>[
+            item(
+              'a',
+              customerName: 'مریم احمدی',
+              status: InvoiceStatus.draft,
+              numbered: false,
+            ),
+          ]),
+        ),
+        size: kDesktopSize,
+      );
+      await tester.pumpAndSettle();
+
+      final AppStrings strings = stringsOf(tester, InvoicesScreen);
+      expect(find.text(strings.invoiceNumberPending), findsOneWidget);
+
+      // An empty cell reads as data that failed to load, which on a financial
+      // list is the worst of the available wrong impressions.
+      expect(find.text(''), findsNothing);
+    });
+
+    testWidgets('the mobile card says so too, with the same words', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        const InvoicesScreen(),
+        overrides: withRepository(
+          FakeInvoiceRepository(<InvoiceListItem>[
+            item(
+              'a',
+              customerName: 'مریم احمدی',
+              status: InvoiceStatus.draft,
+              numbered: false,
+            ),
+          ]),
+        ),
+        size: kMobileSize,
+      );
+      await tester.pumpAndSettle();
+
+      final AppStrings strings = stringsOf(tester, InvoicesScreen);
+      expect(find.byType(InvoiceCard), findsOneWidget);
+      expect(find.text(strings.invoiceNumberPending), findsOneWidget);
+      // The badge already says «پیش‌نویس»; the placeholder must not repeat it.
+      expect(strings.invoiceNumberPending, isNot(strings.statusDraft));
+    });
+
+    testWidgets('the placeholder carries no bidi isolate characters', (
+      WidgetTester tester,
+    ) async {
+      // A real invoice number is isolated because it mixes a Latin prefix with
+      // digits (§9). The Persian placeholder is ordinary RTL prose with
+      // nothing to protect, and wrapping it would put invisible control
+      // characters into a string that tests and screen readers both handle.
+      await pumpScreen(
+        tester,
+        const InvoicesScreen(),
+        overrides: withRepository(
+          FakeInvoiceRepository(<InvoiceListItem>[
+            item(
+              'a',
+              customerName: 'مریم احمدی',
+              status: InvoiceStatus.draft,
+              numbered: false,
+            ),
+          ]),
+        ),
+        size: kMobileSize,
+      );
+      await tester.pumpAndSettle();
+
+      final AppStrings strings = stringsOf(tester, InvoicesScreen);
+      final Iterable<Text> texts = tester.widgetList<Text>(find.byType(Text));
+      final Text placeholder = texts.firstWhere(
+        (Text t) => t.data == strings.invoiceNumberPending,
+      );
+
+      // Asserted against the constants the formatter actually applies, rather
+      // than against a literal here: the source encoding of a bidi control is
+      // not something to depend on twice.
+      expect(placeholder.data, isNot(contains(kFirstStrongIsolate)));
+      expect(placeholder.data, isNot(contains(kPopDirectionalIsolate)));
+    });
+
+    testWidgets('a numbered invoice is still isolated', (
+      WidgetTester tester,
+    ) async {
+      await pumpScreen(
+        tester,
+        const InvoicesScreen(),
+        overrides: withRepository(
+          FakeInvoiceRepository(<InvoiceListItem>[
+            item('a', customerName: 'مریم احمدی'),
+          ]),
+        ),
+        size: kMobileSize,
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(isolate('INV-1405-0001')), findsOneWidget);
     });
   });
 

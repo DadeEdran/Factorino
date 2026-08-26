@@ -1,8 +1,14 @@
 import 'dart:async';
 
+// Drift, in a repository test, for exactly one reason: writing an invoice row
+// that a schema-v1 database would hold -- a draft that already carries a
+// number. The repository cannot produce one any more, which is the point.
+import 'package:drift/drift.dart' show Value;
 import 'package:factorino/core/date/jalali_period.dart';
 import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
+import 'package:factorino/data/database/app_database.dart'
+    show InvoicesCompanion;
 import 'package:factorino/data/models/invoice_draft.dart';
 import 'package:factorino/data/models/invoice_list_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
@@ -24,19 +30,50 @@ void main() {
   });
   tearDown(() async => harness.close());
 
-  group('number allocation (D-013)', () {
-    test('starts at 0001 and uses the settings prefix', () async {
+  group('number allocation happens on issue (D-013, D-048)', () {
+    test('a draft has no number at all', () async {
       final result = await harness.invoices.create(harness.draft(customerId));
 
-      expect(result.invoice.number, 'INV-1405-0001');
-      expect(result.invoice.numberYear, 1405);
-      expect(result.invoice.numberSequence, 1);
+      expect(result.invoice.number, isNull);
+      expect(result.invoice.numberYear, isNull);
+      expect(result.invoice.numberSequence, isNull);
+      expect(result.invoice.hasNumber, isFalse);
     });
 
-    test('increments within a year', () async {
-      await harness.invoices.create(harness.draft(customerId));
-      final second = await harness.invoices.create(harness.draft(customerId));
-      expect(second.invoice.number, 'INV-1405-0002');
+    test('issuing starts at 0001 and uses the settings prefix', () async {
+      final created = await harness.invoices.create(harness.draft(customerId));
+      final issued = await harness.invoices.issue(created.invoice.id);
+
+      expect(issued.number, 'INV-1405-0001');
+      expect(issued.numberYear, 1405);
+      expect(issued.numberSequence, 1);
+    });
+
+    test('an abandoned draft does not consume a number', () async {
+      // The measured defect D-048 exists to fix. Before this change the first
+      // draft took INV-1405-0001, and abandoning it left the next invoice on
+      // 0002 -- the unique index covers soft-deleted rows (D-013), so the gap
+      // could never be reclaimed and the user had burned a number by opening
+      // a form and changing their mind.
+      final abandoned = await harness.invoices.create(
+        harness.draft(customerId),
+      );
+      await harness.invoices.softDeleteDraft(abandoned.invoice.id);
+
+      final kept = await harness.invoices.create(harness.draft(customerId));
+      final issued = await harness.invoices.issue(kept.invoice.id);
+
+      expect(issued.number, 'INV-1405-0001');
+    });
+
+    test('issuing increments within a year', () async {
+      for (final expected in <String>['INV-1405-0001', 'INV-1405-0002']) {
+        final created = await harness.invoices.create(
+          harness.draft(customerId),
+        );
+        final issued = await harness.invoices.issue(created.invoice.id);
+        expect(issued.number, expected);
+      }
     });
 
     test(
@@ -45,6 +82,11 @@ void main() {
         // Both dates are in Gregorian March 2026, either side of Nowruz. A
         // Gregorian year would put them in the same sequence; the Jalali year
         // puts them in different ones (D-006).
+        //
+        // It is also the year of the **invoice's** issue date rather than of
+        // today, which only allocating on issue makes possible to get wrong:
+        // the number is now assigned at a different moment from the one at
+        // which the date was chosen.
         final before = await harness.invoices.create(
           harness.draft(customerId, issueDate: DateTime.utc(2026, 3, 15, 12)),
         );
@@ -52,8 +94,14 @@ void main() {
           harness.draft(customerId, issueDate: DateTime.utc(2026, 3, 25, 12)),
         );
 
-        expect(before.invoice.number, 'INV-1404-0001');
-        expect(after.invoice.number, 'INV-1405-0001');
+        expect(
+          (await harness.invoices.issue(before.invoice.id)).number,
+          'INV-1404-0001',
+        );
+        expect(
+          (await harness.invoices.issue(after.invoice.id)).number,
+          'INV-1405-0001',
+        );
       },
     );
 
@@ -63,45 +111,80 @@ void main() {
         settings.copyWith(invoiceNumberPrefix: 'FCT'),
       );
 
-      final result = await harness.invoices.create(harness.draft(customerId));
-      expect(result.invoice.number, 'FCT-1405-0001');
-    });
-
-    test('a spent number is never reissued after a soft delete', () async {
-      final first = await harness.invoices.create(harness.draft(customerId));
-      await harness.invoices.softDeleteDraft(first.invoice.id);
-
-      final second = await harness.invoices.create(harness.draft(customerId));
+      final created = await harness.invoices.create(harness.draft(customerId));
       expect(
-        second.invoice.number,
-        'INV-1405-0002',
-        reason:
-            'a gap in the sequence is far better than two documents sharing '
-            'one identity (D-013)',
+        (await harness.invoices.issue(created.invoice.id)).number,
+        'FCT-1405-0001',
       );
     });
 
-    test('concurrent allocation cannot produce a duplicate', () async {
-      // The reason allocation lives inside the write transaction. Reading the
-      // maximum and inserting the row must not be separable, or two invoices
-      // created in the same instant take the same number.
-      final results = await Future.wait(
+    test('an issued number stays spent after the invoice goes', () async {
+      // The half of D-013 that must NOT change: once a document has been
+      // issued its number is gone, even if the invoice is later removed. A gap
+      // is far better than two documents sharing one identity. What D-048
+      // changed is only that a draft nobody ever saw stops counting as issued.
+      final first = await harness.invoices.create(harness.draft(customerId));
+      await harness.invoices.issue(first.invoice.id);
+      await harness.invoices.cancel(first.invoice.id);
+
+      final second = await harness.invoices.create(harness.draft(customerId));
+      expect(
+        (await harness.invoices.issue(second.invoice.id)).number,
+        'INV-1405-0002',
+      );
+    });
+
+    test('concurrent issuing cannot produce a duplicate', () async {
+      // The reason allocation lives inside a write transaction: reading the
+      // maximum and writing the row must not be separable, or two invoices
+      // issued in the same instant take the same number. The requirement moved
+      // with the allocation -- `create` no longer needs it for numbering and
+      // `issue` now does.
+      final drafts = await Future.wait(
         List<Future<InvoiceCreationResult>>.generate(
           10,
           (_) => harness.invoices.create(harness.draft(customerId)),
         ),
       );
 
-      final numbers = results.map((r) => r.invoice.number).toSet();
+      final issued = await Future.wait(
+        drafts.map((r) => harness.invoices.issue(r.invoice.id)),
+      );
+
+      final numbers = issued.map((i) => i.number).toSet();
       expect(numbers, hasLength(10), reason: 'every number must be distinct');
 
-      final sequences = results.map((r) => r.invoice.numberSequence).toList()
-        ..sort();
+      final sequences = issued.map((i) => i.numberSequence!).toList()..sort();
       expect(
         sequences,
         List<int>.generate(10, (i) => i + 1),
         reason: 'the sequence must have no gaps and no repeats',
       );
+    });
+
+    test('a draft that already carries a number keeps it on issue', () async {
+      // The shape a database migrated from schema v1 is in: every draft
+      // written before v2 already has a number, because v1 allocated one at
+      // creation. Issuing must not give it a second one -- the first is spent
+      // either way, and changing a document's identity is worse than a gap.
+      final row = await harness.db
+          .into(harness.db.invoices)
+          .insertReturning(
+            InvoicesCompanion.insert(
+              number: const Value<String>('INV-1405-0007'),
+              numberYear: const Value<int>(1405),
+              numberSequence: const Value<int>(7),
+              customerId: customerId,
+              issueDate: DateTime.utc(2026, 8, 24, 12).millisecondsSinceEpoch,
+              status: InvoiceStatus.draft,
+            ),
+          );
+
+      final issued = await harness.invoices.issue(row.id);
+
+      expect(issued.number, 'INV-1405-0007');
+      expect(issued.numberSequence, 7);
+      expect(issued.status, InvoiceStatus.unpaid);
     });
   });
 
@@ -298,8 +381,10 @@ void main() {
       expect(updated.invoice.grandTotal, Money.rial(2200000));
       expect(
         updated.invoice.number,
-        created.invoice.number,
-        reason: 'editing a draft must not reallocate its number',
+        isNull,
+        reason:
+            'editing a draft must not allocate a number either -- a user who '
+            'edits and then abandons has still not issued anything (D-048)',
       );
 
       final detail = await harness.invoices.findDetail(created.invoice.id);
@@ -337,24 +422,29 @@ void main() {
 
     test('cancellation keeps the number', () async {
       final created = await harness.invoices.create(harness.draft(customerId));
-      await harness.invoices.issue(created.invoice.id);
+      final issued = await harness.invoices.issue(created.invoice.id);
       final cancelled = await harness.invoices.cancel(created.invoice.id);
 
       expect(cancelled.status, InvoiceStatus.cancelled);
-      expect(cancelled.number, created.invoice.number);
+      expect(cancelled.number, issued.number);
 
       final next = await harness.invoices.create(harness.draft(customerId));
-      expect(next.invoice.number, 'INV-1405-0002');
+      expect(
+        (await harness.invoices.issue(next.invoice.id)).number,
+        'INV-1405-0002',
+      );
     });
 
-    test('issuing moves a draft to unpaid', () async {
+    test('issuing moves a draft to unpaid and gives it its number', () async {
       final created = await harness.invoices.create(harness.draft(customerId));
       expect(created.invoice.status, InvoiceStatus.draft);
       expect(created.invoice.isEditable, isTrue);
+      expect(created.invoice.hasNumber, isFalse);
 
       final issued = await harness.invoices.issue(created.invoice.id);
       expect(issued.status, InvoiceStatus.unpaid);
       expect(issued.isEditable, isFalse);
+      expect(issued.hasNumber, isTrue);
     });
   });
 
@@ -735,6 +825,60 @@ void main() {
         items.map((InvoiceListItem item) => item.invoice.id).toList(),
         <String>[newer.invoice.id, older.invoice.id],
       );
+    });
+
+    test('a numberless draft sorts above the invoices of its date', () async {
+      // A draft has no sequence (D-048), so the null needs a defined position
+      // rather than whatever SQLite's default happens to be. Above: nothing
+      // was issued after it that day, because it has not been issued at all.
+      final issueDate = DateTime.utc(2026, 8, 24, 12);
+      final first = await harness.invoices.create(
+        harness.draft(customerId, issueDate: issueDate),
+      );
+      await harness.invoices.issue(first.invoice.id);
+      final second = await harness.invoices.create(
+        harness.draft(customerId, issueDate: issueDate),
+      );
+      await harness.invoices.issue(second.invoice.id);
+
+      final draft = await harness.invoices.create(
+        harness.draft(customerId, issueDate: issueDate),
+      );
+
+      final List<InvoiceListItem> items = await harness.invoices
+          .watchList()
+          .first;
+      expect(
+        items.map((InvoiceListItem item) => item.invoice.id).toList(),
+        <String>[draft.invoice.id, second.invoice.id, first.invoice.id],
+      );
+    });
+
+    test('numberless drafts are ordered stably, read after read', () async {
+      // Several drafts tying on issue date and on the null sequence, written
+      // fast enough that `created_at` -- milliseconds -- can tie too. What is
+      // asserted is not *which* order they come back in, because between two
+      // drafts written in the same millisecond there is no meaningful one; it
+      // is that the answer does not change. An unspecified order is a list
+      // that reshuffles between reads for no reason the user can see.
+      final issueDate = DateTime.utc(2026, 8, 24, 12);
+      for (var i = 0; i < 5; i++) {
+        await harness.invoices.create(
+          harness.draft(customerId, issueDate: issueDate),
+        );
+      }
+
+      final List<String> first = (await harness.invoices.watchList().first)
+          .map((InvoiceListItem item) => item.invoice.id)
+          .toList();
+      expect(first, hasLength(5));
+
+      for (var read = 1; read < 4; read++) {
+        final List<String> again = (await harness.invoices.watchList().first)
+            .map((InvoiceListItem item) => item.invoice.id)
+            .toList();
+        expect(again, first, reason: 'read $read returned a different order');
+      }
     });
 
     test('an invoice survives its customer being soft-deleted', () async {

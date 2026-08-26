@@ -27,10 +27,12 @@ import 'mappers.dart';
 ///   carries what the user chose; every derived figure is computed here and
 ///   stored as a snapshot (D-004), so a stored total can never disagree with
 ///   its lines.
-/// * **Number allocation happens inside the write transaction** (D-013).
-///   Reading the maximum sequence and inserting the row must not be separable,
-///   or two invoices created in the same instant take the same number and the
-///   unique index turns that into a failed save.
+/// * **Number allocation happens on issue, inside its transaction** (D-013,
+///   D-048). A draft carries no number at all, because allocating one at
+///   creation meant an abandoned draft consumed a number permanently. Reading
+///   the maximum sequence and writing the row must not be separable, or two
+///   invoices issued in the same instant take the same number and the unique
+///   index turns that into a failed save.
 /// * **Only a draft may be edited or deleted**, enforced here
 ///   rather than in the UI, because the UI is not the only future writer.
 class DriftInvoiceRepository implements InvoiceRepository {
@@ -295,15 +297,23 @@ class DriftInvoiceRepository implements InvoiceRepository {
     return _db.transaction(() async {
       final settings = await _settings.read();
       final calculated = _calculate(draft, settings);
-      final number = await _allocateNumber(draft.issueDate, settings);
+
+      // A draft gets **no** number (D-048). Allocating one here meant that a
+      // user who opened the form and changed their mind consumed a number
+      // permanently -- the unique index covers soft-deleted rows, so the gap
+      // could never be reclaimed. Anything created already issued still takes
+      // its number here, because it is a document from the moment it exists.
+      final InvoiceNumber? number = status == InvoiceStatus.draft
+          ? null
+: await _allocateNumber(draft.issueDate, settings);
 
       final row = await _db
 .into(_db.invoices)
 .insertReturning(
             InvoicesCompanion.insert(
-              number: number.formatted,
-              numberYear: number.year,
-              numberSequence: number.sequence,
+              number: Value(number?.formatted),
+              numberYear: Value(number?.year),
+              numberSequence: Value(number?.sequence),
               customerId: draft.customerId,
               issueDate: millisFromInstant(draft.issueDate),
               status: status,
@@ -377,10 +387,51 @@ class DriftInvoiceRepository implements InvoiceRepository {
     });
   }
 
+  /// Issuing is where a number is allocated (D-048).
+  ///
+  /// Allocation and the status change are one transaction for the reason
+  /// D-013 gives: reading `MAX(number_sequence)` and writing the row must not
+  /// be separable, or two invoices issued in the same instant take the same
+  /// number. The year is the **Jalali** year of the invoice's own issue date,
+  /// not of today — issuing a document dated before Nowruz must not put it in
+  /// the new year's sequence.
   @override
-  Future<Invoice> issue(String id) async {
-    await _requireEditable(id);
-    return _setStatus(id, InvoiceStatus.unpaid);
+  Future<Invoice> issue(String id) {
+    return _db.transaction(() async {
+      final existing = await _requireEditable(id);
+      final settings = await _settings.read();
+
+      // A draft written before schema v2 already carries a number, because v1
+      // allocated one at creation. Keep it: that number is spent either way
+      // (D-013), and re-issuing it under a different identity would be worse
+      // than the gap the old behaviour left behind.
+      final InvoiceNumber? number = existing.number != null
+          ? null
+: await _allocateNumber(
+              instantFromMillis(existing.issueDate),
+              settings,
+            );
+
+      await (_db.update(_db.invoices)..where((r) => r.id.equals(id))).write(
+        InvoicesCompanion(
+          number: number == null
+              ? const Value<String?>.absent()
+: Value<String?>(number.formatted),
+          numberYear: number == null
+              ? const Value<int?>.absent()
+: Value<int?>(number.year),
+          numberSequence: number == null
+              ? const Value<int?>.absent()
+: Value<int?>(number.sequence),
+          status: const Value(InvoiceStatus.unpaid),
+          updatedAt: Value(nowMillis()),
+        ),
+      );
+
+      final row = await _findRow(id);
+      if (row == null) throw StateError('invoice $id disappeared');
+      return invoiceFromRow(row);
+    });
   }
 
   @override
@@ -561,7 +612,20 @@ class DriftInvoiceRepository implements InvoiceRepository {
     return _db.selectAlive(_db.invoices)
 ..orderBy(<OrderClauseGenerator<$InvoicesTable>>[
         (row) => OrderingTerm.desc(row.issueDate),
-        (row) => OrderingTerm.desc(row.numberSequence),
+        // A draft has no sequence (D-048), so the null needs a defined
+        // position rather than SQLite's default. `NULLS FIRST` under DESC puts
+        // it above the numbered invoices of the same date, which is what it
+        // is: nothing was issued after it that day, because it has not been
+        // issued at all.
+        (row) => OrderingTerm.desc(row.numberSequence, nulls: NullsOrder.first),
+        // Two numberless drafts on one date tie on both keys above, and an
+        // unspecified order there is a list that reshuffles between reads.
+        (row) => OrderingTerm.desc(row.createdAt),
+        // `created_at` is milliseconds, and two drafts can be written inside
+        // one. The id is unique by construction (D-001), so ending on it makes
+        // the order *total* rather than merely usually-defined -- arbitrary
+        // between two such drafts, but the same arbitrary answer every read.
+        (row) => OrderingTerm.desc(row.id),
       ])
 ..limit(limit, offset: offset);
   }

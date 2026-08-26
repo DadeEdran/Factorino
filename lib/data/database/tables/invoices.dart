@@ -22,14 +22,28 @@ class Invoices extends Table with SyncColumns {
   /// Uniquely indexed **including soft-deleted rows**: a number that has been
   /// issued is spent, and reusing it would produce two different documents
   /// with one identity.
-  TextColumn get number => text().withLength(min: 1, max: 40)();
+  ///
+  /// **Null until the invoice is issued** (D-048). A draft carries no number,
+  /// because allocating one at creation meant an abandoned draft consumed a
+  /// number permanently — the unique index above covers soft-deleted rows, so
+  /// the gap it left could never be reclaimed, and a business whose numbering
+  /// has holes has a conversation to have with an auditor.
+  ///
+  /// Nullable rather than an empty-string sentinel, and that is the whole
+  /// mechanism: SQLite treats `''` as equal to `''` in a unique index, so a
+  /// second numberless draft would collide, while **NULLs are distinct** in
+  /// one. `issue()` is what fills these three columns in.
+  TextColumn get number => text().withLength(min: 1, max: 40).nullable()();
 
   /// The Jalali year and sequence the number was allocated from, stored
   /// separately so allocation is `MAX(number_sequence) WHERE number_year = ?`
   /// inside a transaction, rather than parsing formatted strings.
-  IntColumn get numberYear => integer()();
+  ///
+  /// Null exactly when [number] is. `MAX` ignores nulls, so an unissued draft
+  /// takes no part in allocation without the query having to exclude it.
+  IntColumn get numberYear => integer().nullable()();
 
-  IntColumn get numberSequence => integer()();
+  IntColumn get numberSequence => integer().nullable()();
 
   /// No cascade: a customer referenced by an invoice is soft-deleted only,
   /// never hard-deleted (D-003), and SQLite's default `NO ACTION` is what

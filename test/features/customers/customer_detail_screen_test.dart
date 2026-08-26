@@ -54,13 +54,14 @@ void main() {
     );
   }
 
-  InvoiceListItem invoice(String id, String number, {int rial = 1100000}) {
+  /// [number] is null for a draft, which has none until it is issued (D-048).
+  InvoiceListItem invoice(String id, String? number, {int rial = 1100000}) {
     return InvoiceListItem(
       invoice: Invoice(
         id: id,
         number: number,
-        numberYear: 1405,
-        numberSequence: 1,
+        numberYear: number == null ? null : 1405,
+        numberSequence: number == null ? null : 1,
         customerId: 'c1',
         issueDate: DateTime.utc(2026, 8, 20),
         status: InvoiceStatus.unpaid,
@@ -445,6 +446,24 @@ void main() {
       expect(find.text('\u2068INV-1405-0001\u2069'), findsOneWidget);
       // The page title is the one place the name appears.
       expect(find.text('مریم احمدی'), findsOneWidget);
+    });
+
+    testWidgets('a draft heads its card with the no-number copy (D-048)', (
+      WidgetTester tester,
+    ) async {
+      // The third and last place an invoice number is rendered, and the one
+      // where its absence is most conspicuous: here the number is the card's
+      // *heading*, so a draft would otherwise head its card with nothing at
+      // all. Same words as the other two sites, from `invoiceNumberLabel`.
+      await pumpDetail(
+        tester,
+        customers: FakeCustomerRepository(<Customer>[customer()]),
+        invoices: FakeInvoiceRepository(<InvoiceListItem>[invoice('i1', null)]),
+      );
+      await tester.pumpAndSettle();
+
+      final AppStrings strings = stringsOf(tester, CustomerDetailScreen);
+      expect(find.text(strings.invoiceNumberPending), findsOneWidget);
     });
   });
 

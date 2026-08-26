@@ -84,6 +84,9 @@ class AppStringsFa extends AppStrings {
   String get invoicesTitle => 'فاکتورها';
 
   @override
+  String get invoiceNumberPending => 'بدون شماره';
+
+  @override
   String get emptyInvoicesTitle => 'هنوز فاکتوری ثبت نشده است';
 
   @override

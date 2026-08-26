@@ -19,6 +19,7 @@ import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/models/invoice_list_item.dart';
 import '../application/invoices_providers.dart';
+import '../domain/invoice_number_label.dart';
 import '../domain/invoice_status_view.dart';
 
 /// The invoice list.
@@ -217,10 +218,10 @@ class InvoiceTableRow extends StatelessWidget {
       columns: invoiceColumns(strings, includeCustomer: showCustomer),
       cells: <Widget>[
         Text(
-          // Bidi-isolated: `INV-1405-0001` mixes a Latin prefix with digits and
-          // hyphens, and without the isolate that run resolves against whatever
-          // happens to sit beside it (§9).
-          isolate(item.invoice.number),
+          // The number, or the Persian copy for a draft that has none yet.
+          // `invoiceNumberLabel` owns both the wording and the bidi isolation
+          // (D-048).
+          invoiceNumberLabel(item.invoice, strings),
           overflow: TextOverflow.ellipsis,
           style: muted,
         ),
@@ -299,7 +300,7 @@ class InvoiceCard extends StatelessWidget {
                         style: theme.textTheme.titleSmall,
                       )
                     : Text(
-                        isolate(item.invoice.number),
+                        invoiceNumberLabel(item.invoice, strings),
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleSmall,
                       ),
@@ -322,7 +323,7 @@ class InvoiceCard extends StatelessWidget {
             runSpacing: AppSpacing.xxs,
             children: <Widget>[
               if (showCustomer)
-                Text(isolate(item.invoice.number), style: muted),
+                Text(invoiceNumberLabel(item.invoice, strings), style: muted),
               Text(formatJalaliDate(item.invoice.issueDate), style: muted),
             ],
           ),

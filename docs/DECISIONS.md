@@ -1986,8 +1986,11 @@ the renderer actually need.
 
 ## D-048 — Invoice numbers are allocated on issue, not on draft creation
 
-**Date:** 2026-08-25 · **Status:** PROPOSED — **awaiting the owner**; the change lands in Phase 4
-increment (c).
+**Date:** 2026-08-25 · **Approved by the owner and implemented:** 2026-08-26 · **Status:** ACCEPTED
+
+The owner approved this on 2026-08-26 and directed that it land as **its own reviewable step before
+Phase 4 increment (b)**, rather than inside (c): it is the project's first migration and a build is
+already installed on a real device. See the implementation note at the end of this entry.
 
 **The defect, measured.** `DriftInvoiceRepository.create` calls `_allocateNumber` unconditionally,
 including for a draft. Verified against the real database rather than inferred:
@@ -2031,3 +2034,50 @@ a decided shape.
 * `watchList` orders by `issueDate` then `numberSequence`; a null sequence needs a defined position.
 * The status badge already distinguishes پیش‌نویس, so "this document has no number yet" is
   consistent with what the user is already told.
+
+### Implementation note (2026-08-26) — what the migration actually cost
+
+Delivered as its own step at the owner's direction. `schemaVersion = 2`; the three columns are
+nullable; `create` allocates nothing for a draft and `issue` allocates inside its own transaction.
+
+**The migration is a 12-step table rebuild, and its real hazard is the cascade.** SQLite cannot
+relax `NOT NULL` in place, so `Migrator.alterTable` creates a new table, copies, drops the old one
+and renames. **Step 6 is `DROP TABLE invoices`** — and with foreign keys enabled that runs an
+implicit delete which cascades into `invoice_items` and `payments`. Drift guards against it by
+issuing `PRAGMA foreign_keys = OFF` *before* opening its own transaction and restoring it after,
+which works only because drift invokes `onUpgrade` outside a transaction.
+
+**That guard was verified to bite rather than assumed.** Wrapping the `alterTable` call in
+`db.transaction` — which reads as a *safety* improvement, and is the obvious "tidy-up" a later
+session would make — leaves `invoice_items` at **zero rows**, because SQLite silently ignores
+`PRAGMA foreign_keys` inside a transaction. Every line and every payment in the database, gone. The
+schema-comparison test still passed, and so did the test asserting the numbers were preserved: the
+*invoices* survive, only their children are destroyed. One test out of six noticed.
+
+This is why the data test does not use `SchemaVerifier.testWithDataIntegrity`, which documents that
+it disables foreign keys — precisely the condition under which the bug does not reproduce — and why
+it runs through `openAppDatabase` against a real encrypted file rather than the verifier's
+in-memory one. A `// Deliberately NOT wrapped in a transaction` comment now sits on the call.
+
+The migration also runs `PRAGMA foreign_key_check` afterwards, which is step 9 of SQLite's procedure
+and which drift's `alterTable` states in its source that it skips.
+
+**Numbers already spent are not reclaimed.** A draft migrated from v1 keeps the number v1 gave it,
+and `issue` allocates only when the column is null. The gap is in the past; rewriting a document's
+identity is worse than a gap (D-013).
+
+**Ordering needed a decision the old schema never posed.** `watchList` ordered by `issueDate DESC,
+numberSequence DESC`, and a null sequence has no defined position. It is now
+`issueDate DESC, numberSequence DESC NULLS FIRST, createdAt DESC, id DESC`: a draft sorts above the
+invoices of its own date (nothing was issued after it, because it has not been issued), and the last
+two keys make the order **total** — `created_at` is milliseconds and two drafts can be written
+inside one, so the unique id is what guarantees the same answer on every read rather than a list
+that reshuffles.
+
+**One string, three call sites.** «بدون شماره» — deliberately not a repeat of «پیش‌نویس», which the
+status badge already says beside it in all three layouts, and deliberately not blank, because an
+empty cell reads as data that failed to load. The wording and the bidi rule live together in
+`invoiceNumberLabel` (`features/invoices/domain/`): a real number is isolated because it mixes a
+Latin prefix with digits (§9), and the Persian placeholder is not, because there is nothing to
+protect and the isolate marks would only be invisible characters in a string tests and screen
+readers have to handle.

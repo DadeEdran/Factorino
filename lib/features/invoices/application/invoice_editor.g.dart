@@ -27,6 +27,17 @@ part of 'invoice_editor.dart';
 /// Keyed by the clock reading the form opened with, so `issueDate` is settled
 /// once rather than drifting while the user types (D-041's reasoning, one
 /// screen along).
+///
+/// **The screen must hold that instant, not re-read the clock in `build`.** The
+/// family key is compared by value, so a fresh `DateTime.now()` on every frame
+/// would address a different provider each time — a new, empty editor per
+/// rebuild, discarding the invoice as it is typed. Take it from `nowProvider`
+/// once, in `initState` or an equivalent, and pass the same value down.
+///
+/// Auto-disposed, like every other provider here (§3). It stays alive because
+/// the screen watches it; nothing else holds it open, so leaving the form
+/// discards the draft — which is the intended behaviour for something that has
+/// not been saved, and is why saving is an explicit action.
 
 @ProviderFor(InvoiceEditor)
 final invoiceEditorProvider = InvoiceEditorFamily._();
@@ -50,6 +61,17 @@ final invoiceEditorProvider = InvoiceEditorFamily._();
 /// Keyed by the clock reading the form opened with, so `issueDate` is settled
 /// once rather than drifting while the user types (D-041's reasoning, one
 /// screen along).
+///
+/// **The screen must hold that instant, not re-read the clock in `build`.** The
+/// family key is compared by value, so a fresh `DateTime.now()` on every frame
+/// would address a different provider each time — a new, empty editor per
+/// rebuild, discarding the invoice as it is typed. Take it from `nowProvider`
+/// once, in `initState` or an equivalent, and pass the same value down.
+///
+/// Auto-disposed, like every other provider here (§3). It stays alive because
+/// the screen watches it; nothing else holds it open, so leaving the form
+/// discards the draft — which is the intended behaviour for something that has
+/// not been saved, and is why saving is an explicit action.
 final class InvoiceEditorProvider
     extends $AsyncNotifierProvider<InvoiceEditor, InvoiceEditorState> {
   /// The invoice being edited, and every intent that changes it.
@@ -71,6 +93,17 @@ final class InvoiceEditorProvider
   /// Keyed by the clock reading the form opened with, so `issueDate` is settled
   /// once rather than drifting while the user types (D-041's reasoning, one
   /// screen along).
+  ///
+  /// **The screen must hold that instant, not re-read the clock in `build`.** The
+  /// family key is compared by value, so a fresh `DateTime.now()` on every frame
+  /// would address a different provider each time — a new, empty editor per
+  /// rebuild, discarding the invoice as it is typed. Take it from `nowProvider`
+  /// once, in `initState` or an equivalent, and pass the same value down.
+  ///
+  /// Auto-disposed, like every other provider here (§3). It stays alive because
+  /// the screen watches it; nothing else holds it open, so leaving the form
+  /// discards the draft — which is the intended behaviour for something that has
+  /// not been saved, and is why saving is an explicit action.
   InvoiceEditorProvider._({
     required InvoiceEditorFamily super.from,
     required DateTime super.argument,
@@ -107,7 +140,7 @@ final class InvoiceEditorProvider
   }
 }
 
-String _$invoiceEditorHash() => r'cd3d98ef40a5b57389fa6756ae6881bded8fcc36';
+String _$invoiceEditorHash() => r'2db43d184512c88c83681620961cf256520d77ee';
 
 /// The invoice being edited, and every intent that changes it.
 ///
@@ -128,6 +161,17 @@ String _$invoiceEditorHash() => r'cd3d98ef40a5b57389fa6756ae6881bded8fcc36';
 /// Keyed by the clock reading the form opened with, so `issueDate` is settled
 /// once rather than drifting while the user types (D-041's reasoning, one
 /// screen along).
+///
+/// **The screen must hold that instant, not re-read the clock in `build`.** The
+/// family key is compared by value, so a fresh `DateTime.now()` on every frame
+/// would address a different provider each time — a new, empty editor per
+/// rebuild, discarding the invoice as it is typed. Take it from `nowProvider`
+/// once, in `initState` or an equivalent, and pass the same value down.
+///
+/// Auto-disposed, like every other provider here (§3). It stays alive because
+/// the screen watches it; nothing else holds it open, so leaving the form
+/// discards the draft — which is the intended behaviour for something that has
+/// not been saved, and is why saving is an explicit action.
 
 final class InvoiceEditorFamily extends $Family
     with
@@ -166,6 +210,17 @@ final class InvoiceEditorFamily extends $Family
   /// Keyed by the clock reading the form opened with, so `issueDate` is settled
   /// once rather than drifting while the user types (D-041's reasoning, one
   /// screen along).
+  ///
+  /// **The screen must hold that instant, not re-read the clock in `build`.** The
+  /// family key is compared by value, so a fresh `DateTime.now()` on every frame
+  /// would address a different provider each time — a new, empty editor per
+  /// rebuild, discarding the invoice as it is typed. Take it from `nowProvider`
+  /// once, in `initState` or an equivalent, and pass the same value down.
+  ///
+  /// Auto-disposed, like every other provider here (§3). It stays alive because
+  /// the screen watches it; nothing else holds it open, so leaving the form
+  /// discards the draft — which is the intended behaviour for something that has
+  /// not been saved, and is why saving is an explicit action.
 
   InvoiceEditorProvider call(DateTime openedAt) =>
       InvoiceEditorProvider._(argument: openedAt, from: this);
@@ -193,6 +248,17 @@ final class InvoiceEditorFamily extends $Family
 /// Keyed by the clock reading the form opened with, so `issueDate` is settled
 /// once rather than drifting while the user types (D-041's reasoning, one
 /// screen along).
+///
+/// **The screen must hold that instant, not re-read the clock in `build`.** The
+/// family key is compared by value, so a fresh `DateTime.now()` on every frame
+/// would address a different provider each time — a new, empty editor per
+/// rebuild, discarding the invoice as it is typed. Take it from `nowProvider`
+/// once, in `initState` or an equivalent, and pass the same value down.
+///
+/// Auto-disposed, like every other provider here (§3). It stays alive because
+/// the screen watches it; nothing else holds it open, so leaving the form
+/// discards the draft — which is the intended behaviour for something that has
+/// not been saved, and is why saving is an explicit action.
 
 abstract class _$InvoiceEditor extends $AsyncNotifier<InvoiceEditorState> {
   late final _$args = ref.$arg as DateTime;

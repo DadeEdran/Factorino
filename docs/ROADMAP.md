@@ -735,10 +735,16 @@ reported and stopped for review rather than landing whole.
 
 | # | Increment | Status |
 |---|---|---|
-| a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED` 2026-08-25, **awaiting review** |
+| a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED` 2026-08-25, **accepted** 2026-08-26 |
+| a2 | **Numbering on issue, and the project's first migration** (D-048) | `COMPLETED` 2026-08-26 — device proof outstanding |
 | b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
-| c | Invoice-level fields: customer, dates, discount, tax, notes, **numbering on issue** | `NOT_STARTED` |
+| c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
+
+Increment (a2) was not in the owner's original four-way split. It was pulled out of (c) and placed
+**before (b)** on the owner's instruction when D-048 was approved: it is the project's first schema
+migration and a build is already installed on a real device, so it deserved its own reviewable step
+rather than arriving folded into a screen.
 
 **Goal.** The core flow: build an invoice from customers and products, per-line and invoice-level
 discounts, tax resolution, live totals, transactional invoice-number allocation. This phase
@@ -787,23 +793,77 @@ discounts, tax resolution, live totals, transactional invoice-number allocation.
 - 55 new tests; **584 pass in total** (was 529). Decisions recorded: **D-046**, **D-047**, and
   **D-048** as a proposal.
 
-**A defect measured, not yet fixed — the shape of increment (c)**
+**Increment (a2) — completed 2026-08-26 · the project's first schema migration**
 
-`create()` allocates an invoice number for a **draft**. Verified against the real database: a draft
-takes `INV-1405-0001`, is abandoned, and the next draft takes `INV-1405-0002`. The number is gone
+The defect measured in (a) is fixed, and D-048 is `ACCEPTED`. A draft carries **no** number;
+`issue()` allocates one inside its own transaction. `schemaVersion = 2`.
+
+- **`invoices.number`, `number_year` and `number_sequence` are nullable.** NULLs are distinct in a
+  SQLite unique index, which is what lets two numberless drafts coexist; an empty-string sentinel
+  would have collided between them. A test asserts both halves — two numberless drafts coexist, and
+  a duplicate real number is still refused.
+- **`onUpgrade` no longer throws.** It is a ladder (`if (from < 2)`), so a database can arrive from
+  any older version, with a fail-loud default for a pair the ladder does not cover. Known issue 1 is
+  closed.
+- **The migration is a 12-step table rebuild, and its hazard is `ON DELETE CASCADE`.** Step 6 is
+  `DROP TABLE invoices`; with foreign keys on, that deletes every `invoice_items` and `payments` row
+  in the database. `Migrator.alterTable` guards it by turning foreign keys off *outside* its own
+  transaction — which works only because drift invokes `onUpgrade` outside one.
+- **Verified to bite.** Wrapping the `alterTable` call in `db.transaction` — which reads as a
+  *safety* improvement — leaves `invoice_items` at **zero rows**, because SQLite silently ignores
+  `PRAGMA foreign_keys` inside a transaction. The schema-comparison test still passed and so did the
+  numbers test; one test of six caught it. The call now carries a comment saying why it must not be
+  wrapped.
+- **Two migration tests, checking different claims.** `SchemaVerifier` proves the migrated shape
+  equals the declared v2 schema (drift's own generated machinery, §6/§14, on an in-memory database).
+  A second suite proves the *data* survives, through the **real production path** — a real encrypted
+  file opened by `openAppDatabase` with foreign keys on. `SchemaVerifier.testWithDataIntegrity` is
+  deliberately **not** used: it documents that it disables foreign keys, which is exactly the
+  condition under which the cascade does not reproduce.
+- **`integration_test/invoice_number_migration_proof_test.dart`** repeats the data proof on the real
+  target, for the reason D-020's proof exists: the native library is what handles
+  `PRAGMA foreign_keys`, and a VM test skips the packaging path entirely. **Passes on Windows;
+  not yet run on the Redmi.**
+- **Run against the real Windows dev database**, not only against fixtures: the file that has been
+  accumulating rows since Phase 1 went `user_version 1 -> 2` with 12 customers, 12 invoices, 12
+  invoice lines, 4 payments and all 12 numbers intact, foreign keys still on.
+- **Numbers already spent are not reclaimed.** A draft migrated from v1 keeps the number v1 gave it;
+  `issue` allocates only when the column is null. A test covers that path.
+- **Ordering gained a decision the old schema never posed.** `watchList` is now
+  `issueDate DESC, numberSequence DESC NULLS FIRST, createdAt DESC, id DESC` — a draft sorts above
+  the invoices of its own date, and the last two keys make the order total, because `created_at` is
+  milliseconds and two drafts can be written inside one.
+- **One Persian string, three call sites.** «بدون شماره», behind `invoiceNumberLabel`, which owns
+  the wording *and* the bidi rule: a real number is isolated, the Persian placeholder is not.
+- 16 new tests; **600 pass in total** (was 584).
+
+**Security note (increment a2).** No new data class, no new input, no new permission, no new
+dependency, no new platform surface. Two things in the threat model move, both about integrity:
+
+- **The first migration of real user data exists**, and it rewrites the invoices table wholesale.
+  The failure mode it could have shipped is silent, total loss of every invoice line and payment —
+  not a crash, not a visible error, just empty child tables behind intact-looking invoices. That is
+  now covered by a test that was verified to fail when the mistake is made, and by a proof that runs
+  on the real target.
+- **Encryption survives the rebuild**, asserted rather than assumed: the proof re-checks the file
+  header after the migration has rewritten the file, because `openAppDatabase`'s startup assertion
+  and a full table rebuild had never met before.
+
+**The defect (a2) fixed — recorded as measured**
+
+`create()` allocated an invoice number for a **draft**. Verified against the real database: a draft
+took `INV-1405-0001`, was abandoned, and the next draft took `INV-1405-0002`. The number was gone
 permanently, because the unique index deliberately covers soft-deleted rows (D-013). A user who
-opens a form and changes their mind has silently consumed an invoice number.
+opened a form and changed their mind had silently consumed an invoice number.
 
-Fixing it means a draft carries **no** number and `issue()` allocates inside its own transaction —
-which requires `number`, `number_year` and `number_sequence` to become **nullable**, because NULLs
-are distinct in a SQLite unique index while an empty-string sentinel would collide between two
-drafts. That is **`schemaVersion = 2`, the first migration in the project**, and per §6 and §14 a
-migration without a test is not done. Known issue 1 has been waiting for exactly this. Full analysis
-and the consequences for the list screens are in **D-048**.
+Fixed in (a2), and now a regression test: `an abandoned draft does not consume a number`.
 
 **Remaining**
 
-- (b) line item entry, (c) invoice-level fields and numbering on issue, (d) the assembled screen.
+- (b) line item entry, (c) invoice-level fields, (d) the assembled screen.
+- The (a2) migration proof still has to run on the **Redmi**. The device was not attached when the
+  increment was built; the test is written and passes on Windows, so it is one command:
+  `flutter test integration_test/invoice_number_migration_proof_test.dart -d <device>`.
 
 **Security note (increment a).** No new data is stored, no new input is accepted, and no screen
 exists yet — this increment is a value type, a controller and their tests. Three things are worth

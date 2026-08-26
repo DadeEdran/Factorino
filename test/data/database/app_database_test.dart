@@ -59,9 +59,13 @@ void main() {
         .into(db.invoices)
         .insertReturning(
           InvoicesCompanion.insert(
-            number: number,
-            numberYear: 1405,
-            numberSequence: sequence,
+            // Explicit here even though a draft would normally carry none
+            // (D-048): these tests are about the schema's constraints -- the
+            // unique index and the cascades -- which need a real number to
+            // have anything to be about.
+            number: Value<String>(number),
+            numberYear: const Value<int>(1405),
+            numberSequence: Value<int>(sequence),
             customerId: customerId,
             issueDate: DateTime.utc(2026, 8, 23).millisecondsSinceEpoch,
             status: InvoiceStatus.draft,

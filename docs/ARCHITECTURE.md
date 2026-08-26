@@ -9,7 +9,7 @@
 
 ---
 
-# §A — What exists today (2026-08-25)
+# §A — What exists today (2026-08-26)
 
 The whole of Phase 1 plus Phases 2 and 3: the encrypted connection and its key management, the money
 and date engines, the schema and repository layer, the design system and Persian shell, and six
@@ -28,7 +28,7 @@ Factorino/
 .githooks/pre-commit   # lockfile-host / secrets / app-ID gate (D-019)
   tools/sanitize_lockfile  # run after ANY command that resolves deps, incl. build_runner
   assets/fonts/          # Vazirmatn 400/500/700 + OFL.txt (D-022) - not yet declared in pubspec
-  drift_schemas/         # drift_schema_v1.json - the baseline for migration tests
+  drift_schemas/         # drift_schema_v1.json + _v2.json - the migration tests' baselines
   lib/
     core/
       money/                                      # pure Dart, zero Flutter imports (§3)
@@ -36,6 +36,7 @@ Factorino/
         rounding.dart                             #   half-up + overflow-checked multiply
         discount_allocation.dart                  #   largest-remainder distribution
         invoice_calculator.dart                   #   §4, step for step + clamp warnings (D-027)
+                                                  #   + grossTotal, 2nd invariant (D-047)
       date/                                       # Jalali periods as UTC instant ranges (D-006)
         jalali_instant.dart                       #   instant <-> Jalali, offset as a parameter
         jalali_period.dart                        #   InstantRange + day/month/year boundaries
@@ -57,7 +58,7 @@ Factorino/
       database/
         encrypted_database.dart                   # THE single database opener (D-020)
         database_bootstrap.dart                   # key -> open -> migrate -> assert encrypted
-        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 1, migration
+        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 2, migrations
         soft_delete.dart                          # selectAlive / selectOnlyAlive / countAlive
         tables/                                   # six tables + SyncColumns mixin
       models/                                     # domain entities -- NO drift import (D-031)
@@ -100,7 +101,8 @@ Factorino/
                                                   #   settings, customers, products
       domain/                                     # feature-shaped values assembled from models
                                                   #   dashboard_summary, customer_detail_view,
-                                                  #   invoice_status_view, invoice_editor_state
+                                                  #   invoice_status_view, invoice_editor_state,
+                                                  #   invoice_number_label (D-048)
     app.dart             # MaterialApp.router: themes, locale, RTL, router
     main.dart            # opens the database, overrides the provider, runs the app
   test/
@@ -218,7 +220,8 @@ trusting six copies to match. Reads go through `selectAlive`/`countAlive`, the s
 `deleted_at IS NULL`; `soft_delete_usage_test.dart` fails the build on a raw `select(` anywhere in
 `lib/` unless the line carries a `// soft-delete-exempt:` comment giving a reason. Money is integer
 Rial, rates are basis points and quantities are milli-units, checked mechanically by column-name
-suffix. `drift_schemas/drift_schema_v1.json` is the dump future migration tests diff against.
+suffix. `drift_schemas/` holds a dump per schema version, which is what the migration tests diff
+against; `test/data/database/generated/` is the `drift_dev schema generate` output over them.
 
 **Generated files are committed on purpose — do not "clean them up".** `app_database.g.dart` and
 any future `*.g.dart` are in version control because code generation on this machine needs network
@@ -325,10 +328,13 @@ sales total from before a write beside a count from after it.
 
 Writes own their transaction boundary, and two of them are the reason the boundary is there:
 
-* **Invoice creation** resolves the tax chain against settings, runs the money engine, allocates the
-  next sequence for the issue date's **Jalali** year, and writes the invoice with its lines — all in
-  one transaction (D-013). Ten concurrent creates produce ten distinct numbers; moving the allocation
-  outside makes that fail on the unique index, which was verified rather than assumed.
+* **Invoice creation** resolves the tax chain against settings, runs the money engine, and writes
+  the invoice with its lines in one transaction. A draft is written with **no number** (D-048).
+* **Issuing** allocates the next sequence for the invoice's own **Jalali** issue-date year and
+  writes it with the status change, in one transaction (D-013). Ten concurrent issues produce ten
+  distinct numbers; moving the allocation outside makes that fail on the unique index, which was
+  verified rather than assumed. A draft migrated from schema v1 already carries a number and keeps
+  it — a spent number stays spent.
 * **Payment recording** inserts the payment and recomputes the derived invoice status in the *same*
   transaction (§6). Splitting them would leave a window in which a paid invoice reads as unpaid, and
   a crash inside that window would make it permanent.
@@ -405,6 +411,27 @@ creation time and never joins to the live product row for pricing (D-004).
 
 **Migrations:** `schemaVersion` set from the first release; existing migrations are never mutated;
 `drift_dev` schema dumps back generated migration tests. A migration without a test is not done.
+
+`onUpgrade` is a **ladder** (`if (from < n)`) rather than a switch on the version pair, because a
+database can arrive from any older version, and it ends in a fail-loud default for a pair it does
+not cover. **v1 → v2** (D-048) makes the three invoice-number columns nullable so a draft carries no
+number until it is issued.
+
+> **A table rebuild must not be wrapped in a transaction.** Relaxing `NOT NULL` needs SQLite's
+> 12-step rebuild, whose step 6 is `DROP TABLE` — and with foreign keys enabled that cascades into
+> every child row. `Migrator.alterTable` guards it by issuing `PRAGMA foreign_keys = OFF` *outside*
+> its own transaction, which works only because drift invokes `onUpgrade` outside one. Wrapping the
+> call in `db.transaction` makes SQLite silently ignore the pragma and deletes every `invoice_items`
+> and `payments` row, with no error and with the schema still verifying as correct. Measured, and
+> recorded on the call site.
+
+Two suites cover a migration, because they check different things: `SchemaVerifier` compares the
+migrated **shape** against the version's dump, and a second suite migrates a database holding real
+rows through `openAppDatabase` — a real encrypted file, foreign keys on — and counts them
+afterwards. `SchemaVerifier.testWithDataIntegrity` is not used: it disables foreign keys, which is
+the one condition under which the cascade cannot reproduce.
+`integration_test/invoice_number_migration_proof_test.dart` repeats the data proof on the real
+target, for the reason D-020's proof exists.
 
 ## B.6 The money engine — **built** (increment b)
 

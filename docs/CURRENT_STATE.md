@@ -1,7 +1,7 @@
 # Current State
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
-> Last updated: **2026-08-25**
+> Last updated: **2026-08-26**
 
 ---
 
@@ -11,52 +11,95 @@
 **Phase 1 — Foundation and Architecture · `COMPLETED`** (2026-08-24, seven increments, all accepted)
 **Phase 2 — Customers · `COMPLETED`** (2026-08-25)
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
-**Phase 4 — Invoice Creation · `IN_PROGRESS`** — increment (a) delivered 2026-08-25, **awaiting
-review**. Split into four increments at the owner's instruction:
+**Phase 4 — Invoice Creation · `IN_PROGRESS`** — increment (a) **accepted** 2026-08-26; increment
+(a2), the numbering migration, delivered the same day and **awaiting review**.
 
 | # | Increment | Status |
 |---|---|---|
-| a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED`, awaiting review |
+| a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED`, **accepted** |
+| a2 | **Numbering on issue + `schemaVersion = 2`** (D-048) | `COMPLETED`, awaiting review — **device proof outstanding** |
 | b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
-| c | Invoice-level fields: customer, dates, discount, tax, notes, **numbering on issue** | `NOT_STARTED` |
+| c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
+
+(a2) was not in the original four-way split. The owner approved D-048 on 2026-08-26 and directed
+that it land as its own reviewable step **before (b)** — it is the project's first migration and a
+build is already installed on a real device. Numbering is therefore no longer part of (c).
 
 Phases 2 and 3 were re-scoped by D-042 to what increment (f1) had not already delivered. Both of
 those items are built, so both phases are closed.
 
 ## Where the project stands, in one paragraph
 
-**Phase 4 increment (a) is delivered and awaiting review; nothing else is in progress.** Six screens
+**Phase 4 increment (a2) is delivered and awaiting review; nothing else is in progress.** Six screens
 work end to end on real data — Dashboard, Invoices, Customers, **Customer detail**, Products,
 Settings — inside a Persian, RTL, three-tier responsive shell, over an encrypted SQLite database.
-Customers and products can be created, searched, edited and soft-deleted; every form field now
-carries the same length and character-class limits its column does. **There is still no UI to create
-an invoice** — increment (a) built the arithmetic spine behind it and nothing visible, so the three
-remaining increments (b, c, d) are what closes the gap. The invoice write path, the money engine,
-Jalali periods, numbering and payment status all exist and are tested in the data layer.
+Customers and products can be created, searched, edited and soft-deleted; every form field carries
+the same length and character-class limits its column does. **There is still no UI to create an
+invoice** — (a) built the arithmetic spine and (a2) fixed the numbering underneath it, both without
+a screen, so (b, c, d) are what closes the gap. The database is now at **schema v2**.
 
-**Working tree is clean.** `main` at **`bf4c02f`** "Phase 4 (a): the invoice draft model, and one
-path to the arithmetic"; `d8682ee` is Phases 2 and 3. Nothing uncommitted, nothing half-done.
+**Working tree is clean.** `main` at **`<a2 commit>`**; `bf4c02f` is (a); `d8682ee` is Phases 2 and 3.
 
-**Increment (a) has not been accepted** — it was reported and the owner stopped the session there.
-Do not treat it as approved, and do not start (b) without a go-ahead.
+**Increment (a) is accepted.** The owner accepted it on 2026-08-26, approved D-048, and confirmed
+the `grossTotal` finding — the printed-summary double-count — as the reason the constraint existed.
+
+**Increment (a2) has not been reviewed, and one of its four required steps is not done:** the
+migration proof has not run on the Redmi, because the device was not attached. See the next action.
 
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)          as of bf4c02f
-flutter test:               PASS   (584/584, was 529)         as of bf4c02f
-Windows build:              PASS   flutter build windows --debug   run during Phases 2/3, before (a)
-Windows run:                PASS   customer detail exercised against the real encrypted database
-                                   at 1400x900 and 400x800, light and dark, figures reconciled
-Android build:              PASS   flutter build apk --debug       run during Phases 2/3, before (a)
+flutter analyze:            PASS   (No issues found)                          as of (a2)
+flutter test:               PASS   (600/600, was 584)                         as of (a2)
+Windows build:              PASS   flutter run -d windows --debug             (a2)
+Windows run:                PASS   the app opened the REAL dev database and migrated it v1 -> v2
+D-048 proof - Windows:      PASS   integration_test/invoice_number_migration_proof_test.dart
+D-048 proof - Android:      NOT_RUN  the Redmi was not attached. THE ONE OUTSTANDING STEP.
+Android build:              NOT_RETESTED since (a2) - no device attached
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
 ```
 
-Increment (a) added no UI and no dependency, so the platform builds were **not** re-run after it.
-Re-run them before marking Phase 4 complete (§15 step 6).
+**The real Windows dev database was migrated, and this is the strongest evidence (a2) has:** the
+file that has been accumulating rows since Phase 1 went `user_version 1 -> 2` and came out with
+12 customers, 12 invoices, **12 invoice lines, 4 payments**, 5 products, 1 settings row, all 12
+numbers intact and foreign keys still on. A pre-migration copy was taken first and is in this
+session's scratchpad as `factorino.db.v1backup`.
+
+(a2) added no UI and no dependency. `flutter build apk` has not been re-run since it.
+
+## What Phase 4 increment (a2) delivered — the first migration
+
+**No UI.** A schema change, a behaviour change, and the tests that make both safe.
+
+- **A draft has no number.** `create` allocates nothing for a draft; `issue()` allocates inside its
+  own transaction, against the Jalali year of the **invoice's** issue date. `schemaVersion = 2`,
+  with `number`, `number_year` and `number_sequence` nullable.
+- **`onUpgrade` is a real ladder now**, not a throw — `if (from < 2)`, with a fail-loud default for
+  an uncovered pair. Known issue 1 is closed and so is known issue 17.
+- **The one thing to know before touching this migration.** It is a 12-step table rebuild whose step
+  6 is `DROP TABLE invoices`. With foreign keys on, that cascades and deletes **every**
+  `invoice_items` and `payments` row in the database. `Migrator.alterTable` prevents it by turning
+  foreign keys off *outside* its own transaction, which only works because drift runs `onUpgrade`
+  outside one. **Wrapping the `alterTable` call in `db.transaction` — which looks like a safety
+  improvement — reproduces the data loss**, because SQLite silently ignores `PRAGMA foreign_keys`
+  inside a transaction. Verified by doing it: `invoice_items` went to zero while the
+  schema-comparison test and the numbers test both still passed.
+- **Two test suites, two different claims.** `SchemaVerifier` proves the migrated *shape* matches
+  the declared v2 schema; a second suite proves the *data* survives, through `openAppDatabase` on a
+  real encrypted file with foreign keys on. `SchemaVerifier.testWithDataIntegrity` is deliberately
+  not used — it disables foreign keys, which is the exact condition under which the bug hides.
+- **A device proof exists and is repeatable**, on D-020's precedent:
+  `integration_test/invoice_number_migration_proof_test.dart`. Passes on Windows; **not yet run on
+  the Redmi**.
+- **Ordering is now total**: `issueDate DESC, numberSequence DESC NULLS FIRST, createdAt DESC,
+  id DESC`. A draft sorts above the invoices of its own date; the last two keys exist because
+  `created_at` is milliseconds and two drafts can be written inside one.
+- **One Persian string in one place.** «بدون شماره» behind `invoiceNumberLabel`
+  (`features/invoices/domain/`), used by all three sites that render a number. It owns the bidi rule
+  too: a real number is isolated, the Persian placeholder is not.
 
 ## What Phase 4 increment (a) delivered
 
@@ -98,10 +141,10 @@ The controller's intents: `selectCustomer`, `setIssueDate`, `setDueDate`, `setNo
 `setDiscountAmount`, `setDiscountPercent`, `setTaxRate`, and for lines `addLine`, `replaceLine`,
 `updateLine`, `removeLine`, `moveLine`.
 
-**It has no `save` or `issue` yet, and that is deliberate.** Persistence lands in increment (c),
-because it cannot be written before the numbering change D-048 proposes — a `save` built on today's
-`create()` would allocate a number for every draft, which is the defect (c) exists to fix. Do not add
-one in (b).
+**It has no `save` or `issue` yet.** That was originally because a `save` built on the old `create()`
+would have allocated a number for every draft — the defect D-048 named. **(a2) removed that
+blocker**: `create()` is now safe to call for a draft. Persistence still belongs in increment (c),
+where the customer and the dates a save needs are entered; do not add one in (b).
 
 ## What Phase 2 and Phase 3 delivered
 
@@ -203,7 +246,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 | # | Issue | Impact |
 |---|---|---|
-| 1 | `onUpgrade` throws by design — no v1→v2 path exists | The first schema change needs a migration step **and** a test (§6, §14). **Issue 17 is what will trigger it.** |
+| 1 | ~~`onUpgrade` throws by design~~ | **Resolved in (a2)**: `schemaVersion = 2` with a real ladder and two migration test suites. Append steps; never edit one that shipped. |
 | 2 | The database opens on the main isolate | Phase 13. The `setup` closure must stay isolate-sendable — `ARCHITECTURE.md` §B.5. |
 | 3 | The national-ID checksum cannot catch every transposition | Official algorithm, not a defect. Now enforced by test over the ARB, the form **and** the detail screen. |
 | 4 | `watchDetail` re-reads on any invoice-table change | Correct but not minimal. Revisit in Phase 13. |
@@ -217,7 +260,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 14 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
 | 15 | Android manifest hardening not done | Phase 9. |
 | 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
-| 17 | **Creating a draft allocates an invoice number, so an abandoned draft burns one permanently** | Measured, not inferred: `INV-1405-0001` -> abandon -> `INV-1405-0002`. The unique index deliberately covers soft-deleted rows (D-013), which is right for an issued invoice and wrong for a draft nobody saw. Fixed in Phase 4(c) per **D-048** (`PROPOSED`), which needs the three number columns nullable — `schemaVersion = 2` and the project's first migration. |
+| 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -225,6 +268,19 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 - **The cipher pragmas come BEFORE `pragma key`** (D-020). Never assert encryption with
   `PRAGMA cipher_version` or `PRAGMA cipher` — assert on the file header.
+- **A drift `alterTable` migration must NOT be wrapped in a transaction.** It turns foreign keys off
+  around its `DROP TABLE`, and SQLite silently ignores `PRAGMA foreign_keys` inside a transaction —
+  so wrapping it cascade-deletes every `invoice_items` and `payments` row in the database, with no
+  error. Measured, not reasoned about (D-048). The same applies to any future table rebuild.
+- **The schema dumps in `drift_schemas/` are the migration tests' baseline**, and
+  `test/data/database/generated/` is `drift_dev schema generate` output for them. After a schema
+  change: `dart run drift_dev schema dump lib/data/database/app_database.dart drift_schemas/` then
+  `dart run drift_dev schema generate --data-classes --companions drift_schemas/
+  test/data/database/generated/`. Both are committed.
+- **`SchemaVerifier` opens an unencrypted in-memory database and sets no pragmas**, so it needs
+  `setup: (raw) => raw.execute('PRAGMA foreign_keys = ON;')` or the production `beforeOpen`
+  assertion refuses the migration. Its `testWithDataIntegrity` helper **disables foreign keys** and
+  therefore cannot see a cascade — do not reach for it.
 - **Nine rules are enforced by tests that scan `lib/`.** If one fails, route through the helper —
   never weaken the test. Each has a documented escape-hatch comment requiring a reason:
   1. open a database only through `openEncryptedDatabase` (D-020);
@@ -281,6 +337,29 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 ## Recently changed files
 
+### Phase 4 increment (a2)
+
+```
+lib/data/database/tables/invoices.dart        the three number columns -> nullable (D-048)
+lib/data/database/app_database.dart           schemaVersion 2; onUpgrade ladder; _migrateV1ToV2
+lib/data/models/invoice.dart                  number/year/sequence -> nullable; + hasNumber
+lib/data/repositories/drift/drift_invoice_repository.dart
+                                              create allocates nothing for a draft;
+                                              issue allocates in its own transaction;
+                                              watchList ordering made total
+lib/features/invoices/domain/invoice_number_label.dart      NEW  THE wording + the bidi rule
+lib/features/invoices/presentation/invoices_screen.dart     all three render sites
+lib/core/localization/arb/app_fa.arb          + invoiceNumberPending (140 total)
+drift_schemas/drift_schema_v2.json            NEW  the v2 baseline
+test/data/database/generated/                 NEW  drift_dev schema generate output (v1 + v2)
+test/data/database/invoice_number_migration_test.dart       NEW  6 tests, two different claims
+integration_test/invoice_number_migration_proof_test.dart   NEW  the device proof
+test/data/repositories/invoice_repository_test.dart         allocation group rewritten; +4
+test/features/invoices/invoices_screen_test.dart            +4 for the no-number copy
+test/features/customers/customer_detail_screen_test.dart    +1 for the card-heading site
+docs/*                                        D-048 -> ACCEPTED + implementation note; ROADMAP (a2)
+```
+
 ### Phase 4 increment (a)
 
 ```
@@ -332,28 +411,33 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 4 increment (a)** — the invoice draft state model and its wiring to `core/money/`, with no
-UI. 584 tests pass, analyzer clean. Both new guards were verified to bite before being trusted.
+**Phase 4 increment (a2)** — numbering on issue and the project's first schema migration (D-048).
+600 tests pass, analyzer clean. The migration's cascade guard was verified to bite before being
+trusted, and the real Windows dev database was migrated with all 12 invoices, 12 lines and 4
+payments intact.
 
 ## Next action
 
-**Do not write code. Summarize increment (a) for the owner, put the two open rulings below to them,
-and wait for a go-ahead on (b).**
+**Run the migration proof on the Redmi, then report (a2) and wait for a go-ahead on (b).**
 
-The full (a) write-up is in `ROADMAP.md` under Phase 4 and the reasoning is in D-046, D-047 and
-D-048 — a fresh session can report from those without re-deriving anything.
+```sh
+flutter test integration_test/invoice_number_migration_proof_test.dart -d <device-id>
+```
 
-Two things need a ruling before (c), and one of them is a schema change:
+The device was not attached when (a2) was built, so this is the one required step that did not
+happen. Everything else it needs is in place: the test is written, it passes on Windows, and it
+seeds its own v1 database under a probe filename so it never touches the real application database.
+Note known issue 10 — MIUI blocks the install until Developer options → **Install via USB** is on.
 
-1. **D-048 is `PROPOSED`**: drafts must stop allocating an invoice number, which needs the three
-   number columns to become nullable — `schemaVersion = 2`, the first migration in the project, with
-   the test §6 and §14 require. The defect is measured, not inferred.
-2. **D-047's note for Phase 5**: `grossTotal` is computed but not stored, and per-line gross is not
-   recoverable from what `invoice_items` keeps. The invoice detail screen and the PDF renderer both
-   need it. Phase 5 decides whether to store it or to widen what the engine returns for a stored
-   invoice.
+Worth doing at the same time, since the device will be attached: `flutter build apk --debug`, which
+has not been re-run since (a2).
 
-**Increment (b) — line item entry** is next when confirmed:
+**Still open for Phase 5, deliberately (owner, 2026-08-26):** D-047's `grossTotal` is computed but
+not stored, and per-line gross is not recoverable from what `invoice_items` keeps. **Do not store it
+now** — decide it in Phase 5 with the invoice detail screen and the PDF renderer both in view, since
+they are the two consumers and storing the wrong shape costs another migration.
+
+**Increment (b) — line item entry** is next once the device proof passes and (a2) is reviewed:
 
 1. A product picker that **copies** title, unit and price in as snapshots (D-004), plus a free-text
    line for anything not in the catalogue.
@@ -366,6 +450,9 @@ Two things need a ruling before (c), and one of them is a schema change:
 5. The warnings rendered from `invoiceWarningMessage`, already written and tested in (a).
 6. Nothing in the widget may call `calculateInvoice`; read the figures from `InvoiceEditorState`.
    The guard will fail the build if that slips.
+7. **`InvoiceEditor` still has no `save`, and (b) still must not add one** — but the reason has
+   changed. It was blocked on D-048; D-048 has landed, so a `save` is now *possible* and belongs in
+   (c) with the rest of the invoice-level fields, where the customer and the dates it needs are.
 
 ### Standing rules that outlive this handoff
 

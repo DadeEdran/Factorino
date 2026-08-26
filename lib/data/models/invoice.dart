@@ -33,12 +33,27 @@ class Invoice {
   final String id;
 
   /// `{prefix}-{jalaliYear}-{sequence:0000}`, e.g. `INV-1405-0001` (D-013).
-  final String number;
+  ///
+  /// **Null while the invoice is a draft** (D-048): a number is allocated by
+  /// `InvoiceRepository.issue`, not at creation, so that abandoning a draft
+  /// does not consume one permanently. Anything rendering this must say so in
+  /// Persian rather than showing an empty cell — [hasNumber] is the check, and
+  /// `invoiceNumberLabel` is the one place the wording lives.
+  final String? number;
 
   /// The Jalali year and sequence the number was allocated from, kept apart
   /// from the formatted string so allocation never has to parse one back.
-  final int numberYear;
-  final int numberSequence;
+  ///
+  /// Null exactly when [number] is.
+  final int? numberYear;
+  final int? numberSequence;
+
+  /// Whether this invoice has been given its permanent identity yet.
+  ///
+  /// A draft created before v2 of the schema may still carry a number — the
+  /// migration does not take back numbers already spent — so this is a
+  /// question about the row, never about the status (D-048).
+  bool get hasNumber => number != null;
 
   final String customerId;
 

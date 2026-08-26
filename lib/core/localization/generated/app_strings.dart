@@ -238,6 +238,12 @@ abstract class AppStrings {
   /// **'فاکتورها'**
   String get invoicesTitle;
 
+  /// Stands where an invoice number would be, for a draft that does not have one yet (D-048). A number is allocated on issue, so that abandoning a draft does not consume one permanently. Deliberately short: it occupies a fixed-width table column, and it is also the heading of a card. Deliberately NOT a repeat of statusDraft -- the status badge sits beside it in all three layouts and already says the invoice is a draft, so this says only the thing the badge does not. Deliberately not blank: an empty cell reads as data that failed to load.
+  ///
+  /// In fa, this message translates to:
+  /// **'بدون شماره'**
+  String get invoiceNumberPending;
+
   /// No description provided for @emptyInvoicesTitle.
   ///
   /// In fa, this message translates to:

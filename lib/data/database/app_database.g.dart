@@ -1695,13 +1695,13 @@ class $InvoicesTable extends Invoices
   late final GeneratedColumn<String> number = GeneratedColumn<String>(
     'number',
     aliasedName,
-    false,
+    true,
     additionalChecks: GeneratedColumn.checkTextLength(
       minTextLength: 1,
       maxTextLength: 40,
     ),
     type: DriftSqlType.string,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _numberYearMeta = const VerificationMeta(
     'numberYear',
@@ -1710,9 +1710,9 @@ class $InvoicesTable extends Invoices
   late final GeneratedColumn<int> numberYear = GeneratedColumn<int>(
     'number_year',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _numberSequenceMeta = const VerificationMeta(
     'numberSequence',
@@ -1721,9 +1721,9 @@ class $InvoicesTable extends Invoices
   late final GeneratedColumn<int> numberSequence = GeneratedColumn<int>(
     'number_sequence',
     aliasedName,
-    false,
+    true,
     type: DriftSqlType.int,
-    requiredDuringInsert: true,
+    requiredDuringInsert: false,
   );
   static const VerificationMeta _customerIdMeta = const VerificationMeta(
     'customerId',
@@ -1945,16 +1945,12 @@ class $InvoicesTable extends Invoices
         _numberMeta,
         number.isAcceptableOrUnknown(data['number']!, _numberMeta),
       );
-    } else if (isInserting) {
-      context.missing(_numberMeta);
     }
     if (data.containsKey('number_year')) {
       context.handle(
         _numberYearMeta,
         numberYear.isAcceptableOrUnknown(data['number_year']!, _numberYearMeta),
       );
-    } else if (isInserting) {
-      context.missing(_numberYearMeta);
     }
     if (data.containsKey('number_sequence')) {
       context.handle(
@@ -1964,8 +1960,6 @@ class $InvoicesTable extends Invoices
           _numberSequenceMeta,
         ),
       );
-    } else if (isInserting) {
-      context.missing(_numberSequenceMeta);
     }
     if (data.containsKey('customer_id')) {
       context.handle(
@@ -2102,15 +2096,15 @@ class $InvoicesTable extends Invoices
       number: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}number'],
-      )!,
+      ),
       numberYear: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}number_year'],
-      )!,
+      ),
       numberSequence: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}number_sequence'],
-      )!,
+      ),
       customerId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}customer_id'],
@@ -2202,13 +2196,27 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
   /// Uniquely indexed **including soft-deleted rows**: a number that has been
   /// issued is spent, and reusing it would produce two different documents
   /// with one identity.
-  final String number;
+  ///
+  /// **Null until the invoice is issued** (D-048). A draft carries no number,
+  /// because allocating one at creation meant an abandoned draft consumed a
+  /// number permanently — the unique index above covers soft-deleted rows, so
+  /// the gap it left could never be reclaimed, and a business whose numbering
+  /// has holes has a conversation to have with an auditor.
+  ///
+  /// Nullable rather than an empty-string sentinel, and that is the whole
+  /// mechanism: SQLite treats `''` as equal to `''` in a unique index, so a
+  /// second numberless draft would collide, while **NULLs are distinct** in
+  /// one. `issue()` is what fills these three columns in.
+  final String? number;
 
   /// The Jalali year and sequence the number was allocated from, stored
   /// separately so allocation is `MAX(number_sequence) WHERE number_year = ?`
   /// inside a transaction, rather than parsing formatted strings.
-  final int numberYear;
-  final int numberSequence;
+  ///
+  /// Null exactly when [number] is. `MAX` ignores nulls, so an unissued draft
+  /// takes no part in allocation without the query having to exclude it.
+  final int? numberYear;
+  final int? numberSequence;
 
   /// No cascade: a customer referenced by an invoice is soft-deleted only,
   /// never hard-deleted (D-003), and SQLite's default `NO ACTION` is what
@@ -2249,9 +2257,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     this.deletedAt,
     required this.syncStatus,
     this.lastSyncedAt,
-    required this.number,
-    required this.numberYear,
-    required this.numberSequence,
+    this.number,
+    this.numberYear,
+    this.numberSequence,
     required this.customerId,
     required this.issueDate,
     this.dueDate,
@@ -2283,9 +2291,15 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     if (!nullToAbsent || lastSyncedAt != null) {
       map['last_synced_at'] = Variable<int>(lastSyncedAt);
     }
-    map['number'] = Variable<String>(number);
-    map['number_year'] = Variable<int>(numberYear);
-    map['number_sequence'] = Variable<int>(numberSequence);
+    if (!nullToAbsent || number != null) {
+      map['number'] = Variable<String>(number);
+    }
+    if (!nullToAbsent || numberYear != null) {
+      map['number_year'] = Variable<int>(numberYear);
+    }
+    if (!nullToAbsent || numberSequence != null) {
+      map['number_sequence'] = Variable<int>(numberSequence);
+    }
     map['customer_id'] = Variable<String>(customerId);
     map['issue_date'] = Variable<int>(issueDate);
     if (!nullToAbsent || dueDate != null) {
@@ -2326,9 +2340,15 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
 : Value(lastSyncedAt),
-      number: Value(number),
-      numberYear: Value(numberYear),
-      numberSequence: Value(numberSequence),
+      number: number == null && nullToAbsent
+          ? const Value.absent()
+: Value(number),
+      numberYear: numberYear == null && nullToAbsent
+          ? const Value.absent()
+: Value(numberYear),
+      numberSequence: numberSequence == null && nullToAbsent
+          ? const Value.absent()
+: Value(numberSequence),
       customerId: Value(customerId),
       issueDate: Value(issueDate),
       dueDate: dueDate == null && nullToAbsent
@@ -2367,9 +2387,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
         serializer.fromJson<int>(json['syncStatus']),
       ),
       lastSyncedAt: serializer.fromJson<int?>(json['lastSyncedAt']),
-      number: serializer.fromJson<String>(json['number']),
-      numberYear: serializer.fromJson<int>(json['numberYear']),
-      numberSequence: serializer.fromJson<int>(json['numberSequence']),
+      number: serializer.fromJson<String?>(json['number']),
+      numberYear: serializer.fromJson<int?>(json['numberYear']),
+      numberSequence: serializer.fromJson<int?>(json['numberSequence']),
       customerId: serializer.fromJson<String>(json['customerId']),
       issueDate: serializer.fromJson<int>(json['issueDate']),
       dueDate: serializer.fromJson<int?>(json['dueDate']),
@@ -2401,9 +2421,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
         $InvoicesTable.$convertersyncStatus.toJson(syncStatus),
       ),
       'lastSyncedAt': serializer.toJson<int?>(lastSyncedAt),
-      'number': serializer.toJson<String>(number),
-      'numberYear': serializer.toJson<int>(numberYear),
-      'numberSequence': serializer.toJson<int>(numberSequence),
+      'number': serializer.toJson<String?>(number),
+      'numberYear': serializer.toJson<int?>(numberYear),
+      'numberSequence': serializer.toJson<int?>(numberSequence),
       'customerId': serializer.toJson<String>(customerId),
       'issueDate': serializer.toJson<int>(issueDate),
       'dueDate': serializer.toJson<int?>(dueDate),
@@ -2429,9 +2449,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     Value<int?> deletedAt = const Value.absent(),
     SyncStatus? syncStatus,
     Value<int?> lastSyncedAt = const Value.absent(),
-    String? number,
-    int? numberYear,
-    int? numberSequence,
+    Value<String?> number = const Value.absent(),
+    Value<int?> numberYear = const Value.absent(),
+    Value<int?> numberSequence = const Value.absent(),
     String? customerId,
     int? issueDate,
     Value<int?> dueDate = const Value.absent(),
@@ -2452,9 +2472,11 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     deletedAt: deletedAt.present ? deletedAt.value : this.deletedAt,
     syncStatus: syncStatus ?? this.syncStatus,
     lastSyncedAt: lastSyncedAt.present ? lastSyncedAt.value : this.lastSyncedAt,
-    number: number ?? this.number,
-    numberYear: numberYear ?? this.numberYear,
-    numberSequence: numberSequence ?? this.numberSequence,
+    number: number.present ? number.value : this.number,
+    numberYear: numberYear.present ? numberYear.value : this.numberYear,
+    numberSequence: numberSequence.present
+        ? numberSequence.value
+: this.numberSequence,
     customerId: customerId ?? this.customerId,
     issueDate: issueDate ?? this.issueDate,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
@@ -2612,9 +2634,9 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   final Value<int?> deletedAt;
   final Value<SyncStatus> syncStatus;
   final Value<int?> lastSyncedAt;
-  final Value<String> number;
-  final Value<int> numberYear;
-  final Value<int> numberSequence;
+  final Value<String?> number;
+  final Value<int?> numberYear;
+  final Value<int?> numberSequence;
   final Value<String> customerId;
   final Value<int> issueDate;
   final Value<int?> dueDate;
@@ -2661,9 +2683,9 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.deletedAt = const Value.absent(),
     this.syncStatus = const Value.absent(),
     this.lastSyncedAt = const Value.absent(),
-    required String number,
-    required int numberYear,
-    required int numberSequence,
+    this.number = const Value.absent(),
+    this.numberYear = const Value.absent(),
+    this.numberSequence = const Value.absent(),
     required String customerId,
     required int issueDate,
     this.dueDate = const Value.absent(),
@@ -2678,10 +2700,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.roundingAdjustmentRial = const Value.absent(),
     this.grandTotalRial = const Value.absent(),
     this.rowid = const Value.absent(),
-  }) : number = Value(number),
-       numberYear = Value(numberYear),
-       numberSequence = Value(numberSequence),
-       customerId = Value(customerId),
+  }) : customerId = Value(customerId),
        issueDate = Value(issueDate),
        status = Value(status);
   static Insertable<InvoiceRow> custom({
@@ -2744,9 +2763,9 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Value<int?>? deletedAt,
     Value<SyncStatus>? syncStatus,
     Value<int?>? lastSyncedAt,
-    Value<String>? number,
-    Value<int>? numberYear,
-    Value<int>? numberSequence,
+    Value<String?>? number,
+    Value<int?>? numberYear,
+    Value<int?>? numberSequence,
     Value<String>? customerId,
     Value<int>? issueDate,
     Value<int?>? dueDate,
@@ -6538,9 +6557,9 @@ typedef $$InvoicesTableCreateCompanionBuilder = InvoicesCompanion Function({
   Value<int?> deletedAt,
   Value<SyncStatus> syncStatus,
   Value<int?> lastSyncedAt,
-  required String number,
-  required int numberYear,
-  required int numberSequence,
+  Value<String?> number,
+  Value<int?> numberYear,
+  Value<int?> numberSequence,
   required String customerId,
   required int issueDate,
   Value<int?> dueDate,
@@ -6563,9 +6582,9 @@ typedef $$InvoicesTableUpdateCompanionBuilder = InvoicesCompanion Function({
   Value<int?> deletedAt,
   Value<SyncStatus> syncStatus,
   Value<int?> lastSyncedAt,
-  Value<String> number,
-  Value<int> numberYear,
-  Value<int> numberSequence,
+  Value<String?> number,
+  Value<int?> numberYear,
+  Value<int?> numberSequence,
   Value<String> customerId,
   Value<int> issueDate,
   Value<int?> dueDate,
@@ -7175,9 +7194,9 @@ class $$InvoicesTableTableManager
                 Value<int?> deletedAt = const Value.absent(),
                 Value<SyncStatus> syncStatus = const Value.absent(),
                 Value<int?> lastSyncedAt = const Value.absent(),
-                Value<String> number = const Value.absent(),
-                Value<int> numberYear = const Value.absent(),
-                Value<int> numberSequence = const Value.absent(),
+                Value<String?> number = const Value.absent(),
+                Value<int?> numberYear = const Value.absent(),
+                Value<int?> numberSequence = const Value.absent(),
                 Value<String> customerId = const Value.absent(),
                 Value<int> issueDate = const Value.absent(),
                 Value<int?> dueDate = const Value.absent(),
@@ -7225,9 +7244,9 @@ class $$InvoicesTableTableManager
                 Value<int?> deletedAt = const Value.absent(),
                 Value<SyncStatus> syncStatus = const Value.absent(),
                 Value<int?> lastSyncedAt = const Value.absent(),
-                required String number,
-                required int numberYear,
-                required int numberSequence,
+                Value<String?> number = const Value.absent(),
+                Value<int?> numberYear = const Value.absent(),
+                Value<int?> numberSequence = const Value.absent(),
                 required String customerId,
                 required int issueDate,
                 Value<int?> dueDate = const Value.absent(),
