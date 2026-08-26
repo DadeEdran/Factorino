@@ -11,16 +11,16 @@
 **Phase 1 — Foundation and Architecture · `COMPLETED`** (2026-08-24, seven increments, all accepted)
 **Phase 2 — Customers · `COMPLETED`** (2026-08-25)
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
-**Phase 4 — Invoice Creation · `IN_PROGRESS`** — increment (a) **accepted** 2026-08-26; (a2), the
-numbering migration, is complete with its device proof passed; (a3), the table-rebuild guard,
-delivered the same day and **awaiting review**.
+**Phase 4 — Invoice Creation · `IN_PROGRESS`** — (a), (a2), (a3) and (b) are all **accepted**;
+(c) was delivered 2026-08-26 and is **awaiting review**. (d) is the last increment, and (c2) is a
+migration the owner has yet to schedule.
 
 | # | Increment | Status |
 |---|---|---|
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED`, **accepted** |
 | a2 | **Numbering on issue + `schemaVersion = 2`** (D-048) | `COMPLETED` — device proof passed 2026-08-26 |
-| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26 |
-| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26 |
+| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED`, **accepted** |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED`, **accepted** |
 | c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED`, awaiting review |
 | c2 | **Customer snapshot on issue** (D-051) — `schemaVersion = 3` | `NOT_STARTED`, owner to schedule |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
@@ -34,14 +34,19 @@ those items are built, so both phases are closed.
 
 ## Where the project stands, in one paragraph
 
-**Phase 4 increment (c) is delivered and awaiting review; nothing else is in progress.** Six screens
-work end to end on real data — Dashboard, Invoices, Customers, **Customer detail**, Products,
-Settings — inside a Persian, RTL, three-tier responsive shell, over an encrypted SQLite database.
-Customers and products can be created, searched, edited and soft-deleted; every form field carries
-the same length and character-class limits its column does. **There is still no UI to create an
-invoice** — (a) built the arithmetic spine, (a2) fixed the numbering underneath it and (a3) made its
-worst failure mode structural, all three without a screen, so (b, c, d) are what closes the gap. The
-database is now at **schema v2**.
+**Phase 4 increment (c) is delivered and awaiting review; nothing else is in progress. The session
+ended here at the owner's instruction, with no work started on (d).** Six screens work end to end on
+real data — Dashboard, Invoices, Customers, **Customer detail**, Products, Settings — inside a
+Persian, RTL, three-tier responsive shell, over an encrypted SQLite database. Customers and products
+can be created, searched, edited and soft-deleted; every form field carries the same length and
+character-class limits its column does. The database is at **schema v2**.
+
+**Every piece of the invoice form now exists except the screen that holds them.** (a) built the
+arithmetic spine, (a2) fixed the numbering underneath it, (a3) made its worst failure mode
+structural, (b) built line entry and (c) built the invoice-level fields and the save. **(d) is the
+only increment left** — it composes what (b) and (c) built into one form and gives it a route. Until
+it lands there is still no way for a user to create an invoice, because nothing routes to these
+widgets.
 
 **Working tree is clean.** `main` at **`ea4858c`** "Phase 4 (c): invoice-level fields, and the
 save". Behind it: `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f` is (a),
@@ -54,26 +59,37 @@ the `grossTotal` finding — the printed-summary double-count — as the reason 
 2026-08-26: `user_version 1 -> 2`, foreign keys on, 1 invoice, **2 invoice lines, 1 payment**, file
 encrypted. `flutter build apk --debug` passed in the same session.
 
-**(a3) is delivered**: the owner's response to the cascade finding in (a2), which is now defended
-structurally rather than only by a comment and one test out of six. See D-049.
+**(a3) and (b) are accepted**, 2026-08-26. Three things the owner endorsed explicitly, worth not
+relitigating:
 
-**(b) is delivered**: the product picker, the line editor sheet and the lines section.
+- **The runtime guard is preferred over a lexical one**, because performing the operation and
+  reading the result back catches what a source scan structurally cannot see — a transaction opened
+  by a caller, a batch, or a future drift release that runs `onUpgrade` inside one. The owner's
+  words: a fragile guard matching the other nine *"would have been worse than no guard, because it
+  would have been trusted."*
+- **Pinning the SQLite premise in its own test** was called the piece they would not have thought to
+  ask for: if a future version honours the pragma inside a transaction, that test is where the news
+  arrives rather than a user's database.
+- **The basis-point observation** — two decimal places of a percent being a basis point by
+  construction — was accepted as removing a rounding step rather than implementing one carefully.
 
 **(c) has not been reviewed.** The invoice-level fields, a Jalali date picker, and **the save** —
-the first write of a whole invoice from the editor.
+the first write of a whole invoice from the editor. Reported in full; the owner stopped the session
+before responding.
 
-**The debt (b) opened is still open, and it is now larger.** No widget from (b) or (c) has been
-touched on a device, because no route reaches them until (d). That is now two numeric-heavy sheets,
-a calendar grid and two picker sheets, all verified by 33 widget tests and the APK build only. The
-owner named (d) as the point where this comes due; it should be treated as a task in (d) and not a
-discovery.
+**The device debt — the one thing a fresh session must not lose.** No widget from (b) or (c) has
+been touched by a person, because no route reaches them until (d). That is two numeric-heavy sheets,
+a calendar grid and two picker sheets, verified by **29 widget tests** and the APK build only. The
+owner's instruction, verbatim in substance: *"a numeric-heavy sheet on a phone is where tests and
+reality diverge most. Treat (d) as the point where that debt comes due, not something to discover
+then."* **Running the assembled form on the Redmi is a task inside (d), not a follow-up to it.**
 
 ## Verification status
 
 ```
 flutter analyze:            PASS   (No issues found)                          as of (c)
 flutter test:               PASS   (650/650, was 619)                         as of (c)
-Windows build:              PASS   flutter run -d windows --debug             (a2)
+Windows build:              NOT_RETESTED since (a2) -- (b) and (c) are Windows-untried
 Windows run:                PASS   the app opened the REAL dev database and migrated it v1 -> v2
 D-048 proof - Windows:      PASS   integration_test/invoice_number_migration_proof_test.dart
 D-048 proof - Android:      PASS   on the Redmi Note 8 Pro, Android 11 (2026-08-26). CLOSED.
@@ -81,6 +97,7 @@ Android build:              PASS   flutter build apk --debug                  (c
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
+(b)+(c) widgets on device: NOT_RUN  no route reaches them until (d). THE OPEN DEBT.
 ```
 
 **The real Windows dev database was migrated, and this is the strongest evidence (a2) has:** the
@@ -182,8 +199,8 @@ lib/features/invoices/application/invoice_product_picker.dart
 - **13 new tests**, over the real controller and engine with a faked repository, at both tiers.
   They found one real defect: the warnings heading overflowed its row at the phone width, which is
   why the harness pins a size.
-- **The editor still has no `save`, and (b) did not add one.** It belongs in (c), with the customer
-  and the dates a save needs.
+- **(b) added no `save`** — deliberately, since the customer and the dates a save needs are entered
+  in (c), which is where `save()` and `issue()` landed.
 
 ## What Phase 4 increment (a3) delivered — the cascade defect, made structural
 
@@ -289,10 +306,10 @@ The controller's intents: `selectCustomer`, `setIssueDate`, `setDueDate`, `setNo
 `setDiscountAmount`, `setDiscountPercent`, `setTaxRate`, and for lines `addLine`, `replaceLine`,
 `updateLine`, `removeLine`, `moveLine`.
 
-**It has no `save` or `issue` yet.** That was originally because a `save` built on the old `create()`
-would have allocated a number for every draft — the defect D-048 named. **(a2) removed that
-blocker**: `create()` is now safe to call for a draft. Persistence still belongs in increment (c),
-where the customer and the dates a save needs are entered; do not add one in (b).
+**`save()` and `issue()` were added in (c)** and are documented in that section above. They were
+absent through (a) and (b) for a reason worth keeping: a `save` built on the old `create()` would
+have allocated a number for every draft, which is the defect D-048 named. (a2) removed that blocker
+by making `create()` safe to call for a draft.
 
 ## What Phase 2 and Phase 3 delivered
 
@@ -485,6 +502,53 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 ## Recently changed files
 
+### Phase 4 increment (c) — the newest work
+
+```
+lib/core/widgets/jalali_date_picker.dart      NEW  the calendar dialog + JalaliDateField
+lib/core/widgets/app_text_field.dart          + onChanged, for fields feeding a live preview
+lib/features/invoices/application/invoice_editor.dart
+                                              + save(), issue(), _guarded();
+                                              setIssueDate now carries a derived due date
+lib/features/invoices/application/invoice_customer_picker.dart   NEW  the picker's own window
+lib/features/invoices/domain/invoice_editor_state.dart
+                                              + dueDateFollowsIssueDate, defaultDueDate,
+                                              kDefaultPaymentTermDays
+lib/features/invoices/presentation/widgets/invoice_details_section.dart  NEW
+lib/features/invoices/presentation/widgets/customer_picker_sheet.dart    NEW
+lib/data/models/field_limits.dart             + InvoiceLimits.notes
+lib/core/localization/arb/app_fa.arb          +37 strings (415 total)
+test/core/widgets/jalali_date_picker_test.dart               NEW  6 widget tests
+test/features/invoices/invoice_details_section_test.dart     NEW  10 widget tests
+test/features/invoices/invoice_editor_save_test.dart         NEW  7, over the real database
+test/features/invoices/invoice_preview_matches_write_test.dart  +6; now covers the invoice level
+test/data/repositories/invoice_repository_test.dart          +2; the editability boundary
+docs/*                                        D-051; ROADMAP phase 4 (c) and (c2)
+```
+
+### Phase 4 increment (b)
+
+```
+lib/features/invoices/presentation/widgets/invoice_lines_section.dart     NEW
+lib/features/invoices/presentation/widgets/invoice_line_editor_sheet.dart NEW
+lib/features/invoices/presentation/widgets/product_picker_sheet.dart      NEW
+lib/features/invoices/application/invoice_product_picker.dart             NEW
+lib/data/models/field_limits.dart             + InvoiceLimits (lineTitle 200, lineUnit 30)
+test/features/invoices/invoice_lines_section_test.dart       NEW  13 widget tests
+test/data/database/field_limits_test.dart     + the invoice-line columns and the fits-in check
+docs/*                                        D-050
+```
+
+### Phase 4 increment (a3)
+
+```
+lib/data/database/app_database.dart           + assertForeignKeysCanBeDisabled, called before
+                                              alterTable; the DO NOT WRAP comment at the call site
+test/data/database/invoice_number_migration_test.dart  +4 for the guard, its premise, and the
+                                              data loss it prevents
+docs/*                                        D-049
+```
+
 ### Phase 4 increment (a2)
 
 ```
@@ -566,27 +630,54 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Next action
 
-**Report (c) and wait for a go-ahead on (d), the assembled screen — and on (c2).**
+**Build Phase 4 increment (d), the assembled invoice screen — but confirm two things with the owner
+first.** (c) was reported and the owner stopped the session before responding, so (d) has not been
+authorised, and (c2) is a scheduling decision only they can make.
 
-(d) composes `InvoiceDetailsSection`, `InvoiceLinesSection` and a totals summary into one form, adds
-the `/invoices/new` route, and lays it out at all three tiers — a sticky summary panel on desktop
-(§10), a single column on a phone. It is also where the save and issue actions get their buttons and
-their Persian confirmations, which (c) built the strings for but has no screen to put them on.
+Ask, in one message, then proceed:
 
-**(d) must also pay the device debt.** Nothing from (b) or (c) has been touched by a person: two
-numeric-heavy sheets, a calendar grid and two picker sheets, all verified by widget tests and the
-APK build only. A numeric sheet on a real phone keyboard is exactly where tests and reality diverge.
-Run the assembled form on the Redmi as part of (d), not after it.
+1. **Is (c) accepted?** It is delivered, tested and committed at `ea4858c`; nothing is in flight.
+2. **Does (c2) come before or after (d)?** It is `schemaVersion = 3` (D-051) and, on (a2)'s
+   precedent, its own reviewable step. Either order works — (d) does not depend on it, and (c2)
+   does not depend on (d).
 
-**(c2), the customer snapshot, is a separate decision for the owner to schedule** — see D-051. It is
-`schemaVersion = 3` and belongs on its own, as (a2) did.
+### What (d) is
+
+Compose `InvoiceDetailsSection` and `InvoiceLinesSection` into one form with a totals summary, add
+the `/invoices/new` route, and lay it out at all three tiers — a sticky summary panel and a
+multi-column layout on desktop (§10), a single column on a phone. It is also where the save and
+issue actions get their buttons and their Persian confirmations: **the strings already exist** —
+`invoiceActionSaveDraft`, `invoiceActionIssue`, `invoiceSaveDraftSuccess`, `invoiceIssueSuccess`,
+`invoiceSaveFailed`, `invoiceIncompleteCustomer`, `invoiceIncompleteLines` — added in (c) with no
+screen to put them on. `InvoiceEditor.save()` and `.issue()` are built and tested; (d) wires them to
+buttons and renders the result.
+
+Specifics that are already decided and should not be re-derived:
+
+- **The `openedAt` family key must be read once**, in `initState` or equivalent, and passed down to
+  both sections. A fresh `DateTime.now()` in `build` addresses a new, empty editor every frame and
+  discards the invoice as it is typed. Both sections take it as a parameter for this reason.
+- **Nothing in the screen may call `calculateInvoice`** — read every figure from
+  `InvoiceEditorState.totals`. `single_calculation_path_test.dart` fails the build otherwise.
+- **The totals summary should use `CalculatedInvoice.grossTotal`** (D-047), not the subtotal, so the
+  printed summary reconciles by hand.
+- **`isComplete` is what gates the buttons**: a customer, at least one line, and every line named
+  and united. The two "incomplete" strings above say which is missing.
+
+### (d) must pay the device debt — as a task inside it, not after
+
+Nothing from (b) or (c) has been touched by a person. Run the assembled form on the **Redmi**
+(`dmbyayb6rombo7ci`) before reporting (d): enter a line by hand, pick a product, pick both dates in
+the Jalali calendar, and save and issue one invoice. Known issue 10 has the MIUI install sequence
+that works.
 
 **Still open for Phase 5, deliberately (owner, 2026-08-26):** D-047's `grossTotal` is computed but
 not stored, and per-line gross is not recoverable from what `invoice_items` keeps. **Do not store it
 now** — decide it in Phase 5 with the invoice detail screen and the PDF renderer both in view, since
 they are the two consumers and storing the wrong shape costs another migration.
 
-**Increment (b) — line item entry** — delivered; the brief it was built against was:
+**Increment (b) — line item entry** — **delivered and accepted.** Kept below as the historical
+brief it was built against, not as live instructions:
 
 1. A product picker that **copies** title, unit and price in as snapshots (D-004), plus a free-text
    line for anything not in the catalogue.
@@ -602,13 +693,23 @@ they are the two consumers and storing the wrong shape costs another migration.
 7. **`InvoiceEditor` still has no `save`, and (b) still must not add one** — but the reason has
    changed. It was blocked on D-048; D-048 has landed, so a `save` is now *possible* and belongs in
    (c) with the rest of the invoice-level fields, where the customer and the dates it needs are.
+   *(Since satisfied: (c) added `save()` and `issue()`.)*
 
 ### Standing rules that outlive this handoff
 
 - **The cipher pragmas come before `pragma key`** (D-020); assert encryption on the file header.
+- **A migration that rebuilds a table must never run inside a transaction** (D-049). SQLite ignores
+  `PRAGMA foreign_keys` in one, so the rebuild's `DROP TABLE` cascades and empties every child
+  table while the schema still compares as correct. `assertForeignKeysCanBeDisabled` now refuses
+  rather than allowing it, and the call site says so — do not remove either to make a wrapper work.
 - **The nine `lib/`-scanning guards** listed above are the project's memory of nine silent failure
-  modes. Route through the helper; never weaken the test.
+  modes. Route through the helper; never weaken the test. `single_calculation_path_test.dart` is the
+  one Phase 4 keeps tripping over: **no widget may call `calculateInvoice`** — read figures from
+  `InvoiceEditorState.totals`.
 - **Sanitize the lockfile after any command that resolves dependencies, and do it last.**
 - **Regenerate and commit** after touching a table, a provider, or the ARB.
+- **A widget test must pin a size** (`kMobileSize` / `kDesktopSize` in `screen_harness.dart`). The
+  phone width is where Persian headings overflow their rows; (b) shipped one such defect and the
+  test at 400dp is what caught it.
 - Commit policy (D-019): commit at meaningful milestones, show `git diff --stat` and the message,
   no per-commit approval needed. Never force-push, amend, rebase or reset --hard.
