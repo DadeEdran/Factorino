@@ -39,7 +39,8 @@ the same length and character-class limits its column does. **There is still no 
 invoice** — (a) built the arithmetic spine and (a2) fixed the numbering underneath it, both without
 a screen, so (b, c, d) are what closes the gap. The database is now at **schema v2**.
 
-**Working tree is clean.** `main` at **`<a2 commit>`**; `bf4c02f` is (a); `d8682ee` is Phases 2 and 3.
+**Working tree is clean.** `main` at **`7345ca2`** "Phase 4 (a2): invoice numbers on issue, and the
+first schema migration"; `bf4c02f` is (a); `d8682ee` is Phases 2 and 3.
 
 **Increment (a) is accepted.** The owner accepted it on 2026-08-26, approved D-048, and confirmed
 the `grossTotal` finding — the printed-summary double-count — as the reason the constraint existed.
