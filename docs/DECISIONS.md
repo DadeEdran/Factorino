@@ -2081,3 +2081,55 @@ empty cell reads as data that failed to load. The wording and the bidi rule live
 Latin prefix with digits (§9), and the Persian placeholder is not, because there is nothing to
 protect and the isolate marks would only be invisible characters in a string tests and screen
 readers have to handle.
+
+---
+
+## D-049 — The table rebuild refuses to run where the foreign-key pragma is ignored
+
+**Date:** 2026-08-26
+**Status:** ACCEPTED
+**Supersedes:** nothing. Extends D-048.
+
+**Decision.** `_migrateV1ToV2` calls `assertForeignKeysCanBeDisabled(db)` before
+`Migrator.alterTable`, and the migration aborts with a `StateError` naming the consequence if the
+check fails. The call site carries a comment that begins `DO NOT WRAP THIS FUNCTION, OR THE CALL
+BELOW, IN A TRANSACTION`, and four tests in `invoice_number_migration_test.dart` pin the guard, its
+premise, and the data loss it prevents.
+
+**Reason.** D-048 identified the defect but defended it only with a comment and one test out of six.
+That is not enough for this shape of bug. Wrapping the `alterTable` call in `db.transaction` reads
+as a safety improvement, is the change a careful reviewer would suggest, and silently deletes every
+`invoice_items` row and every `payments` row in the user's database — every line of every invoice
+and the whole payment history — while producing exactly the correct schema and leaving five of six
+tests green, because only the child rows die. A defect that survives review, survives the type
+system and survives most of its own test suite is one that ships.
+
+**How the guard works, and why it is not a heuristic.** It does not try to answer "am I inside a
+transaction". It performs the one operation `alterTable` depends on and reads the result back: issue
+`PRAGMA foreign_keys = OFF`, then ask what the pragma says. Outside a transaction it reads `0`;
+inside one SQLite ignores the write, reports no error, and it still reads `1`. That difference is
+the whole bug, observed directly rather than inferred, so the guard catches every route to the
+condition — an explicit `db.transaction`, a batch, or a future drift release that begins running
+`onUpgrade` inside a transaction — and not merely the one spelling a source scan could match. It
+costs two pragmas, it runs before anything destructive, and it restores the connection's prior
+state whether or not it passes.
+
+**Verified to bite, by doing it.** Wrapping the real migration in `db.transaction` now fails the
+data-survival test at the guard, with the message naming the cascade, instead of passing five of six
+tests with an emptied `invoice_items`. The wrapper was then removed.
+
+**Alternatives considered.**
+
+- *A `lib/`-scanning source guard*, in the style of the project's other nine. Rejected: it would
+  have to recognise "this call is lexically inside a transaction block" from Dart source with a
+  regex, which is fragile in both directions — it cannot see a transaction opened by a caller two
+  frames up, and it would misfire on an unrelated nearby `transaction(`. The runtime check is
+  strictly stronger and has no false positives.
+- *`sqlite3_get_autocommit()`*, the C API's direct answer. Rejected: not reachable through drift's
+  `QueryExecutor`, and it would answer a narrower question than the one that matters.
+- *Leaving the comment and the test as the only defence*, as D-048 did. Rejected for the reason
+  above: the comment is advisory and the test that catches it is outnumbered five to one.
+
+**Where it applies next.** Any future migration that rebuilds a table with children must call it.
+The function is named for what it checks rather than for this migration, and it is public so a test
+can call it from inside a transaction and watch it refuse.

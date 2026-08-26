@@ -11,13 +11,15 @@
 **Phase 1 — Foundation and Architecture · `COMPLETED`** (2026-08-24, seven increments, all accepted)
 **Phase 2 — Customers · `COMPLETED`** (2026-08-25)
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
-**Phase 4 — Invoice Creation · `IN_PROGRESS`** — increment (a) **accepted** 2026-08-26; increment
-(a2), the numbering migration, delivered the same day and **awaiting review**.
+**Phase 4 — Invoice Creation · `IN_PROGRESS`** — increment (a) **accepted** 2026-08-26; (a2), the
+numbering migration, is complete with its device proof passed; (a3), the table-rebuild guard,
+delivered the same day and **awaiting review**.
 
 | # | Increment | Status |
 |---|---|---|
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED`, **accepted** |
-| a2 | **Numbering on issue + `schemaVersion = 2`** (D-048) | `COMPLETED`, awaiting review — **device proof outstanding** |
+| a2 | **Numbering on issue + `schemaVersion = 2`** (D-048) | `COMPLETED` — device proof passed 2026-08-26 |
+| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED`, awaiting review |
 | b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
 | c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
@@ -31,13 +33,14 @@ those items are built, so both phases are closed.
 
 ## Where the project stands, in one paragraph
 
-**Phase 4 increment (a2) is delivered and awaiting review; nothing else is in progress.** Six screens
+**Phase 4 increment (a3) is delivered and awaiting review; nothing else is in progress.** Six screens
 work end to end on real data — Dashboard, Invoices, Customers, **Customer detail**, Products,
 Settings — inside a Persian, RTL, three-tier responsive shell, over an encrypted SQLite database.
 Customers and products can be created, searched, edited and soft-deleted; every form field carries
 the same length and character-class limits its column does. **There is still no UI to create an
-invoice** — (a) built the arithmetic spine and (a2) fixed the numbering underneath it, both without
-a screen, so (b, c, d) are what closes the gap. The database is now at **schema v2**.
+invoice** — (a) built the arithmetic spine, (a2) fixed the numbering underneath it and (a3) made its
+worst failure mode structural, all three without a screen, so (b, c, d) are what closes the gap. The
+database is now at **schema v2**.
 
 **Working tree is clean.** `main` at **`7345ca2`** "Phase 4 (a2): invoice numbers on issue, and the
 first schema migration"; `bf4c02f` is (a); `d8682ee` is Phases 2 and 3.
@@ -45,19 +48,24 @@ first schema migration"; `bf4c02f` is (a); `d8682ee` is Phases 2 and 3.
 **Increment (a) is accepted.** The owner accepted it on 2026-08-26, approved D-048, and confirmed
 the `grossTotal` finding — the printed-summary double-count — as the reason the constraint existed.
 
-**Increment (a2) has not been reviewed, and one of its four required steps is not done:** the
-migration proof has not run on the Redmi, because the device was not attached. See the next action.
+**(a2) is closed.** Its last outstanding step — the migration proof on the Redmi — passed on
+2026-08-26: `user_version 1 -> 2`, foreign keys on, 1 invoice, **2 invoice lines, 1 payment**, file
+encrypted. `flutter build apk --debug` passed in the same session.
+
+**(a3) has not been reviewed.** It is the owner's response to the cascade finding in (a2): the
+defect is now defended structurally rather than only by a comment and one test out of six. See
+D-049.
 
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (a2)
-flutter test:               PASS   (600/600, was 584)                         as of (a2)
+flutter analyze:            PASS   (No issues found)                          as of (a3)
+flutter test:               PASS   (604/604, was 600)                         as of (a3)
 Windows build:              PASS   flutter run -d windows --debug             (a2)
 Windows run:                PASS   the app opened the REAL dev database and migrated it v1 -> v2
 D-048 proof - Windows:      PASS   integration_test/invoice_number_migration_proof_test.dart
-D-048 proof - Android:      NOT_RUN  the Redmi was not attached. THE ONE OUTSTANDING STEP.
-Android build:              NOT_RETESTED since (a2) - no device attached
+D-048 proof - Android:      PASS   on the Redmi Note 8 Pro, Android 11 (2026-08-26). CLOSED.
+Android build:              PASS   flutter build apk --debug                  (a3)
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
@@ -69,7 +77,40 @@ file that has been accumulating rows since Phase 1 went `user_version 1 -> 2` an
 numbers intact and foreign keys still on. A pre-migration copy was taken first and is in this
 session's scratchpad as `factorino.db.v1backup`.
 
-(a2) added no UI and no dependency. `flutter build apk` has not been re-run since it.
+Neither (a2) nor (a3) added UI or a dependency.
+
+## What Phase 4 increment (a3) delivered — the cascade defect, made structural
+
+**No UI, no schema change.** One guard, one comment, four tests. It exists because of the finding in
+(a2): wrapping `alterTable` in a transaction destroys every invoice line and every payment in the
+database, and five of the six tests over that migration stay green, because only the children die.
+A comment and a minority of the test suite are not enough for a defect that shape (D-049).
+
+- **`assertForeignKeysCanBeDisabled(db)`** runs before `alterTable` and aborts the migration if the
+  connection cannot actually turn foreign keys off. **It is not a heuristic for "am I in a
+  transaction".** It performs the exact operation `alterTable` depends on and reads the result back:
+  outside a transaction the pragma takes effect and reads `0`; inside one SQLite ignores the write,
+  raises nothing, and it still reads `1`. That difference *is* the bug, observed rather than
+  inferred — so it catches an explicit `db.transaction`, a batch, and a future drift that starts
+  running `onUpgrade` inside a transaction, none of which a source scan could see.
+- **Verified to bite.** Wrapping the real migration in `db.transaction` now fails the data-survival
+  test at the guard with a message naming the cascade, instead of passing five tests of six with an
+  emptied `invoice_items`. The wrapper was removed afterwards.
+- **The comment is at the call site, not only in `DECISIONS.md`**, because the person who would make
+  that change is reading that line. It opens `DO NOT WRAP THIS FUNCTION, OR THE CALL BELOW, IN A
+  TRANSACTION` and spells out the consequence in rows, not in mechanism.
+- **Four tests** in `invoice_number_migration_test.dart`: the guard passes on a real connection and
+  restores it unchanged; it throws inside a transaction; the **premise** is pinned (the pragma is
+  silently ignored inside a transaction — if a future SQLite changes that, this is where the news
+  arrives); and the **data loss itself is performed and measured**, a `DROP TABLE invoices` inside a
+  transaction emptying `invoice_items` and `payments` with no error raised.
+- **A source-scanning guard was considered and rejected**, though it would have matched the project's
+  other nine. It would have to recognise "lexically inside a transaction block" from Dart source with
+  a regex — blind to a transaction opened by a caller, and prone to misfire on an unrelated nearby
+  `transaction(`. The runtime check is strictly stronger with no false positives. Reasoning in D-049.
+- **It is named for what it checks, not for this migration, and it is public.** Every future
+  migration that rebuilds a table with children must call it; public is what lets a test call it
+  from inside a transaction and watch it refuse.
 
 ## What Phase 4 increment (a2) delivered — the first migration
 
@@ -93,8 +134,8 @@ session's scratchpad as `factorino.db.v1backup`.
   real encrypted file with foreign keys on. `SchemaVerifier.testWithDataIntegrity` is deliberately
   not used — it disables foreign keys, which is the exact condition under which the bug hides.
 - **A device proof exists and is repeatable**, on D-020's precedent:
-  `integration_test/invoice_number_migration_proof_test.dart`. Passes on Windows; **not yet run on
-  the Redmi**.
+  `integration_test/invoice_number_migration_proof_test.dart`. **Passes on Windows and on the
+  Redmi** (2026-08-26).
 - **Ordering is now total**: `issueDate DESC, numberSequence DESC NULLS FIRST, createdAt DESC,
   id DESC`. A draft sorts above the invoices of its own date; the last two keys exist because
   `created_at` is milliseconds and two drafts can be written inside one.
@@ -254,7 +295,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. |
 | 8 | `nowProvider` does not tick | Deliberate (D-041). A Jalali month boundary or a due date crossing midnight while the app sits open does not update until relaunch. |
 | 9 | The Windows debug exe shows no window when launched **directly** | Under `flutter run -d windows` it is fine. Worth a look in Phase 12. |
-| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install | `adb install -r` once by hand. Developer options → Install via USB. |
+| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
 | 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last**. |
 | 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
 | 13 | Release builds signed with debug keys | Phase 15. |
@@ -412,33 +453,22 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 4 increment (a2)** — numbering on issue and the project's first schema migration (D-048).
-600 tests pass, analyzer clean. The migration's cascade guard was verified to bite before being
-trusted, and the real Windows dev database was migrated with all 12 invoices, 12 lines and 4
-payments intact.
+**Phase 4 increment (a3)** — the table-rebuild guard (D-049), plus (a2)'s outstanding device proof.
+604 tests pass, analyzer clean, `flutter build apk --debug` passes. The migration proof ran on the
+Redmi and passed. The guard was verified to bite by wrapping the real migration in a transaction and
+watching it refuse where it used to destroy data.
 
 ## Next action
 
-**Run the migration proof on the Redmi, then report (a2) and wait for a go-ahead on (b).**
-
-```sh
-flutter test integration_test/invoice_number_migration_proof_test.dart -d <device-id>
-```
-
-The device was not attached when (a2) was built, so this is the one required step that did not
-happen. Everything else it needs is in place: the test is written, it passes on Windows, and it
-seeds its own v1 database under a probe filename so it never touches the real application database.
-Note known issue 10 — MIUI blocks the install until Developer options → **Install via USB** is on.
-
-Worth doing at the same time, since the device will be attached: `flutter build apk --debug`, which
-has not been re-run since (a2).
+**Build Phase 4 increment (b), line item entry.** The owner directed it directly after the device
+run passed, which it has. The seven constraints below are the whole brief.
 
 **Still open for Phase 5, deliberately (owner, 2026-08-26):** D-047's `grossTotal` is computed but
 not stored, and per-line gross is not recoverable from what `invoice_items` keeps. **Do not store it
 now** — decide it in Phase 5 with the invoice detail screen and the PDF renderer both in view, since
 they are the two consumers and storing the wrong shape costs another migration.
 
-**Increment (b) — line item entry** is next once the device proof passes and (a2) is reviewed:
+**Increment (b) — line item entry**, in detail:
 
 1. A product picker that **copies** title, unit and price in as snapshots (D-004), plus a free-text
    line for anything not in the catalogue.

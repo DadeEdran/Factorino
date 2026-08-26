@@ -7,6 +7,7 @@ import 'package:factorino/data/database/app_database.dart';
 import 'package:factorino/data/database/database_bootstrap.dart';
 import 'package:factorino/data/database/encrypted_database.dart';
 import 'package:factorino/data/models/invoice_status.dart';
+import 'package:factorino/data/models/payment_method.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import 'generated/schema.dart';
@@ -283,6 +284,152 @@ void main() {
 
       expect(await _userVersion(db), 2);
     });
+  });
+
+  group('the guard that refuses an unsafe table rebuild (D-049)', () {
+    late Directory directory;
+    late AppDatabase db;
+
+    setUp(() async {
+      directory = Directory.systemTemp.createTempSync('factorino_guard');
+      db = await openAppDatabase(
+        keyStore: _FixedKeyStore(),
+        file: File('${directory.path}${Platform.pathSeparator}test.db'),
+      );
+    });
+
+    tearDown(() async {
+      await db.close();
+      try {
+        directory.deleteSync(recursive: true);
+      } on FileSystemException {
+        // Windows holds the handle briefly after close.
+      }
+    });
+
+    test(
+      'the premise: inside a transaction the pragma is silently ignored',
+      () async {
+        // The guard is only worth having because of this, so it is pinned
+        // rather than assumed. If a future SQLite or drift makes the pragma
+        // work inside a transaction, this test is where that news arrives.
+        // soft-delete-exempt: connection pragmas, not a read of user rows.
+        Future<Object?> fk() async =>
+            (await db.customSelect('pragma foreign_keys').getSingle())
+.data
+.values
+.first;
+
+        await db.customStatement('pragma foreign_keys = off');
+        expect(await fk(), 0, reason: 'outside a transaction it takes effect');
+        await db.customStatement('pragma foreign_keys = on');
+
+        await db.transaction(() async {
+          await db.customStatement('pragma foreign_keys = off');
+          expect(
+            await fk(),
+            1,
+            reason: 'inside a transaction SQLite ignores it and says nothing',
+          );
+        });
+      },
+    );
+
+    test('it passes on the connection a migration really runs on', () async {
+      await assertForeignKeysCanBeDisabled(db);
+
+      // And it leaves the connection exactly as it found it. A probe that
+      // turned integrity off and forgot to restore it would be worse than
+      // the bug it looks for.
+      // soft-delete-exempt: a connection pragma, not a read of user rows.
+      final fk = await db.customSelect('pragma foreign_keys').getSingle();
+      expect(fk.data.values.first, 1);
+    });
+
+    test(
+      'it refuses when the rebuild would run inside a transaction',
+      () async {
+        await expectLater(
+          db.transaction(() => assertForeignKeysCanBeDisabled(db)),
+          throwsA(
+            isA<StateError>().having(
+              (StateError e) => e.message,
+              'message',
+              contains('inside a transaction'),
+            ),
+          ),
+        );
+      },
+    );
+
+    test(
+      'what it prevents, measured: the cascade that empties the children',
+      () async {
+        // This is the defect in full, performed. It is the reason the guard
+        // exists and the reason the call site carries a warning: the rebuild's
+        // step 6 is `DROP TABLE invoices`, and inside a transaction the
+        // foreign-key pragma cannot save it.
+        await db.batch((Batch batch) {
+          batch.insert(
+            db.customers,
+            CustomersCompanion.insert(
+              id: const Value<String>('c1'),
+              fullName: 'مشتری',
+            ),
+          );
+          batch.insert(
+            db.invoices,
+            InvoicesCompanion.insert(
+              id: const Value<String>('i1'),
+              customerId: 'c1',
+              issueDate: _t,
+              status: InvoiceStatus.unpaid,
+            ),
+          );
+          batch.insert(
+            db.invoiceItems,
+            InvoiceItemsCompanion.insert(
+              invoiceId: 'i1',
+              titleSnapshot: 'خط اول',
+              unitSnapshot: 'عدد',
+              unitPriceRial: 1000000,
+              quantityMilli: 1000,
+              resolvedTaxRateBp: 0,
+              lineNetRial: const Value<int>(1000000),
+              lineTotalRial: const Value<int>(1000000),
+            ),
+          );
+          batch.insert(
+            db.payments,
+            PaymentsCompanion.insert(
+              invoiceId: 'i1',
+              amountRial: 500000,
+              paidAt: _t,
+              method: PaymentMethod.cash,
+            ),
+          );
+        });
+
+        expect(await _count(db, 'invoice_items'), 1);
+        expect(await _count(db, 'payments'), 1);
+
+        await db.transaction(() async {
+          // Exactly what `alterTable` does first -- and inside a transaction it
+          // does nothing at all.
+          await db.customStatement('pragma foreign_keys = off');
+          await db.customStatement('drop table invoices');
+        });
+
+        // The parent is gone, and so is every child, with no error raised at
+        // any point. A schema comparison would still have passed.
+        expect(
+          await _count(db, 'invoice_items'),
+          0,
+          reason: 'ON DELETE CASCADE took the lines with the parent table',
+        );
+        expect(await _count(db, 'payments'), 0);
+      },
+    );
   });
 
   group('what nullable numbers make possible (D-048)', () {

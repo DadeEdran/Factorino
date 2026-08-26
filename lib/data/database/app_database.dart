@@ -92,6 +92,55 @@ class AppDatabase extends _$AppDatabase {
   );
 }
 
+/// Refuses to run a 12-step table rebuild on a connection that cannot actually
+/// turn foreign keys off.
+///
+/// `Migrator.alterTable` drops and recreates the table, and it defends the
+/// `DROP` against `ON DELETE CASCADE` by issuing `PRAGMA foreign_keys = OFF`
+/// first. That pragma is a **no-op inside a transaction**, and SQLite reports
+/// no error when it ignores it — so a rebuild that runs inside one cascades
+/// through every child row and still produces exactly the right schema.
+///
+/// This is not a heuristic for "am I in a transaction". It observes the single
+/// property the rebuild depends on, by doing what `alterTable` is about to do
+/// and reading the result back: ask for foreign keys off, and see whether they
+/// went off. If they did not, the pragma was ignored — because of a
+/// transaction, a batch, or some future change in how drift invokes
+/// `onUpgrade` — and the rebuild is not safe to run here.
+///
+/// It costs two pragmas and it runs before anything destructive, and it is
+/// public so `invoice_number_migration_test.dart` can call it from inside a
+/// `db.transaction` and watch it refuse. Call it from every future migration
+/// that rebuilds a table with children.
+Future<void> assertForeignKeysCanBeDisabled(AppDatabase db) async {
+  Future<int?> readForeignKeys() async {
+    // soft-delete-exempt: a connection pragma, not a read of user rows.
+    final row = await db.customSelect('pragma foreign_keys').getSingle();
+    return row.data.values.first as int?;
+  }
+
+  final wasEnabled = await readForeignKeys();
+
+  await db.customStatement('pragma foreign_keys = off');
+  final wentOff = await readForeignKeys() == 0;
+  // Restore whatever the connection had, whether or not the probe succeeded.
+  if (wasEnabled == 1) {
+    await db.customStatement('pragma foreign_keys = on');
+  }
+
+  if (!wentOff) {
+    throw StateError(
+      'refusing to rebuild a table on a connection where '
+      '`PRAGMA foreign_keys = OFF` is ignored — almost certainly because the '
+      'migration is running inside a transaction. `Migrator.alterTable` would '
+      'drop the parent table with foreign keys still on, and ON DELETE '
+      'CASCADE would silently delete every invoice line and every payment in '
+      'the database. Run the migration outside any transaction. See D-048 and '
+      'D-049.',
+    );
+  }
+}
+
 /// v1 -> v2 (D-048): the three invoice-number columns become nullable, so a
 /// draft can exist without consuming a number.
 ///
@@ -112,18 +161,38 @@ class AppDatabase extends _$AppDatabase {
 /// transaction, which is why the ordering matters and why this migration must
 /// not be wrapped in one). Drift invokes `onUpgrade` outside a transaction, so
 /// the guard works — but it is a property of two packages agreeing, not of
-/// this file, so `invoice_number_migration_test.dart` migrates a database
-/// holding real items and payments and counts them afterwards.
+/// this file, and nothing about it is visible at the call site.
+///
+/// So it is defended three ways (D-049): [assertForeignKeysCanBeDisabled]
+/// refuses to run the rebuild at all on a connection where the pragma is
+/// ignored, the call site says so in as many words, and
+/// `invoice_number_migration_test.dart` migrates a database holding real items
+/// and payments and counts them afterwards.
 ///
 /// [otheralter]: https://www.sqlite.org/lang_altertable.html#otheralter
 Future<void> _migrateV1ToV2(Migrator m) async {
   final db = m.database as AppDatabase;
 
-  // Deliberately NOT wrapped in a transaction, and that is load-bearing:
-  // `alterTable` must issue `PRAGMA foreign_keys = OFF` outside one, or SQLite
-  // ignores it and step 6's `DROP TABLE invoices` cascades. Verified by doing
-  // it -- wrapping this line in `db.transaction` leaves `invoice_items` at
-  // zero rows, while the schema-comparison test still passes.
+  // DO NOT WRAP THIS FUNCTION, OR THE CALL BELOW, IN A TRANSACTION.
+  //
+  // It reads as a safety improvement. It destroys data. `alterTable` protects
+  // step 6's `DROP TABLE invoices` from `ON DELETE CASCADE` by issuing
+  // `PRAGMA foreign_keys = OFF` *outside* its own transaction; SQLite silently
+  // ignores that pragma inside a transaction, so wrapping this deletes **every
+  // `invoice_items` row and every `payments` row in the user's database** --
+  // every line of every invoice and the entire payment history -- with no
+  // error, and leaves a schema that compares as correct.
+  //
+  // Measured, not reasoned: wrapping this line in `db.transaction` leaves
+  // `invoice_items` at zero rows while the schema-comparison test still
+  // passes. Five of the six tests over this migration stay green, because only
+  // the child rows die.
+  //
+  // The guard above turns that into a loud failure, and
+  // `invoice_number_migration_test.dart` counts the surviving lines and
+  // payments. Neither is decoration; do not remove either to make a wrapper
+  // work.
+  await assertForeignKeysCanBeDisabled(db);
   await m.alterTable(TableMigration(db.invoices));
 
   // Step 9 of the procedure, which drift's `alterTable` documents that it does

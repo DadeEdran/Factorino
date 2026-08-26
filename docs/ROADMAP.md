@@ -729,14 +729,15 @@ already enforced. What this phase adds is the length and character-class boundar
 
 ## Phase 4 — Invoice Creation
 
-**Status:** `IN_PROGRESS` — increment (a) delivered 2026-08-25, awaiting review. The largest and most
-consequential phase in the project, split into four increments at the owner's instruction, each
-reported and stopped for review rather than landing whole.
+**Status:** `IN_PROGRESS` — (a) accepted, (a2) complete with its device proof passed, (a3) awaiting
+review. The largest and most consequential phase in the project, split into four increments at the
+owner's instruction, each reported and stopped for review rather than landing whole.
 
 | # | Increment | Status |
 |---|---|---|
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED` 2026-08-25, **accepted** 2026-08-26 |
-| a2 | **Numbering on issue, and the project's first migration** (D-048) | `COMPLETED` 2026-08-26 — device proof outstanding |
+| a2 | **Numbering on issue, and the project's first migration** (D-048) | `COMPLETED` 2026-08-26 — device proof **passed** |
+| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26, awaiting review |
 | b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `NOT_STARTED` |
 | c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
@@ -858,12 +859,34 @@ opened a form and changed their mind had silently consumed an invoice number.
 
 Fixed in (a2), and now a regression test: `an abandoned draft does not consume a number`.
 
+**Increment (a3) — completed 2026-08-26 · the cascade defect made structural**
+
+The owner's response to (a2)'s foreign-key finding: a comment and one test out of six are not an
+adequate defence for a change that reads as a safety improvement and silently empties every child
+table. Full reasoning in **D-049**.
+
+- `assertForeignKeysCanBeDisabled(db)` runs before `alterTable` and aborts the migration if the
+  connection cannot really turn foreign keys off. It observes the property rather than guessing at
+  the cause: ask for the pragma off, read it back, and see whether SQLite honoured it. Inside a
+  transaction it does not, and says nothing — which is the entire bug.
+- **Verified to bite.** Wrapping the real migration in `db.transaction` now fails at the guard with
+  a message naming the cascade, where it used to pass five of six tests with an emptied
+  `invoice_items`.
+- The warning now lives **at the call site**, opening `DO NOT WRAP THIS FUNCTION, OR THE CALL BELOW,
+  IN A TRANSACTION`, with the consequence stated in rows lost rather than in SQLite mechanics.
+- Four new tests, including one that **performs the data loss and measures it**, and one that pins
+  the SQLite premise the guard depends on. **604 pass in total** (was 600).
+- A `lib/`-scanning guard was considered and rejected as fragile in both directions; the reasoning
+  is recorded rather than the rejection alone (D-049).
+
+**Security note (increment a3).** No new data, input, permission, dependency or platform surface.
+It is purely an integrity control, and it converts the phase's worst silent failure — total loss of
+every invoice line and every payment, behind intact-looking invoices — from a documented hazard into
+one the code refuses to perform.
+
 **Remaining**
 
 - (b) line item entry, (c) invoice-level fields, (d) the assembled screen.
-- The (a2) migration proof still has to run on the **Redmi**. The device was not attached when the
-  increment was built; the test is written and passes on Windows, so it is one command:
-  `flutter test integration_test/invoice_number_migration_proof_test.dart -d <device>`.
 
 **Security note (increment a).** No new data is stored, no new input is accepted, and no screen
 exists yet — this increment is a value type, a controller and their tests. Three things are worth
