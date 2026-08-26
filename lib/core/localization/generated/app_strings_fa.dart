@@ -439,6 +439,103 @@ class AppStringsFa extends AppStrings {
   String get invoiceWarningsTitle => 'این مقادیر را بررسی کنید';
 
   @override
+  String get datePickerTitle => 'انتخاب تاریخ';
+
+  @override
+  String get datePickerToday => 'امروز';
+
+  @override
+  String get datePickerPreviousMonth => 'ماه قبل';
+
+  @override
+  String get datePickerNextMonth => 'ماه بعد';
+
+  @override
+  String get weekdayShanbeShort => 'ش';
+
+  @override
+  String get weekdayYekshanbeShort => 'ی';
+
+  @override
+  String get weekdayDoshanbeShort => 'د';
+
+  @override
+  String get weekdaySeshanbeShort => 'س';
+
+  @override
+  String get weekdayChaharshanbeShort => 'چ';
+
+  @override
+  String get weekdayPanjshanbeShort => 'پ';
+
+  @override
+  String get weekdayJomeShort => 'ج';
+
+  @override
+  String get invoiceDetailsTitle => 'مشخصات فاکتور';
+
+  @override
+  String get invoiceFieldCustomer => 'مشتری';
+
+  @override
+  String get invoiceFieldCustomerEmpty => 'انتخاب مشتری';
+
+  @override
+  String get invoiceFieldIssueDate => 'تاریخ صدور';
+
+  @override
+  String get invoiceFieldDueDate => 'سررسید';
+
+  @override
+  String get invoiceFieldDueDateCleared => 'بدون سررسید';
+
+  @override
+  String get invoiceFieldDiscount => 'تخفیف کل فاکتور';
+
+  @override
+  String get invoiceFieldTax => 'مالیات فاکتور';
+
+  @override
+  String get invoiceFieldNotes => 'یادداشت';
+
+  @override
+  String get invoiceCustomerPickerTitle => 'انتخاب مشتری';
+
+  @override
+  String get invoiceCustomerPickerSearchHint => 'جست‌وجو در مشتریان';
+
+  @override
+  String get invoiceCustomerPickerEmptyTitle => 'مشتری‌ای یافت نشد';
+
+  @override
+  String get invoiceCustomerPickerEmptyBody =>
+      'برای صدور فاکتور ابتدا باید مشتری را در بخش مشتریان ثبت کنید.';
+
+  @override
+  String get invoiceActionSaveDraft => 'ذخیره پیش‌نویس';
+
+  @override
+  String get invoiceActionIssue => 'صدور فاکتور';
+
+  @override
+  String get invoiceSaveDraftSuccess => 'پیش‌نویس ذخیره شد.';
+
+  @override
+  String invoiceIssueSuccess(String number) {
+    return 'فاکتور $number صادر شد.';
+  }
+
+  @override
+  String get invoiceSaveFailed =>
+      'ذخیره فاکتور ممکن نشد. لطفاً دوباره تلاش کنید.';
+
+  @override
+  String get invoiceIncompleteCustomer => 'برای ذخیره، مشتری را انتخاب کنید.';
+
+  @override
+  String get invoiceIncompleteLines => 'برای ذخیره، دست‌کم یک سطر اضافه کنید.';
+
+  @override
   String get invoiceLinesTitle => 'سطرهای فاکتور';
 
   @override

@@ -738,8 +738,9 @@ owner's instruction, each reported and stopped for review rather than landing wh
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED` 2026-08-25, **accepted** 2026-08-26 |
 | a2 | **Numbering on issue, and the project's first migration** (D-048) | `COMPLETED` 2026-08-26 — device proof **passed** |
 | a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26, awaiting review |
-| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26, awaiting review |
-| c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26 |
+| c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED` 2026-08-26, awaiting review |
+| c2 | **Customer snapshot on issue** (D-051) — `schemaVersion = 3` | `NOT_STARTED`, owner to schedule |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
 Increment (a2) was not in the owner's original four-way split. It was pulled out of (c) and placed
@@ -913,10 +914,50 @@ or platform surface — nothing here writes, and the invoice form has no route y
   parses without floating point. The integrity property this phase is about is unchanged: the
   arithmetic path stays narrowed, and the build-failing scan still permits no widget to calculate.
 
+**Increment (c) — completed 2026-08-26 · the invoice-level fields, and the save**
+
+The first write of a whole invoice from the editor. Still no route — (d) assembles the screen.
+Decisions and the two gaps in **D-051**.
+
+- **The preview/write pin was extended past the lines**: customer, both dates, the invoice tax rate,
+  the entered discount percentage and notes now round-trip alongside every figure. 14 tests, was 8.
+- **`save()` writes a draft (no number, D-048); `issue()` allocates one**, each in the repository's
+  own transaction. A failure between them leaves a recoverable numberless draft rather than a number
+  spent on nothing.
+- **Only drafts are editable, proven at the repository.** A test calls it directly — as a deep link
+  or a future sync path would — and asserts `updateDraft` and `softDeleteDraft` refuse in every
+  non-draft status, each reached by its own route, **and that the refusal left nothing behind**.
+  A second test refuses a double-issue, which would spend two numbers on one document.
+- **Customer selection reuses `watchSearch`**, the normalization-insensitive path (D-025, D-029),
+  asserted by checking the raw term reaches the repository unfolded by the widget.
+- **A Jalali date picker, built on `shamsi_date` — no new dependency.** The week starts on Saturday;
+  a test pins that day 1 lands under its `Jalali.weekDay` column and not where `DateTime.weekday`
+  would put it. Both dates leave as `startOfJalaliDayUtc` instants (D-005), and the due-date picker
+  refuses days before the issue date by making them unselectable.
+- **A derived due date follows the issue date; a chosen one does not**, told apart by
+  `dueDateFollowsIssueDate`.
+- 31 new tests; **650 pass** (was 619).
+
+**Security note (increment c).** The first **write** path from the invoice editor, and the first new
+input classes since Phase 2. What moves:
+
+- **Invoice notes** are new free text, bounded at the form by `InvoiceLimits.notes` matching the
+  column, so an over-long value is refused at the field rather than by drift (D-043).
+- **Repository-enforced editability is now tested as a boundary control, not a UI affordance.** That
+  is the property that matters if a deep link, a second screen or a future sync path ever reaches
+  the repository without passing a greyed-out button.
+- **No raw failure reaches the user**: the controller turns a write exception into a null and a
+  scrubbed log line through the wrapper (§7), and the screen renders Persian copy.
+- No new dependency, permission or platform surface. The date picker was built from a dependency
+  already present rather than adding a calendar package.
+
 **Remaining**
 
-- (c) invoice-level fields **and the `save`**, (d) the assembled screen.
-- (b)'s widgets have not been exercised on a device, because no route reaches them until (d).
+- (d) the assembled screen and the `/invoices/new` route.
+- **(c2)** the customer snapshot on issue — `schemaVersion = 3`, its own reviewable step (D-051).
+- **The payment term is a constant, not a setting** — a `settings` column, deferred with (c2).
+- **Nothing from (b) or (c) has been exercised on a device**, because no route reaches it until (d).
+  Two numeric-heavy sheets, a calendar grid and two picker sheets. (d) must run on the Redmi.
 
 **Security note (increment a).** No new data is stored, no new input is accepted, and no screen
 exists yet — this increment is a value type, a controller and their tests. Three things are worth

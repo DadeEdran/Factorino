@@ -397,6 +397,93 @@
   "@invoiceWarningsTitle": {
     "description": "Heading over the clamped-input warnings. Deliberately not an error: the totals are correct and the invoice is usable; what is questionable is the input."
   },
+  "datePickerTitle": "انتخاب تاریخ",
+  "@datePickerTitle": {},
+  "datePickerToday": "امروز",
+  "@datePickerToday": {
+    "description": "Jumps the calendar to the current Jalali day. Today is the date a user wants most often and the hardest one to navigate back to after browsing."
+  },
+  "datePickerPreviousMonth": "ماه قبل",
+  "@datePickerPreviousMonth": {},
+  "datePickerNextMonth": "ماه بعد",
+  "@datePickerNextMonth": {},
+  "weekdayShanbeShort": "ش",
+  "@weekdayShanbeShort": {
+    "description": "Single-letter weekday heading for Saturday, which is the FIRST day of the Iranian week -- a calendar grid starting on Sunday or Monday is wrong here, not merely unfamiliar."
+  },
+  "weekdayYekshanbeShort": "ی",
+  "@weekdayYekshanbeShort": {},
+  "weekdayDoshanbeShort": "د",
+  "@weekdayDoshanbeShort": {},
+  "weekdaySeshanbeShort": "س",
+  "@weekdaySeshanbeShort": {},
+  "weekdayChaharshanbeShort": "چ",
+  "@weekdayChaharshanbeShort": {},
+  "weekdayPanjshanbeShort": "پ",
+  "@weekdayPanjshanbeShort": {},
+  "weekdayJomeShort": "ج",
+  "@weekdayJomeShort": {
+    "description": "Friday, the Iranian weekend day. Rendered in the accent colour in the calendar grid the way a weekend is elsewhere."
+  },
+  "invoiceDetailsTitle": "مشخصات فاکتور",
+  "@invoiceDetailsTitle": {
+    "description": "Heading over the invoice-level fields -- customer, dates, discount, tax, notes -- as distinct from the line items."
+  },
+  "invoiceFieldCustomer": "مشتری",
+  "@invoiceFieldCustomer": {},
+  "invoiceFieldCustomerEmpty": "انتخاب مشتری",
+  "@invoiceFieldCustomerEmpty": {
+    "description": "The customer field before one is chosen. An invoice cannot be written without a customer -- customer_id is a non-null foreign key -- so this is an instruction, not a placeholder."
+  },
+  "invoiceFieldIssueDate": "تاریخ صدور",
+  "@invoiceFieldIssueDate": {},
+  "invoiceFieldDueDate": "سررسید",
+  "@invoiceFieldDueDate": {},
+  "invoiceFieldDueDateCleared": "بدون سررسید",
+  "@invoiceFieldDueDateCleared": {},
+  "invoiceFieldDiscount": "تخفیف کل فاکتور",
+  "@invoiceFieldDiscount": {
+    "description": "The invoice-level discount, allocated across the lines by the engine before tax (section 4 step 4). Named 'whole invoice' to distinguish it from the per-line discount."
+  },
+  "invoiceFieldTax": "مالیات فاکتور",
+  "@invoiceFieldTax": {},
+  "invoiceFieldNotes": "یادداشت",
+  "@invoiceFieldNotes": {},
+  "invoiceCustomerPickerTitle": "انتخاب مشتری",
+  "@invoiceCustomerPickerTitle": {},
+  "invoiceCustomerPickerSearchHint": "جست‌وجو در مشتریان",
+  "@invoiceCustomerPickerSearchHint": {
+    "description": "The search behind this is the normalization-insensitive one (D-025, D-029): a customer saved as علي is found by typing علی."
+  },
+  "invoiceCustomerPickerEmptyTitle": "مشتری‌ای یافت نشد",
+  "@invoiceCustomerPickerEmptyTitle": {},
+  "invoiceCustomerPickerEmptyBody": "برای صدور فاکتور ابتدا باید مشتری را در بخش مشتریان ثبت کنید.",
+  "@invoiceCustomerPickerEmptyBody": {
+    "description": "Unlike the product picker, there is no free-text fallback: customer_id is a non-null foreign key, so an invoice genuinely cannot proceed without a customer record."
+  },
+  "invoiceActionSaveDraft": "ذخیره پیش‌نویس",
+  "@invoiceActionSaveDraft": {
+    "description": "Saves without allocating a number (D-048). Named 'draft' so the user knows this is not yet a document."
+  },
+  "invoiceActionIssue": "صدور فاکتور",
+  "@invoiceActionIssue": {
+    "description": "Saves and issues: this is the moment a number is allocated and the invoice becomes a document."
+  },
+  "invoiceSaveDraftSuccess": "پیش‌نویس ذخیره شد.",
+  "@invoiceSaveDraftSuccess": {},
+  "invoiceIssueSuccess": "فاکتور {number} صادر شد.",
+  "@invoiceIssueSuccess": {
+    "description": "Confirms the issue and names the allocated number, because the number is the thing the user needs to know and cannot predict.",
+    "placeholders": { "number": { "type": "String" } }
+  },
+  "invoiceSaveFailed": "ذخیره فاکتور ممکن نشد. لطفاً دوباره تلاش کنید.",
+  "@invoiceSaveFailed": {
+    "description": "A write failure, in friendly Persian. A raw exception, stack trace or SQL statement must never reach the user (section 7)."
+  },
+  "invoiceIncompleteCustomer": "برای ذخیره، مشتری را انتخاب کنید.",
+  "@invoiceIncompleteCustomer": {},
+  "invoiceIncompleteLines": "برای ذخیره، دست‌کم یک سطر اضافه کنید.",
+  "@invoiceIncompleteLines": {},
   "invoiceLinesTitle": "سطرهای فاکتور",
   "@invoiceLinesTitle": {
     "description": "Heading over the invoice's line items in the create/edit form."

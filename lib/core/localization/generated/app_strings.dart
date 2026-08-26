@@ -902,6 +902,192 @@ abstract class AppStrings {
   /// **'این مقادیر را بررسی کنید'**
   String get invoiceWarningsTitle;
 
+  /// No description provided for @datePickerTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتخاب تاریخ'**
+  String get datePickerTitle;
+
+  /// Jumps the calendar to the current Jalali day. Today is the date a user wants most often and the hardest one to navigate back to after browsing.
+  ///
+  /// In fa, this message translates to:
+  /// **'امروز'**
+  String get datePickerToday;
+
+  /// No description provided for @datePickerPreviousMonth.
+  ///
+  /// In fa, this message translates to:
+  /// **'ماه قبل'**
+  String get datePickerPreviousMonth;
+
+  /// No description provided for @datePickerNextMonth.
+  ///
+  /// In fa, this message translates to:
+  /// **'ماه بعد'**
+  String get datePickerNextMonth;
+
+  /// Single-letter weekday heading for Saturday, which is the FIRST day of the Iranian week -- a calendar grid starting on Sunday or Monday is wrong here, not merely unfamiliar.
+  ///
+  /// In fa, this message translates to:
+  /// **'ش'**
+  String get weekdayShanbeShort;
+
+  /// No description provided for @weekdayYekshanbeShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'ی'**
+  String get weekdayYekshanbeShort;
+
+  /// No description provided for @weekdayDoshanbeShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'د'**
+  String get weekdayDoshanbeShort;
+
+  /// No description provided for @weekdaySeshanbeShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'س'**
+  String get weekdaySeshanbeShort;
+
+  /// No description provided for @weekdayChaharshanbeShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'چ'**
+  String get weekdayChaharshanbeShort;
+
+  /// No description provided for @weekdayPanjshanbeShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'پ'**
+  String get weekdayPanjshanbeShort;
+
+  /// Friday, the Iranian weekend day. Rendered in the accent colour in the calendar grid the way a weekend is elsewhere.
+  ///
+  /// In fa, this message translates to:
+  /// **'ج'**
+  String get weekdayJomeShort;
+
+  /// Heading over the invoice-level fields -- customer, dates, discount, tax, notes -- as distinct from the line items.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشخصات فاکتور'**
+  String get invoiceDetailsTitle;
+
+  /// No description provided for @invoiceFieldCustomer.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری'**
+  String get invoiceFieldCustomer;
+
+  /// The customer field before one is chosen. An invoice cannot be written without a customer -- customer_id is a non-null foreign key -- so this is an instruction, not a placeholder.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتخاب مشتری'**
+  String get invoiceFieldCustomerEmpty;
+
+  /// No description provided for @invoiceFieldIssueDate.
+  ///
+  /// In fa, this message translates to:
+  /// **'تاریخ صدور'**
+  String get invoiceFieldIssueDate;
+
+  /// No description provided for @invoiceFieldDueDate.
+  ///
+  /// In fa, this message translates to:
+  /// **'سررسید'**
+  String get invoiceFieldDueDate;
+
+  /// No description provided for @invoiceFieldDueDateCleared.
+  ///
+  /// In fa, this message translates to:
+  /// **'بدون سررسید'**
+  String get invoiceFieldDueDateCleared;
+
+  /// The invoice-level discount, allocated across the lines by the engine before tax (section 4 step 4). Named 'whole invoice' to distinguish it from the per-line discount.
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف کل فاکتور'**
+  String get invoiceFieldDiscount;
+
+  /// No description provided for @invoiceFieldTax.
+  ///
+  /// In fa, this message translates to:
+  /// **'مالیات فاکتور'**
+  String get invoiceFieldTax;
+
+  /// No description provided for @invoiceFieldNotes.
+  ///
+  /// In fa, this message translates to:
+  /// **'یادداشت'**
+  String get invoiceFieldNotes;
+
+  /// No description provided for @invoiceCustomerPickerTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتخاب مشتری'**
+  String get invoiceCustomerPickerTitle;
+
+  /// The search behind this is the normalization-insensitive one (D-025, D-029): a customer saved as علي is found by typing علی.
+  ///
+  /// In fa, this message translates to:
+  /// **'جست‌وجو در مشتریان'**
+  String get invoiceCustomerPickerSearchHint;
+
+  /// No description provided for @invoiceCustomerPickerEmptyTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری‌ای یافت نشد'**
+  String get invoiceCustomerPickerEmptyTitle;
+
+  /// Unlike the product picker, there is no free-text fallback: customer_id is a non-null foreign key, so an invoice genuinely cannot proceed without a customer record.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای صدور فاکتور ابتدا باید مشتری را در بخش مشتریان ثبت کنید.'**
+  String get invoiceCustomerPickerEmptyBody;
+
+  /// Saves without allocating a number (D-048). Named 'draft' so the user knows this is not yet a document.
+  ///
+  /// In fa, this message translates to:
+  /// **'ذخیره پیش‌نویس'**
+  String get invoiceActionSaveDraft;
+
+  /// Saves and issues: this is the moment a number is allocated and the invoice becomes a document.
+  ///
+  /// In fa, this message translates to:
+  /// **'صدور فاکتور'**
+  String get invoiceActionIssue;
+
+  /// No description provided for @invoiceSaveDraftSuccess.
+  ///
+  /// In fa, this message translates to:
+  /// **'پیش‌نویس ذخیره شد.'**
+  String get invoiceSaveDraftSuccess;
+
+  /// Confirms the issue and names the allocated number, because the number is the thing the user needs to know and cannot predict.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور {number} صادر شد.'**
+  String invoiceIssueSuccess(String number);
+
+  /// A write failure, in friendly Persian. A raw exception, stack trace or SQL statement must never reach the user (section 7).
+  ///
+  /// In fa, this message translates to:
+  /// **'ذخیره فاکتور ممکن نشد. لطفاً دوباره تلاش کنید.'**
+  String get invoiceSaveFailed;
+
+  /// No description provided for @invoiceIncompleteCustomer.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای ذخیره، مشتری را انتخاب کنید.'**
+  String get invoiceIncompleteCustomer;
+
+  /// No description provided for @invoiceIncompleteLines.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای ذخیره، دست‌کم یک سطر اضافه کنید.'**
+  String get invoiceIncompleteLines;
+
   /// Heading over the invoice's line items in the create/edit form.
   ///
   /// In fa, this message translates to:

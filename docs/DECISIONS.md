@@ -2188,3 +2188,69 @@ two beside it under the user's finger.
   product name 160, because a free-text line describes a job rather than naming a thing. The
   relationship that matters — every product limit at or below its line counterpart, so a copy can
   never overflow — is asserted in `field_limits_test.dart` rather than left to be noticed.
+
+---
+
+## D-051 — An issued invoice must snapshot its customer, and that is its own increment
+
+**Date:** 2026-08-26
+**Status:** ACCEPTED in principle; **implementation deferred to increment (c2)**
+**Extends:** D-004 (price snapshots), D-003 (soft delete)
+
+**The question.** `invoices` stores `customer_id` and nothing else about the customer. Every screen
+that shows a name resolves it by joining to the live `customers` row. The project spec does not say
+whether that is right; it requires snapshots for `invoice_items` and is silent here.
+
+**The decision: it should snapshot, for the same reason line items do.** An invoice is a document,
+and a document does not change after it is issued. Today, renaming a customer — a correction, a
+marriage, a company changing its trading name — silently rewrites the name on **every invoice ever
+issued to them**, including ones already sent, already paid, and already filed. Reprinting an
+invoice from last year would produce a different document from the one the customer holds. That is
+the same failure D-004 exists to prevent, and it is worse here than for a price, because the
+identity of the party is what an auditor reconciles against.
+
+Two related things make it concrete rather than theoretical:
+
+- **Customers are editable and the app encourages it.** The customer form is Phase 2 and shipped.
+- **A soft-deleted customer still has invoices** (D-003), and those invoices still have to print a
+  name. Resolving through a deleted row works today only because soft delete keeps it.
+
+**What to snapshot.** Not the whole record — the fields an Iranian invoice prints and an auditor
+checks: full name, company name, national ID (کد ملی) and economic ID (شناسه اقتصادی), and the
+address. The mobile number is contact detail rather than document content and is deliberately
+excluded; it can keep resolving live.
+
+**When to snapshot.** At **issue**, not at draft creation. A draft is not yet a document, and a
+draft written before a customer's name was corrected should pick the correction up. `issue()`
+already exists and is already the moment the invoice becomes one — the same transaction that
+allocates the number.
+
+**Why this is not part of increment (c).** It needs five new columns on `invoices`, which makes it
+`schemaVersion = 3` — the project's second migration, on a database that is installed on a real
+device. D-049 exists because that migration path is where the most expensive defect in this project
+lives, and folding a schema change into an increment about form fields would mean the migration
+lands without being the thing under review. (a2) set the precedent: a migration is its own
+reviewable step. So this is **increment (c2)**, to be scheduled by the owner.
+
+**What (c) does in the meantime.** The customer field resolves the name live by id, through
+`customerByIdProvider`. That is correct for a draft — which is all (c) can produce, since it writes
+drafts and issues them in the same session — and it is the behaviour that (c2) will change for
+issued invoices only.
+
+**Alternatives considered.**
+
+- *Denormalize the display name only, one column.* Rejected: the national and economic IDs are the
+  fields with legal weight on an Iranian invoice, and they are exactly the ones a correction would
+  change. A snapshot that captures the name and not the tax identifiers protects the least
+  consequential field.
+- *Snapshot at draft creation.* Rejected: a draft is not a document, and freezing a name at the
+  moment a form opened would make a correction unreachable without deleting and retyping the
+  invoice.
+- *Do nothing and treat the live join as correct.* Rejected. It is a silent rewrite of issued
+  documents, and the user would have no way to notice it had happened.
+
+**Also recorded here: the payment term is not configurable, and should be.** `defaultDueDate` in
+`features/invoices/domain/` is a 30-day constant. A payment term belongs in `settings` beside the
+VAT rate and the numbering prefix, and putting it there is the same kind of schema change. It is a
+**gap, not a decision** — noted so it is scheduled rather than discovered. Until then the user
+overrides the due date per invoice, which they can already do.

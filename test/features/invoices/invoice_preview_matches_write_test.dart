@@ -1,3 +1,4 @@
+import 'package:factorino/core/date/jalali_instant.dart';
 import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/models/app_settings.dart';
@@ -8,6 +9,7 @@ import 'package:factorino/data/models/product.dart';
 import 'package:factorino/data/repositories/invoice_repository.dart';
 import 'package:factorino/features/invoices/domain/invoice_editor_state.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 import '../../data/repositories/repository_harness.dart';
 
@@ -67,15 +69,20 @@ void main() {
     int discountRial = 0,
     int? discountPercentBp,
     int? taxRateBp,
+    DateTime? issueDate,
+    DateTime? dueDate,
+    String? notes,
   }) {
     return InvoiceEditorState(
       settings: settings,
-      issueDate: DateTime.utc(2026, 8, 24, 12),
+      issueDate: issueDate ?? DateTime.utc(2026, 8, 24, 12),
+      dueDate: dueDate,
       customerId: customerId,
       lines: lines,
       discount: Money.rial(discountRial),
       discountPercentBp: discountPercentBp,
       taxRateBp: taxRateBp,
+      notes: notes,
     );
   }
 
@@ -108,6 +115,39 @@ void main() {
       reason: 'grandTotal -- the number the user agreed to',
     );
     expect(stored.discount, preview.invoiceDiscount);
+
+    // ---- the invoice-level fields, which are not the engine's output but
+    // are just as capable of being lost between the form and the row.
+    //
+    // Increment (c) added the first UI that sets these, and the save that
+    // writes them. A total that survives while the date it was issued on does
+    // not is still a wrong document.
+    expect(stored.customerId, state.customerId, reason: 'customer');
+    expect(
+      stored.issueDate.toUtc(),
+      state.issueDate.toUtc(),
+      reason: 'issue date, as the UTC instant it was stored as (D-005)',
+    );
+    expect(
+      stored.dueDate?.toUtc(),
+      state.dueDate?.toUtc(),
+      reason: 'due date, including staying null when there is none',
+    );
+    expect(
+      stored.taxRateBp,
+      state.taxRateBp,
+      reason:
+          'the invoice tax rate as entered -- null is inherit, 0 is a '
+          'real rate, and the two are different invoices (D-026)',
+    );
+    expect(
+      stored.discountPercentBp,
+      state.discountPercentBp,
+      reason:
+          'the percentage as entered, kept beside the resolved amount so '
+          'the document can show what was typed (§4 step 2)',
+    );
+    expect(stored.notes, state.notes, reason: 'notes');
 
     // The warnings the write reports are the ones the preview showed, so a
     // clamp the user was asked about is not re-raised as news afterwards, and
@@ -197,6 +237,95 @@ void main() {
     );
     // 3,000 gross − 100 discount = 2,900 across the three lines, exactly.
     expect(allocated, 2900);
+  });
+
+  test('the dates the form set are the instants that were stored', () async {
+    // Increment (c)'s dates go through the Jalali picker, which returns
+    // `startOfJalaliDayUtc` -- local midnight in Tehran as a UTC instant. The
+    // claim is that the instant survives the integer column unchanged: a date
+    // stored an hour out lands on the previous Jalali day for anyone reading
+    // it back, and an invoice dated the wrong day is a wrong document even
+    // when every figure on it is right.
+    final DateTime issue = startOfJalaliDayUtc(Jalali(1405, 6, 2));
+    final DateTime due = startOfJalaliDayUtc(Jalali(1405, 7, 2));
+
+    final InvoiceDetail detail = await expectPreviewSurvivesTheWrite(
+      editor(lines: <InvoiceLineEntry>[line()], issueDate: issue, dueDate: due),
+    );
+
+    expect(detail.invoice.issueDate.toUtc(), issue);
+    expect(detail.invoice.dueDate!.toUtc(), due);
+    // And they still read back as the Jalali days they were chosen as.
+    expect(jalaliAt(detail.invoice.issueDate).month, 6);
+    expect(jalaliAt(detail.invoice.issueDate).day, 2);
+    expect(jalaliAt(detail.invoice.dueDate!).month, 7);
+  });
+
+  test('an invoice with no due date stores none', () async {
+    final InvoiceDetail detail = await expectPreviewSurvivesTheWrite(
+      editor(lines: <InvoiceLineEntry>[line()]),
+    );
+    // Null rather than an epoch zero or the issue date: "no due date" is a
+    // real state, and the list screen renders it differently.
+    expect(detail.invoice.dueDate, isNull);
+  });
+
+  test('an invoice-level percentage discount keeps both figures', () async {
+    // §4 step 2 requires the entered percentage AND the resolved amount to be
+    // stored. Keeping only the amount loses what the user agreed to; keeping
+    // only the percentage means recomputing it on every read against a
+    // subtotal that is itself derived.
+    final InvoiceDetail detail = await expectPreviewSurvivesTheWrite(
+      editor(
+        lines: <InvoiceLineEntry>[
+          line(priceRial: 1000000),
+          line(priceRial: 500000),
+        ],
+        discountPercentBp: 1250,
+      ),
+    );
+
+    expect(detail.invoice.discountPercentBp, 1250);
+    // 12.5% of 1,500,000 = 187,500, resolved by the engine and not by this
+    // test's arithmetic -- the assertion above already pinned it to the
+    // preview; this one states the figure so a change in the engine is visible
+    // here rather than silently agreed to by both sides.
+    expect(detail.invoice.discount, Money.rial(187500));
+  });
+
+  test('an invoice tax rate of zero is stored as zero, not as inherit', () async {
+    // The invoice-level half of D-026. `null` means "use the settings default"
+    // and `0` means "this document is not taxed"; storing one as the other
+    // applies 9% VAT to an invoice deliberately marked exempt.
+    final InvoiceDetail detail = await expectPreviewSurvivesTheWrite(
+      editor(lines: <InvoiceLineEntry>[line()], taxRateBp: 0),
+    );
+
+    expect(detail.invoice.taxRateBp, 0);
+    expect(detail.invoice.totalTax, Money.zero);
+    expect(detail.items.single.resolvedTaxRateBp, 0);
+  });
+
+  test(
+    'an inherited invoice rate stores null and resolves from settings',
+    () async {
+      final InvoiceDetail detail = await expectPreviewSurvivesTheWrite(
+        editor(lines: <InvoiceLineEntry>[line()]),
+      );
+
+      expect(detail.invoice.taxRateBp, isNull);
+      // Resolved to the settings default and snapshotted onto the line, so a
+      // later settings change cannot alter this invoice (§4 step 6).
+      expect(detail.items.single.resolvedTaxRateBp, settings.defaultTaxRateBp);
+    },
+  );
+
+  test('notes survive the write', () async {
+    const String notes = 'پرداخت تا پایان ماه — تحویل درب کارگاه';
+    final InvoiceDetail detail = await expectPreviewSurvivesTheWrite(
+      editor(lines: <InvoiceLineEntry>[line()], notes: notes),
+    );
+    expect(detail.invoice.notes, notes);
   });
 
   test('mixed per-line tax rates are snapshotted as resolved', () async {

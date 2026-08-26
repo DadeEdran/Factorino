@@ -9,6 +9,8 @@ import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/database/app_database.dart'
     show InvoicesCompanion;
+import 'package:factorino/data/models/invoice.dart';
+import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
 import 'package:factorino/data/models/invoice_list_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
@@ -394,6 +396,119 @@ void main() {
         reason: 'the replaced line is soft-deleted, not shown',
       );
       expect(detail.items.single.unitPrice, Money.rial(2000000));
+    });
+
+    test('the repository refuses an edit in every non-draft status', () async {
+      // **The rule lives here, not in the UI.** §6 says only a draft is
+      // editable, and a screen that greys out a button enforces nothing: a
+      // second screen, a deep link, a future sync path or a keyboard
+      // shortcut reaches the repository without passing that button. This
+      // test calls the repository directly, exactly as those callers would,
+      // and asserts the refusal is the repository's own.
+      //
+      // Every non-draft status, not only `unpaid`, because they arrive by
+      // different routes -- issue, a payment, a cancellation -- and a guard
+      // written against one of them is a guard with holes.
+      Future<String> invoiceInStatus(InvoiceStatus target) async {
+        final created = await harness.invoices.create(
+          harness.draft(customerId),
+        );
+        final String id = created.invoice.id;
+
+        switch (target) {
+          case InvoiceStatus.draft:
+            break;
+          case InvoiceStatus.unpaid:
+            await harness.invoices.issue(id);
+          case InvoiceStatus.partiallyPaid:
+            await harness.invoices.issue(id);
+            await harness.payments.record(
+              id,
+              PaymentDraft(
+                // Less than the grand total, so the derived status lands on
+                // partiallyPaid rather than paid.
+                amount: Money.rial(1),
+                paidAt: DateTime.utc(2026, 8, 25),
+                method: PaymentMethod.cash,
+              ),
+            );
+          case InvoiceStatus.paid:
+            await harness.invoices.issue(id);
+            final Invoice issued = (await harness.invoices.findById(id))!;
+            await harness.payments.record(
+              id,
+              PaymentDraft(
+                amount: issued.grandTotal,
+                paidAt: DateTime.utc(2026, 8, 25),
+                method: PaymentMethod.cash,
+              ),
+            );
+          case InvoiceStatus.cancelled:
+            await harness.invoices.issue(id);
+            await harness.invoices.cancel(id);
+        }
+        return id;
+      }
+
+      for (final InvoiceStatus status in <InvoiceStatus>[
+        InvoiceStatus.unpaid,
+        InvoiceStatus.partiallyPaid,
+        InvoiceStatus.paid,
+        InvoiceStatus.cancelled,
+      ]) {
+        final String id = await invoiceInStatus(status);
+        final Invoice before = (await harness.invoices.findById(id))!;
+        expect(before.status, status, reason: 'setup for $status');
+
+        await expectLater(
+          harness.invoices.updateDraft(
+            id,
+            harness.draft(customerId, unitPriceRial: 99999999),
+          ),
+          throwsA(isA<InvoiceNotEditable>()),
+          reason: 'updateDraft must refuse a $status invoice',
+        );
+        await expectLater(
+          harness.invoices.softDeleteDraft(id),
+          throwsA(isA<InvoiceNotEditable>()),
+          reason: 'softDeleteDraft must refuse a $status invoice',
+        );
+
+        // And the refusal left nothing behind. A guard that throws after
+        // writing half the change is worse than no guard: the invoice would
+        // be neither the old one nor the new one.
+        final InvoiceDetail after = (await harness.invoices.findDetail(id))!;
+        expect(after.invoice.status, status);
+        expect(after.invoice.grandTotal, before.grandTotal);
+        expect(after.invoice.number, before.number);
+        // Still findable, which is how a soft delete shows here: every read
+        // filters `deleted_at IS NULL`, so a refused delete that had gone
+        // through would make this null.
+        expect(await harness.invoices.findById(id), isNotNull);
+        expect(
+          after.items.single.unitPrice,
+          Money.rial(1000000),
+          reason: 'the line the refused edit would have replaced',
+        );
+      }
+    });
+
+    test('an already-issued invoice cannot be issued again', () async {
+      // A second allocation would spend a second number on one document, and
+      // the first would be lost -- the unique index covers soft-deleted rows,
+      // so nothing reclaims it (D-013).
+      final created = await harness.invoices.create(harness.draft(customerId));
+      final Invoice issued = await harness.invoices.issue(created.invoice.id);
+
+      await expectLater(
+        harness.invoices.issue(created.invoice.id),
+        throwsA(isA<InvoiceNotEditable>()),
+      );
+
+      final Invoice after = (await harness.invoices.findById(
+        created.invoice.id,
+      ))!;
+      expect(after.number, issued.number);
     });
 
     test('an issued invoice cannot be edited', () async {

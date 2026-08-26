@@ -1,7 +1,11 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/money/money.dart';
+import '../../../core/security/app_log.dart';
 import '../../../data/models/app_settings.dart';
+import '../../../data/models/invoice.dart';
+import '../../../data/providers.dart';
+import '../../../data/repositories/invoice_repository.dart';
 import '../../settings/application/settings_providers.dart';
 import '../domain/invoice_editor_state.dart';
 
@@ -49,7 +53,11 @@ class InvoiceEditor extends _$InvoiceEditor {
     // only on the very first build.
     final InvoiceEditorState? previous = state.value;
     if (previous == null) {
-      return InvoiceEditorState(settings: settings, issueDate: openedAt);
+      return InvoiceEditorState(
+        settings: settings,
+        issueDate: openedAt,
+        dueDate: defaultDueDate(openedAt),
+      );
     }
     return previous.copyWith(settings: settings);
   }
@@ -74,13 +82,28 @@ class InvoiceEditor extends _$InvoiceEditor {
         : s.copyWith(customerId: customerId),
   );
 
-  void setIssueDate(DateTime issueDate) =>
-      _update((InvoiceEditorState s) => s.copyWith(issueDate: issueDate));
+  /// Moves the issue date, and carries a **derived** due date with it.
+  ///
+  /// A due date the user never chose is a statement about the payment term, not
+  /// about a calendar day: leaving it behind a later issue date would produce a
+  /// document due before it was issued. A due date the user *did* choose is a
+  /// commitment to a day, and dragging it would silently rewrite an agreement.
+  /// `dueDateFollowsIssueDate` is what tells the two apart.
+  void setIssueDate(DateTime issueDate) => _update(
+    (InvoiceEditorState s) => s.copyWith(
+      issueDate: issueDate,
+      dueDate: s.dueDateFollowsIssueDate ? defaultDueDate(issueDate) : null,
+    ),
+  );
 
+  /// Sets the due date the user picked, and stops deriving it.
+  ///
+  /// Never set back to derived: once the user has expressed an intent about a
+  /// date, the app does not resume guessing on their behalf.
   void setDueDate(DateTime? dueDate) => _update(
     (InvoiceEditorState s) => dueDate == null
-        ? s.copyWith(clearDueDate: true)
-        : s.copyWith(dueDate: dueDate),
+        ? s.copyWith(clearDueDate: true, dueDateFollowsIssueDate: false)
+        : s.copyWith(dueDate: dueDate, dueDateFollowsIssueDate: false),
   );
 
   void setNotes(String? notes) => _update(
@@ -151,6 +174,77 @@ class InvoiceEditor extends _$InvoiceEditor {
 
   /// Moves a line, so the document prints in the order the user arranged it —
   /// `invoice_items.position` exists for exactly this.
+  // ---- persistence --------------------------------------------------------
+
+  /// Writes the invoice as a **draft** and returns it, or null if the write
+  /// failed or the state is not complete enough to write.
+  ///
+  /// **A draft, deliberately.** `create` allocates no number for one (D-048),
+  /// so saving a form the user may still abandon costs nothing permanent. The
+  /// number is allocated by [issue], which is the moment the document becomes
+  /// one.
+  ///
+  /// **No total crosses this boundary.** [InvoiceEditorState.toDraft] carries
+  /// what the user chose and nothing computed; the repository re-runs the
+  /// engine inside the write transaction. That is what makes a stored total
+  /// unable to disagree with its lines, and it is pinned against the preview by
+  /// `invoice_preview_matches_write_test.dart`.
+  ///
+  /// The warnings the write reports are returned with the invoice rather than
+  /// swallowed: a clamp is an observation about the input (D-027), and the
+  /// screen decides what to say about it.
+  Future<InvoiceCreationResult?> save() async {
+    final InvoiceEditorState? current = state.value;
+    if (current == null || !current.isComplete) return null;
+
+    return _guarded(() {
+      return ref.read(invoiceRepositoryProvider).create(current.toDraft());
+    });
+  }
+
+  /// Saves the invoice and issues it, in that order.
+  ///
+  /// Two transactions, not one, and that is the repository's shape rather than
+  /// a compromise here: `create` writes the invoice and its lines, `issue`
+  /// allocates the number and moves the status, each inside its own transaction
+  /// (D-013, D-048). The allocation is what must be atomic — reading
+  /// `MAX(number_sequence)` and writing it back cannot be separable, or two
+  /// invoices issued in the same instant take the same number — and it is.
+  ///
+  /// A failure between the two leaves a saved draft with no number, which is a
+  /// state the app already handles and the user can retry from. The opposite
+  /// arrangement — a number allocated against an invoice that failed to write —
+  /// would spend a number on nothing, permanently (D-013).
+  Future<Invoice?> issue() async {
+    final InvoiceCreationResult? created = await save();
+    if (created == null) return null;
+
+    return _guarded(
+      () => ref.read(invoiceRepositoryProvider).issue(created.invoice.id),
+    );
+  }
+
+  /// Runs a write, turning a failure into null and a log line.
+  ///
+  /// The repository's exceptions never reach a widget: §7 requires a friendly
+  /// Persian message and forbids a raw exception, a stack trace or a SQL
+  /// statement reaching the user. The screen renders its own copy from a null
+  /// return. Logged through the wrapper, which is what strips it in release and
+  /// keeps customer names and amounts out of it.
+  Future<T?> _guarded<T>(Future<T> Function() write) async {
+    try {
+      return await write();
+    } on Object catch (error, stackTrace) {
+      AppLog.error(
+        () => 'invoice write failed',
+        error: error,
+        stackTrace: stackTrace,
+        scope: 'invoice-editor',
+      );
+      return null;
+    }
+  }
+
   void moveLine(int from, int to) => _update((InvoiceEditorState s) {
     if (from < 0 || from >= s.lines.length) return s;
     if (to < 0 || to >= s.lines.length || from == to) return s;

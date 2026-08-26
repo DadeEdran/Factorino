@@ -124,4 +124,9 @@ abstract final class InvoiceLimits {
   /// Same as [ProductLimits.unit] — a unit copied from a product must fit, and
   /// a freehand unit is the same kind of word either way.
   static const int lineUnit = 30;
+
+  /// The invoice's own notes, matching `invoices.notes`. As generous as a
+  /// customer's, because payment terms and delivery conditions get written
+  /// here and an invoice that truncates them is worse than one that scrolls.
+  static const int notes = 2000;
 }

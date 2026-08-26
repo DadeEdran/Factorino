@@ -20,8 +20,9 @@ delivered the same day and **awaiting review**.
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED`, **accepted** |
 | a2 | **Numbering on issue + `schemaVersion = 2`** (D-048) | `COMPLETED` — device proof passed 2026-08-26 |
 | a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26 |
-| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED`, awaiting review |
-| c | Invoice-level fields: customer, dates, discount, tax, notes | `NOT_STARTED` |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26 |
+| c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED`, awaiting review |
+| c2 | **Customer snapshot on issue** (D-051) — `schemaVersion = 3` | `NOT_STARTED`, owner to schedule |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
 (a2) was not in the original four-way split. The owner approved D-048 on 2026-08-26 and directed
@@ -33,7 +34,7 @@ those items are built, so both phases are closed.
 
 ## Where the project stands, in one paragraph
 
-**Phase 4 increment (b) is delivered and awaiting review; nothing else is in progress.** Six screens
+**Phase 4 increment (c) is delivered and awaiting review; nothing else is in progress.** Six screens
 work end to end on real data — Dashboard, Invoices, Customers, **Customer detail**, Products,
 Settings — inside a Persian, RTL, three-tier responsive shell, over an encrypted SQLite database.
 Customers and products can be created, searched, edited and soft-deleted; every form field carries
@@ -55,23 +56,27 @@ encrypted. `flutter build apk --debug` passed in the same session.
 **(a3) is delivered**: the owner's response to the cascade finding in (a2), which is now defended
 structurally rather than only by a comment and one test out of six. See D-049.
 
-**(b) has not been reviewed.** Line item entry: the product picker, the line editor sheet and the
-lines section, at all three tiers. **These widgets are not yet reachable from the running app** —
-there is no invoice form route until (d) assembles one, which is the split the owner set. They are
-exercised by 13 widget tests over the real controller and engine with a faked repository, and by
-`flutter build apk --debug`, but not yet by a person tapping them on the Redmi. That is the honest
-limit of what (b) has been verified against.
+**(b) is delivered**: the product picker, the line editor sheet and the lines section.
+
+**(c) has not been reviewed.** The invoice-level fields, a Jalali date picker, and **the save** —
+the first write of a whole invoice from the editor.
+
+**The debt (b) opened is still open, and it is now larger.** No widget from (b) or (c) has been
+touched on a device, because no route reaches them until (d). That is now two numeric-heavy sheets,
+a calendar grid and two picker sheets, all verified by 33 widget tests and the APK build only. The
+owner named (d) as the point where this comes due; it should be treated as a task in (d) and not a
+discovery.
 
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (b)
-flutter test:               PASS   (619/619, was 604)                         as of (b)
+flutter analyze:            PASS   (No issues found)                          as of (c)
+flutter test:               PASS   (650/650, was 619)                         as of (c)
 Windows build:              PASS   flutter run -d windows --debug             (a2)
 Windows run:                PASS   the app opened the REAL dev database and migrated it v1 -> v2
 D-048 proof - Windows:      PASS   integration_test/invoice_number_migration_proof_test.dart
 D-048 proof - Android:      PASS   on the Redmi Note 8 Pro, Android 11 (2026-08-26). CLOSED.
-Android build:              PASS   flutter build apk --debug                  (b)
+Android build:              PASS   flutter build apk --debug                  (c)
 Web build:                  NOT_RETESTED since plugins were added
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
@@ -84,6 +89,61 @@ numbers intact and foreign keys still on. A pre-migration copy was taken first a
 session's scratchpad as `factorino.db.v1backup`.
 
 Neither (a2) nor (a3) added UI or a dependency. (b) is all UI and adds no dependency.
+
+## What Phase 4 increment (c) delivered — the invoice-level fields, and the save
+
+**The first write of a whole invoice from the editor.** Still no route: (d) assembles the screen.
+
+```
+lib/core/widgets/jalali_date_picker.dart                    NEW - the calendar and the field
+lib/features/invoices/presentation/widgets/invoice_details_section.dart
+lib/features/invoices/presentation/widgets/customer_picker_sheet.dart
+lib/features/invoices/application/invoice_customer_picker.dart
+lib/features/invoices/application/invoice_editor.dart       + save(), issue()
+```
+
+- **The preview/write pin now covers the invoice, not only the lines.**
+  `invoice_preview_matches_write_test.dart` asserts customer, issue date, due date, invoice tax rate,
+  the entered discount percentage and notes round-trip alongside every figure — 14 tests, was 8. A
+  total that survives while the date it was issued on does not is still a wrong document.
+- **`save()` writes a draft and `issue()` allocates the number**, in that order and in the
+  repository's own transactions (D-013, D-048). A failure between them leaves a saved draft with no
+  number, which is recoverable; the opposite arrangement would spend a number on nothing.
+- **Only drafts are editable, and the test proves the rule is the repository's.** A new test calls
+  the repository **directly** — as a deep link, a second screen or a future sync path would — and
+  asserts `updateDraft` and `softDeleteDraft` refuse in **every** non-draft status: unpaid,
+  partiallyPaid, paid and cancelled, each reached by its own route. It also asserts the refusal left
+  nothing behind: same status, same total, same number, same line. A guard that throws after writing
+  half the change is worse than no guard.
+- **Customer selection is the repository's search**, not a parallel one. The picker's own list-query
+  provider feeds `watchSearch`, which folds the term through `searchKey` (D-025, D-029) — «علي»
+  finds «علی». A test asserts the raw term reaches the repository *unfolded by the widget*, which is
+  what would break if someone filtered a loaded list here instead.
+- **A Jalali date picker, built rather than added.** Material's is a Gregorian grid; localizing it
+  gives Persian digits over Gregorian month boundaries. `shamsi_date` was already a dependency and
+  what was missing was a grid, so **no new dependency**. The week starts on Saturday, and a test
+  pins that day 1 lands under its `Jalali.weekDay` column and *not* where `DateTime.weekday` would
+  have put it — the two disagree, and the wrong one still looks like a calendar.
+- **Both dates leave as UTC instants** — `startOfJalaliDayUtc`, local midnight in Tehran (D-005) —
+  and the due date's picker cannot select a day before the issue date at all, rather than validating
+  after the fact.
+- **A derived due date moves with the issue date; a chosen one does not.** `dueDateFollowsIssueDate`
+  is what tells them apart, because a date thirty days out looks identical either way. Without it
+  the editor has to pick one wrong behaviour: a document due before it was issued, or a date the
+  user deliberately set being dragged.
+- **`0` and inherit stay apart at the invoice level too** (D-026), in the same mode-plus-value shape
+  the line sheet uses, with the settings default named rather than left implicit.
+- **A failed write returns null, never an exception at the widget** (§7), logged through the wrapper.
+- **31 new tests**; 650 pass, was 619.
+
+**Two gaps recorded rather than papered over (D-051):**
+
+1. **An issued invoice does not snapshot its customer.** It should — renaming a customer today
+   silently rewrites the name on every invoice ever issued to them, which is D-004's failure applied
+   to the party rather than the price. It needs five columns and `schemaVersion = 3`, so it is
+   **increment (c2)**, on (a2)'s precedent that a migration is its own reviewable step.
+2. **The payment term is a 30-day constant, not a setting.** It belongs in `settings` beside the VAT
+   rate; that is the same kind of schema change. A gap, not a decision.
 
 ## What Phase 4 increment (b) delivered — line item entry
 
@@ -498,22 +558,27 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 4 increment (b)** — line item entry (D-050). 619 tests pass, analyzer clean,
-`flutter build apk --debug` passes. Preceded in the same session by (a3), the table-rebuild guard
-(D-049), and by (a2)'s outstanding device proof, which passed on the Redmi.
+**Phase 4 increment (c)** — the invoice-level fields, the Jalali date picker and the save (D-051).
+650 tests pass, analyzer clean, `flutter build apk --debug` passes. Preceded in the same session by
+(a2)'s device proof on the Redmi, (a3) the table-rebuild guard (D-049), and (b) line item entry
+(D-050).
 
 ## Next action
 
-**Report (b) and wait for a go-ahead on (c), the invoice-level fields.**
+**Report (c) and wait for a go-ahead on (d), the assembled screen — and on (c2).**
 
-(c) is customer, issue date, due date, invoice discount, invoice tax rate and notes — every intent
-`InvoiceEditor` already exposes and (b) did not use — **plus the `save` that (b) deliberately did
-not add**. D-048 removed the blocker: `create()` no longer allocates a number for a draft, so a save
-is now safe to build, and (c) is where the customer and dates it needs are entered.
+(d) composes `InvoiceDetailsSection`, `InvoiceLinesSection` and a totals summary into one form, adds
+the `/invoices/new` route, and lays it out at all three tiers — a sticky summary panel on desktop
+(§10), a single column on a phone. It is also where the save and issue actions get their buttons and
+their Persian confirmations, which (c) built the strings for but has no screen to put them on.
 
-Worth doing when (d) makes the form reachable: run it on the Redmi. (b)'s widgets are covered by 13
-widget tests and by the APK build, but no person has tapped them on a device, because there is no
-route to them yet.
+**(d) must also pay the device debt.** Nothing from (b) or (c) has been touched by a person: two
+numeric-heavy sheets, a calendar grid and two picker sheets, all verified by widget tests and the
+APK build only. A numeric sheet on a real phone keyboard is exactly where tests and reality diverge.
+Run the assembled form on the Redmi as part of (d), not after it.
+
+**(c2), the customer snapshot, is a separate decision for the owner to schedule** — see D-051. It is
+`schemaVersion = 3` and belongs on its own, as (a2) did.
 
 **Still open for Phase 5, deliberately (owner, 2026-08-26):** D-047's `grossTotal` is computed but
 not stored, and per-line gross is not recoverable from what `invoice_items` keeps. **Do not store it

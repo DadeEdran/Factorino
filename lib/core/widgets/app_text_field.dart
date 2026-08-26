@@ -53,6 +53,7 @@ class AppTextField extends StatelessWidget {
     this.autofocus = false,
     this.maxLines = 1,
     this.digitsOnly = false,
+    this.onChanged,
     super.key,
   });
 
@@ -85,6 +86,14 @@ class AppTextField extends StatelessWidget {
   /// under the cursor.
   final bool digitsOnly;
 
+  /// Fires on every keystroke.
+  ///
+  /// For a field whose value feeds a **live preview** — the invoice discount
+  /// beside a running total — where waiting for submit would leave the figures
+  /// describing an invoice that is no longer the one on screen. A field that
+  /// only writes on save should leave this null and read the controller.
+  final ValueChanged<String>? onChanged;
+
   @override
   Widget build(BuildContext context) {
     final AppStrings strings = AppStrings.of(context);
@@ -99,6 +108,7 @@ class AppTextField extends StatelessWidget {
       inputFormatters: digitsOnly
           ? const <TextInputFormatter>[_DigitsOnlyFormatter()]
 : null,
+      onChanged: onChanged,
       buildCounter: _buildCounter,
       decoration: InputDecoration(
         labelText: label,

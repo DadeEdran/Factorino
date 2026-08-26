@@ -137,6 +137,7 @@ class InvoiceEditorState {
     required this.issueDate,
     this.customerId,
     this.dueDate,
+    this.dueDateFollowsIssueDate = true,
     this.lines = const <InvoiceLineEntry>[],
     this.discount = Money.zero,
     this.discountPercentBp,
@@ -176,6 +177,20 @@ class InvoiceEditorState {
   /// number is allocated against when the invoice is issued (D-013).
   final DateTime issueDate;
   final DateTime? dueDate;
+
+  /// Whether [dueDate] is still the default derived from [issueDate], rather
+  /// than a date the user chose.
+  ///
+  /// It exists because moving the issue date must move a *derived* due date and
+  /// must not move a *chosen* one, and nothing else in the state can tell those
+  /// apart — a due date thirty days out looks identical either way. Without the
+  /// flag the editor has to pick one wrong behaviour: leave a default due date
+  /// behind the new issue date (a document due before it was issued), or drag a
+  /// date the user deliberately set.
+  ///
+  /// Set false the moment the user picks a due date, and never set back: once
+  /// they have expressed an intent, the app does not resume guessing.
+  final bool dueDateFollowsIssueDate;
 
   final List<InvoiceLineEntry> lines;
 
@@ -252,6 +267,7 @@ class InvoiceEditorState {
     String? customerId,
     bool clearDueDate = false,
     DateTime? dueDate,
+    bool? dueDateFollowsIssueDate,
     List<InvoiceLineEntry>? lines,
     Money? discount,
     bool clearDiscountPercent = false,
@@ -266,6 +282,8 @@ class InvoiceEditorState {
       issueDate: issueDate ?? this.issueDate,
       customerId: clearCustomer ? null : (customerId ?? this.customerId),
       dueDate: clearDueDate ? null : (dueDate ?? this.dueDate),
+      dueDateFollowsIssueDate:
+          dueDateFollowsIssueDate ?? this.dueDateFollowsIssueDate,
       lines: lines ?? this.lines,
       discount: discount ?? this.discount,
       discountPercentBp: clearDiscountPercent
@@ -276,3 +294,25 @@ class InvoiceEditorState {
     );
   }
 }
+
+/// How long after issue an invoice is due, by default.
+///
+/// **A constant here, not a setting, and that is a gap rather than a decision.**
+/// A payment term is exactly the sort of thing a business configures, and it
+/// belongs in `settings` beside the VAT rate and the numbering prefix. Putting
+/// it there is a schema change — `settings` has no such column — and D-051
+/// records why a schema change is not folded into an increment that is not
+/// about one. Until then the app picks the common term and lets the user
+/// override it per invoice, which it can already do.
+const int kDefaultPaymentTermDays = 30;
+
+/// The due date a freshly opened form starts with: [issueDate] plus the
+/// default term.
+///
+/// Computed by adding days to the **instant**, not by adding to a Jalali date
+/// and converting back. Iran keeps a fixed offset with no DST transitions
+/// (D-005), so the two agree — and the instant arithmetic is the one that stays
+/// correct if that ever stops being true, because a term is a duration and not
+/// a calendar-field operation.
+DateTime defaultDueDate(DateTime issueDate) =>
+    issueDate.toUtc().add(const Duration(days: kDefaultPaymentTermDays));
