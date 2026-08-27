@@ -38,7 +38,7 @@ number and a party snapshot.
 **Phase 4 is complete and (d) is awaiting review.** Nothing is in progress. The next phase is **5 —
 Invoice Management and Payments**, which is where `/invoices/:id` and the payment path live.
 
-**Working tree is clean.** `main` at **`<HASH>`** "Phase 4 (d): the assembled invoice screen".
+**Working tree is clean.** `main` at **`d5175f4`** "Phase 4 (d): the assembled invoice screen".
 Behind it: `a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3),
 `7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
 
