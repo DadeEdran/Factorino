@@ -58,7 +58,7 @@ two carry-overs from (d) — the project spec amended, and the invoice-level fie
 stored, along with two per-line figures, and a migration is its own reviewable step on the precedent
 of the last two.
 
-**Working tree is clean.** `main` at **`<HASH>`** "Phase 5: the D-047 ruling, and the phone fold".
+**Working tree is clean.** `main` at **`d087c2a`** "Phase 5: the D-047 ruling, and the phone fold".
 Behind it: `a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3),
 `7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
 
