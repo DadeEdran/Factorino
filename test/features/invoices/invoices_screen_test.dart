@@ -58,6 +58,7 @@ void main() {
         dueDate: dueDate,
         status: status,
         discount: Money.zero,
+        grossTotal: Money.rial(grandTotalRial),
         subtotal: Money.rial(grandTotalRial),
         totalDiscount: Money.zero,
         totalTax: Money.zero,

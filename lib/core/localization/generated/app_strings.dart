@@ -1172,6 +1172,18 @@ abstract class AppStrings {
   /// **'با افزودن سطر، مبلغ فاکتور همین‌جا محاسبه می‌شود.'**
   String get invoiceSummaryEmpty;
 
+  /// Stands where a monetary figure would be, on an invoice issued before schema v4 whose stored numbers the backfill could not reconcile to the Rial (D-055). Deliberately NOT «۰ تومان»: zero is a figure a document prints, and a gross of zero beside a real grand total is a document contradicting itself, where an admission is only one that is incomplete. Deliberately not blank, on «بدون شماره»'s principle: an empty cell reads as data that failed to load. «ثبت‌نشده» states a fact about the record -- it was never written down -- rather than claiming uncertainty about the world, which «نامشخص» would. Short enough for a fixed-width table cell on the line table as well as the summary panel.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت‌نشده'**
+  String get invoiceFigureUnrecorded;
+
+  /// Shown beneath the summary when the gross is unrecorded. Says the two things the user needs: which figure is missing, and that the amount they care about is unaffected. Without the second sentence «ثبت‌نشده» beside a payable amount reads as a fault in the invoice rather than a gap in what was stored about it.
+  ///
+  /// In fa, this message translates to:
+  /// **'جمع سطرهای این فاکتور هنگام صدور ثبت نشده است. مبلغ قابل پرداخت آن درست و بدون تغییر است.'**
+  String get invoiceSummaryGrossUnrecordedNote;
+
   /// No description provided for @invoiceActionSaveDraftHint.
   ///
   /// In fa, this message translates to:

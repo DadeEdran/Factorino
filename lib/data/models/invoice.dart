@@ -19,6 +19,7 @@ class Invoice {
     required this.issueDate,
     required this.status,
     required this.discount,
+    required this.grossTotal,
     required this.subtotal,
     required this.totalDiscount,
     required this.totalTax,
@@ -100,6 +101,21 @@ class Invoice {
   final int? taxRateBp;
 
   final String? notes;
+
+  /// `Sigma lineGross` — the first term of the printed summary (D-055).
+  ///
+  /// **Null where the figure is genuinely unknown**, which is an invoice
+  /// written before schema v4 whose stored numbers the backfill could not
+  /// reconcile to the Rial. Every invoice written since carries it. Nothing may
+  /// substitute a zero: a gross of zero beside a real grand total is a document
+  /// that contradicts itself, where an admission is only a document that is
+  /// incomplete. [InvoiceSummaryFigures] is where the absence is handled and
+  /// `invoiceGrossLabel` is where the Persian for it lives, on
+  /// `invoiceNumberLabel`'s precedent.
+  final Money? grossTotal;
+
+  /// Whether the printed summary can be assembled from stored figures alone.
+  bool get hasStoredGross => grossTotal != null;
 
   final Money subtotal;
 

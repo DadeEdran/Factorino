@@ -97,6 +97,13 @@ void main() {
     );
 
     final Invoice stored = result.invoice;
+    expect(
+      stored.grossTotal,
+      preview.grossTotal,
+      reason:
+          'grossTotal -- the first term of the printed summary, and the one '
+          'the schema kept no column for until v4 (D-055)',
+    );
     expect(stored.subtotal, preview.subtotal, reason: 'subtotal');
     expect(
       stored.totalDiscount,
@@ -183,8 +190,31 @@ void main() {
         expected.netAfterInvoiceDiscount,
         reason: 'line $i net after the allocated invoice discount',
       );
+      expect(
+        actual.gross,
+        expected.gross,
+        reason: 'line $i gross -- مبلغ کل on the printed line (D-055)',
+      );
+      expect(
+        actual.allocatedInvoiceDiscount,
+        expected.allocatedInvoiceDiscount,
+        reason:
+            'line $i allocated share of the invoice discount, without which '
+            'its net cannot be explained on the document (D-055)',
+      );
       expect(actual.lineTax, expected.tax, reason: 'line $i tax');
       expect(actual.lineTotal, expected.total, reason: 'line $i total');
+
+      // The document line as arithmetic, over stored figures only: every step
+      // between the printed columns is an addition or a subtraction, and no
+      // read site multiplies or rounds anything (D-055).
+      expect(
+        actual.gross!.rial -
+            actual.discount.rial -
+            actual.allocatedInvoiceDiscount!.rial,
+        actual.lineNet.rial,
+        reason: 'line $i must reconcile from what is stored on it',
+      );
     }
 
     return detail;

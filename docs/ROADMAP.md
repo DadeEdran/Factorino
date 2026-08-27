@@ -1148,7 +1148,7 @@ paths were reviewed in (c). What is new:
 |---|---|---|
 | — | (d)'s two carry-overs: The project spec amended, the phone fold (D-054) | `COMPLETED` 2026-08-27 |
 | a | **The D-047 ruling** (D-055): store the gross, and two per-line figures | `COMPLETED` 2026-08-27 — decision only, awaiting review |
-| a2 | **`schemaVersion = 4`** — the three columns and their backfill (D-055) | `NOT_STARTED` |
+| a2 | **`schemaVersion = 4`** — the three columns and their backfill (D-055, D-056) | `COMPLETED` 2026-08-27 |
 | b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` |
 | c | Payments: record and delete, both recomputing derived status in the same transaction (§6) | `NOT_STARTED` |
 | d | Cancellation, and the Persian copy that says what it does and does not do | `NOT_STARTED` |
@@ -1202,6 +1202,64 @@ and date range, and the **UI** for recording a payment and for cancelling an inv
   reconciled to the Rial the migration leaves them **null** rather than writing a figure that does not
   add up — `NOT NULL DEFAULT 0` is refused, because zero is a number a document would print.
 - It is `schemaVersion = 4` and lands as **(a2)**, its own reviewable step.
+
+**Increment (a2) — `schemaVersion = 4`, completed 2026-08-27**
+
+The project's **third migration**, and the first that backfills. Three nullable columns —
+`invoices.gross_total_rial`, `invoice_items.line_gross_rial`,
+`invoice_items.allocated_invoice_discount_rial` — three `ADD COLUMN`s guarded by
+`_addColumnIfAbsent`, a backfill, and a `foreign_key_check`.
+
+- **The backfill runs the money engine rather than re-deriving anything** (D-056). It rebuilds an
+  `InvoiceInput` from the row's own stored columns, calls `calculateInvoice`, and **writes nothing
+  unless the output reproduces every figure already on the row** — each line's discount, net, tax and
+  total, and the invoice's subtotal, total discount, total tax and grand total less its stored
+  rounding adjustment. It is the third sanctioned caller in `single_calculation_path_test.dart`,
+  listed with its reason rather than exempted. Open-coding §4 step 1 and the largest-remainder
+  allocation in the data layer was the alternative, and it is the second implementation D-046 exists
+  to prevent.
+- **Which converts D-055's weakest assumption into a per-invoice check.** D-055 argues the backfill is
+  honest because the rounding rule has not changed since v1; the migration verifies that on every row
+  instead of relying on it. Where anything disagrees, the invoice keeps its nulls.
+- **Refusal is per invoice, never per line**, and it does not disturb the invoices beside it. An
+  invoice with no lines gets a real **zero** — the one place "nothing" and "unknown" have to be told
+  apart, which is what the nullable column is for.
+- **The v1 → v4 asymmetry is observed, not assumed.** The v1 rebuild recreates `invoices` from
+  today's declaration, so a database that has never been updated arrives at the v4 step with
+  `gross_total_rial` already present and both `invoice_items` columns absent, while a v3 database has
+  none of the three. `migrateV1ToV2` was made public (on `migrateV2ToV3`'s precedent) so the test can
+  run the ladder one step at a time and read `PRAGMA table_info` between them.
+- **`assertForeignKeysCanBeDisabled` is deliberately not called** (D-052's reasoning): `ADD COLUMN`
+  drops nothing and neither does an `UPDATE`. The step is instead run inside a transaction with
+  children present and the rows counted, which is the equivalent check for a step of this shape.
+- **The read path says «ثبت‌نشده»**, never a blank cell and never a zero, with a sentence beneath the
+  panel explaining that the payable amount is unaffected. `InvoiceSummaryFigures` carries the absence
+  in the type and is what the detail screen (b) and the Phase 7 renderer will both be handed;
+  `InvoiceTotalsSummary` now takes it, so the form and the detail screen render one panel.
+- **Device proof, both ladders**: `integration_test/invoice_figures_migration_proof_test.dart`
+  passes on **Windows and on the Redmi** (2026-08-27), backfilling one invoice and refusing another
+  on each.
+- **41 new tests; 726 pass** (was 696), across
+  `invoice_figures_migration_test.dart` (11), `invoice_figures_backfill_test.dart` (12),
+  `invoice_summary_figures_test.dart` (7) and extensions to
+  `invoice_preview_matches_write_test.dart`. Decisions recorded: **D-056**; D-054 gained the owner's
+  ruling that the lines empty state keeps its 250 px.
+
+**Known issue found and not fixed here.** The desktop summary panel's grand total
+(`AmountSize.large` at `AppLayout.detailPanelWidth` = 320) **overflows at any amount from
+1,000,000 تومان upward** — 30 px at 1,000,000 and 58 px at 10,000,000, measured in a widget test.
+Every realistic Iranian invoice is above that threshold. The dense variant used by the phone bar does
+not overflow at any magnitude, which is why (d)'s Redmi pass reported no layout errors: it only
+exercised the phone tier. It belongs to **(b)**, which builds the desktop detail screen and is where
+this panel next renders a stored invoice. Measured with test-font metrics rather than Vazirmatn, so
+the exact threshold is indicative; that it is magnitude-dependent and desktop-only is not.
+
+**Security note (increment a2).** No new data class and no new input. Three integer-Rial columns join
+five that already exist, on rows that already hold the same kind of figure. The backfill reads and
+writes only within the user's own encrypted database and **logs nothing** — its counts are returned as
+`InvoiceFiguresBackfillReport` rather than printed, because §7 forbids logging monetary amounts and a
+migration is exactly where a helpful debug line would be added. No new permission or platform surface;
+the threat model is unchanged.
 
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
 a data-integrity control: only `draft` invoices are editable or deletable.

@@ -13,6 +13,7 @@ import '../../../core/widgets/page_body.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/repositories/invoice_repository.dart';
 import '../application/invoice_editor.dart';
+import '../domain/invoice_summary_figures.dart';
 import '../domain/invoice_editor_state.dart';
 import '../domain/invoice_number_label.dart';
 import 'widgets/invoice_details_section.dart';
@@ -640,7 +641,7 @@ class _TotalOrEmpty extends StatelessWidget {
       );
     }
     return InvoiceTotalsSummary(
-      totals: state.totals,
+      totals: InvoiceSummaryFigures.ofCalculation(state.totals),
       strings: strings,
       dense: dense,
     );

@@ -2526,6 +2526,13 @@ alone, which is a control users miss twice before finding.
 the explanation — above them. The fold saves 400 px of scrolling; the empty state costs about 250 of
 what is left. If a later phase wants that space, the empty state is where it is, not the fields.
 
+**The empty state stays, and that is the owner's ruling on the number above** (2026-08-27). An empty
+lines section that said nothing would be worse than one that costs scroll — the 250 px buys the icon,
+the title and the call to action on the screen where a user has nothing yet and needs to be told what
+to do next. Recorded here rather than left as an observation so that a later phase hunting for that
+space finds the decision beside the measurement: **the space went to the empty state deliberately,
+and taking it back means deciding the empty state is worth less than 250 px of scroll.**
+
 **The same shape as the customer detail screen's record card**, deliberately: two disclosure headers
 that behaved differently would be worse than one shared idiom.
 
@@ -2624,3 +2631,108 @@ a gross of zero beside a total of 21,230,000 is worse than an admission that the
   on them like every other figure.
 - The **runtime invariant becomes checkable against storage**, not only against the engine's output.
   A stored invoice whose figures do not reconcile is a defect that should be found on read.
+
+---
+
+## D-056 — The v4 backfill checks the rule rather than assuming it, and the copy for what it cannot fill
+
+**Date:** 2026-08-27
+**Status:** ACCEPTED — implemented as Phase 5 increment (a2), `schemaVersion = 4`
+**Implements:** D-055. **Extends:** D-046 (one calculation path), D-027, D-052, D-048
+
+D-055 settled *what* to store and that pre-v4 rows are backfilled where they reconcile. Building it
+raised three questions D-055 did not answer, and this records the answers.
+
+### 1. The backfill runs the engine — it does not re-derive anything
+
+The obvious implementation opens step 1 and the largest-remainder allocation into
+`lib/data/database/`: multiply price by milli-quantity, round half-up, divide the invoice discount by
+line net. **That is a second implementation of §4 in the data layer**, which is precisely what D-046's
+scan exists to prevent, and it would sit where nobody would think to look for a money bug.
+
+So `backfillInvoiceFigures` reconstructs an `InvoiceInput` from the row's own stored columns — unit
+price, milli-quantity, effective line discount, effective invoice discount, resolved per-line tax rate
+— and calls **`calculateInvoice`**. It is the **third sanctioned caller** in
+`single_calculation_path_test.dart`, listed rather than exempted, and the test's doc comment says why
+it is a different kind of caller from the other two.
+
+**It is a comparison, not a producer.** Nothing is written unless the engine's output reproduces
+*every figure already on the row*: each line's effective discount, net, tax and total, and the
+invoice's subtotal, total discount, total tax, and grand total less its stored rounding adjustment.
+The preview and the write are checked against each other by
+`invoice_preview_matches_write_test.dart`; this one is checked against the database, which is why a
+third caller needed no third comparison test.
+
+**Which turns D-055's weakest assumption into a check.** D-055 argues the backfill is honest because
+"the rounding rule has not changed since v1". The migration does not take that on trust: if the rule
+had changed, the recomputation would not match, and the invoice would be **refused** — per invoice,
+automatically, with no one having to remember the argument.
+
+Four consequences worth stating:
+
+- **The stored effective discount is fed back, never the entered percentage** (D-027). The amount is
+  what the document printed; re-resolving the percentage would be a re-derivation. A line clamped when
+  it was written stays clamped to the same number.
+- **`defaultTaxRateBp: 0` and `taxRateBp: null` at the invoice level.** Every line carries its own
+  resolved rate, so item-level resolution wins at §4 step 6 and neither is ever consulted. Passing the
+  settings default would make what the migration accepts depend on a value the user can change after
+  the fact.
+- **`roundingUnitRial: 0`, and the stored adjustment added back.** Rounding moves the grand total and
+  nothing else, so a user who has since changed the rounding unit does not thereby make their old
+  invoices unreconcilable.
+- **Any throw from the engine is a refusal, never an exception.** A migration that throws leaves the
+  user with an application that will not start, over one invoice that was already unprintable.
+
+### 2. The unit of refusal is the invoice, and lines are read alive and in order
+
+**Per invoice, never per line.** An invoice with a gross on three lines and a null on the fourth is a
+document that reconciles nowhere *and* admits nothing. One line out and the whole invoice keeps its
+nulls; the invoices beside it are unaffected.
+
+**Only alive lines take part.** `updateDraft` soft-deletes the lines it replaces (D-003), so a real
+database holds superseded lines beside the live ones. They took no part in the stored totals, so
+counting them would make every edited invoice unreconcilable — and they belong to no document, so they
+get no figures of their own. They are read in `position` order because largest-remainder allocation
+breaks ties toward the earlier line: a different read order is a different allocation.
+
+**An invoice with no lines gets a real zero**, not a null. Nothing was billed, so the sum over no
+lines is zero and the document can say so. This is the one place the two meanings — "unknown" and
+"nothing" — have to be told apart, and the nullable column is what lets them be.
+
+**Paged, 100 invoices at a time.** A migration that needs the whole table resident is one that fails
+on the largest install rather than the smallest (§13). A test seeds 250 invoices, because a paging bug
+is invisible on a fixture of three and shows up only as the invoices past the first page silently
+keeping their nulls.
+
+### 3. «ثبت‌نشده» — what a read path shows where a figure was never recorded
+
+On «بدون شماره»'s principle (D-048): **not a blank cell**, which reads as data that failed to load,
+and **not a zero**, which is a figure a document prints. Chosen over «نامشخص» because
+«ثبت‌نشده» states a fact about the record — it was never written down — where «نامشخص» claims
+uncertainty about the world. Short enough for a fixed-width table cell as well as the summary panel.
+
+Beneath the panel, where there is room, a second string says the part «ثبت‌نشده» alone cannot:
+«جمع سطرهای این فاکتور هنگام صدور ثبت نشده است. مبلغ قابل پرداخت آن درست و بدون تغییر است.» Without
+it, an admission beside a payable amount reads as a fault in the invoice rather than a gap in what was
+stored about it.
+
+**The absence is carried in the type, not remembered by each read site.**
+`InvoiceSummaryFigures` — the view model the detail screen and the future document renderer will both
+be handed (§12) — has `Money? grossTotal` and two named constructors, `ofCalculation` for the live
+preview (never null) and `ofStored` for a stored invoice (may be). `InvoiceTotalsSummary` now takes
+that instead of `CalculatedInvoice`, so **the form and the detail screen render the same panel through
+the same rows** and there is exactly one place the absence is worded. A read site that wanted to print
+a zero would have to write the code to do it.
+
+### 4. Alternatives rejected
+
+- **`NOT NULL DEFAULT 0`.** Refused by D-055 and confirmed here by the fixture: a gross of zero beside
+  a grand total of 21,230,000 is a document contradicting itself, where an admission is only one that
+  is incomplete.
+- **Backfilling per line, filling what can be filled.** Rejected above: a partly-filled invoice is
+  worse than an empty one, because it looks complete.
+- **Open-coding §4 in the migration.** Rejected in §1. It is faster to write and it is a second
+  answer to the question the engine exists to answer once.
+- **Making the backfill's counts a log line.** Rejected: §7 forbids logging figures, and the counts
+  are the migration's own result. `InvoiceFiguresBackfillReport` returns them, and the tests assert on
+  them.

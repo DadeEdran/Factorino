@@ -20,11 +20,21 @@ import 'package:flutter_test/flutter_test.dart';
 ///   single source of every figure a screen displays.
 /// * `DriftInvoiceRepository` — the **write**, computed inside the transaction
 ///   that persists it, so a stored total cannot disagree with its lines.
+/// * `invoice_figures_backfill.dart` — the **v3 -> v4 backfill** (D-055), which
+///   is a different kind of caller from the other two and is listed for that
+///   reason rather than by exception. The preview and the write both *produce*
+///   figures the user then sees; the backfill produces nothing it has not first
+///   checked against figures the database already holds, and where the engine's
+///   output disagrees with the stored row by a single Rial it writes null
+///   instead. So it is covered — not by the preview/write comparison below, but
+///   by being a comparison itself. The alternative was open-coding §4 step 1
+///   and the largest-remainder allocation in the data layer, which is the
+///   second implementation this scan exists to prevent.
 ///
-/// Those two callers are deliberate and they are tested against each other:
+/// The first two callers are deliberate and they are tested against each other:
 /// `invoice_preview_matches_write_test.dart` builds a state, writes its draft
 /// through the real repository, and asserts that every stored figure equals the
-/// one the preview showed. A third caller would not be covered by that test,
+/// one the preview showed. A fourth caller would not be covered by that test,
 /// which is the reason this scan exists rather than a comment asking for care.
 ///
 /// **Escape hatch.** `// calculation-exempt: <reason>` on the line or in the
@@ -37,6 +47,7 @@ void main() {
   const Set<String> sanctioned = <String>{
     'lib/features/invoices/domain/invoice_editor_state.dart',
     'lib/data/repositories/drift/drift_invoice_repository.dart',
+    'lib/data/database/invoice_figures_backfill.dart',
   };
 
   final RegExp callsEngine = RegExp(
@@ -88,7 +99,7 @@ void main() {
     );
   });
 
-  test('both sanctioned callers still exist and still call it', () {
+  test('every sanctioned caller still exists and still calls it', () {
     // Without this the scan above passes for free after a rename -- and it
     // would pass most convincingly at the exact moment the preview stopped
     // being computed by the engine at all.

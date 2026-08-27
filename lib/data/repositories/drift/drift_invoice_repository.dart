@@ -339,6 +339,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
               discountPercentBp: Value(draft.discountPercentBp),
               taxRateBp: Value(draft.taxRateBp),
               notes: Value(draft.notes),
+              grossTotalRial: Value(calculated.grossTotal.rial),
               subtotalRial: Value(calculated.subtotal.rial),
               totalDiscountRial: Value(calculated.totalDiscount.rial),
               totalTaxRial: Value(calculated.totalTax.rial),
@@ -372,6 +373,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
           discountPercentBp: Value(draft.discountPercentBp),
           taxRateBp: Value(draft.taxRateBp),
           notes: Value(draft.notes),
+          grossTotalRial: Value(calculated.grossTotal.rial),
           subtotalRial: Value(calculated.subtotal.rial),
           totalDiscountRial: Value(calculated.totalDiscount.rial),
           totalTaxRial: Value(calculated.totalTax.rial),
@@ -562,6 +564,10 @@ class DriftInvoiceRepository implements InvoiceRepository {
               // The effective discount, not the entered one (D-027).
               discountRial: Value(line.discount.rial),
               discountPercentBp: Value(item.discountPercentBp),
+              lineGrossRial: Value(line.gross.rial),
+              allocatedInvoiceDiscountRial: Value(
+                line.allocatedInvoiceDiscount.rial,
+              ),
               lineNetRial: Value(line.netAfterInvoiceDiscount.rial),
               lineTaxRial: Value(line.tax.rial),
               lineTotalRial: Value(line.total.rial),

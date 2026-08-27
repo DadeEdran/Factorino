@@ -59,6 +59,15 @@ class Money implements Comparable<Money> {
     return Money._(rial);
   }
 
+  /// The same, for a column that may hold no figure at all.
+  ///
+  /// Three of them do (D-055): `invoices.gross_total_rial` and the two per-line
+  /// figures beside it are null on an invoice written before schema v4 whose
+  /// stored numbers could not be reconciled. Mapping that to [zero] would put a
+  /// figure a document prints where the truth is that none is known, so the
+  /// absence is carried in the type and every read site has to answer for it.
+  static Money? rialOrNull(int? rial) => rial == null ? null : Money.rial(rial);
+
   /// Constructs from Toman, the primary **display** unit.
   /// Storage and arithmetic stay in Rial.
   factory Money.toman(int toman) => Money.rial(_checkedMul(toman, 10));

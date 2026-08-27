@@ -17,6 +17,8 @@ class InvoiceItem {
     required this.quantityMilli,
     required this.discount,
     required this.resolvedTaxRateBp,
+    required this.gross,
+    required this.allocatedInvoiceDiscount,
     required this.lineNet,
     required this.lineTax,
     required this.lineTotal,
@@ -50,9 +52,25 @@ class InvoiceItem {
   /// settings default cannot alter an issued invoice (§4 step 6, D-026).
   final int resolvedTaxRateBp;
 
+  /// **مبلغ کل** on the printed line: `unitPrice x quantity`, half-up (§4
+  /// step 1). Null only on a pre-v4 row the backfill refused (D-055).
+  final Money? gross;
+
+  /// This line's share of the invoice-level discount (§4 step 4), without which
+  /// [lineNet] cannot be explained on the document — it is already net of this
+  /// amount, and the header prints the same deduction again. Null exactly when
+  /// [gross] is.
+  final Money? allocatedInvoiceDiscount;
+
+  /// `gross - discount - allocatedInvoiceDiscount` — **مبلغ پس از تخفیف**.
   final Money lineNet;
+
   final Money lineTax;
   final Money lineTotal;
+
+  /// Whether this line can be laid out as a document line without any figure
+  /// being re-derived.
+  bool get hasStoredGross => gross != null;
 
   /// The quantity as a decimal, for display only. Never used in arithmetic --
   /// the money path stays integer throughout (D-002).

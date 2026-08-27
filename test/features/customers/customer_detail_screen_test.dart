@@ -66,6 +66,7 @@ void main() {
         issueDate: DateTime.utc(2026, 8, 20),
         status: InvoiceStatus.unpaid,
         discount: Money.zero,
+        grossTotal: Money.rial(rial),
         subtotal: Money.rial(rial),
         totalDiscount: Money.zero,
         totalTax: Money.zero,

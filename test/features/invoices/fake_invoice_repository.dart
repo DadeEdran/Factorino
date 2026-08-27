@@ -220,6 +220,7 @@ class FakeInvoiceRepository implements InvoiceRepository {
       issueDate: now,
       status: status,
       discount: Money.zero,
+      grossTotal: Money.zero,
       subtotal: Money.zero,
       totalDiscount: Money.zero,
       totalTax: Money.zero,

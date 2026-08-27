@@ -1874,6 +1874,17 @@ class $InvoicesTable extends Invoices
         type: DriftSqlType.int,
         requiredDuringInsert: true,
       ).withConverter<InvoiceStatus>($InvoicesTable.$converterstatus);
+  static const VerificationMeta _grossTotalRialMeta = const VerificationMeta(
+    'grossTotalRial',
+  );
+  @override
+  late final GeneratedColumn<int> grossTotalRial = GeneratedColumn<int>(
+    'gross_total_rial',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   static const VerificationMeta _subtotalRialMeta = const VerificationMeta(
     'subtotalRial',
   );
@@ -1957,6 +1968,7 @@ class $InvoicesTable extends Invoices
     customerEconomicIdSnapshot,
     customerAddressSnapshot,
     status,
+    grossTotalRial,
     subtotalRial,
     totalDiscountRial,
     totalTaxRial,
@@ -2123,6 +2135,15 @@ class $InvoicesTable extends Invoices
         ),
       );
     }
+    if (data.containsKey('gross_total_rial')) {
+      context.handle(
+        _grossTotalRialMeta,
+        grossTotalRial.isAcceptableOrUnknown(
+          data['gross_total_rial']!,
+          _grossTotalRialMeta,
+        ),
+      );
+    }
     if (data.containsKey('subtotal_rial')) {
       context.handle(
         _subtotalRialMeta,
@@ -2269,6 +2290,10 @@ class $InvoicesTable extends Invoices
           data['${effectivePrefix}status'],
         )!,
       ),
+      grossTotalRial: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}gross_total_rial'],
+      ),
       subtotalRial: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}subtotal_rial'],
@@ -2382,6 +2407,23 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
   final String? customerEconomicIdSnapshot;
   final String? customerAddressSnapshot;
   final InvoiceStatus status;
+
+  /// `Σ lineGross` -- the **first term of the printed summary** (D-055).
+  ///
+  /// Stored rather than recomputed, for the reason every other figure here is:
+  /// step 1 of §4 carries a rounding rule, so a gross re-derived on read is
+  /// today's rule applied to yesterday's document. That is D-004's failure
+  /// applied to arithmetic instead of to price, and the PDF layer is the one
+  /// place it would be both invisible and permanent (§12).
+  ///
+  /// **Nullable, and `NOT NULL DEFAULT 0` was refused.** Invoices written
+  /// before schema v4 are backfilled where their stored figures reconcile
+  /// exactly, and left **null** where they do not -- zero is a number a
+  /// document prints, and a gross of zero beside a grand total of 21,230,000
+  /// is worse than an admission that the figure is unknown. Everything
+  /// rendering it says so in Persian; `invoiceGrossLabel` is the one place the
+  /// wording lives, on `invoiceNumberLabel`'s precedent.
+  final int? grossTotalRial;
   final int subtotalRial;
   final int totalDiscountRial;
   final int totalTaxRial;
@@ -2413,6 +2455,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     this.customerEconomicIdSnapshot,
     this.customerAddressSnapshot,
     required this.status,
+    this.grossTotalRial,
     required this.subtotalRial,
     required this.totalDiscountRial,
     required this.totalTaxRial,
@@ -2488,6 +2531,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
         $InvoicesTable.$converterstatus.toSql(status),
       );
     }
+    if (!nullToAbsent || grossTotalRial != null) {
+      map['gross_total_rial'] = Variable<int>(grossTotalRial);
+    }
     map['subtotal_rial'] = Variable<int>(subtotalRial);
     map['total_discount_rial'] = Variable<int>(totalDiscountRial);
     map['total_tax_rial'] = Variable<int>(totalTaxRial);
@@ -2550,6 +2596,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           ? const Value.absent()
 : Value(customerAddressSnapshot),
       status: Value(status),
+      grossTotalRial: grossTotalRial == null && nullToAbsent
+          ? const Value.absent()
+: Value(grossTotalRial),
       subtotalRial: Value(subtotalRial),
       totalDiscountRial: Value(totalDiscountRial),
       totalTaxRial: Value(totalTaxRial),
@@ -2600,6 +2649,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       status: $InvoicesTable.$converterstatus.fromJson(
         serializer.fromJson<int>(json['status']),
       ),
+      grossTotalRial: serializer.fromJson<int?>(json['grossTotalRial']),
       subtotalRial: serializer.fromJson<int>(json['subtotalRial']),
       totalDiscountRial: serializer.fromJson<int>(json['totalDiscountRial']),
       totalTaxRial: serializer.fromJson<int>(json['totalTaxRial']),
@@ -2647,6 +2697,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       'status': serializer.toJson<int>(
         $InvoicesTable.$converterstatus.toJson(status),
       ),
+      'grossTotalRial': serializer.toJson<int?>(grossTotalRial),
       'subtotalRial': serializer.toJson<int>(subtotalRial),
       'totalDiscountRial': serializer.toJson<int>(totalDiscountRial),
       'totalTaxRial': serializer.toJson<int>(totalTaxRial),
@@ -2678,6 +2729,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     Value<String?> customerEconomicIdSnapshot = const Value.absent(),
     Value<String?> customerAddressSnapshot = const Value.absent(),
     InvoiceStatus? status,
+    Value<int?> grossTotalRial = const Value.absent(),
     int? subtotalRial,
     int? totalDiscountRial,
     int? totalTaxRial,
@@ -2720,6 +2772,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
         ? customerAddressSnapshot.value
 : this.customerAddressSnapshot,
     status: status ?? this.status,
+    grossTotalRial: grossTotalRial.present
+        ? grossTotalRial.value
+: this.grossTotalRial,
     subtotalRial: subtotalRial ?? this.subtotalRial,
     totalDiscountRial: totalDiscountRial ?? this.totalDiscountRial,
     totalTaxRial: totalTaxRial ?? this.totalTaxRial,
@@ -2775,6 +2830,9 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           ? data.customerAddressSnapshot.value
 : this.customerAddressSnapshot,
       status: data.status.present ? data.status.value : this.status,
+      grossTotalRial: data.grossTotalRial.present
+          ? data.grossTotalRial.value
+: this.grossTotalRial,
       subtotalRial: data.subtotalRial.present
           ? data.subtotalRial.value
 : this.subtotalRial,
@@ -2818,6 +2876,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
 ..write('customerEconomicIdSnapshot: $customerEconomicIdSnapshot, ')
 ..write('customerAddressSnapshot: $customerAddressSnapshot, ')
 ..write('status: $status, ')
+..write('grossTotalRial: $grossTotalRial, ')
 ..write('subtotalRial: $subtotalRial, ')
 ..write('totalDiscountRial: $totalDiscountRial, ')
 ..write('totalTaxRial: $totalTaxRial, ')
@@ -2851,6 +2910,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     customerEconomicIdSnapshot,
     customerAddressSnapshot,
     status,
+    grossTotalRial,
     subtotalRial,
     totalDiscountRial,
     totalTaxRial,
@@ -2883,6 +2943,7 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           other.customerEconomicIdSnapshot == this.customerEconomicIdSnapshot &&
           other.customerAddressSnapshot == this.customerAddressSnapshot &&
           other.status == this.status &&
+          other.grossTotalRial == this.grossTotalRial &&
           other.subtotalRial == this.subtotalRial &&
           other.totalDiscountRial == this.totalDiscountRial &&
           other.totalTaxRial == this.totalTaxRial &&
@@ -2913,6 +2974,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   final Value<String?> customerEconomicIdSnapshot;
   final Value<String?> customerAddressSnapshot;
   final Value<InvoiceStatus> status;
+  final Value<int?> grossTotalRial;
   final Value<int> subtotalRial;
   final Value<int> totalDiscountRial;
   final Value<int> totalTaxRial;
@@ -2942,6 +3004,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.customerEconomicIdSnapshot = const Value.absent(),
     this.customerAddressSnapshot = const Value.absent(),
     this.status = const Value.absent(),
+    this.grossTotalRial = const Value.absent(),
     this.subtotalRial = const Value.absent(),
     this.totalDiscountRial = const Value.absent(),
     this.totalTaxRial = const Value.absent(),
@@ -2972,6 +3035,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.customerEconomicIdSnapshot = const Value.absent(),
     this.customerAddressSnapshot = const Value.absent(),
     required InvoiceStatus status,
+    this.grossTotalRial = const Value.absent(),
     this.subtotalRial = const Value.absent(),
     this.totalDiscountRial = const Value.absent(),
     this.totalTaxRial = const Value.absent(),
@@ -3004,6 +3068,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Expression<String>? customerEconomicIdSnapshot,
     Expression<String>? customerAddressSnapshot,
     Expression<int>? status,
+    Expression<int>? grossTotalRial,
     Expression<int>? subtotalRial,
     Expression<int>? totalDiscountRial,
     Expression<int>? totalTaxRial,
@@ -3039,6 +3104,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       if (customerAddressSnapshot != null)
         'customer_address_snapshot': customerAddressSnapshot,
       if (status != null) 'status': status,
+      if (grossTotalRial != null) 'gross_total_rial': grossTotalRial,
       if (subtotalRial != null) 'subtotal_rial': subtotalRial,
       if (totalDiscountRial != null) 'total_discount_rial': totalDiscountRial,
       if (totalTaxRial != null) 'total_tax_rial': totalTaxRial,
@@ -3072,6 +3138,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Value<String?>? customerEconomicIdSnapshot,
     Value<String?>? customerAddressSnapshot,
     Value<InvoiceStatus>? status,
+    Value<int?>? grossTotalRial,
     Value<int>? subtotalRial,
     Value<int>? totalDiscountRial,
     Value<int>? totalTaxRial,
@@ -3106,6 +3173,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       customerAddressSnapshot:
           customerAddressSnapshot ?? this.customerAddressSnapshot,
       status: status ?? this.status,
+      grossTotalRial: grossTotalRial ?? this.grossTotalRial,
       subtotalRial: subtotalRial ?? this.subtotalRial,
       totalDiscountRial: totalDiscountRial ?? this.totalDiscountRial,
       totalTaxRial: totalTaxRial ?? this.totalTaxRial,
@@ -3199,6 +3267,9 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
         $InvoicesTable.$converterstatus.toSql(status.value),
       );
     }
+    if (grossTotalRial.present) {
+      map['gross_total_rial'] = Variable<int>(grossTotalRial.value);
+    }
     if (subtotalRial.present) {
       map['subtotal_rial'] = Variable<int>(subtotalRial.value);
     }
@@ -3247,6 +3318,7 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
 ..write('customerEconomicIdSnapshot: $customerEconomicIdSnapshot, ')
 ..write('customerAddressSnapshot: $customerAddressSnapshot, ')
 ..write('status: $status, ')
+..write('grossTotalRial: $grossTotalRial, ')
 ..write('subtotalRial: $subtotalRial, ')
 ..write('totalDiscountRial: $totalDiscountRial, ')
 ..write('totalTaxRial: $totalTaxRial, ')
@@ -3456,6 +3528,28 @@ class $InvoiceItemsTable extends InvoiceItems
     type: DriftSqlType.int,
     requiredDuringInsert: true,
   );
+  static const VerificationMeta _lineGrossRialMeta = const VerificationMeta(
+    'lineGrossRial',
+  );
+  @override
+  late final GeneratedColumn<int> lineGrossRial = GeneratedColumn<int>(
+    'line_gross_rial',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _allocatedInvoiceDiscountRialMeta =
+      const VerificationMeta('allocatedInvoiceDiscountRial');
+  @override
+  late final GeneratedColumn<int> allocatedInvoiceDiscountRial =
+      GeneratedColumn<int>(
+        'allocated_invoice_discount_rial',
+        aliasedName,
+        true,
+        type: DriftSqlType.int,
+        requiredDuringInsert: false,
+      );
   static const VerificationMeta _lineNetRialMeta = const VerificationMeta(
     'lineNetRial',
   );
@@ -3510,6 +3604,8 @@ class $InvoiceItemsTable extends InvoiceItems
     discountRial,
     discountPercentBp,
     resolvedTaxRateBp,
+    lineGrossRial,
+    allocatedInvoiceDiscountRial,
     lineNetRial,
     lineTaxRial,
     lineTotalRial,
@@ -3649,6 +3745,24 @@ class $InvoiceItemsTable extends InvoiceItems
     } else if (isInserting) {
       context.missing(_resolvedTaxRateBpMeta);
     }
+    if (data.containsKey('line_gross_rial')) {
+      context.handle(
+        _lineGrossRialMeta,
+        lineGrossRial.isAcceptableOrUnknown(
+          data['line_gross_rial']!,
+          _lineGrossRialMeta,
+        ),
+      );
+    }
+    if (data.containsKey('allocated_invoice_discount_rial')) {
+      context.handle(
+        _allocatedInvoiceDiscountRialMeta,
+        allocatedInvoiceDiscountRial.isAcceptableOrUnknown(
+          data['allocated_invoice_discount_rial']!,
+          _allocatedInvoiceDiscountRialMeta,
+        ),
+      );
+    }
     if (data.containsKey('line_net_rial')) {
       context.handle(
         _lineNetRialMeta,
@@ -3751,6 +3865,14 @@ class $InvoiceItemsTable extends InvoiceItems
         DriftSqlType.int,
         data['${effectivePrefix}resolved_tax_rate_bp'],
       )!,
+      lineGrossRial: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}line_gross_rial'],
+      ),
+      allocatedInvoiceDiscountRial: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}allocated_invoice_discount_rial'],
+      ),
       lineNetRial: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}line_net_rial'],
@@ -3822,6 +3944,25 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
   /// order item -> invoice -> settings default, and snapshotted here so a
   /// later settings change cannot alter an issued invoice (§4 step 6).
   final int resolvedTaxRateBp;
+
+  /// `unitPrice x quantityMilli / 1000`, half-up -- **مبلغ کل** on the printed
+  /// line, and the term every other figure on the row is measured from
+  /// (D-055).
+  ///
+  /// Stored for the same reason [unitPriceRial] is a snapshot: §4 step 1
+  /// carries a rounding rule, so a gross re-derived at render time is today's
+  /// rule applied to a document issued under whatever rule was in force then.
+  final int? lineGrossRial;
+
+  /// This line's share of the invoice-level discount, allocated by largest
+  /// remainder (§4 step 4).
+  ///
+  /// **Without it [lineNetRial] is unexplainable.** That column holds
+  /// `netAfterInvoiceDiscount` -- the net after a deduction the header prints
+  /// again -- so a document laying the two out beside each other reconciles
+  /// nowhere unless the line says how much of the header's discount landed on
+  /// it (D-055).
+  final int? allocatedInvoiceDiscountRial;
   final int lineNetRial;
   final int lineTaxRial;
   final int lineTotalRial;
@@ -3842,6 +3983,8 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
     required this.discountRial,
     this.discountPercentBp,
     required this.resolvedTaxRateBp,
+    this.lineGrossRial,
+    this.allocatedInvoiceDiscountRial,
     required this.lineNetRial,
     required this.lineTaxRial,
     required this.lineTotalRial,
@@ -3877,6 +4020,14 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
       map['discount_percent_bp'] = Variable<int>(discountPercentBp);
     }
     map['resolved_tax_rate_bp'] = Variable<int>(resolvedTaxRateBp);
+    if (!nullToAbsent || lineGrossRial != null) {
+      map['line_gross_rial'] = Variable<int>(lineGrossRial);
+    }
+    if (!nullToAbsent || allocatedInvoiceDiscountRial != null) {
+      map['allocated_invoice_discount_rial'] = Variable<int>(
+        allocatedInvoiceDiscountRial,
+      );
+    }
     map['line_net_rial'] = Variable<int>(lineNetRial);
     map['line_tax_rial'] = Variable<int>(lineTaxRial);
     map['line_total_rial'] = Variable<int>(lineTotalRial);
@@ -3909,6 +4060,13 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
           ? const Value.absent()
 : Value(discountPercentBp),
       resolvedTaxRateBp: Value(resolvedTaxRateBp),
+      lineGrossRial: lineGrossRial == null && nullToAbsent
+          ? const Value.absent()
+: Value(lineGrossRial),
+      allocatedInvoiceDiscountRial:
+          allocatedInvoiceDiscountRial == null && nullToAbsent
+          ? const Value.absent()
+: Value(allocatedInvoiceDiscountRial),
       lineNetRial: Value(lineNetRial),
       lineTaxRial: Value(lineTaxRial),
       lineTotalRial: Value(lineTotalRial),
@@ -3939,6 +4097,10 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
       discountRial: serializer.fromJson<int>(json['discountRial']),
       discountPercentBp: serializer.fromJson<int?>(json['discountPercentBp']),
       resolvedTaxRateBp: serializer.fromJson<int>(json['resolvedTaxRateBp']),
+      lineGrossRial: serializer.fromJson<int?>(json['lineGrossRial']),
+      allocatedInvoiceDiscountRial: serializer.fromJson<int?>(
+        json['allocatedInvoiceDiscountRial'],
+      ),
       lineNetRial: serializer.fromJson<int>(json['lineNetRial']),
       lineTaxRial: serializer.fromJson<int>(json['lineTaxRial']),
       lineTotalRial: serializer.fromJson<int>(json['lineTotalRial']),
@@ -3966,6 +4128,10 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
       'discountRial': serializer.toJson<int>(discountRial),
       'discountPercentBp': serializer.toJson<int?>(discountPercentBp),
       'resolvedTaxRateBp': serializer.toJson<int>(resolvedTaxRateBp),
+      'lineGrossRial': serializer.toJson<int?>(lineGrossRial),
+      'allocatedInvoiceDiscountRial': serializer.toJson<int?>(
+        allocatedInvoiceDiscountRial,
+      ),
       'lineNetRial': serializer.toJson<int>(lineNetRial),
       'lineTaxRial': serializer.toJson<int>(lineTaxRial),
       'lineTotalRial': serializer.toJson<int>(lineTotalRial),
@@ -3989,6 +4155,8 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
     int? discountRial,
     Value<int?> discountPercentBp = const Value.absent(),
     int? resolvedTaxRateBp,
+    Value<int?> lineGrossRial = const Value.absent(),
+    Value<int?> allocatedInvoiceDiscountRial = const Value.absent(),
     int? lineNetRial,
     int? lineTaxRial,
     int? lineTotalRial,
@@ -4011,6 +4179,12 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
         ? discountPercentBp.value
 : this.discountPercentBp,
     resolvedTaxRateBp: resolvedTaxRateBp ?? this.resolvedTaxRateBp,
+    lineGrossRial: lineGrossRial.present
+        ? lineGrossRial.value
+: this.lineGrossRial,
+    allocatedInvoiceDiscountRial: allocatedInvoiceDiscountRial.present
+        ? allocatedInvoiceDiscountRial.value
+: this.allocatedInvoiceDiscountRial,
     lineNetRial: lineNetRial ?? this.lineNetRial,
     lineTaxRial: lineTaxRial ?? this.lineTaxRial,
     lineTotalRial: lineTotalRial ?? this.lineTotalRial,
@@ -4051,6 +4225,12 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
       resolvedTaxRateBp: data.resolvedTaxRateBp.present
           ? data.resolvedTaxRateBp.value
 : this.resolvedTaxRateBp,
+      lineGrossRial: data.lineGrossRial.present
+          ? data.lineGrossRial.value
+: this.lineGrossRial,
+      allocatedInvoiceDiscountRial: data.allocatedInvoiceDiscountRial.present
+          ? data.allocatedInvoiceDiscountRial.value
+: this.allocatedInvoiceDiscountRial,
       lineNetRial: data.lineNetRial.present
           ? data.lineNetRial.value
 : this.lineNetRial,
@@ -4082,6 +4262,10 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
 ..write('discountRial: $discountRial, ')
 ..write('discountPercentBp: $discountPercentBp, ')
 ..write('resolvedTaxRateBp: $resolvedTaxRateBp, ')
+..write('lineGrossRial: $lineGrossRial, ')
+..write(
+            'allocatedInvoiceDiscountRial: $allocatedInvoiceDiscountRial, ',
+          )
 ..write('lineNetRial: $lineNetRial, ')
 ..write('lineTaxRial: $lineTaxRial, ')
 ..write('lineTotalRial: $lineTotalRial')
@@ -4090,7 +4274,7 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
   }
 
   @override
-  int get hashCode => Object.hash(
+  int get hashCode => Object.hashAll([
     id,
     createdAt,
     updatedAt,
@@ -4107,10 +4291,12 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
     discountRial,
     discountPercentBp,
     resolvedTaxRateBp,
+    lineGrossRial,
+    allocatedInvoiceDiscountRial,
     lineNetRial,
     lineTaxRial,
     lineTotalRial,
-  );
+  ]);
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -4131,6 +4317,9 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
           other.discountRial == this.discountRial &&
           other.discountPercentBp == this.discountPercentBp &&
           other.resolvedTaxRateBp == this.resolvedTaxRateBp &&
+          other.lineGrossRial == this.lineGrossRial &&
+          other.allocatedInvoiceDiscountRial ==
+              this.allocatedInvoiceDiscountRial &&
           other.lineNetRial == this.lineNetRial &&
           other.lineTaxRial == this.lineTaxRial &&
           other.lineTotalRial == this.lineTotalRial);
@@ -4153,6 +4342,8 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
   final Value<int> discountRial;
   final Value<int?> discountPercentBp;
   final Value<int> resolvedTaxRateBp;
+  final Value<int?> lineGrossRial;
+  final Value<int?> allocatedInvoiceDiscountRial;
   final Value<int> lineNetRial;
   final Value<int> lineTaxRial;
   final Value<int> lineTotalRial;
@@ -4174,6 +4365,8 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
     this.discountRial = const Value.absent(),
     this.discountPercentBp = const Value.absent(),
     this.resolvedTaxRateBp = const Value.absent(),
+    this.lineGrossRial = const Value.absent(),
+    this.allocatedInvoiceDiscountRial = const Value.absent(),
     this.lineNetRial = const Value.absent(),
     this.lineTaxRial = const Value.absent(),
     this.lineTotalRial = const Value.absent(),
@@ -4196,6 +4389,8 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
     this.discountRial = const Value.absent(),
     this.discountPercentBp = const Value.absent(),
     required int resolvedTaxRateBp,
+    this.lineGrossRial = const Value.absent(),
+    this.allocatedInvoiceDiscountRial = const Value.absent(),
     this.lineNetRial = const Value.absent(),
     this.lineTaxRial = const Value.absent(),
     this.lineTotalRial = const Value.absent(),
@@ -4223,6 +4418,8 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
     Expression<int>? discountRial,
     Expression<int>? discountPercentBp,
     Expression<int>? resolvedTaxRateBp,
+    Expression<int>? lineGrossRial,
+    Expression<int>? allocatedInvoiceDiscountRial,
     Expression<int>? lineNetRial,
     Expression<int>? lineTaxRial,
     Expression<int>? lineTotalRial,
@@ -4245,6 +4442,9 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
       if (discountRial != null) 'discount_rial': discountRial,
       if (discountPercentBp != null) 'discount_percent_bp': discountPercentBp,
       if (resolvedTaxRateBp != null) 'resolved_tax_rate_bp': resolvedTaxRateBp,
+      if (lineGrossRial != null) 'line_gross_rial': lineGrossRial,
+      if (allocatedInvoiceDiscountRial != null)
+        'allocated_invoice_discount_rial': allocatedInvoiceDiscountRial,
       if (lineNetRial != null) 'line_net_rial': lineNetRial,
       if (lineTaxRial != null) 'line_tax_rial': lineTaxRial,
       if (lineTotalRial != null) 'line_total_rial': lineTotalRial,
@@ -4269,6 +4469,8 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
     Value<int>? discountRial,
     Value<int?>? discountPercentBp,
     Value<int>? resolvedTaxRateBp,
+    Value<int?>? lineGrossRial,
+    Value<int?>? allocatedInvoiceDiscountRial,
     Value<int>? lineNetRial,
     Value<int>? lineTaxRial,
     Value<int>? lineTotalRial,
@@ -4291,6 +4493,9 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
       discountRial: discountRial ?? this.discountRial,
       discountPercentBp: discountPercentBp ?? this.discountPercentBp,
       resolvedTaxRateBp: resolvedTaxRateBp ?? this.resolvedTaxRateBp,
+      lineGrossRial: lineGrossRial ?? this.lineGrossRial,
+      allocatedInvoiceDiscountRial:
+          allocatedInvoiceDiscountRial ?? this.allocatedInvoiceDiscountRial,
       lineNetRial: lineNetRial ?? this.lineNetRial,
       lineTaxRial: lineTaxRial ?? this.lineTaxRial,
       lineTotalRial: lineTotalRial ?? this.lineTotalRial,
@@ -4351,6 +4556,14 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
     if (resolvedTaxRateBp.present) {
       map['resolved_tax_rate_bp'] = Variable<int>(resolvedTaxRateBp.value);
     }
+    if (lineGrossRial.present) {
+      map['line_gross_rial'] = Variable<int>(lineGrossRial.value);
+    }
+    if (allocatedInvoiceDiscountRial.present) {
+      map['allocated_invoice_discount_rial'] = Variable<int>(
+        allocatedInvoiceDiscountRial.value,
+      );
+    }
     if (lineNetRial.present) {
       map['line_net_rial'] = Variable<int>(lineNetRial.value);
     }
@@ -4385,6 +4598,10 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
 ..write('discountRial: $discountRial, ')
 ..write('discountPercentBp: $discountPercentBp, ')
 ..write('resolvedTaxRateBp: $resolvedTaxRateBp, ')
+..write('lineGrossRial: $lineGrossRial, ')
+..write(
+            'allocatedInvoiceDiscountRial: $allocatedInvoiceDiscountRial, ',
+          )
 ..write('lineNetRial: $lineNetRial, ')
 ..write('lineTaxRial: $lineTaxRial, ')
 ..write('lineTotalRial: $lineTotalRial, ')
@@ -6976,6 +7193,7 @@ typedef $$InvoicesTableCreateCompanionBuilder = InvoicesCompanion Function({
   Value<String?> customerEconomicIdSnapshot,
   Value<String?> customerAddressSnapshot,
   required InvoiceStatus status,
+  Value<int?> grossTotalRial,
   Value<int> subtotalRial,
   Value<int> totalDiscountRial,
   Value<int> totalTaxRial,
@@ -7006,6 +7224,7 @@ typedef $$InvoicesTableUpdateCompanionBuilder = InvoicesCompanion Function({
   Value<String?> customerEconomicIdSnapshot,
   Value<String?> customerAddressSnapshot,
   Value<InvoiceStatus> status,
+  Value<int?> grossTotalRial,
   Value<int> subtotalRial,
   Value<int> totalDiscountRial,
   Value<int> totalTaxRial,
@@ -7186,6 +7405,11 @@ class $$InvoicesTableFilterComposer
   get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
+
+  ColumnFilters<int> get grossTotalRial => $composableBuilder(
+    column: $table.grossTotalRial,
+    builder: (column) => ColumnFilters(column),
   );
 
   ColumnFilters<int> get subtotalRial => $composableBuilder(
@@ -7401,6 +7625,11 @@ class $$InvoicesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get grossTotalRial => $composableBuilder(
+    column: $table.grossTotalRial,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get subtotalRial => $composableBuilder(
     column: $table.subtotalRial,
     builder: (column) => ColumnOrderings(column),
@@ -7544,6 +7773,11 @@ class $$InvoicesTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<InvoiceStatus, int> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
+
+  GeneratedColumn<int> get grossTotalRial => $composableBuilder(
+    column: $table.grossTotalRial,
+    builder: (column) => column,
+  );
 
   GeneratedColumn<int> get subtotalRial => $composableBuilder(
     column: $table.subtotalRial,
@@ -7700,6 +7934,7 @@ class $$InvoicesTableTableManager
                     const Value.absent(),
                 Value<String?> customerAddressSnapshot = const Value.absent(),
                 Value<InvoiceStatus> status = const Value.absent(),
+                Value<int?> grossTotalRial = const Value.absent(),
                 Value<int> subtotalRial = const Value.absent(),
                 Value<int> totalDiscountRial = const Value.absent(),
                 Value<int> totalTaxRial = const Value.absent(),
@@ -7729,6 +7964,7 @@ class $$InvoicesTableTableManager
                 customerEconomicIdSnapshot: customerEconomicIdSnapshot,
                 customerAddressSnapshot: customerAddressSnapshot,
                 status: status,
+                grossTotalRial: grossTotalRial,
                 subtotalRial: subtotalRial,
                 totalDiscountRial: totalDiscountRial,
                 totalTaxRial: totalTaxRial,
@@ -7762,6 +7998,7 @@ class $$InvoicesTableTableManager
                     const Value.absent(),
                 Value<String?> customerAddressSnapshot = const Value.absent(),
                 required InvoiceStatus status,
+                Value<int?> grossTotalRial = const Value.absent(),
                 Value<int> subtotalRial = const Value.absent(),
                 Value<int> totalDiscountRial = const Value.absent(),
                 Value<int> totalTaxRial = const Value.absent(),
@@ -7791,6 +8028,7 @@ class $$InvoicesTableTableManager
                 customerEconomicIdSnapshot: customerEconomicIdSnapshot,
                 customerAddressSnapshot: customerAddressSnapshot,
                 status: status,
+                grossTotalRial: grossTotalRial,
                 subtotalRial: subtotalRial,
                 totalDiscountRial: totalDiscountRial,
                 totalTaxRial: totalTaxRial,
@@ -7936,6 +8174,8 @@ typedef $$InvoiceItemsTableCreateCompanionBuilder =
       Value<int> discountRial,
       Value<int?> discountPercentBp,
       required int resolvedTaxRateBp,
+      Value<int?> lineGrossRial,
+      Value<int?> allocatedInvoiceDiscountRial,
       Value<int> lineNetRial,
       Value<int> lineTaxRial,
       Value<int> lineTotalRial,
@@ -7959,6 +8199,8 @@ typedef $$InvoiceItemsTableUpdateCompanionBuilder =
       Value<int> discountRial,
       Value<int?> discountPercentBp,
       Value<int> resolvedTaxRateBp,
+      Value<int?> lineGrossRial,
+      Value<int?> allocatedInvoiceDiscountRial,
       Value<int> lineNetRial,
       Value<int> lineTaxRial,
       Value<int> lineTotalRial,
@@ -8081,6 +8323,16 @@ class $$InvoiceItemsTableFilterComposer
 
   ColumnFilters<int> get resolvedTaxRateBp => $composableBuilder(
     column: $table.resolvedTaxRateBp,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get lineGrossRial => $composableBuilder(
+    column: $table.lineGrossRial,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get allocatedInvoiceDiscountRial => $composableBuilder(
+    column: $table.allocatedInvoiceDiscountRial,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8225,6 +8477,16 @@ class $$InvoiceItemsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get lineGrossRial => $composableBuilder(
+    column: $table.lineGrossRial,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get allocatedInvoiceDiscountRial => $composableBuilder(
+    column: $table.allocatedInvoiceDiscountRial,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get lineNetRial => $composableBuilder(
     column: $table.lineNetRial,
     builder: (column) => ColumnOrderings(column),
@@ -8357,6 +8619,16 @@ class $$InvoiceItemsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get lineGrossRial => $composableBuilder(
+    column: $table.lineGrossRial,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get allocatedInvoiceDiscountRial => $composableBuilder(
+    column: $table.allocatedInvoiceDiscountRial,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get lineNetRial => $composableBuilder(
     column: $table.lineNetRial,
     builder: (column) => column,
@@ -8463,6 +8735,8 @@ class $$InvoiceItemsTableTableManager
                 Value<int> discountRial = const Value.absent(),
                 Value<int?> discountPercentBp = const Value.absent(),
                 Value<int> resolvedTaxRateBp = const Value.absent(),
+                Value<int?> lineGrossRial = const Value.absent(),
+                Value<int?> allocatedInvoiceDiscountRial = const Value.absent(),
                 Value<int> lineNetRial = const Value.absent(),
                 Value<int> lineTaxRial = const Value.absent(),
                 Value<int> lineTotalRial = const Value.absent(),
@@ -8484,6 +8758,8 @@ class $$InvoiceItemsTableTableManager
                 discountRial: discountRial,
                 discountPercentBp: discountPercentBp,
                 resolvedTaxRateBp: resolvedTaxRateBp,
+                lineGrossRial: lineGrossRial,
+                allocatedInvoiceDiscountRial: allocatedInvoiceDiscountRial,
                 lineNetRial: lineNetRial,
                 lineTaxRial: lineTaxRial,
                 lineTotalRial: lineTotalRial,
@@ -8507,6 +8783,8 @@ class $$InvoiceItemsTableTableManager
                 Value<int> discountRial = const Value.absent(),
                 Value<int?> discountPercentBp = const Value.absent(),
                 required int resolvedTaxRateBp,
+                Value<int?> lineGrossRial = const Value.absent(),
+                Value<int?> allocatedInvoiceDiscountRial = const Value.absent(),
                 Value<int> lineNetRial = const Value.absent(),
                 Value<int> lineTaxRial = const Value.absent(),
                 Value<int> lineTotalRial = const Value.absent(),
@@ -8528,6 +8806,8 @@ class $$InvoiceItemsTableTableManager
                 discountRial: discountRial,
                 discountPercentBp: discountPercentBp,
                 resolvedTaxRateBp: resolvedTaxRateBp,
+                lineGrossRial: lineGrossRial,
+                allocatedInvoiceDiscountRial: allocatedInvoiceDiscountRial,
                 lineNetRial: lineNetRial,
                 lineTaxRial: lineTaxRial,
                 lineTotalRial: lineTotalRial,

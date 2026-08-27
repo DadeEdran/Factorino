@@ -115,6 +115,24 @@ class Invoices extends Table with SyncColumns {
   IntColumn get status => intEnum<InvoiceStatus>()();
 
   // ---- computed totals, snapshotted at issue time ------------------------
+
+  /// `Σ lineGross` -- the **first term of the printed summary** (D-055).
+  ///
+  /// Stored rather than recomputed, for the reason every other figure here is:
+  /// step 1 of §4 carries a rounding rule, so a gross re-derived on read is
+  /// today's rule applied to yesterday's document. That is D-004's failure
+  /// applied to arithmetic instead of to price, and the PDF layer is the one
+  /// place it would be both invisible and permanent (§12).
+  ///
+  /// **Nullable, and `NOT NULL DEFAULT 0` was refused.** Invoices written
+  /// before schema v4 are backfilled where their stored figures reconcile
+  /// exactly, and left **null** where they do not -- zero is a number a
+  /// document prints, and a gross of zero beside a grand total of 21,230,000
+  /// is worse than an admission that the figure is unknown. Everything
+  /// rendering it says so in Persian; `invoiceGrossLabel` is the one place the
+  /// wording lives, on `invoiceNumberLabel`'s precedent.
+  IntColumn get grossTotalRial => integer().nullable()();
+
   IntColumn get subtotalRial => integer().withDefault(const Constant(0))();
 
   IntColumn get totalDiscountRial => integer().withDefault(const Constant(0))();

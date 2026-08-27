@@ -8,6 +8,7 @@ import '../models/payment_method.dart';
 import '../models/product_type.dart';
 import '../models/sync_status.dart';
 
+import 'invoice_figures_backfill.dart';
 import 'tables/customers.dart';
 import 'tables/invoice_items.dart';
 import 'tables/invoices.dart';
@@ -48,8 +49,13 @@ class AppDatabase extends _$AppDatabase {
   /// v3 (D-052): five `customer_*_snapshot` columns on `invoices`, so an issued
   /// invoice keeps the party it was issued to, and `settings.payment_term_days`,
   /// so the default due date stops being a constant in the source.
+  ///
+  /// v4 (D-055): `invoices.gross_total_rial`, `invoice_items.line_gross_rial`
+  /// and `invoice_items.allocated_invoice_discount_rial`, so that every figure
+  /// an Iranian invoice prints is stored rather than re-derived at render
+  /// time — and, unlike v3, **backfilled** where the existing row reconciles.
   @override
-  int get schemaVersion => 3;
+  int get schemaVersion => 4;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -74,15 +80,18 @@ class AppDatabase extends _$AppDatabase {
       // would run every step regardless of the target and the intermediate
       // shape would be unobservable.
       if (from < 2 && to >= 2) {
-        await _migrateV1ToV2(m);
+        await migrateV1ToV2(m);
       }
       if (from < 3 && to >= 3) {
         await migrateV2ToV3(m);
       }
+      if (from < 4 && to >= 4) {
+        await migrateV3ToV4(m);
+      }
 
       // Fail loud on a version this ladder does not cover, rather than
       // opening a database whose shape is not the one the code expects.
-      if (from < 1 || to > 3) {
+      if (from < 1 || to > 4) {
         throw StateError('no migration defined from v$from to v$to');
       }
     },
@@ -206,8 +215,14 @@ Future<void> assertForeignKeysCanBeDisabled(AppDatabase db) async {
 /// exactly right for a pre-v3 invoice) while a v2 database arrives without
 /// them. That is why the later step adds each column only if absent.
 ///
+/// Public, like [migrateV2ToV3] and for the same reason (D-049, D-052): a test
+/// has to be able to run one step at a time and look at what the *next* one is
+/// handed. `invoice_figures_migration_test.dart` does exactly that, because the
+/// shape this rebuild leaves behind is what makes the v3 -> v4 step's existence
+/// checks necessary.
+///
 /// [otheralter]: https://www.sqlite.org/lang_altertable.html#otheralter
-Future<void> _migrateV1ToV2(Migrator m) async {
+Future<void> migrateV1ToV2(Migrator m) async {
   final db = m.database as AppDatabase;
 
   // DO NOT WRAP THIS FUNCTION, OR THE CALL BELOW, IN A TRANSACTION.
@@ -284,7 +299,7 @@ Future<void> _migrateV1ToV2(Migrator m) async {
 /// step is public for that test, on D-049's precedent.
 ///
 /// **Why each column is added only if absent.** A database arriving from v1
-/// runs [_migrateV1ToV2] first, and `alterTable` there rebuilds `invoices` from
+/// runs [migrateV1ToV2] first, and `alterTable` there rebuilds `invoices` from
 /// the table as this file declares it *today* — so by the time control reaches
 /// here, a v1 database already has all five snapshot columns and a v2 database
 /// has none. A plain `addColumn` would fail with `duplicate column name` for
@@ -323,11 +338,72 @@ Future<void> migrateV2ToV3(Migrator m) async {
   }
 }
 
+/// v3 -> v4 (D-055): the gross on the invoice, and the two per-line figures
+/// that make a printed line reconcile.
+///
+/// **Three `ALTER TABLE ... ADD COLUMN`s, then a backfill**, and the backfill is
+/// what makes this step different from either of the two before it. D-052's
+/// snapshot columns were left empty on purpose because there was no honest
+/// value to write; these are arithmetic over columns the row already carries,
+/// so leaving them empty would be an omission rather than an honesty. See
+/// [backfillInvoiceFigures] for what it will and will not write.
+///
+/// **[assertForeignKeysCanBeDisabled] is not called here, for D-052's reason
+/// and not by oversight.** That guard checks that `PRAGMA foreign_keys = OFF`
+/// takes effect, which a 12-step rebuild needs because its step 6 is
+/// `DROP TABLE invoices`. `ADD COLUMN` drops nothing and neither does an
+/// `UPDATE`, so neither half of this step has that precondition, and invoking
+/// the guard anyway would teach the next reader that it is a rite performed
+/// before migrations rather than a check on a property one depends on.
+/// `invoice_figures_migration_test.dart` stands in for it the way D-052's suite
+/// does: it runs this whole step inside a transaction, with foreign keys on and
+/// children present, and counts them afterwards.
+///
+/// **Why each column is added only if absent, and why the answer differs per
+/// table.** [migrateV1ToV2] rebuilds `invoices` from the table as this file
+/// declares it *today*, so a database arriving from v1 already has
+/// `gross_total_rial` by the time control reaches here — while a v3 database has
+/// none of the three. `invoice_items` is rebuilt by no step, so its two columns
+/// are absent on **both** paths. That asymmetry is exactly the kind of thing
+/// that is easy to get wrong by reading the source, so the v1 -> v4 test
+/// observes the arriving shape directly rather than trusting
+/// [_addColumnIfAbsent] to have made it not matter.
+Future<void> migrateV3ToV4(Migrator m) async {
+  final db = m.database as AppDatabase;
+
+  await _addColumnIfAbsent(m, db, db.invoices, db.invoices.grossTotalRial);
+  await _addColumnIfAbsent(
+    m,
+    db,
+    db.invoiceItems,
+    db.invoiceItems.lineGrossRial,
+  );
+  await _addColumnIfAbsent(
+    m,
+    db,
+    db.invoiceItems,
+    db.invoiceItems.allocatedInvoiceDiscountRial,
+  );
+
+  await backfillInvoiceFigures(db);
+
+  // As in the v2 -> v3 step: nothing here can create a dangling reference, but
+  // the check costs one pragma while we can still refuse to open.
+  // soft-delete-exempt: an integrity pragma, not a read of user rows.
+  final violations = await db.customSelect('pragma foreign_key_check').get();
+  if (violations.isNotEmpty) {
+    throw StateError(
+      'the v3 -> v4 invoice-figures migration left ${violations.length} '
+      'foreign-key violation(s); refusing to open. See D-055.',
+    );
+  }
+}
+
 /// Adds [column] to [table] unless the table already has it.
 ///
 /// Asks the database rather than reasoning about which earlier steps ran:
 /// `PRAGMA table_info` is what the table actually looks like on this device,
-/// and the reason a column may already be there ([_migrateV1ToV2] rebuilding at
+/// and the reason a column may already be there ([migrateV1ToV2] rebuilding at
 /// the current declaration) is exactly the kind of coupling that is easy to get
 /// wrong from the source alone.
 Future<void> _addColumnIfAbsent(

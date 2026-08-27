@@ -580,6 +580,13 @@ class AppStringsFa extends AppStrings {
       'با افزودن سطر، مبلغ فاکتور همین‌جا محاسبه می‌شود.';
 
   @override
+  String get invoiceFigureUnrecorded => 'ثبت‌نشده';
+
+  @override
+  String get invoiceSummaryGrossUnrecordedNote =>
+      'جمع سطرهای این فاکتور هنگام صدور ثبت نشده است. مبلغ قابل پرداخت آن درست و بدون تغییر است.';
+
+  @override
   String get invoiceActionSaveDraftHint =>
       'قابل ویرایش می‌ماند و شماره نمی‌گیرد.';
 

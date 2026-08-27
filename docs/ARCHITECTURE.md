@@ -28,7 +28,7 @@ Factorino/
 .githooks/pre-commit   # lockfile-host / secrets / app-ID gate (D-019)
   tools/sanitize_lockfile  # run after ANY command that resolves deps, incl. build_runner
   assets/fonts/          # Vazirmatn 400/500/700 + OFL.txt (D-022) - not yet declared in pubspec
-  drift_schemas/         # drift_schema_v1..v3.json - the migration tests' baselines
+  drift_schemas/         # drift_schema_v1..v4.json - the migration tests' baselines
   lib/
     core/
       money/                                      # pure Dart, zero Flutter imports (§3)
@@ -58,7 +58,8 @@ Factorino/
       database/
         encrypted_database.dart                   # THE single database opener (D-020)
         database_bootstrap.dart                   # key -> open -> migrate -> assert encrypted
-        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 3, migrations
+        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 4, migrations
+        invoice_figures_backfill.dart             #   the v3 -> v4 backfill (D-056)
         soft_delete.dart                          # selectAlive / selectOnlyAlive / countAlive
         tables/                                   # six tables + SyncColumns mixin
       models/                                     # domain entities -- NO drift import (D-031)
@@ -102,7 +103,10 @@ Factorino/
       domain/                                     # feature-shaped values assembled from models
                                                   #   dashboard_summary, customer_detail_view,
                                                   #   invoice_status_view, invoice_editor_state,
-                                                  #   invoice_number_label (D-048)
+                                                  #   invoice_number_label (D-048),
+                                                  #   invoice_summary_figures (D-056) - the summary
+                                                  #     the form, the detail screen and the future
+                                                  #     document renderer all take
     app.dart             # MaterialApp.router: themes, locale, RTL, router
     main.dart            # opens the database, overrides the provider, runs the app
   test/
@@ -117,6 +121,9 @@ Factorino/
     features/products/product_form_screen_test.dart   # the limits on the remaining form
     features/invoices/invoice_editor_state_test.dart  # the draft model, wired to the engine
     features/invoices/invoice_preview_matches_write_test.dart # preview == stored, through the DB
+    features/invoices/invoice_summary_figures_test.dart # an unrecorded gross, in the type and on screen
+    data/database/invoice_figures_migration_test.dart   # v3 -> v4, both ladders, the arriving shape
+    data/database/invoice_figures_backfill_test.dart    # what the backfill writes and refuses
     core/theme/theme_tokens_only_test.dart          # scans lib/ for literal colours and sizes
     core/widgets/field_limit_path_test.dart         # scans lib/ for raw text fields, literal limits
     core/money/single_calculation_path_test.dart    # only the preview and the write calculate (D-046)
@@ -404,6 +411,15 @@ individual call site (D-003). A test scans `lib/` and fails on a raw `select` / 
 invoice-number allocation reads the maximum sequence **including** deleted rows, because a spent
 number stays spent (D-013).
 
+**Every figure a document prints is stored, from schema v4** (D-055). `invoices.gross_total_rial`
+and, per line, `line_gross_rial` and `allocated_invoice_discount_rial` join the totals that were
+already there, so an invoice can be laid out — header summary and line table alike — with **no read
+site multiplying or rounding anything**. Every step between the printed columns is an addition or a
+subtraction of stored figures. §4 step 1 carries a rounding rule, so a gross re-derived at render
+time would be today's rule applied to yesterday's document: D-004's failure applied to arithmetic
+rather than to price. The three are **nullable**, and null means *unknown* rather than zero — see the
+migration note below.
+
 **Snapshots:** `invoice_items` copies product title, unit, unit price and resolved tax rate at
 creation time and never joins to the live product row for pricing (D-004). `invoices` copies the
 **party** the same way from schema v3 — name, company, کد ملی, کد اقتصادی and address — written by
@@ -426,7 +442,18 @@ intermediate version and stop there; in the application `to` is always `schemaVe
 
 **v1 → v2** (D-048) makes the three invoice-number columns nullable so a draft carries no number
 until it is issued. **v2 → v3** (D-052) adds the five party-snapshot columns to `invoices` and
-`payment_term_days` to `settings`.
+`payment_term_days` to `settings`. **v3 → v4** (D-055, D-056) adds the three printed-figure columns
+and, unlike either step before it, **backfills** them.
+
+> **The backfill runs the money engine; it does not re-derive.** `backfillInvoiceFigures` rebuilds an
+> `InvoiceInput` from each pre-v4 row's own stored columns, calls `calculateInvoice`, and writes the
+> three new figures **only if the engine reproduces every figure already on the row** — each line's
+> discount, net, tax and total, and the invoice's subtotal, total discount, total tax and grand total
+> less its stored rounding adjustment. Otherwise that invoice's columns stay **null**, per invoice
+> and never per line, and the read path says «ثبت‌نشده» rather than printing a zero. It is the third
+> sanctioned caller in `single_calculation_path_test.dart`, listed rather than exempted: it is a
+> *comparison* against storage, not a second producer of figures, and open-coding §4 step 1 in the
+> data layer is exactly what D-046 exists to prevent.
 
 > **A later version's columns reach back into an earlier step.** `Migrator.alterTable` builds its
 > replacement table from the table **as currently declared** and copies every one of those columns
@@ -436,6 +463,13 @@ until it is issued. **v2 → v3** (D-052) adds the five party-snapshot columns t
 > rather than from a list someone has to remember to extend; and the v2 → v3 step adds each column
 > only if absent, because a v1 database arrives with them already present. Both are pinned by a
 > v1 → v3 test through the production path.
+>
+> The same asymmetry reaches v4, and the shape is now **observed** rather than reasoned about: a v1
+> database arrives at the v3 → v4 step with `gross_total_rial` already present (the rebuild brought
+> it) and both `invoice_items` columns absent (that table is rebuilt by nothing), while a v3 database
+> has none of the three. `migrateV1ToV2` is public alongside `migrateV2ToV3` so
+> `invoice_figures_migration_test.dart` can run the ladder one step at a time and read
+> `PRAGMA table_info` between them.
 
 > **A table rebuild must not be wrapped in a transaction.** Relaxing `NOT NULL` needs SQLite's
 > 12-step rebuild, whose step 6 is `DROP TABLE` — and with foreign keys enabled that cascades into

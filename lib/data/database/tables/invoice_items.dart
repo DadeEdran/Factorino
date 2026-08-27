@@ -52,6 +52,32 @@ class InvoiceItems extends Table with SyncColumns {
   IntColumn get resolvedTaxRateBp => integer()();
 
   // ---- computed line amounts ---------------------------------------------
+
+  /// `unitPrice x quantityMilli / 1000`, half-up -- **مبلغ کل** on the printed
+  /// line, and the term every other figure on the row is measured from
+  /// (D-055).
+  ///
+  /// Stored for the same reason [unitPriceRial] is a snapshot: §4 step 1
+  /// carries a rounding rule, so a gross re-derived at render time is today's
+  /// rule applied to a document issued under whatever rule was in force then.
+  IntColumn get lineGrossRial => integer().nullable()();
+
+  /// This line's share of the invoice-level discount, allocated by largest
+  /// remainder (§4 step 4).
+  ///
+  /// **Without it [lineNetRial] is unexplainable.** That column holds
+  /// `netAfterInvoiceDiscount` -- the net after a deduction the header prints
+  /// again -- so a document laying the two out beside each other reconciles
+  /// nowhere unless the line says how much of the header's discount landed on
+  /// it (D-055).
+  IntColumn get allocatedInvoiceDiscountRial => integer().nullable()();
+
+  // Both of the above are nullable for the reason `invoices.gross_total_rial`
+  // is: a row written before schema v4 gets a backfilled figure only where the
+  // engine, re-run over that row's own stored inputs, reproduces every figure
+  // already on it. Where it does not, the columns stay null rather than take a
+  // `0` a document would print (D-055).
+
   IntColumn get lineNetRial => integer().withDefault(const Constant(0))();
 
   IntColumn get lineTaxRial => integer().withDefault(const Constant(0))();

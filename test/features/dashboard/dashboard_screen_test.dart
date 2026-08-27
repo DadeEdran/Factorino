@@ -50,6 +50,7 @@ void main() {
         issueDate: issued,
         status: InvoiceStatus.unpaid,
         discount: Money.zero,
+        grossTotal: Money.rial(9000000),
         subtotal: Money.rial(9000000),
         totalDiscount: Money.zero,
         totalTax: Money.zero,

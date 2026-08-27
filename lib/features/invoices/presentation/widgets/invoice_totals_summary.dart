@@ -1,19 +1,27 @@
 import 'package:flutter/material.dart';
 
 import '../../../../core/localization/generated/app_strings.dart';
-import '../../../../core/money/invoice_calculator.dart';
 import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/amount_text.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../domain/invoice_summary_figures.dart';
 
-/// What the invoice comes to, as the engine computed it.
+/// What the invoice comes to.
 ///
-/// **Every figure here is read off [CalculatedInvoice]; nothing on this widget
-/// adds anything up.** `single_calculation_path_test.dart` fails the build if a
-/// screen calls `calculateInvoice`, and this is the widget that would most
-/// naturally try — a summary is exactly where a "just subtract the discount"
-/// helper appears.
+/// **Every figure here is read off [InvoiceSummaryFigures]; nothing on this
+/// widget adds anything up.** `single_calculation_path_test.dart` fails the
+/// build if a screen calls `calculateInvoice`, and this is the widget that
+/// would most naturally try — a summary is exactly where a "just subtract the
+/// discount" helper appears.
+///
+/// **It takes the view model rather than the engine's output**, so that the
+/// live preview on the form and a stored invoice on the detail screen render
+/// through the same rows. The one difference between them is that a stored
+/// invoice's gross may be **unrecorded** (D-055), and this is where that is
+/// said: «ثبت‌نشده» in the row, and a sentence beneath explaining that the
+/// payable amount is unaffected. Never a zero — a gross of zero beside a real
+/// grand total is a document contradicting itself.
 ///
 /// **It starts from `grossTotal`, not from `subtotal`, and that is the whole
 /// design of the panel** (D-047). `subtotal` is already net of the line
@@ -35,7 +43,7 @@ class InvoiceTotalsSummary extends StatelessWidget {
     super.key,
   });
 
-  final CalculatedInvoice totals;
+  final InvoiceSummaryFigures totals;
   final AppStrings strings;
 
   /// Tighter spacing for the sticky bar on a phone, where the panel shares the
@@ -98,6 +106,18 @@ class InvoiceTotalsSummary extends StatelessWidget {
             strings: strings,
             size: dense ? AmountSize.medium : AmountSize.large,
           ),
+          // Only where a figure is genuinely missing, and beneath the grand
+          // total rather than beside the gross: the reassurance is about the
+          // amount the user is looking at, and it would not fit in the row.
+          if (!totals.reconciles) ...<Widget>[
+            SizedBox(height: gap),
+            Text(
+              strings.invoiceSummaryGrossUnrecordedNote,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -119,7 +139,11 @@ class _Row extends StatelessWidget {
   });
 
   final String label;
-  final Money amount;
+
+  /// Null where the figure was never recorded (D-055). Rendered as Persian
+  /// copy, never as zero and never as a blank cell.
+  final Money? amount;
+
   final AppStrings strings;
 
   @override
@@ -138,11 +162,19 @@ class _Row extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        AmountText(
-          amount,
-          unitLabel: strings.unitToman,
-          size: AmountSize.small,
-        ),
+        if (amount case final Money value)
+          AmountText(
+            value,
+            unitLabel: strings.unitToman,
+            size: AmountSize.small,
+          )
+        else
+          Text(
+            strings.invoiceFigureUnrecorded,
+            style: theme.textTheme.bodyMedium?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
       ],
     );
   }
@@ -168,7 +200,7 @@ class _GrandTotal extends StatelessWidget {
     required this.size,
   });
 
-  final CalculatedInvoice totals;
+  final InvoiceSummaryFigures totals;
   final AppStrings strings;
   final AmountSize size;
 

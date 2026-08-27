@@ -26,6 +26,7 @@ void main() {
       dueDate: dueDate,
       status: status,
       discount: Money.zero,
+      grossTotal: Money.rial(1000000),
       subtotal: Money.rial(1000000),
       totalDiscount: Money.zero,
       totalTax: Money.zero,

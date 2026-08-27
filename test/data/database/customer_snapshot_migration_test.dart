@@ -135,7 +135,7 @@ void main() {
       expect(row.paymentTermDays, kDefaultPaymentTermDays);
     });
 
-    test('the migration leaves foreign keys on and the version at 3', () async {
+    test('the migration leaves foreign keys on and the file encrypted', () async {
       await _seedV2(file);
 
       final db = await openAppDatabase(keyStore: _FixedKeyStore(), file: file);
@@ -145,12 +145,17 @@ void main() {
       final fk = await db.customSelect('pragma foreign_keys').getSingle();
       expect(fk.data.values.first, 1);
 
-      expect(await _userVersion(db), 3);
+      // The production opener migrates to the *current* schemaVersion, not to
+      // v3, so this suite's data-survival tests run every later step too. Read
+      // from the database rather than written down: pinning `3` here would fail
+      // on the next migration for a reason that has nothing to do with the
+      // claim being made.
+      expect(await _userVersion(db), db.schemaVersion);
       expect(inspectDatabaseFile(file), DatabaseFileState.encrypted);
     });
   });
 
-  group('a v1 database reaches v3 in one open', () {
+  group('a v1 database reaches the current schema in one open', () {
     late Directory directory;
     late File file;
 
@@ -180,7 +185,7 @@ void main() {
       final db = await openAppDatabase(keyStore: _FixedKeyStore(), file: file);
       addTearDown(db.close);
 
-      expect(await _userVersion(db), 3);
+      expect(await _userVersion(db), db.schemaVersion);
       expect(await _count(db, 'invoices'), 1);
       expect(await _count(db, 'invoice_items'), 2);
       expect(await _count(db, 'payments'), 1);

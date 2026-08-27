@@ -14,7 +14,8 @@
 **Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
 **accepted**, including (d).
 **Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed; the first boundary
-(the (d) carry-overs and the D-047 ruling) is delivered and awaiting review.
+(the (d) carry-overs and the D-047 ruling) and **(a2), schema v4**, are delivered and awaiting
+review.
 
 | # | Increment | Status |
 |---|---|---|
@@ -32,8 +33,8 @@
 |---|---|---|
 | — | (d)'s carry-overs: §10 amended, the phone fold (D-054) | `COMPLETED` 2026-08-27, awaiting review |
 | a | **The D-047 ruling** (D-055) — decision only, no code | `COMPLETED` 2026-08-27, awaiting review |
-| a2 | **`schemaVersion = 4`** — three columns and their backfill | `NOT_STARTED` ← **next** |
-| b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` |
+| a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, awaiting review |
+| b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` ← **next** |
 | c | Payments: record and delete, derived status in the same transaction | `NOT_STARTED` |
 | d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` |
 | e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` |
@@ -45,22 +46,27 @@
 **A user can create an invoice.** That was the last thing missing. Seven screens work end to end on
 real data — Dashboard, Invoices, **the invoice form**, Customers, Customer detail, Products, Settings
 — inside a Persian, RTL, three-tier responsive shell over an encrypted SQLite database at **schema
-v3**. From the invoice list, «فاکتور جدید» opens `/invoices/new`; the form takes a customer, dates, a
+v4**. From the invoice list, «فاکتور جدید» opens `/invoices/new`; the form takes a customer, dates, a
 discount, a tax override, notes and any number of lines from the catalogue or freehand; the totals
 come from `core/money/` and move as the lines do; the invoice saves as a draft or issues with a
 number and a party snapshot.
 
-**Phase 4 is complete and accepted. Phase 5 has started**, and its first boundary is delivered: the
-two carry-overs from (d) — the project spec amended, and the invoice-level fields folded on the phone
-(D-054) — plus **the D-047 ruling** (D-055), which is a decision with no code behind it yet.
+**Phase 4 is complete and accepted. Phase 5 has started**, and two boundaries are delivered: the two
+carry-overs from (d) plus **the D-047 ruling** (D-055), and now **(a2), `schemaVersion = 4`** — the
+gross and the two per-line figures, with a backfill that runs the money engine over each pre-v4
+invoice and refuses to write anything it cannot reproduce to the Rial (D-056).
 
-**The next increment is (a2), a migration: `schemaVersion = 4`.** D-055 settles that the gross is
-stored, along with two per-line figures, and a migration is its own reviewable step on the precedent
-of the last two.
+**Every figure an Iranian invoice prints is now stored.** A document line can be laid out as
+شرح · تعداد · مبلغ واحد · مبلغ کل · تخفیف · مبلغ پس از تخفیف · مالیات · جمع with no read site
+multiplying or rounding anything, and the header's summary starts from a stored `grossTotal`. Where a
+pre-v4 invoice could not be reconciled the columns are **null** and the panel says «ثبت‌نشده».
 
-**Working tree is clean.** `main` at **`d087c2a`** "Phase 5: the D-047 ruling, and the phone fold".
-Behind it: `a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3),
-`7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
+**The next increment is (b): `/invoices/:id`, the detail screen.** It is the first consumer of what
+(a2) stored, and it inherits one known issue from it — see the desktop panel overflow below.
+
+**Working tree is clean.** `main` at **`PENDING`** "Phase 5 (a2): schema v4, and the backfill that
+checks itself". Behind it: `d087c2a` is the first Phase 5 boundary, `a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is
+(b), `0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
 
 **The device debt from (b) and (c) is paid**, and the fold was measured on the Redmi rather than
 decided in the abstract — the numbers are in the (d) carry-over section below.
@@ -68,21 +74,23 @@ decided in the abstract — the numbers are in the (d) carry-over section below.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (d)
-flutter test:               PASS   (693/693, was 676)                         as of (d)
-Android build:              PASS   flutter build apk --debug                   (d)
-Form on the Redmi:          PASS   the whole flow through the real sheets, 0 layout errors (d)
-Windows run:                PASS   the app starts and renders at the desktop tier (d)
+flutter analyze:            PASS   (No issues found)                          as of (a2)
+flutter test:               PASS   (726/726, was 696)                         as of (a2)
+Android build:              PASS   debug APK built and installed for the (a2) device proof
+D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
+D-055 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
 D-052 proof - Windows:      PASS   both ladders: v2 -> v3 and v1 -> v3
 D-052 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
 D-048 proof - Android:      PASS   re-run on the Redmi (2026-08-27)
-D-020 proof - Android:      PASS   re-run on the Redmi (2026-08-27) -- was blocked on space, now clear
+D-020 proof - Android:      PASS   re-run on the Redmi (2026-08-27)
 Startup proof - Android:    PASS   re-run on the Redmi (2026-08-27)
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
+Form on the Redmi:          PASS   the whole flow through the real sheets, 0 layout errors (d)
+Windows run:                PASS   the app starts and renders at the desktop tier (d)
 Web build:                  NOT_RETESTED since plugins were added
 ```
 
-**Test count is 696**, was 693 at the end of (d).
+**Test count is 726**, was 696 at the end of the first Phase 5 boundary.
 
 ## What the first Phase 5 boundary delivered
 
@@ -107,8 +115,10 @@ unfolded  add-line 400 px of scrolling away; issue date field at 245 px
 
 The surprise worth keeping: folded, the add-line buttons are *still* 586 px down, because the lines
 section renders its designed empty state above them. The fold saves 400 px; the empty state costs
-about 250 of what is left. **If a later phase wants that space, the empty state is where it is** —
-not the fields.
+about 250 of what is left. **The owner has ruled that the empty state stays** (2026-08-27, recorded in
+D-054): an empty lines section that said nothing would be worse than one that costs scroll. **If a
+later phase wants that space, that is where it went, and taking it back is a decision about the empty
+state** — not about the fields.
 
 ### (a) — the D-047 ruling, decision only
 
@@ -128,6 +138,95 @@ not the fields.
   Rial, the migration leaves them **null** — `NOT NULL DEFAULT 0` is refused, because zero is a number
   a document would print.
 - **No code yet.** It is `schemaVersion = 4` and lands as (a2).
+
+## What Phase 5 increment (a2) delivered — schema v4, and the backfill that checks itself
+
+**The project's third migration, and the first that backfills.** Three nullable columns, three
+`ADD COLUMN`s guarded by `_addColumnIfAbsent`, a backfill, and a `foreign_key_check`.
+
+```
+lib/data/database/tables/invoices.dart              + gross_total_rial
+lib/data/database/tables/invoice_items.dart         + line_gross_rial,
+                                                      allocated_invoice_discount_rial
+lib/data/database/app_database.dart                 schemaVersion 4; migrateV3ToV4;
+                                                    _migrateV1ToV2 is now public migrateV1ToV2
+lib/data/database/invoice_figures_backfill.dart NEW the backfill, and its report type
+lib/core/money/money.dart                           + Money.rialOrNull
+lib/data/models/invoice.dart                        + grossTotal (Money?), hasStoredGross
+lib/data/models/invoice_item.dart                   + gross, allocatedInvoiceDiscount (Money?)
+lib/data/repositories/drift/mappers.dart            read all three
+lib/data/repositories/drift/drift_invoice_repository.dart  create/updateDraft/_writeItems write them
+lib/features/invoices/domain/invoice_summary_figures.dart NEW the view model (b) and Phase 7 share
+lib/features/invoices/presentation/widgets/invoice_totals_summary.dart  takes the view model
+lib/core/localization/arb/app_fa.arb                + invoiceFigureUnrecorded, ...GrossUnrecordedNote
+drift_schemas/drift_schema_v4.json                  NEW  schema dump
+test/data/database/generated/schema_v4.dart         NEW  drift_dev schema generate output
+integration_test/invoice_figures_migration_proof_test.dart NEW  the device proof, both ladders
+```
+
+- **The backfill runs `calculateInvoice` rather than re-deriving anything** (D-056). It rebuilds an
+  `InvoiceInput` from the row's own stored columns and **writes nothing unless the engine reproduces
+  every figure already on the row** — each line's discount, net, tax and total, and the invoice's
+  subtotal, total discount, total tax, and grand total less its stored rounding adjustment. Third
+  sanctioned caller in `single_calculation_path_test.dart`, listed with its reason rather than
+  exempted, because open-coding §4 step 1 and largest-remainder allocation in the data layer is the
+  second implementation D-046 exists to prevent.
+- **That turns D-055's weakest premise into a check.** D-055 argues backfilling is honest because the
+  rounding rule has not changed since v1. The migration does not rely on the argument: it verifies it
+  per invoice, and refuses the ones that disagree.
+- **Refusal is per invoice, never per line.** An invoice with a gross on three lines and a null on the
+  fourth reconciles nowhere and admits nothing. The invoices beside a refused one are unaffected.
+- **An invoice with no lines gets a real zero**, not a null — the one place "nothing" and "unknown"
+  have to be told apart, which is what the nullable column is for.
+- **Only alive lines take part, in `position` order.** `updateDraft` soft-deletes the lines it
+  replaces, so a real database has superseded lines beside the live ones; they took no part in the
+  stored totals and belong to no document, so they are excluded and stay null. Order matters because
+  largest-remainder breaks ties toward the earlier line.
+- **Paged, 100 at a time**, and a test seeds **250 invoices** — a paging bug is invisible on a fixture
+  of three and shows up only as the invoices past the first page keeping their nulls, on the largest
+  installs.
+- **The v1 → v4 asymmetry is observed, not assumed.** `migrateV1ToV2` was made public (on
+  `migrateV2ToV3`'s precedent) so a test can run the ladder one step at a time and read
+  `PRAGMA table_info` between them: a v1 database arrives at the v4 step with `gross_total_rial`
+  **already present** — the rebuild brought it from today's declaration — and both `invoice_items`
+  columns **absent**, while a v3 database has none of the three.
+- **`assertForeignKeysCanBeDisabled` is deliberately not called**, on D-052's reasoning: `ADD COLUMN`
+  drops nothing and neither does an `UPDATE`. The step is instead run inside a transaction with
+  children present and the rows counted.
+- **The read path says «ثبت‌نشده»** — not a blank cell (D-048's principle) and not a zero — with a
+  sentence beneath the panel saying the payable amount is unaffected. `InvoiceSummaryFigures` carries
+  the absence in the type (`Money? grossTotal`, `.ofCalculation` / `.ofStored`), and
+  `InvoiceTotalsSummary` now takes it, so the form and the detail screen render **one** panel and the
+  wording lives in one place.
+- **Device proof, both ladders**, on Windows and on the Redmi (2026-08-27), each backfilling one
+  invoice and refusing another:
+
+```
+=== D-055 MIGRATION PROOF (v3 -> v4) on android ===
+user_version: 3 -> 4        foreign_keys : 1        file state : encrypted
+gross (good): 4250000       gross (bad): <null>
+line grosses: [2000000, 2250000]      allocations : [50, 50]
+
+=== D-055 MIGRATION PROOF (v1 -> v4) on android ===
+user_version: 1 -> 4        (identical results through the three-step ladder)
+```
+
+- **41 new tests; 726 pass** (was 696). Decision recorded: **D-056**.
+
+### The finding (a2) turned up and did not fix
+
+**The desktop summary panel's grand total overflows at any realistic invoice amount.**
+`AmountSize.large` inside `AppLayout.detailPanelWidth` (320) overflows by **30 px at 1,000,000 تومان**
+and **58 px at 10,000,000**; 100,000 تومان still fits. The `dense` variant the phone bar uses does not
+overflow at any magnitude — which is why (d)'s Redmi pass reported zero layout errors: it exercised
+only the phone tier, and the Windows check was "the app starts and renders".
+
+It is exactly the class of defect D-053 and (d) surfaced, one tier over, and it belongs to **(b)**,
+which builds the desktop detail screen and is where this panel next renders a stored invoice. Not
+fixed here: it is a layout decision on a widget (d) delivered, and (a2) is a migration.
+
+Measured in a widget test, so the metrics are the test font's rather than Vazirmatn's and the exact
+threshold is indicative. That it is magnitude-dependent and desktop-only is not.
 
 ## What Phase 4 increment (d) delivered — the assembled screen
 
@@ -547,6 +646,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 13 | Release builds signed with debug keys | Phase 15. |
 | 14 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
 | 15 | Android manifest hardening not done | Phase 9. |
+| 18 | **The desktop summary panel's grand total overflows at any realistic amount** | `AmountSize.large` inside `AppLayout.detailPanelWidth` (320): **30 px over at 1,000,000 تومان, 58 px at 10,000,000**; 100,000 fits. The `dense` phone-bar variant never overflows, which is why (d)'s Redmi pass saw nothing — it exercised only the phone tier. Found in (a2) and left for **(b)**, which builds the desktop detail screen. Widget-test metrics, so the threshold is indicative; magnitude-dependent and desktop-only is not. |
 | 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
 
@@ -574,6 +674,23 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
   `detail.customer`.** `detail.customer` is the live record — contact detail and where a "go to
   customer" action leads. `InvoiceListItem.customerName` is a **getter**; the constructor argument is
   `liveCustomerName` (D-052).
+- **Three money columns are nullable, and null means *unknown*, not zero** (D-055, D-056):
+  `Invoice.grossTotal`, `InvoiceItem.gross`, `InvoiceItem.allocatedInvoiceDiscount`. A read path
+  renders «ثبت‌نشده» — `invoiceFigureUnrecorded` — never `۰`. `InvoiceSummaryFigures` is the view
+  model the summary panel, the detail screen and the Phase 7 renderer all take, and it is where the
+  absence is handled once.
+- **The v3 → v4 backfill calls `calculateInvoice` and is a sanctioned caller** of it. It is a
+  *comparison*, not a producer: it writes only what the engine reproduces from the row's own stored
+  inputs, and leaves nulls otherwise. Do not "simplify" it into an open-coded multiply — that is the
+  second §4 implementation D-046 exists to prevent.
+- **`migrateV1ToV2` is public now**, like `migrateV2ToV3`, so a test can run the ladder one step at a
+  time and read `PRAGMA table_info` between them. That is how the v1 → v4 arriving-shape asymmetry is
+  observed rather than assumed.
+- **A v1 database arrives at each new step carrying the columns of every later version of
+  `invoices`**, because the v1 rebuild recreates that table from today's declaration — while
+  `invoice_items`, `payments`, `customers`, `products` and `settings` are rebuilt by nothing and
+  arrive without them. Every future step that adds a column to `invoices` needs
+  `_addColumnIfAbsent`; one that adds to any other table would not, but should use it anyway.
 - **The schema dumps in `drift_schemas/` are the migration tests' baseline**, and
   `test/data/database/generated/` is `drift_dev schema generate` output for them. After a schema
   change: `dart run drift_dev schema dump lib/data/database/app_database.dart drift_schemas/` then
@@ -639,7 +756,41 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 ## Recently changed files
 
-### Phase 5, first boundary — the newest work
+### Phase 5 increment (a2) — the newest work
+
+```
+lib/data/database/tables/invoices.dart        + gross_total_rial (nullable)
+lib/data/database/tables/invoice_items.dart   + line_gross_rial,
+                                                allocated_invoice_discount_rial (both nullable)
+lib/data/database/app_database.dart           schemaVersion 4; migrateV3ToV4;
+                                              _migrateV1ToV2 -> public migrateV1ToV2
+lib/data/database/invoice_figures_backfill.dart   NEW  backfillInvoiceFigures + its report
+lib/core/money/money.dart                     + Money.rialOrNull
+lib/data/models/invoice.dart                  + grossTotal (Money?), hasStoredGross
+lib/data/models/invoice_item.dart             + gross, allocatedInvoiceDiscount (Money?)
+lib/data/repositories/drift/mappers.dart      read all three
+lib/data/repositories/drift/drift_invoice_repository.dart
+                                              create/updateDraft/_writeItems write all three
+lib/features/invoices/domain/invoice_summary_figures.dart  NEW  the shared view model
+lib/features/invoices/presentation/widgets/invoice_totals_summary.dart
+                                              takes InvoiceSummaryFigures; renders «ثبت‌نشده»
+lib/features/invoices/presentation/invoice_editor_screen.dart  wraps its totals in the view model
+lib/core/localization/arb/app_fa.arb          + invoiceFigureUnrecorded,
+                                                invoiceSummaryGrossUnrecordedNote
+drift_schemas/drift_schema_v4.json            NEW  schema dump
+test/data/database/generated/schema_v4.dart   NEW  drift_dev schema generate output (+ schema.dart)
+test/data/database/invoice_figures_migration_test.dart     NEW  11 tests
+test/data/database/invoice_figures_backfill_test.dart      NEW  12 tests
+test/features/invoices/invoice_summary_figures_test.dart   NEW   7 tests
+test/features/invoices/invoice_preview_matches_write_test.dart  + the three figures
+test/core/money/single_calculation_path_test.dart          + the backfill, sanctioned with reasons
+test/data/database/customer_snapshot_migration_test.dart   version assertions read db.schemaVersion
+integration_test/invoice_figures_migration_proof_test.dart NEW  the device proof, both ladders
+docs/*                                        D-056; D-054 gains the empty-state ruling; ROADMAP;
+                                              known issue 18
+```
+
+### Phase 5, first boundary
 
 ```
 The project spec: the constraint, not the layout; the
@@ -833,42 +984,42 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 5's first boundary** — the project spec amended, the invoice-level fields folded on the phone
-and measured there (D-054), and **the D-047 ruling settled** (D-055). 696 tests pass, analyzer clean,
-the fold measured on the Redmi. Phase 4 was accepted in the same message.
+**Phase 5 increment (a2) — `schemaVersion = 4`.** Three nullable columns, and a backfill that runs
+the money engine over every pre-v4 invoice and writes only what it can reproduce to the Rial,
+leaving null where it cannot (D-056). The read path says «ثبت‌نشده» for those, never a zero. 726
+tests pass, analyzer clean, and the device proof passes **both ladders on the Redmi and on
+Windows**. One finding recorded and not fixed: the desktop summary panel's grand total overflows at
+any realistic invoice amount (known issue 18) — it belongs to (b).
 
 ## Next action
 
-**Build Phase 5 increment (a2): `schemaVersion = 4`.** D-055 decided it; this implements it.
+**Build Phase 5 increment (b): `/invoices/:id`, the detail screen, and make the list rows tappable.**
 
-Three columns, all nullable:
+It is the first consumer of everything (a2) stored, so the document line can now be laid out from
+storage alone: شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع,
+with no read site multiplying or rounding anything.
 
-| Column | Table |
-|---|---|
-| `gross_total_rial` | `invoices` |
-| `line_gross_rial` | `invoice_items` |
-| `allocated_invoice_discount_rial` | `invoice_items` |
+What it must do, from the owner's standing constraints and from what (a2) leaves it:
 
-**Everything the last two migrations learned applies, and two things are specific to this one:**
+1. **Fix the desktop summary panel overflow first, or decide against it explicitly.** The grand total
+   at `AmountSize.large` overflows `AppLayout.detailPanelWidth` (320) by 30 px at 1,000,000 تومان and
+   58 px at 10,000,000 — every realistic Iranian invoice. Measured in (a2) and left alone there
+   because (a2) was a migration. This screen is where the panel next renders a stored invoice.
+2. **The party is `InvoiceDetail.party`, never `detail.customer`** (D-052), and the screen must make
+   clear **which** it is showing when the customer has since been renamed or soft-deleted.
+   `detail.customer` is the live record — contact detail, and where a "go to customer" action leads.
+3. **Render «ثبت‌نشده» where a figure was not recorded** (D-055, D-056), on the line table as well as
+   the summary. `InvoiceSummaryFigures.ofStored` is the header's source; `InvoiceItem.gross` and
+   `InvoiceItem.allocatedInvoiceDiscount` are the line's, and both are `Money?`. Never a zero, never a
+   blank cell.
+4. **Register `/invoices/:id` with the screen** (D-021) and remove the test asserting the route's
+   absence — it is in `invoices_screen_test.dart`, group "routes that do not exist yet". Rows become
+   tappable in the same change.
+5. **Test the line table at the width it is composed into**, not only at its own — the rule (d)
+   surfaced and the project spec now records.
 
-1. **It backfills, and D-052's did not.** The values are arithmetic over columns the row already
-   carries: `line_gross = line_net + discount + allocated`, with the allocation recoverable per
-   invoice from the stored invoice discount and the stored line nets. **Where a row cannot be
-   reconciled to the Rial, write null** — never a figure that does not add up, and never `0`.
-   That case needs its own fixture in the migration test.
-2. **`invoice_items` has no rebuild in its history**, so `addColumn` applies to both tables — but the
-   `invoices` table *is* rebuilt by the v1 → v2 step, which now computes its `newColumns` from
-   `PRAGMA table_info`, so a v1 database arrives at v4 with the invoice column already present and
-   the two item columns absent. `_addColumnIfAbsent` already handles exactly that; the **v1 → v4 test
-   through the production path is what proves it** and must be written, not assumed.
-
-Then: the ladder step bounded by `to`, both schema dumps regenerated, the data-survival suite through
-`openAppDatabase` with foreign keys on, `assertForeignKeysCanBeDisabled` **not** called (D-052's
-reasoning — `ADD COLUMN` drops nothing) with the in-transaction test standing in for it, and the
-device proof on the Redmi before it is called done.
-
-After (a2) the order is (b) the detail screen, (c) payments, (d) cancellation, (e) filters and paging,
-(f) the device pass and the phase close.
+After (b) the order is (c) payments, (d) cancellation, (e) filters and paging, (f) the device pass and
+the phase close.
 
 ### Standing constraints for the rest of Phase 5, from the owner
 
