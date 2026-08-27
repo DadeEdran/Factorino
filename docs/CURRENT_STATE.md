@@ -13,9 +13,9 @@
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
 **Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
 **accepted**, including (d).
-**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed; the first boundary
-(the (d) carry-overs and the D-047 ruling) and **(a2), schema v4**, are delivered and awaiting
-review.
+**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. The first boundary
+(the (d) carry-overs and the D-047 ruling) is **accepted**. **(a2), schema v4**, is delivered,
+committed, and **awaiting review** — the owner stopped the session immediately after it.
 
 | # | Increment | Status |
 |---|---|---|
@@ -25,15 +25,15 @@ review.
 | b | Line item entry | `COMPLETED`, **accepted** |
 | c | Invoice-level fields, and the save | `COMPLETED`, **accepted** |
 | c2 | **The party snapshot + the payment term** (D-051, D-052) — `schemaVersion = 3` | `COMPLETED`, **accepted** |
-| d | **The assembled screen**, all three tiers, routed (D-053) | `COMPLETED` 2026-08-27, awaiting review |
+| d | **The assembled screen**, all three tiers, routed (D-053) | `COMPLETED`, **accepted** |
 
 ### Phase 5
 
 | # | Increment | Status |
 |---|---|---|
-| — | (d)'s carry-overs: §10 amended, the phone fold (D-054) | `COMPLETED` 2026-08-27, awaiting review |
-| a | **The D-047 ruling** (D-055) — decision only, no code | `COMPLETED` 2026-08-27, awaiting review |
-| a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, awaiting review |
+| — | (d)'s carry-overs: §10 amended, the phone fold (D-054) | `COMPLETED`, **accepted** |
+| a | **The D-047 ruling** (D-055) — decision only, no code | `COMPLETED`, **accepted** |
+| a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, **awaiting review** |
 | b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` ← **next** |
 | c | Payments: record and delete, derived status in the same transaction | `NOT_STARTED` |
 | d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` |
@@ -61,15 +61,25 @@ invoice and refuses to write anything it cannot reproduce to the Rial (D-056).
 multiplying or rounding anything, and the header's summary starts from a stored `grossTotal`. Where a
 pre-v4 invoice could not be reconciled the columns are **null** and the panel says «ثبت‌نشده».
 
-**The next increment is (b): `/invoices/:id`, the detail screen.** It is the first consumer of what
-(a2) stored, and it inherits one known issue from it — see the desktop panel overflow below.
+**The next increment is Phase 5 (b): `/invoices/:id`, the detail screen.** It is the first consumer
+of what (a2) stored, and it inherits one known issue from it — the desktop summary panel overflow,
+known issue 18, which is the first item in the Next Action.
 
-**Working tree is clean.** `main` at **`712c921`** "Phase 5 (a2): schema v4, and the backfill that
-checks itself". Behind it: `d087c2a` is the first Phase 5 boundary, `a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is
-(b), `0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
+**Working tree is clean and everything is committed.** `main` at **`72f13cc`** "Record the (a2)
+commit hash in CURRENT_STATE"; the increment itself is **`712c921`** "Phase 5 (a2): schema v4, and
+the backfill that checks itself". Behind them: `d087c2a` is the first Phase 5 boundary,
+`a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2` is
+Phase 4's (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
 
-**The device debt from (b) and (c) is paid**, and the fold was measured on the Redmi rather than
-decided in the abstract — the numbers are in the (d) carry-over section below.
+**Nothing is half-finished.** The session ended on a clean boundary at the owner's instruction, with
+(a2) complete, committed, verified on both target platforms, and its documentation written. A fresh
+session starts at the Next Action at the bottom of this file and needs nothing re-explained.
+
+**The device debt from Phase 4's (b) and (c) is paid**, and the fold was measured on the Redmi rather
+than decided in the abstract — the numbers are in the (d) carry-over section below. **Note the
+collision when reading older sections of this file:** Phase 4 and Phase 5 both have increments
+lettered (a2), (b), (c) and (d). Every reference below names its phase; where one does not, it
+belongs to the section it sits in.
 
 ## Verification status
 
@@ -641,7 +651,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 9 | The Windows debug exe shows no window when launched **directly** | Under `flutter run -d windows` it is fine. Worth a look in Phase 12. |
 | 10b | **The Redmi ran out of internal storage** | Seen 2026-08-27 after three integration runs: `Requested internal only, but not enough space`, and the follow-up uninstall failed `DELETE_FAILED_INTERNAL_ERROR`. The D-020 and startup proofs could not be re-run because of it. Free space on the device before the next device session. |
 | 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
-| 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last**. |
+| 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last** — every `pub get` rewrites all 123 `url:` entries to the Tsinghua mirror, and they must be put back to `https://pub.dev` before committing. (a2) also picked up a transitive `dart_style` 3.1.12 → 3.1.13 bump that way; it is committed deliberately, because pinning the lockfile to a version that is not installed would make it lie, and `dart format` output is unchanged under it. |
 | 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
 | 13 | Release builds signed with debug keys | Phase 15. |
 | 14 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
@@ -990,6 +1000,10 @@ leaving null where it cannot (D-056). The read path says «ثبت‌نشده» f
 tests pass, analyzer clean, and the device proof passes **both ladders on the Redmi and on
 Windows**. One finding recorded and not fixed: the desktop summary panel's grand total overflows at
 any realistic invoice amount (known issue 18) — it belongs to (b).
+
+**The owner then stopped the session**, before reviewing (a2) and before any of (b) began. There is
+no work in progress and no open question waiting on an answer: the next session starts cold at the
+Next Action below.
 
 ## Next action
 
