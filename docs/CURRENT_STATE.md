@@ -64,7 +64,7 @@ pre-v4 invoice could not be reconciled the columns are **null** and the panel sa
 **The next increment is (b): `/invoices/:id`, the detail screen.** It is the first consumer of what
 (a2) stored, and it inherits one known issue from it — see the desktop panel overflow below.
 
-**Working tree is clean.** `main` at **`PENDING`** "Phase 5 (a2): schema v4, and the backfill that
+**Working tree is clean.** `main` at **`712c921`** "Phase 5 (a2): schema v4, and the backfill that
 checks itself". Behind it: `d087c2a` is the first Phase 5 boundary, `a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is
 (b), `0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
 
