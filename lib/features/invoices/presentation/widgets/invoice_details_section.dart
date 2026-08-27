@@ -30,10 +30,29 @@ import 'customer_picker_sheet.dart';
 /// (§4 step 2), and an explicit `0` tax rate is not the same as inheriting the
 /// settings default (D-026).
 class InvoiceDetailsSection extends ConsumerStatefulWidget {
-  const InvoiceDetailsSection({required this.openedAt, super.key});
+  const InvoiceDetailsSection({
+    required this.openedAt,
+    this.collapsible = false,
+    super.key,
+  });
 
   /// The editor's family key. Held by the screen and passed down.
   final DateTime openedAt;
+
+  /// Whether the whole section folds behind its heading.
+  ///
+  /// **True on a phone, and measured rather than assumed.** These fields fill
+  /// the first viewport of a 393 x 804 device, which put the buttons that add a
+  /// line **400 logical pixels down** — so the first thing a user wants to do on
+  /// an invoice form, say what is being billed, was below the fold, and so was
+  /// every line after the first. Collapsed, the add-line buttons sit inside the
+  /// first screen.
+  ///
+  /// The heading keeps showing the customer while collapsed, because the
+  /// customer is the one field here the invoice cannot be saved without: a fold
+  /// that hid a required field would make the «مشتری را انتخاب کنید» notice
+  /// point at something the user cannot see.
+  final bool collapsible;
 
   @override
   ConsumerState<InvoiceDetailsSection> createState() =>
@@ -51,6 +70,16 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
 
   _DiscountMode _discountMode = _DiscountMode.amount;
   _TaxMode _taxMode = _TaxMode.inherit;
+
+  /// **Collapsed to begin with**, where the section collapses at all.
+  ///
+  /// Measured on the phone rather than decided in the abstract: expanded, the
+  /// buttons that add a line sit 400 logical pixels down on a 393 x 804 device
+  /// and the first line is a scroll away; collapsed they are inside the first
+  /// screen, and so is every line after it. The customer — the one field here
+  /// that a save cannot do without — stays visible in the heading either way,
+  /// which is what makes starting collapsed safe rather than merely shorter.
+  bool _expanded = false;
 
   @override
   void dispose() {
@@ -86,138 +115,152 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
     AppStrings strings,
     InvoiceEditorState state,
   ) {
+    final bool showFields = !widget.collapsible || _expanded;
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        SectionHeader(title: strings.invoiceDetailsTitle),
-        const SizedBox(height: AppSpacing.md),
-        _CustomerField(
-          strings: strings,
-          customerId: state.customerId,
-          onPick: () => _pickCustomer(context),
-          onClear: () => _editor.selectCustomer(null),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        JalaliDateField(
-          label: strings.invoiceFieldIssueDate,
-          value: state.issueDate,
-          onPick: () => _pickIssueDate(context, state),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        JalaliDateField(
-          label: strings.invoiceFieldDueDate,
-          value: state.dueDate,
-          emptyLabel: strings.invoiceFieldDueDateCleared,
-          onPick: () => _pickDueDate(context, state),
-          onClear: () => _editor.setDueDate(null),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        Text(
-          strings.invoiceFieldDiscount,
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        SegmentedButton<_DiscountMode>(
-          segments: <ButtonSegment<_DiscountMode>>[
-            ButtonSegment<_DiscountMode>(
-              value: _DiscountMode.amount,
-              label: Text(strings.invoiceLineDiscountModeAmount),
-            ),
-            ButtonSegment<_DiscountMode>(
-              value: _DiscountMode.percent,
-              label: Text(strings.invoiceLineDiscountModePercent),
-            ),
-          ],
-          selected: <_DiscountMode>{_discountMode},
-          onSelectionChanged: (Set<_DiscountMode> selection) {
-            setState(() {
-              _discountMode = selection.first;
-              _discount.clear();
-            });
-            // The controller is told too, not just the text field: leaving a
-            // stale amount set while the user types a percentage would let the
-            // amount reach the engine alongside it (§4 step 2).
-            _editor.setDiscountAmount(Money.zero);
-          },
-        ),
-        const SizedBox(height: AppSpacing.md),
-        AppTextField(
-          controller: _discount,
-          label: _discountMode == _DiscountMode.amount
-              ? strings.invoiceLineDiscountModeAmount
-              : strings.invoiceLineDiscountModePercent,
-          maxLength: AmountLimits.tomanDigits,
-          suffixText: _discountMode == _DiscountMode.amount
-              ? strings.unitToman
-              : kPersianPercentSign,
-          helperText: strings.fieldOptional,
-          keyboardType: TextInputType.numberWithOptions(
-            decimal: _discountMode == _DiscountMode.percent,
-          ),
-          digitsOnly: _discountMode == _DiscountMode.amount,
-          // Applied on every keystroke rather than on submit, because the
-          // totals beside this field are a live preview: a discount the user
-          // has typed but not "committed" would leave the summary describing an
-          // invoice that is no longer the one on screen.
-          onChanged: _applyDiscount,
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        Text(
-          strings.invoiceFieldTax,
-          style: Theme.of(context).textTheme.labelLarge,
-        ),
-        const SizedBox(height: AppSpacing.sm),
-        SegmentedButton<_TaxMode>(
-          segments: <ButtonSegment<_TaxMode>>[
-            ButtonSegment<_TaxMode>(
-              value: _TaxMode.inherit,
-              label: Text(strings.invoiceLineTaxInherit),
-            ),
-            ButtonSegment<_TaxMode>(
-              value: _TaxMode.custom,
-              label: Text(strings.invoiceLineTaxCustom),
-            ),
-          ],
-          selected: <_TaxMode>{_taxMode},
-          onSelectionChanged: (Set<_TaxMode> selection) {
-            setState(() {
-              _taxMode = selection.first;
-              if (_taxMode == _TaxMode.inherit) _taxRate.clear();
-            });
-            // Back to inherit is `null`, which is a different invoice from
-            // `0` (D-026) — so it is sent, not merely displayed.
-            if (_taxMode == _TaxMode.inherit) _editor.setTaxRate(null);
-          },
-        ),
-        const SizedBox(height: AppSpacing.md),
-        if (_taxMode == _TaxMode.custom)
-          AppTextField(
-            controller: _taxRate,
-            label: strings.invoiceLineTaxCustom,
-            maxLength: AmountLimits.tomanDigits,
-            suffixText: kPersianPercentSign,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            onChanged: _applyTaxRate,
+        if (widget.collapsible)
+          _DetailsHeader(
+            strings: strings,
+            expanded: _expanded,
+            customerId: state.customerId,
+            onTap: () => setState(() => _expanded = !_expanded),
           )
         else
-          // Which default is in force, from settings — the terminating step of
-          // the chain (§4 step 6). Named rather than left implicit, for the
-          // same reason the line sheet names it.
-          Text(
-            strings.invoiceLineTaxInheritedNote(
-              formatPercentFromBasisPoints(state.settings.defaultTaxRateBp),
-            ),
-            style: Theme.of(context).textTheme.bodySmall,
+          SectionHeader(title: strings.invoiceDetailsTitle),
+        if (showFields) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          _CustomerField(
+            strings: strings,
+            customerId: state.customerId,
+            onPick: () => _pickCustomer(context),
+            onClear: () => _editor.selectCustomer(null),
           ),
-        const SizedBox(height: AppSpacing.xl),
-        AppTextField(
-          controller: _notes,
-          label: strings.invoiceFieldNotes,
-          maxLength: InvoiceLimits.notes,
-          helperText: strings.fieldOptional,
-          maxLines: 3,
-          onChanged: _editor.setNotes,
-        ),
+          const SizedBox(height: AppSpacing.lg),
+          JalaliDateField(
+            label: strings.invoiceFieldIssueDate,
+            value: state.issueDate,
+            onPick: () => _pickIssueDate(context, state),
+          ),
+          const SizedBox(height: AppSpacing.lg),
+          JalaliDateField(
+            label: strings.invoiceFieldDueDate,
+            value: state.dueDate,
+            emptyLabel: strings.invoiceFieldDueDateCleared,
+            onPick: () => _pickDueDate(context, state),
+            onClear: () => _editor.setDueDate(null),
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
+            strings.invoiceFieldDiscount,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SegmentedButton<_DiscountMode>(
+            segments: <ButtonSegment<_DiscountMode>>[
+              ButtonSegment<_DiscountMode>(
+                value: _DiscountMode.amount,
+                label: Text(strings.invoiceLineDiscountModeAmount),
+              ),
+              ButtonSegment<_DiscountMode>(
+                value: _DiscountMode.percent,
+                label: Text(strings.invoiceLineDiscountModePercent),
+              ),
+            ],
+            selected: <_DiscountMode>{_discountMode},
+            onSelectionChanged: (Set<_DiscountMode> selection) {
+              setState(() {
+                _discountMode = selection.first;
+                _discount.clear();
+              });
+              // The controller is told too, not just the text field: leaving a
+              // stale amount set while the user types a percentage would let the
+              // amount reach the engine alongside it (§4 step 2).
+              _editor.setDiscountAmount(Money.zero);
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          AppTextField(
+            controller: _discount,
+            label: _discountMode == _DiscountMode.amount
+                ? strings.invoiceLineDiscountModeAmount
+                : strings.invoiceLineDiscountModePercent,
+            maxLength: AmountLimits.tomanDigits,
+            suffixText: _discountMode == _DiscountMode.amount
+                ? strings.unitToman
+                : kPersianPercentSign,
+            helperText: strings.fieldOptional,
+            keyboardType: TextInputType.numberWithOptions(
+              decimal: _discountMode == _DiscountMode.percent,
+            ),
+            digitsOnly: _discountMode == _DiscountMode.amount,
+            // Applied on every keystroke rather than on submit, because the
+            // totals beside this field are a live preview: a discount the user
+            // has typed but not "committed" would leave the summary describing an
+            // invoice that is no longer the one on screen.
+            onChanged: _applyDiscount,
+          ),
+          const SizedBox(height: AppSpacing.xl),
+          Text(
+            strings.invoiceFieldTax,
+            style: Theme.of(context).textTheme.labelLarge,
+          ),
+          const SizedBox(height: AppSpacing.sm),
+          SegmentedButton<_TaxMode>(
+            segments: <ButtonSegment<_TaxMode>>[
+              ButtonSegment<_TaxMode>(
+                value: _TaxMode.inherit,
+                label: Text(strings.invoiceLineTaxInherit),
+              ),
+              ButtonSegment<_TaxMode>(
+                value: _TaxMode.custom,
+                label: Text(strings.invoiceLineTaxCustom),
+              ),
+            ],
+            selected: <_TaxMode>{_taxMode},
+            onSelectionChanged: (Set<_TaxMode> selection) {
+              setState(() {
+                _taxMode = selection.first;
+                if (_taxMode == _TaxMode.inherit) _taxRate.clear();
+              });
+              // Back to inherit is `null`, which is a different invoice from
+              // `0` (D-026) — so it is sent, not merely displayed.
+              if (_taxMode == _TaxMode.inherit) _editor.setTaxRate(null);
+            },
+          ),
+          const SizedBox(height: AppSpacing.md),
+          if (_taxMode == _TaxMode.custom)
+            AppTextField(
+              controller: _taxRate,
+              label: strings.invoiceLineTaxCustom,
+              maxLength: AmountLimits.tomanDigits,
+              suffixText: kPersianPercentSign,
+              keyboardType: const TextInputType.numberWithOptions(
+                decimal: true,
+              ),
+              onChanged: _applyTaxRate,
+            )
+          else
+            // Which default is in force, from settings — the terminating step of
+            // the chain (§4 step 6). Named rather than left implicit, for the
+            // same reason the line sheet names it.
+            Text(
+              strings.invoiceLineTaxInheritedNote(
+                formatPercentFromBasisPoints(state.settings.defaultTaxRateBp),
+              ),
+              style: Theme.of(context).textTheme.bodySmall,
+            ),
+          const SizedBox(height: AppSpacing.xl),
+          AppTextField(
+            controller: _notes,
+            label: strings.invoiceFieldNotes,
+            maxLength: InvoiceLimits.notes,
+            helperText: strings.fieldOptional,
+            maxLines: 3,
+            onChanged: _editor.setNotes,
+          ),
+        ],
       ],
     );
   }
@@ -353,6 +396,92 @@ class _CustomerName extends ConsumerWidget {
       loading: () => const SizedBox(height: AppSpacing.lg),
       error: (Object error, StackTrace stack) => const SizedBox.shrink(),
       data: (Customer? value) => Text(value?.fullName ?? ''),
+    );
+  }
+}
+
+/// The section heading when it folds.
+///
+/// **It states the customer, collapsed or not.** Everything else in this
+/// section has a working default — the dates are filled, the discount and the
+/// tax and the notes are optional — but an invoice cannot be saved without a
+/// customer, and a fold that hid the one required field would leave the
+/// «مشتری را انتخاب کنید» notice under the buttons pointing at nothing on
+/// screen.
+///
+/// The whole row is the target, not the chevron alone: a header that is
+/// obviously a control but tappable only on a 20-pixel glyph is a control the
+/// user misses twice before finding it. Same shape as the customer detail
+/// screen's record card, deliberately — two disclosure headers that behaved
+/// differently would be worse than one shared idiom.
+class _DetailsHeader extends StatelessWidget {
+  const _DetailsHeader({
+    required this.strings,
+    required this.expanded,
+    required this.customerId,
+    required this.onTap,
+  });
+
+  final AppStrings strings;
+  final bool expanded;
+  final String? customerId;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+    final String? id = customerId;
+
+    return Tooltip(
+      message: strings.invoiceDetailsToggle,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(AppRadius.sm),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(vertical: AppSpacing.xs),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(
+                      strings.invoiceDetailsTitle,
+                      style: theme.textTheme.titleMedium,
+                    ),
+                    const SizedBox(height: AppSpacing.xxs),
+                    if (id == null)
+                      Text(
+                        strings.invoiceDetailsCollapsedNoCustomer,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      )
+                    else
+                      DefaultTextStyle.merge(
+                        style: theme.textTheme.bodySmall!.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                        // The same read the field itself uses, so the heading
+                        // and the field cannot disagree about who this invoice
+                        // is for.
+                        child: _CustomerName(id: id),
+                      ),
+                  ],
+                ),
+              ),
+              // A chevron is vertical disclosure, and vertical does not mirror
+              // in RTL (§9).
+              Icon(
+                expanded ? Icons.expand_less : Icons.expand_more,
+                size: AppIconSize.lg,
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ],
+          ),
+        ),
+      ),
     );
   }
 }

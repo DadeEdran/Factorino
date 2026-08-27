@@ -992,6 +992,18 @@ abstract class AppStrings {
   /// **'مشخصات فاکتور'**
   String get invoiceDetailsTitle;
 
+  /// No description provided for @invoiceDetailsToggle.
+  ///
+  /// In fa, this message translates to:
+  /// **'نمایش یا پنهان کردن مشخصات فاکتور'**
+  String get invoiceDetailsToggle;
+
+  /// No description provided for @invoiceDetailsCollapsedNoCustomer.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری انتخاب نشده'**
+  String get invoiceDetailsCollapsedNoCustomer;
+
   /// No description provided for @invoiceFieldCustomer.
   ///
   /// In fa, this message translates to:

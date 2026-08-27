@@ -1942,6 +1942,8 @@ until save (rejected: a user cannot agree to a figure they were never shown).
 ## D-047 — `CalculatedInvoice.grossTotal`, so the printed summary reconciles by hand
 
 **Date:** 2026-08-25 · **Status:** ACCEPTED · extends increment (b)'s engine.
+**Its one open question — whether to store the gross — was settled on 2026-08-27 by D-055: store it,
+and two per-line figures with it, as `schemaVersion = 4`.**
 
 **Decision.** The engine gained `grossTotal` — `Σ lineGross`, before any discount and before tax —
 and a second runtime invariant beside the §4 one:
@@ -2481,3 +2483,144 @@ form already has both and a confirmation triggered on every exit is one nobody r
 
 Not requested in the increment brief. Recorded as a judgement call: shipping a form whose back button
 destroys work without asking is the kind of thing that is only ever found by losing work.
+
+---
+
+## D-054 — The invoice-level fields fold on a phone, and start folded
+
+**Date:** 2026-08-27
+**Status:** ACCEPTED — the owner's ruling on (d)'s device finding, implemented the same day
+
+**The finding.** (d)'s device pass measured the buttons that add a line at **400 logical pixels down**
+on a 393 × 804 phone: the invoice-level fields fill the first viewport, so the first thing a user
+wants to do on an invoice form — say what is being billed — was below the fold, and so was every line
+after the first.
+
+**The owner's ruling: leave the field order alone, and fold.** Customer, then dates, then lines is how
+the document reads, and a user picks the customer first anyway. So the fields collapse behind their
+heading on the phone, and the two wider tiers — which have room for the fields and the lines at once
+— do not fold at all, because a control that saves nothing is a control in the way.
+
+**The heading states the customer, folded or not.** Everything else in that section has a working
+default: the dates are filled, the discount and the tax and the notes are optional. The customer is
+the one field a save cannot do without, and folding it away would leave «برای ذخیره، مشتری را انتخاب
+کنید» under the disabled buttons pointing at something not on screen. Folded with no customer the
+heading reads «مشتری انتخاب نشده»; with one, it reads the customer's name through the same provider
+the field itself uses, so the two cannot disagree.
+
+**Folded to begin with — measured on the device, as instructed, not decided in the abstract:**
+
+| | folded | unfolded |
+|---|---|---|
+| add-line buttons | **586 px**, bottom at 611 | 400 px of scrolling away |
+| pinned bar begins | 670 px | 670 px |
+| fits without scrolling | **yes**, 59 px to spare | no |
+| issue date field | in the heading's summary line | 245 px |
+
+So folded, the primary action of the screen is on the first screen with room to spare, and the
+customer's state is still visible. Unfolding is one tap on the whole heading row — not on the chevron
+alone, which is a control users miss twice before finding.
+
+**The number that surprised the measurement**, worth keeping: folded, the add-line buttons are still
+586 px down, because the lines section renders its **designed empty state** — the icon, the title and
+the explanation — above them. The fold saves 400 px of scrolling; the empty state costs about 250 of
+what is left. If a later phase wants that space, the empty state is where it is, not the fields.
+
+**The same shape as the customer detail screen's record card**, deliberately: two disclosure headers
+that behaved differently would be worse than one shared idiom.
+
+---
+
+## D-055 — `grossTotal` is stored, and so are two per-line figures
+
+**Date:** 2026-08-27
+**Status:** ACCEPTED — settles D-047's open question. **Implementation is `schemaVersion = 4`, its
+own reviewable increment**, on (a2)'s and (c2)'s precedent.
+**Extends:** D-004 (snapshots), D-046 (one calculation path), D-047, §12 (the PDF contract)
+
+D-047 left this open on purpose: *"the right answer depends on what the detail screen and the PDF
+renderer actually need."* Phase 5 opens with both in view, so it is answerable now.
+
+### What the document has to print, and what is stored
+
+An Iranian invoice line prints, in this order: شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف ·
+**مبلغ پس از تخفیف** · مالیات · جمع. Of those, `invoice_items` stores the title, the unit, the unit
+price, the quantity, the effective discount, the resolved rate, the tax and the total — and for
+"مبلغ کل" and the net it stores neither the gross **nor** the line's share of the invoice discount.
+`line_net_rial` holds `netAfterInvoiceDiscount`, which is the net *after* a deduction the header also
+prints. A document laying those out reconciles nowhere: the line's own gross is missing, and its net
+is short by an amount that appears again in the header.
+
+At the invoice level the same gap: the summary panel §12 hands the renderer starts from `grossTotal`
+(D-047), and `invoices` has no column for it.
+
+### The decision: store three figures
+
+| Column | Table | Why |
+|---|---|---|
+| `gross_total_rial` | `invoices` | The first term of the printed summary. Without it the header cannot be assembled from stored data at all. |
+| `line_gross_rial` | `invoice_items` | "مبلغ کل" per line, and the term every other line figure is measured from. |
+| `allocated_invoice_discount_rial` | `invoice_items` | The line's share of the invoice discount, allocated by largest remainder (§4 step 4). Without it `line_net_rial` is unexplainable. |
+
+With all three, every figure a document prints is **stored**, and every step between them is an
+addition or a subtraction of stored figures:
+
+```
+line gross            (stored)
+− line discount       (stored, effective — D-027)
+− allocated share     (stored)
+= line net            (stored)
++ line tax            (stored)
+= line total          (stored)
+
+Σ line gross = gross total (stored)   Σ allocated share = invoice discount (stored)
+```
+
+No multiplication, no rounding, no re-derivation, at any read site.
+
+### Why not recompute, which would cost nothing to store
+
+Gross *is* arithmetically recoverable — `unitPrice × quantityMilli ÷ 1000`, both operands stored — and
+the allocated share follows from it by subtraction. Three reasons that is the wrong answer:
+
+1. **It re-runs §4 step 1 outside the engine**, which is what D-046 exists to prevent. The guard scans
+   for `calculateInvoice` calls and would not catch an open-coded multiply-and-round in a renderer,
+   which makes it *more* dangerous, not less.
+2. **Step 1 carries a rounding rule** — half-up at the Rial. A recomputed gross is a figure produced
+   by today's rule applied to a document issued under an earlier one. That is exactly the failure
+   D-004 exists to prevent, applied to arithmetic rather than to price.
+3. **§12 requires the renderer to receive a fully-computed view model.** A view model assembled by
+   computing anything is not that, and the PDF layer is the one place where the computation would be
+   both invisible and permanent.
+
+The general rule, already stated in D-047 and now applied in the other direction: *if a figure is
+needed that the engine does not produce, extend the engine* — and if a figure is needed that the
+**schema** does not keep, store it. A derived figure that a document prints is not derived data; it
+is part of the document.
+
+### What the migration must do about invoices that already exist
+
+**Backfill, unlike D-052 — and the difference is worth stating, because the two look alike and are
+not.** A party snapshot could not be backfilled because the migration cannot know what the customer
+record said on the day the document was printed; the value it would have written would be a fabricated
+history. These three figures are not history: they are **arithmetic over columns the row already
+carries**, and the arithmetic is the one the invoice was issued under, because the rounding rule has
+not changed since v1. `line_gross_rial = line_net_rial + discount_rial + allocated`, and the
+allocation is recoverable per invoice from the stored invoice discount and the stored line nets.
+
+Where a pre-v4 row cannot be reconciled to the Rial, the migration must **leave the columns null
+rather than write a figure that does not add up**, and the read path must say so rather than print a
+summary that fails its own invariant. The migration test is where that case gets its fixture.
+
+`NOT NULL DEFAULT 0` is refused for exactly this reason: zero is a number a document would print, and
+a gross of zero beside a total of 21,230,000 is worse than an admission that the figure is unknown.
+
+### Consequences to carry into the increment
+
+- `InvoiceRepository.create` and `updateDraft` write the three new figures from the `CalculatedInvoice`
+  they already have. Nothing new is computed anywhere.
+- `Invoice` gains `grossTotal`; `InvoiceItem` gains `gross` and `allocatedInvoiceDiscount`.
+- `invoice_preview_matches_write_test.dart` extends to the three: the preview and the write must agree
+  on them like every other figure.
+- The **runtime invariant becomes checkable against storage**, not only against the engine's output.
+  A stored invoice whose figures do not reconcile is a defect that should be found on read.

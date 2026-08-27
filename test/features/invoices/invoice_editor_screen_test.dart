@@ -147,10 +147,18 @@ void main() {
 
       final AppStrings strings = stringsOf(tester, InvoiceEditorScreen);
 
-      // One column: the fields are on screen and the lines are below them,
-      // reached by scrolling rather than by a second pane.
+      // One column, with the invoice-level fields folded (D-054): the lines —
+      // the substance of the invoice — are what the first screen shows.
       expect(find.byType(InvoiceDetailsSection), findsOneWidget);
-      expect(find.byType(InvoiceLinesSection), findsNothing);
+      expect(find.byType(InvoiceLinesSection), findsOneWidget);
+      expect(
+        find.text(strings.invoiceFieldIssueDate),
+        findsNothing,
+        reason: 'the fields start folded on a phone',
+      );
+      // But not the customer: it is the one field a save cannot do without, so
+      // the heading states it whether the section is open or shut.
+      expect(find.text(customer.fullName), findsOneWidget);
 
       final double barTop = tester
           .getTopLeft(find.byType(InvoiceTotalsSummary))
@@ -161,16 +169,71 @@ void main() {
         reason: 'the actions sit under the total, inside the same bar',
       );
 
-      // **The claim this layout makes.** Scroll the form to its end and the
-      // bar has not moved: the figure the user is deciding about stays on
-      // screen while they edit the lines that change it, which is the whole
-      // reason a phone gets a bar rather than a panel.
+      // **The claim this layout makes.** Scroll the form and the bar has not
+      // moved: the figure the user is deciding about stays on screen while
+      // they edit the lines that change it, which is the whole reason a phone
+      // gets a bar rather than a panel.
       await scrollForm(tester);
-      expect(find.byType(InvoiceLinesSection), findsOneWidget);
       expect(
         tester.getTopLeft(find.byType(InvoiceTotalsSummary)).dy,
         barTop,
         reason: 'the bar is pinned; if it scrolled it would be a footer',
+      );
+    });
+
+    testWidgets('the phone folds the invoice-level fields, and unfolds them', (
+      WidgetTester tester,
+    ) async {
+      final ProviderContainer container = await pumpEditor(tester);
+      await fill(tester, container);
+      final AppStrings strings = stringsOf(tester, InvoiceEditorScreen);
+
+      // Folded: the dates, the discount and the notes are not in the tree.
+      expect(find.text(strings.invoiceFieldIssueDate), findsNothing);
+      expect(find.text(strings.invoiceFieldNotes), findsNothing);
+
+      // The whole heading is the target, not the chevron alone.
+      await tester.tap(find.text(strings.invoiceDetailsTitle));
+      await tester.pumpAndSettle();
+      expect(find.text(strings.invoiceFieldIssueDate), findsOneWidget);
+
+      await tester.tap(find.text(strings.invoiceDetailsTitle));
+      await tester.pumpAndSettle();
+      expect(find.text(strings.invoiceFieldIssueDate), findsNothing);
+    });
+
+    testWidgets('folded with no customer, the heading says so', (
+      WidgetTester tester,
+    ) async {
+      // The fold may never hide the state of the one field a save needs. With
+      // no customer the heading says «مشتری انتخاب نشده», so the notice under
+      // the disabled buttons points at something the user can see and reach.
+      await pumpEditor(tester);
+      final AppStrings strings = stringsOf(tester, InvoiceEditorScreen);
+
+      expect(
+        find.text(strings.invoiceDetailsCollapsedNoCustomer),
+        findsOneWidget,
+      );
+      expect(find.text(strings.invoiceIncompleteCustomer), findsOneWidget);
+    });
+
+    testWidgets('the wider tiers do not fold anything', (
+      WidgetTester tester,
+    ) async {
+      // Tablet and desktop have room for the fields and the lines at once, so
+      // a fold there would be a control that saves nothing.
+      final ProviderContainer container = await pumpEditor(
+        tester,
+        size: kDesktopSize,
+      );
+      await fill(tester, container);
+      final AppStrings strings = stringsOf(tester, InvoiceEditorScreen);
+
+      expect(find.text(strings.invoiceFieldIssueDate), findsOneWidget);
+      expect(
+        find.text(strings.invoiceDetailsCollapsedNoCustomer),
+        findsNothing,
       );
     });
 

@@ -154,6 +154,36 @@ void main() {
     debugPrint('pixel ratio   : ${tester.view.devicePixelRatio}');
     debugPrint('16sp renders  : $textScale');
 
+    // ---- how far down is the first thing a user wants to touch? ------------
+    //
+    // The measurement that decided the fold (D-054), taken both ways on the
+    // real device rather than reasoned about.
+    final double addLineFolded = _distanceDown(
+      tester,
+      find.text(strings.invoiceLineAddFromCatalogue),
+    );
+    final Rect addLineBox = tester.getRect(
+      find.text(strings.invoiceLineAddFromCatalogue),
+    );
+    // Where the scrolling region actually ends: the top of the pinned bar.
+    final double barTop = tester
+        .getTopLeft(find.text(strings.invoiceActionIssue))
+        .dy;
+    debugPrint(
+      'add-line folded: ${addLineFolded.toStringAsFixed(0)} px, '
+      'bottom ${addLineBox.bottom.toStringAsFixed(0)}',
+    );
+    debugPrint('pinned bar top : ${barTop.toStringAsFixed(0)} px');
+    debugPrint('fits unscrolled: ${addLineBox.bottom < barTop}');
+
+    await tester.tap(find.text(strings.invoiceDetailsTitle));
+    await tester.pumpAndSettle();
+    final double datesShown = _distanceDown(
+      tester,
+      find.text(strings.invoiceFieldIssueDate),
+    );
+    debugPrint('dates unfolded : ${datesShown.toStringAsFixed(0)} px');
+
     // ---- the customer picker ----------------------------------------------
     await tester.tap(find.text(strings.invoiceFieldCustomerEmpty));
     await tester.pumpAndSettle();
@@ -172,15 +202,13 @@ void main() {
 
     // ---- the product picker, then the line sheet ---------------------------
     //
-    // **Scrolled to, and that is a finding rather than a mechanic.** At this
-    // phone's 393 x 804 the invoice-level fields fill the viewport, so the two
-    // buttons that add a line are below the fold on a form whose lines are the
-    // substance. Measured and reported below.
-    final double addButtonOffset = await _scrollTo(
+    // With the section open the add-line buttons are below the fold again,
+    // which is the measurement the fold exists to answer -- reported above.
+    final double scrolled = await _scrollTo(
       tester,
       find.text(strings.invoiceLineAddFromCatalogue),
     );
-    debugPrint('add-line at   : ${addButtonOffset.toStringAsFixed(0)} px down');
+    debugPrint('add-line open  : scrolled ${scrolled.toStringAsFixed(0)} px');
 
     await tester.tap(find.text(strings.invoiceLineAddFromCatalogue));
     await tester.pumpAndSettle();
@@ -289,4 +317,13 @@ List<String> _visibleTexts(WidgetTester tester) {
       .map((Text text) => text.data ?? '')
       .where((String value) => value.isNotEmpty)
       .toList();
+}
+
+/// How far below the top of the window [target] sits, or -1 if it is not built.
+///
+/// The question a phone layout has to answer — how far down is the thing a user
+/// reaches for first — and the only place to answer it is on a phone.
+double _distanceDown(WidgetTester tester, Finder target) {
+  if (target.evaluate().isEmpty) return -1;
+  return tester.getTopLeft(target).dy;
 }

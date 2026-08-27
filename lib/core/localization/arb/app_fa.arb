@@ -435,6 +435,10 @@
   "@invoiceDetailsTitle": {
     "description": "Heading over the invoice-level fields -- customer, dates, discount, tax, notes -- as distinct from the line items."
   },
+  "invoiceDetailsToggle": "نمایش یا پنهان کردن مشخصات فاکتور",
+  "@invoiceDetailsToggle": {},
+  "invoiceDetailsCollapsedNoCustomer": "مشتری انتخاب نشده",
+  "@invoiceDetailsCollapsedNoCustomer": {},
   "invoiceFieldCustomer": "مشتری",
   "@invoiceFieldCustomer": {},
   "invoiceFieldCustomerEmpty": "انتخاب مشتری",

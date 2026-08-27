@@ -1142,7 +1142,21 @@ paths were reviewed in (c). What is new:
 
 ## Phase 5 — Invoice Management and Payments
 
-**Status:** `NOT_STARTED`
+**Status:** `IN_PROGRESS` — the split is agreed and the first boundary is delivered.
+
+| # | Increment | Status |
+|---|---|---|
+| — | (d)'s two carry-overs: The project spec amended, the phone fold (D-054) | `COMPLETED` 2026-08-27 |
+| a | **The D-047 ruling** (D-055): store the gross, and two per-line figures | `COMPLETED` 2026-08-27 — decision only, awaiting review |
+| a2 | **`schemaVersion = 4`** — the three columns and their backfill (D-055) | `NOT_STARTED` |
+| b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` |
+| c | Payments: record and delete, both recomputing derived status in the same transaction (§6) | `NOT_STARTED` |
+| d | Cancellation, and the Persian copy that says what it does and does not do | `NOT_STARTED` |
+| e | List filters over status, customer and Jalali period, at the query level; paging `watchForCustomer` | `NOT_STARTED` |
+| f | The device pass, and the phase close | `NOT_STARTED` |
+
+(a2) is a migration and therefore its own reviewable step, on (a2)-of-Phase-4's and (c2)'s precedent.
+It comes before the detail screen because the detail screen is the first consumer of what it stores.
 
 **Goal.** Invoice list with filters, detail view, status lifecycle, cancellation, and payment
 recording with derived `partiallyPaid` / `paid` status recomputed on every payment write.
@@ -1154,6 +1168,40 @@ recomputation inside the payment's own transaction all exist and are tested. Wha
 **detail screen** at `/invoices/:id` (registered with the screen, per D-021 — the list's rows are
 deliberately non-tappable until it exists, asserted by a test), the **filters** over status, customer
 and date range, and the **UI** for recording a payment and for cancelling an invoice.
+
+**Increment — (d)'s carry-overs, completed 2026-08-27**
+
+- **The project spec amended.** The desktop requirement read "a sticky invoice summary panel", and a
+  panel down the side does not fit beside the invoice table at any window size (D-053). It now states
+  the **constraint** — the figure being agreed to must not scroll away — and records the measurement
+  that beat the layout, plus the composition rule (d) surfaced: *a widget tested only at its own full
+  width has not been tested at the width it is composed into.*
+- **The invoice-level fields fold on a phone, and start folded** (D-054), at the owner's ruling. The
+  field order is unchanged. The heading states the customer folded or not, because it is the one field
+  a save cannot do without. **Measured on the Redmi rather than decided in the abstract:** folded, the
+  add-line buttons sit at 586 px with the pinned bar starting at 670 — on the first screen with 59 px
+  to spare; unfolded they are 400 px of scrolling away. The wider tiers do not fold.
+- 3 new tests; **696 pass** (was 693). Decision recorded: **D-054**.
+
+**Increment (a) — the D-047 ruling, completed 2026-08-27 · decision only, no code**
+
+**D-055: store the gross, and two per-line figures with it** — `invoices.gross_total_rial`,
+`invoice_items.line_gross_rial` and `invoice_items.allocated_invoice_discount_rial`.
+
+- **Decided with both consumers in view**, as the owner directed. An Iranian invoice line prints
+  مبلغ کل and مبلغ پس از تخفیف; the schema stores neither the line's gross nor its share of the
+  invoice discount, and `line_net_rial` is net *after* a deduction the header prints again. A document
+  laid out from what is stored today reconciles nowhere.
+- **Recomputation was rejected on three grounds**: it re-runs §4 step 1 outside the engine where
+  D-046's scan cannot see it; step 1 carries a rounding rule, so a recomputed gross is today's rule
+  applied to yesterday's document; and §12 requires the renderer to be handed a view model it does not
+  have to compute.
+- **These columns are backfilled, unlike D-052's snapshot**, and the difference is recorded because
+  the two look alike: a party snapshot would be fabricated history, while these are arithmetic over
+  columns the row already carries under a rounding rule that has not changed. Where a row cannot be
+  reconciled to the Rial the migration leaves them **null** rather than writing a figure that does not
+  add up — `NOT NULL DEFAULT 0` is refused, because zero is a number a document would print.
+- It is `schemaVersion = 4` and lands as **(a2)**, its own reviewable step.
 
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
 a data-integrity control: only `draft` invoices are editable or deletable.

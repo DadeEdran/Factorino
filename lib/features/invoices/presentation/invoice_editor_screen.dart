@@ -395,7 +395,12 @@ class _MobileLayout extends StatelessWidget {
               bottom: AppSpacing.xl,
             ),
             children: <Widget>[
-              InvoiceDetailsSection(openedAt: openedAt),
+              // **Collapsible here and nowhere else.** On a phone these fields
+              // fill the first viewport and push the add-line buttons 400
+              // logical pixels down — measured on the device (D-054). The two
+              // wider tiers have room for both at once and gain nothing from a
+              // fold.
+              InvoiceDetailsSection(openedAt: openedAt, collapsible: true),
               const SizedBox(height: AppSpacing.xxl),
               InvoiceLinesSection(openedAt: openedAt),
             ],

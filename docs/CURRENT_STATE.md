@@ -11,9 +11,10 @@
 **Phase 1 — Foundation and Architecture · `COMPLETED`** (2026-08-24, seven increments, all accepted)
 **Phase 2 — Customers · `COMPLETED`** (2026-08-25)
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
-**Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered. (d) is
-**awaiting review, and awaiting the owner's manual pass on the phone**, which they asked to do
-themselves before (d) counts as finished.
+**Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
+**accepted**, including (d).
+**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed; the first boundary
+(the (d) carry-overs and the D-047 ruling) is delivered and awaiting review.
 
 | # | Increment | Status |
 |---|---|---|
@@ -25,6 +26,20 @@ themselves before (d) counts as finished.
 | c2 | **The party snapshot + the payment term** (D-051, D-052) — `schemaVersion = 3` | `COMPLETED`, **accepted** |
 | d | **The assembled screen**, all three tiers, routed (D-053) | `COMPLETED` 2026-08-27, awaiting review |
 
+### Phase 5
+
+| # | Increment | Status |
+|---|---|---|
+| — | (d)'s carry-overs: §10 amended, the phone fold (D-054) | `COMPLETED` 2026-08-27, awaiting review |
+| a | **The D-047 ruling** (D-055) — decision only, no code | `COMPLETED` 2026-08-27, awaiting review |
+| a2 | **`schemaVersion = 4`** — three columns and their backfill | `NOT_STARTED` ← **next** |
+| b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` |
+| c | Payments: record and delete, derived status in the same transaction | `NOT_STARTED` |
+| d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` |
+| e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` |
+| f | The device pass, and the phase close | `NOT_STARTED` |
+
+
 ## Where the project stands, in one paragraph
 
 **A user can create an invoice.** That was the last thing missing. Seven screens work end to end on
@@ -35,16 +50,20 @@ discount, a tax override, notes and any number of lines from the catalogue or fr
 come from `core/money/` and move as the lines do; the invoice saves as a draft or issues with a
 number and a party snapshot.
 
-**Phase 4 is complete and (d) is awaiting review.** Nothing is in progress. The next phase is **5 —
-Invoice Management and Payments**, which is where `/invoices/:id` and the payment path live.
+**Phase 4 is complete and accepted. Phase 5 has started**, and its first boundary is delivered: the
+two carry-overs from (d) — the project spec amended, and the invoice-level fields folded on the phone
+(D-054) — plus **the D-047 ruling** (D-055), which is a decision with no code behind it yet.
 
-**Working tree is clean.** `main` at **`d5175f4`** "Phase 4 (d): the assembled invoice screen".
+**The next increment is (a2), a migration: `schemaVersion = 4`.** D-055 settles that the gross is
+stored, along with two per-line figures, and a migration is its own reviewable step on the precedent
+of the last two.
+
+**Working tree is clean.** `main` at **`<HASH>`** "Phase 5: the D-047 ruling, and the phone fold".
 Behind it: `a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3),
 `7345ca2` is (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
 
-**The device debt from (b) and (c) is paid.** The whole form was driven through the real sheets on
-the Redmi Note 8 Pro — see the (d) section below for the numbers. **The owner's own manual pass is
-still outstanding and is the one thing (d) is waiting on.**
+**The device debt from (b) and (c) is paid**, and the fold was measured on the Redmi rather than
+decided in the abstract — the numbers are in the (d) carry-over section below.
 
 ## Verification status
 
@@ -61,8 +80,54 @@ D-020 proof - Android:      PASS   re-run on the Redmi (2026-08-27) -- was block
 Startup proof - Android:    PASS   re-run on the Redmi (2026-08-27)
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 Web build:                  NOT_RETESTED since plugins were added
-Owner's manual pass:        NOT_DONE  -- the one thing (d) is waiting on
 ```
+
+**Test count is 696**, was 693 at the end of (d).
+
+## What the first Phase 5 boundary delivered
+
+### (d)'s two carry-overs
+
+- **The project spec now states the constraint, not the layout.** The desktop requirement read "a
+  sticky invoice summary panel"; that panel does not fit beside the invoice table at any window size
+  (D-053). §10 now records what the requirement is *for* — the figure being agreed to must not scroll
+  away — with the measurement that beat the original wording, and the composition rule (d) surfaced:
+  **a widget tested only at its own full width has not been tested at the width it is composed into.**
+- **The invoice-level fields fold on a phone and start folded** (D-054). Field order unchanged, per
+  the owner's ruling. The heading states the customer folded or not — it is the one field a save
+  cannot do without, and folding it away would leave the «مشتری را انتخاب کنید» notice pointing at
+  something off screen.
+
+**Measured on the Redmi, which is how the default was chosen:**
+
+```
+folded    add-line buttons at 586 px, bottom 611 ; pinned bar begins at 670  -> fits, 59 px spare
+unfolded  add-line 400 px of scrolling away; issue date field at 245 px
+```
+
+The surprise worth keeping: folded, the add-line buttons are *still* 586 px down, because the lines
+section renders its designed empty state above them. The fold saves 400 px; the empty state costs
+about 250 of what is left. **If a later phase wants that space, the empty state is where it is** —
+not the fields.
+
+### (a) — the D-047 ruling, decision only
+
+**D-055: store the gross, and two per-line figures with it.** `invoices.gross_total_rial`,
+`invoice_items.line_gross_rial`, `invoice_items.allocated_invoice_discount_rial`.
+
+- Decided with the detail screen and the PDF renderer both in view, as directed. An Iranian invoice
+  line prints مبلغ کل and مبلغ پس از تخفیف, and the schema stores neither the line's gross nor its
+  share of the invoice discount — while `line_net_rial` is net *after* a deduction the header prints
+  again. A document laid out from what is stored today reconciles nowhere.
+- **Recomputation rejected** on three grounds: it re-runs §4 step 1 where D-046's scan cannot see it;
+  step 1 carries a rounding rule, so a recomputed gross is today's rule applied to yesterday's
+  document; and §12 requires the renderer to receive a view model it does not compute.
+- **These are backfilled, unlike D-052's snapshot**, and the difference is recorded because the two
+  look alike. A party snapshot would be fabricated history; these are arithmetic over columns the row
+  already carries, under a rounding rule that has not changed. Where a row cannot be reconciled to the
+  Rial, the migration leaves them **null** — `NOT NULL DEFAULT 0` is refused, because zero is a number
+  a document would print.
+- **No code yet.** It is `schemaVersion = 4` and lands as (a2).
 
 ## What Phase 4 increment (d) delivered — the assembled screen
 
@@ -105,13 +170,13 @@ the device's own metrics, and **collects every layout overflow** rather than let
 red band and carry on.
 
 ```
-logical size  : 392.7 x 803.6   pixel ratio 2.75   16sp renders at 16.0
-customer      : picked through the sheet's search, typed «مريم» with the Arabic ي
-add-line at   : 400 px down     <- the finding
-line          : added at quantity ۲٫۵ through the numeric sheet
-issue date    : picked from the Jalali grid
-issued        : INV-1405-0001   party snapshot written
-grand total   : 34,375,000 rial = 31,250,000 + 10%, reconciled by hand
+logical size: 392.7 x 803.6   pixel ratio 2.75   16sp renders at 16.0
+customer: picked through the sheet's search, typed «مريم» with the Arabic ي
+add-line at: 400 px down     <- the finding
+line: added at quantity ۲٫۵ through the numeric sheet
+issue date: picked from the Jalali grid
+issued: INV-1405-0001   party snapshot written
+grand total: 34,375,000 rial = 31,250,000 + 10%, reconciled by hand
 layout errors : 0
 ```
 
@@ -574,7 +639,22 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 ## Recently changed files
 
-### Phase 4 increment (d) — the newest work
+### Phase 5, first boundary — the newest work
+
+```
+The project spec: the constraint, not the layout; the
+                                              composition rule (d) surfaced
+lib/features/invoices/presentation/widgets/invoice_details_section.dart
+                                              + collapsible, _expanded, _DetailsHeader
+lib/features/invoices/presentation/invoice_editor_screen.dart
+                                              the mobile layout passes collapsible: true
+lib/core/localization/arb/app_fa.arb           +2 strings
+integration_test/invoice_form_device_test.dart + the fold measurement, both ways
+test/features/invoices/invoice_editor_screen_test.dart  +3 for the fold
+docs/*                                        D-054, D-055; D-047 marked settled; ROADMAP phase 5
+```
+
+### Phase 4 increment (d)
 
 ```
 lib/features/invoices/presentation/invoice_editor_screen.dart   NEW  the screen; the layouts;
@@ -753,39 +833,57 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 4 increment (d)** — the assembled invoice screen, `/invoices/new`, and the device pass
-(D-053). 693 tests pass, analyzer clean, `flutter build apk --debug` passes, the whole form was
-driven through the real sheets on the Redmi with zero layout errors, and the D-020 and startup
-proofs were re-run there. **Phase 4 is complete.**
+**Phase 5's first boundary** — the project spec amended, the invoice-level fields folded on the phone
+and measured there (D-054), and **the D-047 ruling settled** (D-055). 696 tests pass, analyzer clean,
+the fold measured on the Redmi. Phase 4 was accepted in the same message.
 
 ## Next action
 
-**Wait for the owner's manual pass on the phone, then start Phase 5.**
+**Build Phase 5 increment (a2): `schemaVersion = 4`.** D-055 decided it; this implements it.
 
-(d) is delivered and reported, but the owner asked to use the form with a finger themselves before it
-counts as finished: *"a numeric-heavy sheet on a phone is where tests and reality diverge, and
-nothing so far has been touched by a finger."* The debug APK is installed on the Redmi
-(`dmbyayb6rombo7ci`). Two things to hand them when they ask:
+Three columns, all nullable:
 
-1. **The one measured finding** — the add-line buttons sit 400 logical pixels down, so the first
-   thing a user wants to do is below the fold. Their call whether the field order changes.
-2. **What automation could not check** — whether the form is pleasant to use with a thumb.
+| Column | Table |
+|---|---|
+| `gross_total_rial` | `invoices` |
+| `line_gross_rial` | `invoice_items` |
+| `allocated_invoice_discount_rial` | `invoice_items` |
 
-### Phase 5 — Invoice Management and Payments
+**Everything the last two migrations learned applies, and two things are specific to this one:**
 
-The next phase, and the first two things in it are already named by work that stopped short of them:
+1. **It backfills, and D-052's did not.** The values are arithmetic over columns the row already
+   carries: `line_gross = line_net + discount + allocated`, with the allocation recoverable per
+   invoice from the stored invoice discount and the stored line nets. **Where a row cannot be
+   reconciled to the Rial, write null** — never a figure that does not add up, and never `0`.
+   That case needs its own fixture in the migration test.
+2. **`invoice_items` has no rebuild in its history**, so `addColumn` applies to both tables — but the
+   `invoices` table *is* rebuilt by the v1 → v2 step, which now computes its `newColumns` from
+   `PRAGMA table_info`, so a v1 database arrives at v4 with the invoice column already present and
+   the two item columns absent. `_addColumnIfAbsent` already handles exactly that; the **v1 → v4 test
+   through the production path is what proves it** and must be written, not assumed.
 
-- **`/invoices/:id`, the invoice detail screen.** It is why invoice rows are still not tappable
-  (D-021) and why the route stays unregistered. `InvoiceDetail` already assembles everything it needs
-  in one read, including `party` (D-052) for the document's own statement of the customer.
-- **The payment path**, which is what turns `unpaid` into `partiallyPaid` and `paid`. The repository
-  already recomputes and persists that status inside the payment's own transaction (§6).
+Then: the ladder step bounded by `to`, both schema dumps regenerated, the data-survival suite through
+`openAppDatabase` with foreign keys on, `assertForeignKeysCanBeDisabled` **not** called (D-052's
+reasoning — `ADD COLUMN` drops nothing) with the in-transaction test standing in for it, and the
+device proof on the Redmi before it is called done.
 
-Two decisions deliberately deferred **into** Phase 5, not to be re-derived:
+After (a2) the order is (b) the detail screen, (c) payments, (d) cancellation, (e) filters and paging,
+(f) the device pass and the phase close.
 
-- **`grossTotal` is computed but not stored**, and per-line gross is not recoverable from what
-  `invoice_items` keeps (D-047). The owner's instruction stands: decide it in Phase 5 with the detail
-  screen and the PDF renderer both in view, since they are the two consumers and storing the wrong
-  shape costs another migration.
-- **`watchForCustomer` caps at 1000 and does not page** (known issue 16). Give it a `ListQuery` when
-  the invoice list gets its filters here.
+### Standing constraints for the rest of Phase 5, from the owner
+
+- **The detail screen shows the party snapshot for issued invoices and the live record for drafts**
+  (D-052) — and **must make clear which it is** when a customer has since been renamed or
+  soft-deleted. `InvoiceDetail.party` is the resolver; `InvoiceDetail.customer` is the live row.
+- **Payments recompute derived status in the same transaction** (§6). **Recording and deleting both,
+  both directions**, tested at the repository.
+- **Cancellation is the correction path** for an issued invoice and must not silently edit. The
+  Persian copy states what cancelling does **and does not** do, *including that the number stays
+  spent* (D-013).
+- **List filters over status, customer and Jalali period, at the query level** — not in Dart over a
+  loaded page.
+- **Rows become tappable and `/invoices/:id` registers with the screen.** The test asserting the
+  route's absence comes out then, deliberately — it is in
+  `invoices_screen_test.dart`, group "routes that do not exist yet".
+- **Paging `watchForCustomer`**, known issue 16.
+- **A device pass before the phase is called done**, as in (d).

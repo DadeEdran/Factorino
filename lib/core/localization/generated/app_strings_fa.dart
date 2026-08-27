@@ -485,6 +485,12 @@ class AppStringsFa extends AppStrings {
   String get invoiceDetailsTitle => 'مشخصات فاکتور';
 
   @override
+  String get invoiceDetailsToggle => 'نمایش یا پنهان کردن مشخصات فاکتور';
+
+  @override
+  String get invoiceDetailsCollapsedNoCustomer => 'مشتری انتخاب نشده';
+
+  @override
   String get invoiceFieldCustomer => 'مشتری';
 
   @override
