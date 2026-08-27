@@ -47,6 +47,10 @@ issued invoice keep the party it was issued to. **(d) is the only increment left
 (b) and (c) built into one form and gives it a route. Until it lands there is still no way for a user
 to create an invoice, because nothing routes to these widgets.
 
+**Working tree is clean.** `main` at **`eecd96b`** "Phase 4 (c2): the party snapshot, and schema
+v3". Behind it: `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f`
+is (a), `d8682ee` is Phases 2 and 3.
+
 **The device debt — the one thing a fresh session must not lose.** No widget from (b) or (c) has been
 touched by a person, because no route reaches them until (d). That is **two numeric-heavy sheets, a
 calendar grid and two picker sheets**, verified by widget tests and the APK build only. The owner's
