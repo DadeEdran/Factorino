@@ -729,18 +729,19 @@ already enforced. What this phase adds is the length and character-class boundar
 
 ## Phase 4 — Invoice Creation
 
-**Status:** `IN_PROGRESS` — (a) accepted, (a2) complete with its device proof passed, (a3) awaiting
-review. The largest and most consequential phase in the project, split into four increments at the
-owner's instruction, each reported and stopped for review rather than landing whole.
+**Status:** `IN_PROGRESS` — (a), (a2), (a3), (b) and (c) are all accepted; (c2) is complete with its
+device proof passed and is awaiting review. **(d) is the only increment left.** The largest and most
+consequential phase in the project, split into four increments at the owner's instruction and grown
+to seven, each reported and stopped for review rather than landing whole.
 
 | # | Increment | Status |
 |---|---|---|
 | a | The draft state model and its wiring to `core/money/` — no UI, fully tested | `COMPLETED` 2026-08-25, **accepted** 2026-08-26 |
 | a2 | **Numbering on issue, and the project's first migration** (D-048) | `COMPLETED` 2026-08-26 — device proof **passed** |
-| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26, awaiting review |
-| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26 |
-| c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED` 2026-08-26, awaiting review |
-| c2 | **Customer snapshot on issue** (D-051) — `schemaVersion = 3` | `NOT_STARTED`, owner to schedule |
+| a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26, **accepted** |
+| b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26, **accepted** |
+| c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED` 2026-08-26, **accepted** |
+| c2 | **The party snapshot and the payment term** (D-051, D-052) — `schemaVersion = 3` | `COMPLETED` 2026-08-27 — device proof **passed** |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
 Increment (a2) was not in the owner's original four-way split. It was pulled out of (c) and placed
@@ -973,6 +974,85 @@ recording anyway:
 - **No new permission, platform surface or dependency.** The engine extension is pure integer
   arithmetic with the same overflow guards; `grossTotal` is constructed through `Money`, so it is
   subject to the same `kMaxAmountRial` ceiling as every other amount (D-002).
+
+**Increment (c2) — completed 2026-08-27 · the party snapshot, `schemaVersion = 3`**
+
+D-051 is implemented and **D-052** records what building it settled. Five nullable
+`customer_*_snapshot` columns on `invoices` and `payment_term_days` on `settings`, in one migration.
+
+- **The snapshot is taken at `issue()`**, inside the transaction that allocates the number — not at
+  draft creation. A draft is not a document and should pick up a correction to the customer's
+  details; an issued invoice must not. `create(status: unpaid)` takes one too, being a second route
+  to a document.
+- **Name, company, کد ملی, کد اقتصادی and address.** The two tax identifiers are the fields with
+  legal weight on an Iranian invoice and the ones a correction changes, so a snapshot of the name
+  alone would have protected the least consequential field. **The mobile is excluded** — contact
+  detail, not document content — and still resolves live.
+- **Each snapshot column's length equals its source column**, not merely exceeds it. Narrower would
+  make a customer with a long address impossible to issue an invoice to, failing inside `issue()`
+  and only for the users whose records are fullest. Asserted in `field_limits_test.dart`.
+- **The fallback lives in one place.** `Invoice.party(live)` and `Invoice.partyName(liveName)` are
+  the only two sites that write `snapshot ?? live`; `InvoiceDetail.party` and
+  `InvoiceListItem.customerName` are getters over them. `InvoiceListItem.customerName` became a
+  **getter** and its constructor argument was renamed `liveCustomerName`, so the two construction
+  sites cannot apply — or forget — the rule.
+- **Existing issued invoices display the live customer, deliberately.** The migration writes nothing
+  into the new columns. Backfilling from today's customer rows would look like a snapshot while being
+  exactly the live join it replaces, frozen at a moment that corresponds to no document. Pinned by
+  two tests, one on the migration and one on the read path. The consequence stated plainly: for those
+  invoices the defect D-051 names is still present and cannot be fixed.
+- **`assertForeignKeysCanBeDisabled` is not called, and that is a decision.** The guard checks that
+  `PRAGMA foreign_keys = OFF` takes effect; a rebuild needs that because it drops the parent table,
+  and six `ADD COLUMN`s do not. Calling it anyway would teach the next reader that it is a ritual
+  rather than a precondition check. The claim is checked instead: the step is run **inside a
+  transaction** with foreign keys on and children present — the exact condition that empties
+  `invoice_items` and `payments` under the v1 → v2 rebuild — and the rows are counted afterwards.
+- **A real defect found by writing the v1 → v3 test.** `Migrator.alterTable` builds its replacement
+  table from the **current** declaration and copies every one of those columns out of the old one —
+  so declaring the v3 columns broke the shipped v1 → v2 rebuild with `no such column:
+  customer_name_snapshot`, on open, for every user who had not updated since the first release and
+  for nobody else. Fixed structurally, not per-column: the rebuild computes its
+  `TableMigration.newColumns` by asking the old table what it actually has, so it needs no edit for
+  any future column; and the v2 → v3 step adds each column only if absent, because a v1 database
+  arrives with them already present.
+- **The ladder's shape test now targets `db.schemaVersion`.** The v2 shape stopped being
+  independently observable at v3, and pointing the test at the newest version is what makes it the
+  test that catches the next column added without the rebuild being told. Ladder steps are also
+  bounded above by `to`; no production path changes, since `to` is always `schemaVersion` there.
+- **The payment term is a setting.** `kDefaultPaymentTermDays` moves to `data/models/app_settings.dart`
+  and names the seed default; the term in force is read from the row. `defaultDueDate` takes it, and a
+  **derived** due date now follows a change to the term as well as to the issue date — by (c)'s own
+  argument, that a derived date is a statement about the term rather than a commitment to a day. A
+  date the user chose is moved by neither. The settings screen shows it, in Persian digits, with «روز».
+- **A pre-existing layout defect fixed on the way.** The settings screen had no test until this
+  increment; its first one found `_SettingRow` overflowing by **132 logical pixels** at phone width,
+  because the backup row renders a *sentence* in the prominent figure style and that group took its
+  natural width before the label beside it. Now a `Wrap`, which is identical while both halves fit
+  and drops the value onto its own line when they do not. It predates the payment-term row.
+- **24 new tests; 676 pass in total** (was 650). Three device proofs re-run on the Redmi Note 8 Pro.
+  Decision recorded: **D-052**.
+
+**Security note (increment c2).** New data is stored and the threat model is unchanged, but the
+change is not neutral and is worth stating:
+
+- **The `invoices` table now holds third-party personal identifiers** — کد ملی, کد اقتصادی, name and
+  address — where before it held only a `customer_id`. They were already in the database, in
+  `customers`, under the same encryption at rest on the same connection (D-010, D-020); what changes
+  is that they are duplicated onto a second table. No new class of data enters the app.
+- **The logging guard was extended to the new accessors and verified to bite.** The scan anchors on
+  `.<name>`, so `.nationalId` does not cover `.customerNationalIdSnapshot`. All five snapshot
+  accessors and `liveCustomerName` were added to `sensitiveAccessors`; a plausible `AppLog.debug`
+  interpolating the snapshot name and national ID was introduced, the scan failed on both by name,
+  and it was reverted.
+- **No new input is accepted.** Every value written is copied from a `customers` row that already
+  passed the form's validation and the column's own limits; the snapshot columns match those limits
+  exactly, so nothing can be stored here that could not be stored there.
+- **No new dependency, permission or platform surface.** The migration is six `ALTER TABLE ... ADD
+  COLUMN`s through drift's typed API; the one interpolated string is a `PRAGMA table_info(...)`,
+  which SQLite cannot parameterize, and it takes only compile-time table names from generated code.
+- **Backup and export (Phase 6) inherit this.** An exported backup will now carry the identifiers
+  twice. That does not change what §8 requires — the export is encrypted with a user-supplied
+  password either way — but it is worth knowing when that phase is built.
 
 ---
 

@@ -37,10 +37,10 @@ void main() {
   /// cannot accidentally pass these tests.
   final DateTime now = DateTime.utc(2026, 8, 24, 6);
 
-  InvoiceListItem item(String id, {required String customerName}) {
+  InvoiceListItem item(String id, {required String liveCustomerName}) {
     final DateTime issued = DateTime.utc(2026, 8, 20, 6);
     return InvoiceListItem(
-      customerName: customerName,
+      liveCustomerName: liveCustomerName,
       invoice: Invoice(
         id: id,
         number: 'INV-1405-0001',
@@ -83,7 +83,7 @@ void main() {
       // would start on the 1st. The assertion is on the range the repository
       // was handed, so it holds whatever the screen renders.
       final FakeInvoiceRepository invoices = FakeInvoiceRepository(
-        <InvoiceListItem>[item('a', customerName: 'مریم احمدی')],
+        <InvoiceListItem>[item('a', liveCustomerName: 'مریم احمدی')],
         issuedTotalRial: 12000000,
         issuedCount: 1,
       );
@@ -112,7 +112,7 @@ void main() {
         const DashboardScreen(),
         overrides: overridesFor(
           FakeInvoiceRepository(
-            <InvoiceListItem>[item('a', customerName: 'مریم احمدی')],
+            <InvoiceListItem>[item('a', liveCustomerName: 'مریم احمدی')],
             issuedTotalRial: 12000000,
             issuedCount: 1,
           ),
@@ -136,7 +136,7 @@ void main() {
         const DashboardScreen(),
         overrides: overridesFor(
           FakeInvoiceRepository(
-            <InvoiceListItem>[item('a', customerName: 'مریم احمدی')],
+            <InvoiceListItem>[item('a', liveCustomerName: 'مریم احمدی')],
             issuedTotalRial: 12000000,
             issuedCount: 3,
             outstandingRial: 5000000,
@@ -192,7 +192,7 @@ void main() {
         const DashboardScreen(),
         overrides: overridesFor(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ], outstandingRial: 5000000),
           _FakeCustomerRepository(1),
         ),
@@ -320,7 +320,7 @@ void main() {
         const DashboardScreen(),
         overrides: overridesFor(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
           _FakeCustomerRepository(1),
         ),
@@ -341,7 +341,7 @@ void main() {
         const DashboardScreen(),
         overrides: overridesFor(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
           _FakeCustomerRepository(1),
         ),
@@ -361,7 +361,7 @@ void main() {
         const DashboardScreen(),
         overrides: overridesFor(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
           _FakeCustomerRepository(1),
         ),

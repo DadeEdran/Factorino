@@ -1,7 +1,7 @@
 # Current State
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
-> Last updated: **2026-08-26**
+> Last updated: **2026-08-27**
 
 ---
 
@@ -11,9 +11,8 @@
 **Phase 1 — Foundation and Architecture · `COMPLETED`** (2026-08-24, seven increments, all accepted)
 **Phase 2 — Customers · `COMPLETED`** (2026-08-25)
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
-**Phase 4 — Invoice Creation · `IN_PROGRESS`** — (a), (a2), (a3) and (b) are all **accepted**;
-(c) was delivered 2026-08-26 and is **awaiting review**. (d) is the last increment, and (c2) is a
-migration the owner has yet to schedule.
+**Phase 4 — Invoice Creation · `IN_PROGRESS`** — (a), (a2), (a3), (b) and (c) are all **accepted**;
+(c2) was delivered 2026-08-27 and is **awaiting review**. **(d) is the only increment left.**
 
 | # | Increment | Status |
 |---|---|---|
@@ -21,92 +20,120 @@ migration the owner has yet to schedule.
 | a2 | **Numbering on issue + `schemaVersion = 2`** (D-048) | `COMPLETED` — device proof passed 2026-08-26 |
 | a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED`, **accepted** |
 | b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED`, **accepted** |
-| c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED`, awaiting review |
-| c2 | **Customer snapshot on issue** (D-051) — `schemaVersion = 3` | `NOT_STARTED`, owner to schedule |
+| c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED`, **accepted** |
+| c2 | **The party snapshot + the payment term** (D-051, D-052) — `schemaVersion = 3` | `COMPLETED` 2026-08-27 — device proof passed |
 | d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
 
 (a2) was not in the original four-way split. The owner approved D-048 on 2026-08-26 and directed
 that it land as its own reviewable step **before (b)** — it is the project's first migration and a
-build is already installed on a real device. Numbering is therefore no longer part of (c).
+build is already installed on a real device. (c2) is the second migration, scheduled by the owner
+on 2026-08-27 on the same precedent.
 
 Phases 2 and 3 were re-scoped by D-042 to what increment (f1) had not already delivered. Both of
 those items are built, so both phases are closed.
 
 ## Where the project stands, in one paragraph
 
-**Phase 4 increment (c) is delivered and awaiting review; nothing else is in progress. The session
-ended here at the owner's instruction, with no work started on (d).** Six screens work end to end on
-real data — Dashboard, Invoices, Customers, **Customer detail**, Products, Settings — inside a
-Persian, RTL, three-tier responsive shell, over an encrypted SQLite database. Customers and products
-can be created, searched, edited and soft-deleted; every form field carries the same length and
-character-class limits its column does. The database is at **schema v2**.
+**Phase 4 increment (c2) is delivered and awaiting review; nothing else is in progress.** Six screens
+work end to end on real data — Dashboard, Invoices, Customers, Customer detail, Products, Settings —
+inside a Persian, RTL, three-tier responsive shell, over an encrypted SQLite database. The database
+is at **schema v3**, and both migration ladders (v2 → v3 and v1 → v3) are proved on Windows and on
+the Redmi.
 
-**Every piece of the invoice form now exists except the screen that holds them.** (a) built the
+**Every piece of the invoice form exists except the screen that holds them.** (a) built the
 arithmetic spine, (a2) fixed the numbering underneath it, (a3) made its worst failure mode
-structural, (b) built line entry and (c) built the invoice-level fields and the save. **(d) is the
-only increment left** — it composes what (b) and (c) built into one form and gives it a route. Until
-it lands there is still no way for a user to create an invoice, because nothing routes to these
-widgets.
+structural, (b) built line entry, (c) built the invoice-level fields and the save, and (c2) made an
+issued invoice keep the party it was issued to. **(d) is the only increment left** — it composes what
+(b) and (c) built into one form and gives it a route. Until it lands there is still no way for a user
+to create an invoice, because nothing routes to these widgets.
 
-**Working tree is clean.** `main` at **`ea4858c`** "Phase 4 (c): invoice-level fields, and the
-save". Behind it: `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2` is (a2), `bf4c02f` is (a),
-`d8682ee` is Phases 2 and 3.
-
-**Increment (a) is accepted.** The owner accepted it on 2026-08-26, approved D-048, and confirmed
-the `grossTotal` finding — the printed-summary double-count — as the reason the constraint existed.
-
-**(a2) is closed.** Its last outstanding step — the migration proof on the Redmi — passed on
-2026-08-26: `user_version 1 -> 2`, foreign keys on, 1 invoice, **2 invoice lines, 1 payment**, file
-encrypted. `flutter build apk --debug` passed in the same session.
-
-**(a3) and (b) are accepted**, 2026-08-26. Three things the owner endorsed explicitly, worth not
-relitigating:
-
-- **The runtime guard is preferred over a lexical one**, because performing the operation and
-  reading the result back catches what a source scan structurally cannot see — a transaction opened
-  by a caller, a batch, or a future drift release that runs `onUpgrade` inside one. The owner's
-  words: a fragile guard matching the other nine *"would have been worse than no guard, because it
-  would have been trusted."*
-- **Pinning the SQLite premise in its own test** was called the piece they would not have thought to
-  ask for: if a future version honours the pragma inside a transaction, that test is where the news
-  arrives rather than a user's database.
-- **The basis-point observation** — two decimal places of a percent being a basis point by
-  construction — was accepted as removing a rounding step rather than implementing one carefully.
-
-**(c) has not been reviewed.** The invoice-level fields, a Jalali date picker, and **the save** —
-the first write of a whole invoice from the editor. Reported in full; the owner stopped the session
-before responding.
-
-**The device debt — the one thing a fresh session must not lose.** No widget from (b) or (c) has
-been touched by a person, because no route reaches them until (d). That is two numeric-heavy sheets,
-a calendar grid and two picker sheets, verified by **29 widget tests** and the APK build only. The
-owner's instruction, verbatim in substance: *"a numeric-heavy sheet on a phone is where tests and
-reality diverge most. Treat (d) as the point where that debt comes due, not something to discover
-then."* **Running the assembled form on the Redmi is a task inside (d), not a follow-up to it.**
+**The device debt — the one thing a fresh session must not lose.** No widget from (b) or (c) has been
+touched by a person, because no route reaches them until (d). That is **two numeric-heavy sheets, a
+calendar grid and two picker sheets**, verified by widget tests and the APK build only. The owner's
+instruction, twice and verbatim in substance: *"a numeric-heavy sheet on a phone is exactly where
+tests and reality diverge"*, and for (d) — **"the device debt is the first item, not the last."**
+Running the assembled form on the Redmi is the **first** task inside (d), not a follow-up to it.
 
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (c)
-flutter test:               PASS   (650/650, was 619)                         as of (c)
-Windows build:              NOT_RETESTED since (a2) -- (b) and (c) are Windows-untried
-Windows run:                PASS   the app opened the REAL dev database and migrated it v1 -> v2
+flutter analyze:            PASS   (No issues found)                          as of (c2)
+flutter test:               PASS   (676/676, was 650)                         as of (c2)
+Android build:              PASS   flutter build apk --debug                  (c2)
+Windows run:                PASS   the app opened the REAL dev database and migrated it v2 -> v3
+D-052 proof - Windows:      PASS   both ladders: v2 -> v3 and v1 -> v3
+D-052 proof - Android:      PASS   both ladders, on the Redmi Note 8 Pro (2026-08-27)
 D-048 proof - Windows:      PASS   integration_test/invoice_number_migration_proof_test.dart
-D-048 proof - Android:      PASS   on the Redmi Note 8 Pro, Android 11 (2026-08-26). CLOSED.
-Android build:              PASS   flutter build apk --debug                  (c)
-Web build:                  NOT_RETESTED since plugins were added
+D-048 proof - Android:      PASS   re-run on the Redmi 2026-08-27 (v1 -> 3 now, not v1 -> 2)
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
-D-020 proof - Android:      PASS   5/5 on a Redmi Note 8 Pro, Android 11 (2026-08-23, not re-run)
-(b)+(c) widgets on device: NOT_RUN  no route reaches them until (d). THE OPEN DEBT.
+D-020 proof - Android:      PASS   5/5 (2026-08-23). Could NOT be re-run 2026-08-27 -- see below.
+Web build:                  NOT_RETESTED since plugins were added
+(b)+(c) widgets on device:  NOT_RUN  no route reaches them until (d). THE OPEN DEBT.
 ```
 
-**The real Windows dev database was migrated, and this is the strongest evidence (a2) has:** the
-file that has been accumulating rows since Phase 1 went `user_version 1 -> 2` and came out with
-12 customers, 12 invoices, **12 invoice lines, 4 payments**, 5 products, 1 settings row, all 12
-numbers intact and foreign keys still on. A pre-migration copy was taken first and is in this
-session's scratchpad as `factorino.db.v1backup`.
+**The D-020 and startup proofs could not be re-run on the Redmi**, and it is a device condition
+rather than a code one: the phone reported `Requested internal only, but not enough space` on the
+install, and the follow-up uninstall failed with `DELETE_FAILED_INTERNAL_ERROR`. The three proofs
+that (c2) needed had already installed and passed on the same session. Free space on the device
+before the next device run.
 
-Neither (a2) nor (a3) added UI or a dependency. (b) is all UI and adds no dependency.
+**The real Windows dev database was migrated v2 → v3**, opened by the running app rather than by a
+fixture: the file that has been accumulating rows since Phase 1 was rewritten at 03:22 and the app
+ran against it with no exception logged. A pre-migration copy is in this session's scratchpad as
+`factorino.db.v2backup`.
+
+## What Phase 4 increment (c2) delivered — the party snapshot, and schema v3
+
+**The project's second migration.** Five nullable `customer_*_snapshot` columns on `invoices`, and
+`payment_term_days` on `settings`, in one migration at the owner's direction.
+
+```
+lib/data/database/tables/invoices.dart        + 5 snapshot columns
+lib/data/database/tables/settings.dart        + paymentTermDays
+lib/data/database/app_database.dart           schemaVersion 3; migrateV2ToV3; _addColumnIfAbsent;
+                                              the v1 rebuild now computes its newColumns
+lib/data/models/customer_snapshot.dart        NEW  the value type
+lib/data/models/invoice.dart                  + customerSnapshot, party(), partyName()
+lib/data/models/invoice_list_item.dart        customerName is now a GETTER; liveCustomerName is the field
+lib/data/models/invoice_detail.dart           + party
+lib/data/models/app_settings.dart             + paymentTermDays, kDefaultPaymentTermDays
+lib/data/repositories/drift/drift_invoice_repository.dart   issue() and create() write the snapshot
+lib/features/invoices/domain/invoice_editor_state.dart      defaultDueDate takes the term
+lib/features/invoices/application/invoice_editor.dart       a derived due date follows the term too
+lib/features/settings/presentation/settings_screen.dart     + the term row; _SettingRow is a Wrap now
+```
+
+- **At `issue()`, not at draft creation**, inside the transaction that allocates the number. A draft
+  is not a document and should pick up a correction; an issued invoice must not. `create(status:)`
+  snapshots too, being a second route to a document.
+- **Name, company, کد ملی, کد اقتصادی, address. Not the mobile** — contact detail, not document
+  content, and it keeps resolving live.
+- **The fallback is written in exactly one place.** `Invoice.party(live)` / `Invoice.partyName(name)`;
+  `InvoiceDetail.party` and `InvoiceListItem.customerName` are getters over them.
+  `InvoiceListItem`'s constructor argument was renamed `liveCustomerName` so the two construction
+  sites cannot apply — or forget — the rule.
+- **Invoices issued before v3 show the live customer, deliberately, and nothing is backfilled.**
+  Backfilling from today's rows would look like a snapshot while being the live join it replaces,
+  frozen at a moment matching no document. Two tests pin it. For those invoices the defect is still
+  present and cannot be fixed; there is no history to recover.
+- **`assertForeignKeysCanBeDisabled` is NOT called by this step, and that is deliberate** (D-052).
+  It checks that `PRAGMA foreign_keys = OFF` takes effect, which a rebuild needs and six
+  `ADD COLUMN`s do not. Calling it anyway would make it a ritual rather than a check. Instead the
+  step is **run inside a transaction** with foreign keys on and children present — the exact
+  condition that empties the children under the v1 → v2 rebuild — and the rows are counted.
+- **Writing the v1 → v3 test found a real defect in the shipped v1 → v2 migration.**
+  `Migrator.alterTable` builds from the **current** declaration and copies every one of those
+  columns out of the old table, so declaring the v3 columns broke it with `no such column`, on open,
+  for every user still on v1 and nobody else. Fixed structurally: the rebuild computes its
+  `newColumns` by asking the old table what it has, so no future column needs an edit there; and the
+  v2 → v3 step adds each column only if absent.
+- **The payment term is a setting.** `defaultDueDate(issueDate, termDays)`; a **derived** due date now
+  follows a change to the term as well as to the issue date. A chosen one is moved by neither.
+- **A pre-existing settings-screen overflow, found and fixed.** Its first-ever widget test caught
+  `_SettingRow` overflowing by **132 logical pixels** at phone width — the backup row renders a
+  *sentence* in the figure style, and that group took its natural width before the label. Now a
+  `Wrap`: identical while both halves fit, value on its own line when they do not.
+- **24 new tests; 676 pass** (was 650). Decision recorded: **D-052**.
 
 ## What Phase 4 increment (c) delivered — the invoice-level fields, and the save
 
@@ -337,19 +364,6 @@ built. One source of truth in `data/models/field_limits.dart`; `AppTextField` wi
 `maxLength`; two guards; digits-only on the ID and price fields; and a length validator in drift's
 own unit because `maxLength` counts grapheme clusters and drift counts UTF-16 code units.
 
-## The measured defect Phase 4(c) has to fix
-
-`create()` allocates an invoice number for a **draft**. Measured against the real database, not
-inferred: a draft takes `INV-1405-0001`, is abandoned, and the next takes `INV-1405-0002` — the first
-number is gone permanently, because the unique index deliberately covers soft-deleted rows (D-013).
-A user who opens a form and changes their mind has silently consumed an invoice number.
-
-The fix needs `number`, `number_year` and `number_sequence` to become **nullable** (NULLs are
-distinct in a SQLite unique index; an empty-string sentinel would collide between two drafts), which
-makes it **`schemaVersion = 2` — the first migration in the project**, with the migration test §6 and
-§14 require. Known issue 1 has been waiting for exactly this. Full analysis in **D-048**, which is
-`PROPOSED` and awaiting the owner.
-
 ## Three things found by building Phases 2 and 3, worth not rediscovering
 
 1. **`withLength(max: SomeConstant)` silently produces a column with no length limit.** `drift_dev`
@@ -415,9 +429,10 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 2 | The database opens on the main isolate | Phase 13. The `setup` closure must stay isolate-sendable — `ARCHITECTURE.md` §B.5. |
 | 3 | The national-ID checksum cannot catch every transposition | Official algorithm, not a defect. Now enforced by test over the ARB, the form **and** the detail screen. |
 | 4 | `watchDetail` re-reads on any invoice-table change | Correct but not minimal. Revisit in Phase 13. |
-| 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. |
+| 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. **When the screen becomes editable, `payment_term_days` needs a bound**: a negative term produces an invoice due before it was issued, and `AppSettings` deliberately does not clamp it (D-052). |
 | 8 | `nowProvider` does not tick | Deliberate (D-041). A Jalali month boundary or a due date crossing midnight while the app sits open does not update until relaunch. |
 | 9 | The Windows debug exe shows no window when launched **directly** | Under `flutter run -d windows` it is fine. Worth a look in Phase 12. |
+| 10b | **The Redmi ran out of internal storage** | Seen 2026-08-27 after three integration runs: `Requested internal only, but not enough space`, and the follow-up uninstall failed `DELETE_FAILED_INTERNAL_ERROR`. The D-020 and startup proofs could not be re-run because of it. Free space on the device before the next device session. |
 | 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
 | 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last**. |
 | 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
@@ -437,6 +452,20 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
   around its `DROP TABLE`, and SQLite silently ignores `PRAGMA foreign_keys` inside a transaction —
   so wrapping it cascade-deletes every `invoice_items` and `payments` row in the database, with no
   error. Measured, not reasoned about (D-048). The same applies to any future table rebuild.
+- **`Migrator.alterTable` builds from the table as declared TODAY**, then copies every one of those
+  columns out of the old table — so adding a column to `invoices` breaks the *shipped* v1 → v2
+  rebuild with `no such column`, on open, for every user still on v1 and nobody else. It is handled
+  structurally (the rebuild computes its `newColumns` from `PRAGMA table_info`), and the **v1 → v3
+  test through the production path is what proves it**. Keep that test pointed at
+  `db.schemaVersion`, never at a literal (D-052).
+- **A migration made only of `ADD COLUMN` must NOT call `assertForeignKeysCanBeDisabled`.** The guard
+  checks a precondition a rebuild has and `ADD COLUMN` does not; calling it anyway turns it into a
+  ritual. The equivalent check for such a step is to run it inside a transaction with children
+  present and count them, which `customer_snapshot_migration_test.dart` does (D-052).
+- **The party on a document is `Invoice.party(live)` / `Invoice.partyName(name)`, never
+  `detail.customer`.** `detail.customer` is the live record — contact detail and where a "go to
+  customer" action leads. `InvoiceListItem.customerName` is a **getter**; the constructor argument is
+  `liveCustomerName` (D-052).
 - **The schema dumps in `drift_schemas/` are the migration tests' baseline**, and
   `test/data/database/generated/` is `drift_dev schema generate` output for them. After a schema
   change: `dart run drift_dev schema dump lib/data/database/app_database.dart drift_schemas/` then
@@ -502,7 +531,46 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 ## Recently changed files
 
-### Phase 4 increment (c) — the newest work
+### Phase 4 increment (c2) — the newest work
+
+```
+lib/data/database/tables/invoices.dart        + 5 customer_*_snapshot columns
+lib/data/database/tables/settings.dart        + paymentTermDays (literal 30, see D-043's trap)
+lib/data/database/app_database.dart           schemaVersion 3; migrateV2ToV3 (public, for the
+                                              in-transaction test); _addColumnIfAbsent; _columnNames;
+                                              the v1 rebuild computes TableMigration.newColumns
+lib/data/models/customer_snapshot.dart        NEW  the value type + CustomerSnapshot.of
+lib/data/models/invoice.dart                  + customerSnapshot, party(live), partyName(liveName)
+lib/data/models/invoice_list_item.dart        customerName -> getter; field is liveCustomerName
+lib/data/models/invoice_detail.dart           + party; customer redocumented as the LIVE record
+lib/data/models/app_settings.dart             + paymentTermDays, kDefaultPaymentTermDays (moved here)
+lib/data/repositories/drift/mappers.dart      + customerSnapshotFromRow
+lib/data/repositories/drift/drift_invoice_repository.dart
+                                              issue() and create(status:) write the snapshot;
+                                              _requireCustomer; watchList -> liveCustomerName
+lib/data/repositories/drift/drift_settings_repository.dart   + paymentTermDays both ways
+lib/features/customers/application/customers_providers.dart  -> liveCustomerName
+lib/features/invoices/domain/invoice_editor_state.dart       defaultDueDate(issueDate, termDays)
+lib/features/invoices/application/invoice_editor.dart        the term drives a derived due date;
+                                              moveLine moved back beside the other line intents
+lib/features/settings/presentation/settings_screen.dart      + the term row; _SettingRow is a Wrap
+lib/core/localization/arb/app_fa.arb          +3 strings (418 total)
+drift_schemas/drift_schema_v3.json            NEW  the v3 baseline
+test/data/database/generated/schema_v3.dart   NEW  drift_dev schema generate output
+test/data/database/customer_snapshot_migration_test.dart     NEW  9 tests, four claims
+test/data/repositories/invoice_customer_snapshot_test.dart   NEW  10 tests
+test/features/settings/settings_screen_test.dart             NEW  4 tests, the screen's first
+test/data/database/field_limits_test.dart     +2: the snapshot widths, the column default
+test/features/invoices/invoice_editor_test.dart              +3 for the payment term
+test/core/security/logging_path_test.dart     +6 sensitive accessors, verified to bite
+test/data/database/invoice_number_migration_test.dart        two assertions retargeted to
+                                              db.schemaVersion, with the reason
+integration_test/customer_snapshot_migration_proof_test.dart NEW  both ladders, on device
+integration_test/invoice_number_migration_proof_test.dart    version assertion -> schemaVersion
+docs/*                                        D-052; ROADMAP (c2); ARCHITECTURE B.5
+```
+
+### Phase 4 increment (c)
 
 ```
 lib/core/widgets/jalali_date_picker.dart      NEW  the calendar dialog + JalaliDateField
@@ -623,23 +691,17 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 4 increment (c)** — the invoice-level fields, the Jalali date picker and the save (D-051).
-650 tests pass, analyzer clean, `flutter build apk --debug` passes. Preceded in the same session by
-(a2)'s device proof on the Redmi, (a3) the table-rebuild guard (D-049), and (b) line item entry
-(D-050).
+**Phase 4 increment (c2)** — the party snapshot and the payment term, `schemaVersion = 3` (D-052).
+676 tests pass, analyzer clean, `flutter build apk --debug` passes, and **both migration ladders are
+proved on the Redmi**. The owner accepted (c) in the same message that scheduled (c2).
 
 ## Next action
 
-**Build Phase 4 increment (d), the assembled invoice screen — but confirm two things with the owner
-first.** (c) was reported and the owner stopped the session before responding, so (d) has not been
-authorised, and (c2) is a scheduling decision only they can make.
-
-Ask, in one message, then proceed:
-
-1. **Is (c) accepted?** It is delivered, tested and committed at `ea4858c`; nothing is in flight.
-2. **Does (c2) come before or after (d)?** It is `schemaVersion = 3` (D-051) and, on (a2)'s
-   precedent, its own reviewable step. Either order works — (d) does not depend on it, and (c2)
-   does not depend on (d).
+**Build Phase 4 increment (d), the assembled invoice screen — and start with the device.** The owner
+authorised (d) as the increment after (c2) and was explicit about its order: *"the device debt is the
+first item, not the last: two numeric sheets, a calendar grid and two pickers that no person has
+touched."* So put a route on what already exists and run it on the Redmi **before** building the
+desktop layout, not after.
 
 ### What (d) is
 

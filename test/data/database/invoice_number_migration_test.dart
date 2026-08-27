@@ -53,12 +53,23 @@ void main() {
       );
     });
 
-    test('v1 upgrades to v2', () async {
+    test('v1 upgrades to the current schema', () async {
       final connection = await verifier.startAt(1);
       final db = AppDatabase(connection);
       addTearDown(db.close);
 
-      await verifier.migrateAndValidate(db, 2);
+      // **Deliberately the current version, not 2.** The v2 shape stopped
+      // being independently observable the moment there was a v3:
+      // `alterTable` rebuilds `invoices` from the table as it is declared
+      // today, so a v1 database migrated "to v2" comes out carrying the v3
+      // columns as well. Comparing that against the v2 dump would fail while
+      // nothing was wrong.
+      //
+      // `db.schemaVersion` rather than a literal, so this keeps pointing at
+      // the newest schema as versions are added — which is what makes it the
+      // test that catches a later column being added to `invoices` without
+      // the rebuild above being told about it.
+      await verifier.migrateAndValidate(db, db.schemaVersion);
     });
   });
 
@@ -268,7 +279,7 @@ void main() {
       expect(byId['invoice-draft']!.numberSequence, 2);
     });
 
-    test('the migration leaves foreign keys on and the version at 2', () async {
+    test('the migration leaves foreign keys on and the version current', () async {
       await seedV1();
 
       final db = await openAppDatabase(keyStore: _FixedKeyStore(), file: file);
@@ -282,7 +293,10 @@ void main() {
       final fk = await db.customSelect('pragma foreign_keys').getSingle();
       expect(fk.data.values.first, 1);
 
-      expect(await _userVersion(db), 2);
+      // `db.schemaVersion`, not 2: opening runs the whole ladder, so a v1
+      // file lands on the newest version rather than stopping at this
+      // migration's own.
+      expect(await _userVersion(db), db.schemaVersion);
     });
   });
 

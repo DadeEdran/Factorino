@@ -71,6 +71,47 @@ class Invoices extends Table with SyncColumns {
 
   TextColumn get notes => text().withLength(max: 2000).nullable()();
 
+  // ---- the customer, as the document states them (D-052) -----------------
+  //
+  // Written by `issue()`, inside the transaction that allocates the number,
+  // and **null until then**. A draft is not a document, so it has no party
+  // snapshot and resolves the live customer row instead; an issued invoice
+  // must keep the party it was issued to, for the same reason `invoice_items`
+  // keeps the price it was issued at (D-004).
+  //
+  // Null on every invoice issued before schema v3, too. There is no honest
+  // value to backfill — the migration cannot know what the customer record
+  // said on the day the document was printed, and writing today's values in
+  // would look like a snapshot while being exactly the live join it replaces.
+  // So they stay null and the read path falls back to the live customer, which
+  // is the behaviour those invoices already had.
+  //
+  // The mobile number is deliberately absent: it is contact detail rather than
+  // document content, and it keeps resolving live.
+  //
+  // Every `max:` here equals its counterpart on `customers` — a snapshot
+  // column shorter than its source would make a customer with a long address
+  // impossible to issue an invoice to. `field_limits_test.dart` asserts the
+  // equality rather than leaving it to be noticed.
+  TextColumn get customerNameSnapshot =>
+      text().withLength(max: 120).nullable()();
+
+  TextColumn get customerCompanySnapshot =>
+      text().withLength(max: 160).nullable()();
+
+  /// کد ملی and کد اقتصادی as they stood at issue. These are the fields with
+  /// legal weight on an Iranian invoice and the ones a correction changes, so
+  /// a snapshot that omitted them would protect the least consequential field
+  /// (D-052).
+  TextColumn get customerNationalIdSnapshot =>
+      text().withLength(max: 10).nullable()();
+
+  TextColumn get customerEconomicIdSnapshot =>
+      text().withLength(max: 20).nullable()();
+
+  TextColumn get customerAddressSnapshot =>
+      text().withLength(max: 500).nullable()();
+
   IntColumn get status => intEnum<InvoiceStatus>()();
 
   // ---- computed totals, snapshotted at issue time ------------------------

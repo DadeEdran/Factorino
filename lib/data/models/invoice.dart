@@ -1,4 +1,6 @@
 import '../../core/money/money.dart';
+import 'customer.dart';
+import 'customer_snapshot.dart';
 import 'invoice_status.dart';
 
 /// An invoice header, without its lines.
@@ -28,6 +30,7 @@ class Invoice {
     this.discountPercentBp,
     this.taxRateBp,
     this.notes,
+    this.customerSnapshot,
   });
 
   final String id;
@@ -56,6 +59,30 @@ class Invoice {
   bool get hasNumber => number != null;
 
   final String customerId;
+
+  /// The customer **as this document states them**, frozen at issue (D-052).
+  ///
+  /// Null on a draft, which is not yet a document and should pick up a
+  /// correction to the customer's details; and null on every invoice issued
+  /// before schema v3, which has no snapshot and never will. Both cases read
+  /// through to the live customer record — see [party], which is the only
+  /// place that fallback is written.
+  final CustomerSnapshot? customerSnapshot;
+
+  /// The party to print, given the live customer record.
+  ///
+  /// **The one place the fallback lives.** An invoice with a snapshot shows the
+  /// snapshot; one without shows [live], which is exactly the behaviour it had
+  /// before v3 — a pre-v3 invoice loses nothing and gains no fabricated
+  /// history. A second site applying this rule would eventually apply it
+  /// differently, so every read path routes here.
+  CustomerSnapshot party(Customer live) =>
+      customerSnapshot ?? CustomerSnapshot.of(live);
+
+  /// The party's name alone, for a list that has resolved the name and not the
+  /// record. Same rule as [party], applied to the one field a row shows.
+  String partyName(String liveFullName) =>
+      customerSnapshot?.fullName ?? liveFullName;
 
   /// UTC (D-005). Reporting periods over this field are **Jalali** month and
   /// year boundaries converted to instants (D-006).

@@ -274,6 +274,61 @@ void main() {
     // ...and the figure followed the rule.
     expect(state.totals.grandTotal, Money.rial(1100000));
   });
+
+  group('the payment term is a setting now (D-052)', () {
+    test('a fresh form derives the due date from it', () async {
+      final opened = open();
+      opened.settings.emit(initialSettings.copyWith(paymentTermDays: 45));
+      await pumpEventQueue();
+
+      final InvoiceEditorState state = opened.container
+          .read(invoiceEditorProvider(openedAt))
+          .value!;
+      expect(state.dueDate, defaultDueDate(openedAt, 45));
+      expect(state.dueDateFollowsIssueDate, isTrue);
+    });
+
+    test('changing the term moves a derived due date', () async {
+      // The same argument that makes a derived due date follow the issue date
+      // makes it follow the term: it is a statement about the term, not about
+      // a calendar day. A form left open across a settings change would
+      // otherwise keep a date computed from a rule that no longer applies.
+      final opened = open();
+      await stateOf(opened.container);
+      expect(
+        opened.container.read(invoiceEditorProvider(openedAt)).value!.dueDate,
+        defaultDueDate(openedAt, kDefaultPaymentTermDays),
+      );
+
+      opened.settings.emit(initialSettings.copyWith(paymentTermDays: 60));
+      await pumpEventQueue();
+
+      expect(
+        opened.container.read(invoiceEditorProvider(openedAt)).value!.dueDate,
+        defaultDueDate(openedAt, 60),
+      );
+    });
+
+    test('a due date the user chose is not moved by it', () async {
+      // A date the user set is a commitment to a day. Dragging it because an
+      // unrelated setting changed would silently rewrite an agreement.
+      final opened = open();
+      await stateOf(opened.container);
+      final InvoiceEditor editor = notifierOf(opened.container);
+
+      final DateTime chosen = DateTime.utc(2026, 9, 1, 12);
+      editor.setDueDate(chosen);
+
+      opened.settings.emit(initialSettings.copyWith(paymentTermDays: 60));
+      await pumpEventQueue();
+
+      final InvoiceEditorState state = opened.container
+          .read(invoiceEditorProvider(openedAt))
+          .value!;
+      expect(state.dueDate, chosen);
+      expect(state.dueDateFollowsIssueDate, isFalse);
+    });
+  });
 }
 
 /// A settings repository a test can push new values through, so the editor's

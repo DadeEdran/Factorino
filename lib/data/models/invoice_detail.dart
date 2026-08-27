@@ -1,5 +1,6 @@
 import '../../core/money/money.dart';
 import 'customer.dart';
+import 'customer_snapshot.dart';
 import 'invoice.dart';
 import 'invoice_item.dart';
 import 'payment.dart';
@@ -25,13 +26,25 @@ class InvoiceDetail {
 
   final Invoice invoice;
 
-  /// The customer as they are **now**, not as they were at issue time.
+  /// The customer as they are **now**.
   ///
-  /// Deliberate: a customer's address or phone changing should show through on
-  /// the invoice, unlike pricing, which is snapshotted (D-004). If a future
-  /// phase needs the historical party details on a reissued document, that is
-  /// a schema change and a decision entry, not a quiet join.
+  /// This is the live record: the contact details to reach them on, and the
+  /// row a "go to customer" action navigates to. It is **not** what the
+  /// document says about the party — see [party].
   final Customer customer;
+
+  /// The party as the **document** states them (D-052).
+  ///
+  /// The snapshot taken at issue, or the live record for a draft and for
+  /// anything issued before schema v3. Anything rendering or printing this
+  /// invoice reads here, not [customer]: a name, a کد ملی or a کد اقتصادی
+  /// corrected after the fact must not change a document that has been sent,
+  /// paid and filed, which is D-004's rule applied to the party rather than
+  /// the price.
+  ///
+  /// The mobile number is deliberately not part of it and still comes from
+  /// [customer]: contact detail, not document content.
+  CustomerSnapshot get party => invoice.party(customer);
 
   /// In [InvoiceItem.position] order.
   final List<InvoiceItem> items;

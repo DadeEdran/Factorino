@@ -8,6 +8,8 @@ import '../../database/app_database.dart';
 import '../../database/soft_delete.dart';
 import '../../database/tables/sync_columns.dart';
 import '../../models/app_settings.dart';
+import '../../models/customer.dart';
+import '../../models/customer_snapshot.dart';
 import '../../models/customer_totals.dart';
 import '../../models/invoice.dart';
 import '../../models/invoice_detail.dart';
@@ -101,7 +103,10 @@ class DriftInvoiceRepository implements InvoiceRepository {
 .map(
             (TypedResult row) => InvoiceListItem(
               invoice: invoiceFromRow(row.readTable(_db.invoices)),
-              customerName: row.readTable(_db.customers).fullName,
+              // The **live** name. The document's name, when it differs, is
+              // the snapshot on the invoice itself, and `InvoiceListItem`
+              // applies that rule rather than this query (D-052).
+              liveCustomerName: row.readTable(_db.customers).fullName,
             ),
           )
 .toList(),
@@ -307,6 +312,13 @@ class DriftInvoiceRepository implements InvoiceRepository {
           ? null
 : await _allocateNumber(draft.issueDate, settings);
 
+      // An invoice created already issued is a document from the moment it
+      // exists, so it takes its party snapshot here for the same reason it
+      // takes its number here (D-052). A draft takes neither.
+      final CustomerSnapshot? snapshot = status == InvoiceStatus.draft
+          ? null
+: CustomerSnapshot.of(await _requireCustomer(draft.customerId));
+
       final row = await _db
 .into(_db.invoices)
 .insertReturning(
@@ -315,6 +327,11 @@ class DriftInvoiceRepository implements InvoiceRepository {
               numberYear: Value(number?.year),
               numberSequence: Value(number?.sequence),
               customerId: draft.customerId,
+              customerNameSnapshot: Value(snapshot?.fullName),
+              customerCompanySnapshot: Value(snapshot?.companyName),
+              customerNationalIdSnapshot: Value(snapshot?.nationalId),
+              customerEconomicIdSnapshot: Value(snapshot?.economicId),
+              customerAddressSnapshot: Value(snapshot?.address),
               issueDate: millisFromInstant(draft.issueDate),
               status: status,
               dueDate: Value(millisFromInstantOrNull(draft.dueDate)),
@@ -401,6 +418,19 @@ class DriftInvoiceRepository implements InvoiceRepository {
       final existing = await _requireEditable(id);
       final settings = await _settings.read();
 
+      // The party is frozen here, in the same transaction as the number and
+      // for the same reason: this is the instant the invoice stops being a
+      // form and becomes a document (D-052). Read now rather than at draft
+      // creation, so a draft written before a customer's name was corrected
+      // is issued with the correction.
+      //
+      // Deliberately re-read inside the transaction rather than taken from
+      // anything the caller passed, so the snapshot is of the row as it stands
+      // at issue and cannot be supplied.
+      final CustomerSnapshot snapshot = CustomerSnapshot.of(
+        await _requireCustomer(existing.customerId),
+      );
+
       // A draft written before schema v2 already carries a number, because v1
       // allocated one at creation. Keep it: that number is spent either way
       // (D-013), and re-issuing it under a different identity would be worse
@@ -423,6 +453,11 @@ class DriftInvoiceRepository implements InvoiceRepository {
           numberSequence: number == null
               ? const Value<int?>.absent()
 : Value<int?>(number.sequence),
+          customerNameSnapshot: Value<String?>(snapshot.fullName),
+          customerCompanySnapshot: Value<String?>(snapshot.companyName),
+          customerNationalIdSnapshot: Value<String?>(snapshot.nationalId),
+          customerEconomicIdSnapshot: Value<String?>(snapshot.economicId),
+          customerAddressSnapshot: Value<String?>(snapshot.address),
           status: const Value(InvoiceStatus.unpaid),
           updatedAt: Value(nowMillis()),
         ),
@@ -578,6 +613,28 @@ class DriftInvoiceRepository implements InvoiceRepository {
     return (_db.selectAlive(
       _db.invoices,
     )..where((r) => r.id.equals(id))).getSingleOrNull();
+  }
+
+  /// The customer row an invoice references, for the party snapshot (D-052).
+  ///
+  /// soft-delete-exempt: an invoice's customer is part of the document, and §6
+  /// guarantees a referenced customer is soft-deleted only, never removed. An
+  /// invoice that could not be issued because its customer had been deleted
+  /// would break the promise the delete dialog makes in Persian — and would do
+  /// it at the worst moment, with the invoice already written.
+  ///
+  /// The foreign key makes the row's absence impossible rather than unlikely,
+  /// so a missing one is a broken invariant and is raised as such.
+  Future<Customer> _requireCustomer(String customerId) async {
+    // soft-delete-exempt: see above -- an invoice's customer is part of the
+    // document, and §6 guarantees the row is never hard-deleted (D-003).
+    final CustomerRow? row = await (_db.select(
+      _db.customers,
+    )..where((r) => r.id.equals(customerId))).getSingleOrNull();
+    if (row == null) {
+      throw StateError('no customer with id $customerId');
+    }
+    return customerFromRow(row);
   }
 
   /// Returns the row only if it is still a draft, and throws otherwise.

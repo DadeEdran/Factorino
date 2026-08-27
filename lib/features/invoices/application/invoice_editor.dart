@@ -56,10 +56,21 @@ class InvoiceEditor extends _$InvoiceEditor {
       return InvoiceEditorState(
         settings: settings,
         issueDate: openedAt,
-        dueDate: defaultDueDate(openedAt),
+        dueDate: defaultDueDate(openedAt, settings.paymentTermDays),
       );
     }
-    return previous.copyWith(settings: settings);
+
+    // A **derived** due date follows the payment term as well as the issue
+    // date, by the same argument (D-052): it is a statement about the term,
+    // not about a calendar day, so changing the term in settings while a form
+    // is open should move it. A date the user chose is a commitment to a day
+    // and is left exactly where they put it.
+    return previous.copyWith(
+      settings: settings,
+      dueDate: previous.dueDateFollowsIssueDate
+          ? defaultDueDate(previous.issueDate, settings.paymentTermDays)
+          : null,
+    );
   }
 
   /// Applies [change] to the current state.
@@ -92,7 +103,9 @@ class InvoiceEditor extends _$InvoiceEditor {
   void setIssueDate(DateTime issueDate) => _update(
     (InvoiceEditorState s) => s.copyWith(
       issueDate: issueDate,
-      dueDate: s.dueDateFollowsIssueDate ? defaultDueDate(issueDate) : null,
+      dueDate: s.dueDateFollowsIssueDate
+          ? defaultDueDate(issueDate, s.settings.paymentTermDays)
+          : null,
     ),
   );
 
@@ -174,6 +187,14 @@ class InvoiceEditor extends _$InvoiceEditor {
 
   /// Moves a line, so the document prints in the order the user arranged it —
   /// `invoice_items.position` exists for exactly this.
+  void moveLine(int from, int to) => _update((InvoiceEditorState s) {
+    if (from < 0 || from >= s.lines.length) return s;
+    if (to < 0 || to >= s.lines.length || from == to) return s;
+    final List<InvoiceLineEntry> lines = <InvoiceLineEntry>[...s.lines];
+    lines.insert(to, lines.removeAt(from));
+    return s.copyWith(lines: lines);
+  });
+
   // ---- persistence --------------------------------------------------------
 
   /// Writes the invoice as a **draft** and returns it, or null if the write
@@ -244,12 +265,4 @@ class InvoiceEditor extends _$InvoiceEditor {
       return null;
     }
   }
-
-  void moveLine(int from, int to) => _update((InvoiceEditorState s) {
-    if (from < 0 || from >= s.lines.length) return s;
-    if (to < 0 || to >= s.lines.length || from == to) return s;
-    final List<InvoiceLineEntry> lines = <InvoiceLineEntry>[...s.lines];
-    lines.insert(to, lines.removeAt(from));
-    return s.copyWith(lines: lines);
-  });
 }

@@ -74,7 +74,7 @@ void main() {
         createdAt: now,
         updatedAt: now,
       ),
-      customerName: 'مریم احمدی',
+      liveCustomerName: 'مریم احمدی',
     );
   }
 

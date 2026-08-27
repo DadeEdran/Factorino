@@ -28,7 +28,7 @@ Factorino/
 .githooks/pre-commit   # lockfile-host / secrets / app-ID gate (D-019)
   tools/sanitize_lockfile  # run after ANY command that resolves deps, incl. build_runner
   assets/fonts/          # Vazirmatn 400/500/700 + OFL.txt (D-022) - not yet declared in pubspec
-  drift_schemas/         # drift_schema_v1.json + _v2.json - the migration tests' baselines
+  drift_schemas/         # drift_schema_v1..v3.json - the migration tests' baselines
   lib/
     core/
       money/                                      # pure Dart, zero Flutter imports (§3)
@@ -58,7 +58,7 @@ Factorino/
       database/
         encrypted_database.dart                   # THE single database opener (D-020)
         database_bootstrap.dart                   # key -> open -> migrate -> assert encrypted
-        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 2, migrations
+        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 3, migrations
         soft_delete.dart                          # selectAlive / selectOnlyAlive / countAlive
         tables/                                   # six tables + SyncColumns mixin
       models/                                     # domain entities -- NO drift import (D-031)
@@ -404,7 +404,13 @@ invoice-number allocation reads the maximum sequence **including** deleted rows,
 number stays spent (D-013).
 
 **Snapshots:** `invoice_items` copies product title, unit, unit price and resolved tax rate at
-creation time and never joins to the live product row for pricing (D-004).
+creation time and never joins to the live product row for pricing (D-004). `invoices` copies the
+**party** the same way from schema v3 — name, company, کد ملی, کد اقتصادی and address — written by
+`issue()` inside the transaction that allocates the number, so a correction to a customer record
+cannot rewrite a document that has been sent (D-052). The mobile is deliberately not part of it and
+still resolves live. A draft has no snapshot, and neither has anything issued before v3; both read
+through to the live customer, and `Invoice.party` / `Invoice.partyName` are the only two places that
+fallback is written.
 
 **Indexes:** invoice issue date, customer reference, status, invoice number (unique), and
 `deleted_at`.
@@ -414,8 +420,21 @@ creation time and never joins to the live product row for pricing (D-004).
 
 `onUpgrade` is a **ladder** (`if (from < n)`) rather than a switch on the version pair, because a
 database can arrive from any older version, and it ends in a fail-loud default for a pair it does
-not cover. **v1 → v2** (D-048) makes the three invoice-number columns nullable so a draft carries no
-number until it is issued.
+not cover. Each step is bounded above by `to` as well as below by `from`, so a test can migrate to an
+intermediate version and stop there; in the application `to` is always `schemaVersion`.
+
+**v1 → v2** (D-048) makes the three invoice-number columns nullable so a draft carries no number
+until it is issued. **v2 → v3** (D-052) adds the five party-snapshot columns to `invoices` and
+`payment_term_days` to `settings`.
+
+> **A later version's columns reach back into an earlier step.** `Migrator.alterTable` builds its
+> replacement table from the table **as currently declared** and copies every one of those columns
+> out of the old one — so the moment v3 was declared, the shipped v1 → v2 rebuild began failing with
+> `no such column`, on open, for every user who had not updated since the first release. The rebuild
+> therefore computes its `TableMigration.newColumns` by asking the old table what it actually has,
+> rather than from a list someone has to remember to extend; and the v2 → v3 step adds each column
+> only if absent, because a v1 database arrives with them already present. Both are pinned by a
+> v1 → v3 test through the production path.
 
 > **A table rebuild must not be wrapped in a transaction.** Relaxing `NOT NULL` needs SQLite's
 > 12-step rebuild, whose step 6 is `DROP TABLE` — and with foreign keys enabled that cascades into
@@ -425,13 +444,22 @@ number until it is issued.
 > and `payments` row, with no error and with the schema still verifying as correct. Measured, and
 > recorded on the call site.
 
+`assertForeignKeysCanBeDisabled` (D-049) is called by a **rebuild** and by nothing else. It observes
+one property — that `PRAGMA foreign_keys = OFF` takes effect here — and a step made only of
+`ALTER TABLE ... ADD COLUMN` has no such precondition, so v2 → v3 does not call it. That is a
+decision rather than an omission (D-052): a guard performed as a ritual stops being read. The claim
+is checked instead, by running that step inside a transaction with children present and counting
+them.
+
 Two suites cover a migration, because they check different things: `SchemaVerifier` compares the
 migrated **shape** against the version's dump, and a second suite migrates a database holding real
 rows through `openAppDatabase` — a real encrypted file, foreign keys on — and counts them
 afterwards. `SchemaVerifier.testWithDataIntegrity` is not used: it disables foreign keys, which is
 the one condition under which the cascade cannot reproduce.
-`integration_test/invoice_number_migration_proof_test.dart` repeats the data proof on the real
-target, for the reason D-020's proof exists.
+`integration_test/invoice_number_migration_proof_test.dart` and
+`integration_test/customer_snapshot_migration_proof_test.dart` repeat the data proofs on the real
+target, for the reason D-020's proof exists. The second runs **both** ladders — v2 → v3 and
+v1 → v3 — because they are different code paths and only one of them rebuilds a table.
 
 ## B.6 The money engine — **built** (increment b)
 

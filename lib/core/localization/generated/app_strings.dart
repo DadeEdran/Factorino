@@ -328,6 +328,24 @@ abstract class AppStrings {
   /// **'رند کردن مبلغ نهایی'**
   String get settingsRoundingUnit;
 
+  /// No description provided for @settingsPaymentTerm.
+  ///
+  /// In fa, this message translates to:
+  /// **'مهلت پرداخت پیش‌فرض'**
+  String get settingsPaymentTerm;
+
+  /// No description provided for @settingsPaymentTermHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'سررسید فاکتور تازه به‌صورت پیش‌فرض این تعداد روز پس از تاریخ صدور تعیین می‌شود.'**
+  String get settingsPaymentTermHint;
+
+  /// No description provided for @unitDays.
+  ///
+  /// In fa, this message translates to:
+  /// **'روز'**
+  String get unitDays;
+
   /// No description provided for @settingsBackupSection.
   ///
   /// In fa, this message translates to:

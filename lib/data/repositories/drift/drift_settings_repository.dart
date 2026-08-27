@@ -34,6 +34,7 @@ class DriftSettingsRepository implements SettingsRepository {
             defaultTaxRateBp: Value(settings.defaultTaxRateBp),
             roundingUnitRial: Value(settings.roundingUnitRial),
             invoiceNumberPrefix: Value(settings.invoiceNumberPrefix),
+            paymentTermDays: Value(settings.paymentTermDays),
             devicePrefix: Value(settings.devicePrefix),
             lastBackupAt: Value(millisFromInstantOrNull(settings.lastBackupAt)),
             updatedAt: Value(nowMillis()),
@@ -61,6 +62,7 @@ class DriftSettingsRepository implements SettingsRepository {
     defaultTaxRateBp: row.defaultTaxRateBp,
     roundingUnitRial: row.roundingUnitRial,
     invoiceNumberPrefix: row.invoiceNumberPrefix,
+    paymentTermDays: row.paymentTermDays,
     devicePrefix: row.devicePrefix,
     lastBackupAt: instantFromMillisOrNull(row.lastBackupAt),
   );

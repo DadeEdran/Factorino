@@ -52,6 +52,13 @@ void main() {
     'nationalId', 'economicId', 'mobile', 'phoneNumber',
     // Customer and company names.
     'fullName', 'displayName', 'companyName', 'customerName',
+    // The same values again, under the names the invoice row gives them
+    // (D-052). The match is anchored on `.<accessor>`, so `.nationalId` does
+    // not cover `.customerNationalIdSnapshot` -- a snapshot of a کد ملی is
+    // still a کد ملی, and §7 does not care which column it came out of.
+    'customerNameSnapshot', 'customerCompanySnapshot',
+    'customerNationalIdSnapshot', 'customerEconomicIdSnapshot',
+    'customerAddressSnapshot', 'liveCustomerName',
     // Free text the user typed about a third party.
     'address', 'notes',
     // Monetary amounts.

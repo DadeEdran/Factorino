@@ -78,7 +78,7 @@ void main() {
     expect(find.text(strings.invoiceFieldCustomerEmpty), findsOneWidget);
 
     // The default term, applied to the issue date the form opened with.
-    expect(state.dueDate, defaultDueDate(openedAt));
+    expect(state.dueDate, defaultDueDate(openedAt, kDefaultPaymentTermDays));
     expect(state.dueDateFollowsIssueDate, isTrue);
   });
 
@@ -129,7 +129,7 @@ void main() {
     expect(state.issueDate, moved);
     // A due date the user never chose is a statement about the payment term.
     // Leaving it behind would produce a document due before it was issued.
-    expect(state.dueDate, defaultDueDate(moved));
+    expect(state.dueDate, defaultDueDate(moved, kDefaultPaymentTermDays));
   });
 
   testWidgets('a due date the user chose is not dragged by the issue date', (

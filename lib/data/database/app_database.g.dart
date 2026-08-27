@@ -1805,6 +1805,66 @@ class $InvoicesTable extends Invoices
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _customerNameSnapshotMeta =
+      const VerificationMeta('customerNameSnapshot');
+  @override
+  late final GeneratedColumn<String> customerNameSnapshot =
+      GeneratedColumn<String>(
+        'customer_name_snapshot',
+        aliasedName,
+        true,
+        additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 120),
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _customerCompanySnapshotMeta =
+      const VerificationMeta('customerCompanySnapshot');
+  @override
+  late final GeneratedColumn<String> customerCompanySnapshot =
+      GeneratedColumn<String>(
+        'customer_company_snapshot',
+        aliasedName,
+        true,
+        additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 160),
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _customerNationalIdSnapshotMeta =
+      const VerificationMeta('customerNationalIdSnapshot');
+  @override
+  late final GeneratedColumn<String> customerNationalIdSnapshot =
+      GeneratedColumn<String>(
+        'customer_national_id_snapshot',
+        aliasedName,
+        true,
+        additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 10),
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _customerEconomicIdSnapshotMeta =
+      const VerificationMeta('customerEconomicIdSnapshot');
+  @override
+  late final GeneratedColumn<String> customerEconomicIdSnapshot =
+      GeneratedColumn<String>(
+        'customer_economic_id_snapshot',
+        aliasedName,
+        true,
+        additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
+  static const VerificationMeta _customerAddressSnapshotMeta =
+      const VerificationMeta('customerAddressSnapshot');
+  @override
+  late final GeneratedColumn<String> customerAddressSnapshot =
+      GeneratedColumn<String>(
+        'customer_address_snapshot',
+        aliasedName,
+        true,
+        additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 500),
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+      );
   @override
   late final GeneratedColumnWithTypeConverter<InvoiceStatus, int> status =
       GeneratedColumn<int>(
@@ -1891,6 +1951,11 @@ class $InvoicesTable extends Invoices
     discountPercentBp,
     taxRateBp,
     notes,
+    customerNameSnapshot,
+    customerCompanySnapshot,
+    customerNationalIdSnapshot,
+    customerEconomicIdSnapshot,
+    customerAddressSnapshot,
     status,
     subtotalRial,
     totalDiscountRial,
@@ -2013,6 +2078,51 @@ class $InvoicesTable extends Invoices
         notes.isAcceptableOrUnknown(data['notes']!, _notesMeta),
       );
     }
+    if (data.containsKey('customer_name_snapshot')) {
+      context.handle(
+        _customerNameSnapshotMeta,
+        customerNameSnapshot.isAcceptableOrUnknown(
+          data['customer_name_snapshot']!,
+          _customerNameSnapshotMeta,
+        ),
+      );
+    }
+    if (data.containsKey('customer_company_snapshot')) {
+      context.handle(
+        _customerCompanySnapshotMeta,
+        customerCompanySnapshot.isAcceptableOrUnknown(
+          data['customer_company_snapshot']!,
+          _customerCompanySnapshotMeta,
+        ),
+      );
+    }
+    if (data.containsKey('customer_national_id_snapshot')) {
+      context.handle(
+        _customerNationalIdSnapshotMeta,
+        customerNationalIdSnapshot.isAcceptableOrUnknown(
+          data['customer_national_id_snapshot']!,
+          _customerNationalIdSnapshotMeta,
+        ),
+      );
+    }
+    if (data.containsKey('customer_economic_id_snapshot')) {
+      context.handle(
+        _customerEconomicIdSnapshotMeta,
+        customerEconomicIdSnapshot.isAcceptableOrUnknown(
+          data['customer_economic_id_snapshot']!,
+          _customerEconomicIdSnapshotMeta,
+        ),
+      );
+    }
+    if (data.containsKey('customer_address_snapshot')) {
+      context.handle(
+        _customerAddressSnapshotMeta,
+        customerAddressSnapshot.isAcceptableOrUnknown(
+          data['customer_address_snapshot']!,
+          _customerAddressSnapshotMeta,
+        ),
+      );
+    }
     if (data.containsKey('subtotal_rial')) {
       context.handle(
         _subtotalRialMeta,
@@ -2133,6 +2243,26 @@ class $InvoicesTable extends Invoices
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
       ),
+      customerNameSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_name_snapshot'],
+      ),
+      customerCompanySnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_company_snapshot'],
+      ),
+      customerNationalIdSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_national_id_snapshot'],
+      ),
+      customerEconomicIdSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_economic_id_snapshot'],
+      ),
+      customerAddressSnapshot: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}customer_address_snapshot'],
+      ),
       status: $InvoicesTable.$converterstatus.fromSql(
         attachedDatabase.typeMapping.read(
           DriftSqlType.int,
@@ -2241,6 +2371,16 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
   /// default in settings" (§4 step 6).
   final int? taxRateBp;
   final String? notes;
+  final String? customerNameSnapshot;
+  final String? customerCompanySnapshot;
+
+  /// کد ملی and کد اقتصادی as they stood at issue. These are the fields with
+  /// legal weight on an Iranian invoice and the ones a correction changes, so
+  /// a snapshot that omitted them would protect the least consequential field
+  /// (D-052).
+  final String? customerNationalIdSnapshot;
+  final String? customerEconomicIdSnapshot;
+  final String? customerAddressSnapshot;
   final InvoiceStatus status;
   final int subtotalRial;
   final int totalDiscountRial;
@@ -2267,6 +2407,11 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     this.discountPercentBp,
     this.taxRateBp,
     this.notes,
+    this.customerNameSnapshot,
+    this.customerCompanySnapshot,
+    this.customerNationalIdSnapshot,
+    this.customerEconomicIdSnapshot,
+    this.customerAddressSnapshot,
     required this.status,
     required this.subtotalRial,
     required this.totalDiscountRial,
@@ -2314,6 +2459,29 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
+    }
+    if (!nullToAbsent || customerNameSnapshot != null) {
+      map['customer_name_snapshot'] = Variable<String>(customerNameSnapshot);
+    }
+    if (!nullToAbsent || customerCompanySnapshot != null) {
+      map['customer_company_snapshot'] = Variable<String>(
+        customerCompanySnapshot,
+      );
+    }
+    if (!nullToAbsent || customerNationalIdSnapshot != null) {
+      map['customer_national_id_snapshot'] = Variable<String>(
+        customerNationalIdSnapshot,
+      );
+    }
+    if (!nullToAbsent || customerEconomicIdSnapshot != null) {
+      map['customer_economic_id_snapshot'] = Variable<String>(
+        customerEconomicIdSnapshot,
+      );
+    }
+    if (!nullToAbsent || customerAddressSnapshot != null) {
+      map['customer_address_snapshot'] = Variable<String>(
+        customerAddressSnapshot,
+      );
     }
     {
       map['status'] = Variable<int>(
@@ -2364,6 +2532,23 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       notes: notes == null && nullToAbsent
           ? const Value.absent()
 : Value(notes),
+      customerNameSnapshot: customerNameSnapshot == null && nullToAbsent
+          ? const Value.absent()
+: Value(customerNameSnapshot),
+      customerCompanySnapshot: customerCompanySnapshot == null && nullToAbsent
+          ? const Value.absent()
+: Value(customerCompanySnapshot),
+      customerNationalIdSnapshot:
+          customerNationalIdSnapshot == null && nullToAbsent
+          ? const Value.absent()
+: Value(customerNationalIdSnapshot),
+      customerEconomicIdSnapshot:
+          customerEconomicIdSnapshot == null && nullToAbsent
+          ? const Value.absent()
+: Value(customerEconomicIdSnapshot),
+      customerAddressSnapshot: customerAddressSnapshot == null && nullToAbsent
+          ? const Value.absent()
+: Value(customerAddressSnapshot),
       status: Value(status),
       subtotalRial: Value(subtotalRial),
       totalDiscountRial: Value(totalDiscountRial),
@@ -2397,6 +2582,21 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       discountPercentBp: serializer.fromJson<int?>(json['discountPercentBp']),
       taxRateBp: serializer.fromJson<int?>(json['taxRateBp']),
       notes: serializer.fromJson<String?>(json['notes']),
+      customerNameSnapshot: serializer.fromJson<String?>(
+        json['customerNameSnapshot'],
+      ),
+      customerCompanySnapshot: serializer.fromJson<String?>(
+        json['customerCompanySnapshot'],
+      ),
+      customerNationalIdSnapshot: serializer.fromJson<String?>(
+        json['customerNationalIdSnapshot'],
+      ),
+      customerEconomicIdSnapshot: serializer.fromJson<String?>(
+        json['customerEconomicIdSnapshot'],
+      ),
+      customerAddressSnapshot: serializer.fromJson<String?>(
+        json['customerAddressSnapshot'],
+      ),
       status: $InvoicesTable.$converterstatus.fromJson(
         serializer.fromJson<int>(json['status']),
       ),
@@ -2431,6 +2631,19 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       'discountPercentBp': serializer.toJson<int?>(discountPercentBp),
       'taxRateBp': serializer.toJson<int?>(taxRateBp),
       'notes': serializer.toJson<String?>(notes),
+      'customerNameSnapshot': serializer.toJson<String?>(customerNameSnapshot),
+      'customerCompanySnapshot': serializer.toJson<String?>(
+        customerCompanySnapshot,
+      ),
+      'customerNationalIdSnapshot': serializer.toJson<String?>(
+        customerNationalIdSnapshot,
+      ),
+      'customerEconomicIdSnapshot': serializer.toJson<String?>(
+        customerEconomicIdSnapshot,
+      ),
+      'customerAddressSnapshot': serializer.toJson<String?>(
+        customerAddressSnapshot,
+      ),
       'status': serializer.toJson<int>(
         $InvoicesTable.$converterstatus.toJson(status),
       ),
@@ -2459,6 +2672,11 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     Value<int?> discountPercentBp = const Value.absent(),
     Value<int?> taxRateBp = const Value.absent(),
     Value<String?> notes = const Value.absent(),
+    Value<String?> customerNameSnapshot = const Value.absent(),
+    Value<String?> customerCompanySnapshot = const Value.absent(),
+    Value<String?> customerNationalIdSnapshot = const Value.absent(),
+    Value<String?> customerEconomicIdSnapshot = const Value.absent(),
+    Value<String?> customerAddressSnapshot = const Value.absent(),
     InvoiceStatus? status,
     int? subtotalRial,
     int? totalDiscountRial,
@@ -2486,6 +2704,21 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
 : this.discountPercentBp,
     taxRateBp: taxRateBp.present ? taxRateBp.value : this.taxRateBp,
     notes: notes.present ? notes.value : this.notes,
+    customerNameSnapshot: customerNameSnapshot.present
+        ? customerNameSnapshot.value
+: this.customerNameSnapshot,
+    customerCompanySnapshot: customerCompanySnapshot.present
+        ? customerCompanySnapshot.value
+: this.customerCompanySnapshot,
+    customerNationalIdSnapshot: customerNationalIdSnapshot.present
+        ? customerNationalIdSnapshot.value
+: this.customerNationalIdSnapshot,
+    customerEconomicIdSnapshot: customerEconomicIdSnapshot.present
+        ? customerEconomicIdSnapshot.value
+: this.customerEconomicIdSnapshot,
+    customerAddressSnapshot: customerAddressSnapshot.present
+        ? customerAddressSnapshot.value
+: this.customerAddressSnapshot,
     status: status ?? this.status,
     subtotalRial: subtotalRial ?? this.subtotalRial,
     totalDiscountRial: totalDiscountRial ?? this.totalDiscountRial,
@@ -2526,6 +2759,21 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
 : this.discountPercentBp,
       taxRateBp: data.taxRateBp.present ? data.taxRateBp.value : this.taxRateBp,
       notes: data.notes.present ? data.notes.value : this.notes,
+      customerNameSnapshot: data.customerNameSnapshot.present
+          ? data.customerNameSnapshot.value
+: this.customerNameSnapshot,
+      customerCompanySnapshot: data.customerCompanySnapshot.present
+          ? data.customerCompanySnapshot.value
+: this.customerCompanySnapshot,
+      customerNationalIdSnapshot: data.customerNationalIdSnapshot.present
+          ? data.customerNationalIdSnapshot.value
+: this.customerNationalIdSnapshot,
+      customerEconomicIdSnapshot: data.customerEconomicIdSnapshot.present
+          ? data.customerEconomicIdSnapshot.value
+: this.customerEconomicIdSnapshot,
+      customerAddressSnapshot: data.customerAddressSnapshot.present
+          ? data.customerAddressSnapshot.value
+: this.customerAddressSnapshot,
       status: data.status.present ? data.status.value : this.status,
       subtotalRial: data.subtotalRial.present
           ? data.subtotalRial.value
@@ -2564,6 +2812,11 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
 ..write('discountPercentBp: $discountPercentBp, ')
 ..write('taxRateBp: $taxRateBp, ')
 ..write('notes: $notes, ')
+..write('customerNameSnapshot: $customerNameSnapshot, ')
+..write('customerCompanySnapshot: $customerCompanySnapshot, ')
+..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
+..write('customerEconomicIdSnapshot: $customerEconomicIdSnapshot, ')
+..write('customerAddressSnapshot: $customerAddressSnapshot, ')
 ..write('status: $status, ')
 ..write('subtotalRial: $subtotalRial, ')
 ..write('totalDiscountRial: $totalDiscountRial, ')
@@ -2592,6 +2845,11 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     discountPercentBp,
     taxRateBp,
     notes,
+    customerNameSnapshot,
+    customerCompanySnapshot,
+    customerNationalIdSnapshot,
+    customerEconomicIdSnapshot,
+    customerAddressSnapshot,
     status,
     subtotalRial,
     totalDiscountRial,
@@ -2619,6 +2877,11 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           other.discountPercentBp == this.discountPercentBp &&
           other.taxRateBp == this.taxRateBp &&
           other.notes == this.notes &&
+          other.customerNameSnapshot == this.customerNameSnapshot &&
+          other.customerCompanySnapshot == this.customerCompanySnapshot &&
+          other.customerNationalIdSnapshot == this.customerNationalIdSnapshot &&
+          other.customerEconomicIdSnapshot == this.customerEconomicIdSnapshot &&
+          other.customerAddressSnapshot == this.customerAddressSnapshot &&
           other.status == this.status &&
           other.subtotalRial == this.subtotalRial &&
           other.totalDiscountRial == this.totalDiscountRial &&
@@ -2644,6 +2907,11 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   final Value<int?> discountPercentBp;
   final Value<int?> taxRateBp;
   final Value<String?> notes;
+  final Value<String?> customerNameSnapshot;
+  final Value<String?> customerCompanySnapshot;
+  final Value<String?> customerNationalIdSnapshot;
+  final Value<String?> customerEconomicIdSnapshot;
+  final Value<String?> customerAddressSnapshot;
   final Value<InvoiceStatus> status;
   final Value<int> subtotalRial;
   final Value<int> totalDiscountRial;
@@ -2668,6 +2936,11 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.discountPercentBp = const Value.absent(),
     this.taxRateBp = const Value.absent(),
     this.notes = const Value.absent(),
+    this.customerNameSnapshot = const Value.absent(),
+    this.customerCompanySnapshot = const Value.absent(),
+    this.customerNationalIdSnapshot = const Value.absent(),
+    this.customerEconomicIdSnapshot = const Value.absent(),
+    this.customerAddressSnapshot = const Value.absent(),
     this.status = const Value.absent(),
     this.subtotalRial = const Value.absent(),
     this.totalDiscountRial = const Value.absent(),
@@ -2693,6 +2966,11 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.discountPercentBp = const Value.absent(),
     this.taxRateBp = const Value.absent(),
     this.notes = const Value.absent(),
+    this.customerNameSnapshot = const Value.absent(),
+    this.customerCompanySnapshot = const Value.absent(),
+    this.customerNationalIdSnapshot = const Value.absent(),
+    this.customerEconomicIdSnapshot = const Value.absent(),
+    this.customerAddressSnapshot = const Value.absent(),
     required InvoiceStatus status,
     this.subtotalRial = const Value.absent(),
     this.totalDiscountRial = const Value.absent(),
@@ -2720,6 +2998,11 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Expression<int>? discountPercentBp,
     Expression<int>? taxRateBp,
     Expression<String>? notes,
+    Expression<String>? customerNameSnapshot,
+    Expression<String>? customerCompanySnapshot,
+    Expression<String>? customerNationalIdSnapshot,
+    Expression<String>? customerEconomicIdSnapshot,
+    Expression<String>? customerAddressSnapshot,
     Expression<int>? status,
     Expression<int>? subtotalRial,
     Expression<int>? totalDiscountRial,
@@ -2745,6 +3028,16 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       if (discountPercentBp != null) 'discount_percent_bp': discountPercentBp,
       if (taxRateBp != null) 'tax_rate_bp': taxRateBp,
       if (notes != null) 'notes': notes,
+      if (customerNameSnapshot != null)
+        'customer_name_snapshot': customerNameSnapshot,
+      if (customerCompanySnapshot != null)
+        'customer_company_snapshot': customerCompanySnapshot,
+      if (customerNationalIdSnapshot != null)
+        'customer_national_id_snapshot': customerNationalIdSnapshot,
+      if (customerEconomicIdSnapshot != null)
+        'customer_economic_id_snapshot': customerEconomicIdSnapshot,
+      if (customerAddressSnapshot != null)
+        'customer_address_snapshot': customerAddressSnapshot,
       if (status != null) 'status': status,
       if (subtotalRial != null) 'subtotal_rial': subtotalRial,
       if (totalDiscountRial != null) 'total_discount_rial': totalDiscountRial,
@@ -2773,6 +3066,11 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Value<int?>? discountPercentBp,
     Value<int?>? taxRateBp,
     Value<String?>? notes,
+    Value<String?>? customerNameSnapshot,
+    Value<String?>? customerCompanySnapshot,
+    Value<String?>? customerNationalIdSnapshot,
+    Value<String?>? customerEconomicIdSnapshot,
+    Value<String?>? customerAddressSnapshot,
     Value<InvoiceStatus>? status,
     Value<int>? subtotalRial,
     Value<int>? totalDiscountRial,
@@ -2798,6 +3096,15 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
       discountPercentBp: discountPercentBp ?? this.discountPercentBp,
       taxRateBp: taxRateBp ?? this.taxRateBp,
       notes: notes ?? this.notes,
+      customerNameSnapshot: customerNameSnapshot ?? this.customerNameSnapshot,
+      customerCompanySnapshot:
+          customerCompanySnapshot ?? this.customerCompanySnapshot,
+      customerNationalIdSnapshot:
+          customerNationalIdSnapshot ?? this.customerNationalIdSnapshot,
+      customerEconomicIdSnapshot:
+          customerEconomicIdSnapshot ?? this.customerEconomicIdSnapshot,
+      customerAddressSnapshot:
+          customerAddressSnapshot ?? this.customerAddressSnapshot,
       status: status ?? this.status,
       subtotalRial: subtotalRial ?? this.subtotalRial,
       totalDiscountRial: totalDiscountRial ?? this.totalDiscountRial,
@@ -2862,6 +3169,31 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
+    if (customerNameSnapshot.present) {
+      map['customer_name_snapshot'] = Variable<String>(
+        customerNameSnapshot.value,
+      );
+    }
+    if (customerCompanySnapshot.present) {
+      map['customer_company_snapshot'] = Variable<String>(
+        customerCompanySnapshot.value,
+      );
+    }
+    if (customerNationalIdSnapshot.present) {
+      map['customer_national_id_snapshot'] = Variable<String>(
+        customerNationalIdSnapshot.value,
+      );
+    }
+    if (customerEconomicIdSnapshot.present) {
+      map['customer_economic_id_snapshot'] = Variable<String>(
+        customerEconomicIdSnapshot.value,
+      );
+    }
+    if (customerAddressSnapshot.present) {
+      map['customer_address_snapshot'] = Variable<String>(
+        customerAddressSnapshot.value,
+      );
+    }
     if (status.present) {
       map['status'] = Variable<int>(
         $InvoicesTable.$converterstatus.toSql(status.value),
@@ -2909,6 +3241,11 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
 ..write('discountPercentBp: $discountPercentBp, ')
 ..write('taxRateBp: $taxRateBp, ')
 ..write('notes: $notes, ')
+..write('customerNameSnapshot: $customerNameSnapshot, ')
+..write('customerCompanySnapshot: $customerCompanySnapshot, ')
+..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
+..write('customerEconomicIdSnapshot: $customerEconomicIdSnapshot, ')
+..write('customerAddressSnapshot: $customerAddressSnapshot, ')
 ..write('status: $status, ')
 ..write('subtotalRial: $subtotalRial, ')
 ..write('totalDiscountRial: $totalDiscountRial, ')
@@ -4848,6 +5185,18 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _paymentTermDaysMeta = const VerificationMeta(
+    'paymentTermDays',
+  );
+  @override
+  late final GeneratedColumn<int> paymentTermDays = GeneratedColumn<int>(
+    'payment_term_days',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(30),
+  );
   static const VerificationMeta _invoiceNumberPrefixMeta =
       const VerificationMeta('invoiceNumberPrefix');
   @override
@@ -4898,6 +5247,7 @@ class $SettingsTable extends Settings
     singleton,
     defaultTaxRateBp,
     roundingUnitRial,
+    paymentTermDays,
     invoiceNumberPrefix,
     devicePrefix,
     lastBackupAt,
@@ -4965,6 +5315,15 @@ class $SettingsTable extends Settings
         roundingUnitRial.isAcceptableOrUnknown(
           data['rounding_unit_rial']!,
           _roundingUnitRialMeta,
+        ),
+      );
+    }
+    if (data.containsKey('payment_term_days')) {
+      context.handle(
+        _paymentTermDaysMeta,
+        paymentTermDays.isAcceptableOrUnknown(
+          data['payment_term_days']!,
+          _paymentTermDaysMeta,
         ),
       );
     }
@@ -5042,6 +5401,10 @@ class $SettingsTable extends Settings
         DriftSqlType.int,
         data['${effectivePrefix}rounding_unit_rial'],
       )!,
+      paymentTermDays: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}payment_term_days'],
+      )!,
       invoiceNumberPrefix: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}invoice_number_prefix'],
@@ -5093,6 +5456,22 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   /// Round the grand total to the nearest N Rial. `0` disables it (§4).
   final int roundingUnitRial;
 
+  /// How many days after issue an invoice is due, by default (D-052).
+  ///
+  /// A payment term is a property of the business, not of the application. It
+  /// was a 30-day constant in `features/invoices/domain/` until v3, which is
+  /// correct for most Iranian businesses and wrong for every one that bills on
+  /// 45 or 60 days -- and wrong invisibly, because a due date thirty days out
+  /// looks deliberate.
+  ///
+  /// The literal `30` here rather than `kDefaultPaymentTermDays`, for the
+  /// reason `withLength(max:)` cannot take a constant either: `drift_dev` reads
+  /// this argument from the source expression, and what it does with a named
+  /// constant is not something to find out from a shipped default.
+  /// `field_limits_test.dart` asserts the generated default equals the
+  /// constant, which is the same trade the length limits make.
+  final int paymentTermDays;
+
   /// The `{prefix}` in `{prefix}-{jalaliYear}-{sequence:0000}` (D-013).
   final String invoiceNumberPrefix;
 
@@ -5116,6 +5495,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     required this.singleton,
     required this.defaultTaxRateBp,
     required this.roundingUnitRial,
+    required this.paymentTermDays,
     required this.invoiceNumberPrefix,
     this.devicePrefix,
     this.lastBackupAt,
@@ -5140,6 +5520,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     map['singleton'] = Variable<int>(singleton);
     map['default_tax_rate_bp'] = Variable<int>(defaultTaxRateBp);
     map['rounding_unit_rial'] = Variable<int>(roundingUnitRial);
+    map['payment_term_days'] = Variable<int>(paymentTermDays);
     map['invoice_number_prefix'] = Variable<String>(invoiceNumberPrefix);
     if (!nullToAbsent || devicePrefix != null) {
       map['device_prefix'] = Variable<String>(devicePrefix);
@@ -5165,6 +5546,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       singleton: Value(singleton),
       defaultTaxRateBp: Value(defaultTaxRateBp),
       roundingUnitRial: Value(roundingUnitRial),
+      paymentTermDays: Value(paymentTermDays),
       invoiceNumberPrefix: Value(invoiceNumberPrefix),
       devicePrefix: devicePrefix == null && nullToAbsent
           ? const Value.absent()
@@ -5192,6 +5574,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       singleton: serializer.fromJson<int>(json['singleton']),
       defaultTaxRateBp: serializer.fromJson<int>(json['defaultTaxRateBp']),
       roundingUnitRial: serializer.fromJson<int>(json['roundingUnitRial']),
+      paymentTermDays: serializer.fromJson<int>(json['paymentTermDays']),
       invoiceNumberPrefix: serializer.fromJson<String>(
         json['invoiceNumberPrefix'],
       ),
@@ -5214,6 +5597,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'singleton': serializer.toJson<int>(singleton),
       'defaultTaxRateBp': serializer.toJson<int>(defaultTaxRateBp),
       'roundingUnitRial': serializer.toJson<int>(roundingUnitRial),
+      'paymentTermDays': serializer.toJson<int>(paymentTermDays),
       'invoiceNumberPrefix': serializer.toJson<String>(invoiceNumberPrefix),
       'devicePrefix': serializer.toJson<String?>(devicePrefix),
       'lastBackupAt': serializer.toJson<int?>(lastBackupAt),
@@ -5230,6 +5614,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     int? singleton,
     int? defaultTaxRateBp,
     int? roundingUnitRial,
+    int? paymentTermDays,
     String? invoiceNumberPrefix,
     Value<String?> devicePrefix = const Value.absent(),
     Value<int?> lastBackupAt = const Value.absent(),
@@ -5243,6 +5628,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     singleton: singleton ?? this.singleton,
     defaultTaxRateBp: defaultTaxRateBp ?? this.defaultTaxRateBp,
     roundingUnitRial: roundingUnitRial ?? this.roundingUnitRial,
+    paymentTermDays: paymentTermDays ?? this.paymentTermDays,
     invoiceNumberPrefix: invoiceNumberPrefix ?? this.invoiceNumberPrefix,
     devicePrefix: devicePrefix.present ? devicePrefix.value : this.devicePrefix,
     lastBackupAt: lastBackupAt.present ? lastBackupAt.value : this.lastBackupAt,
@@ -5266,6 +5652,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       roundingUnitRial: data.roundingUnitRial.present
           ? data.roundingUnitRial.value
 : this.roundingUnitRial,
+      paymentTermDays: data.paymentTermDays.present
+          ? data.paymentTermDays.value
+: this.paymentTermDays,
       invoiceNumberPrefix: data.invoiceNumberPrefix.present
           ? data.invoiceNumberPrefix.value
 : this.invoiceNumberPrefix,
@@ -5290,6 +5679,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
 ..write('singleton: $singleton, ')
 ..write('defaultTaxRateBp: $defaultTaxRateBp, ')
 ..write('roundingUnitRial: $roundingUnitRial, ')
+..write('paymentTermDays: $paymentTermDays, ')
 ..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
 ..write('devicePrefix: $devicePrefix, ')
 ..write('lastBackupAt: $lastBackupAt')
@@ -5308,6 +5698,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     singleton,
     defaultTaxRateBp,
     roundingUnitRial,
+    paymentTermDays,
     invoiceNumberPrefix,
     devicePrefix,
     lastBackupAt,
@@ -5325,6 +5716,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.singleton == this.singleton &&
           other.defaultTaxRateBp == this.defaultTaxRateBp &&
           other.roundingUnitRial == this.roundingUnitRial &&
+          other.paymentTermDays == this.paymentTermDays &&
           other.invoiceNumberPrefix == this.invoiceNumberPrefix &&
           other.devicePrefix == this.devicePrefix &&
           other.lastBackupAt == this.lastBackupAt);
@@ -5340,6 +5732,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<int> singleton;
   final Value<int> defaultTaxRateBp;
   final Value<int> roundingUnitRial;
+  final Value<int> paymentTermDays;
   final Value<String> invoiceNumberPrefix;
   final Value<String?> devicePrefix;
   final Value<int?> lastBackupAt;
@@ -5354,6 +5747,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.singleton = const Value.absent(),
     this.defaultTaxRateBp = const Value.absent(),
     this.roundingUnitRial = const Value.absent(),
+    this.paymentTermDays = const Value.absent(),
     this.invoiceNumberPrefix = const Value.absent(),
     this.devicePrefix = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
@@ -5369,6 +5763,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.singleton = const Value.absent(),
     this.defaultTaxRateBp = const Value.absent(),
     this.roundingUnitRial = const Value.absent(),
+    this.paymentTermDays = const Value.absent(),
     this.invoiceNumberPrefix = const Value.absent(),
     this.devicePrefix = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
@@ -5384,6 +5779,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<int>? singleton,
     Expression<int>? defaultTaxRateBp,
     Expression<int>? roundingUnitRial,
+    Expression<int>? paymentTermDays,
     Expression<String>? invoiceNumberPrefix,
     Expression<String>? devicePrefix,
     Expression<int>? lastBackupAt,
@@ -5399,6 +5795,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       if (singleton != null) 'singleton': singleton,
       if (defaultTaxRateBp != null) 'default_tax_rate_bp': defaultTaxRateBp,
       if (roundingUnitRial != null) 'rounding_unit_rial': roundingUnitRial,
+      if (paymentTermDays != null) 'payment_term_days': paymentTermDays,
       if (invoiceNumberPrefix != null)
         'invoice_number_prefix': invoiceNumberPrefix,
       if (devicePrefix != null) 'device_prefix': devicePrefix,
@@ -5417,6 +5814,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Value<int>? singleton,
     Value<int>? defaultTaxRateBp,
     Value<int>? roundingUnitRial,
+    Value<int>? paymentTermDays,
     Value<String>? invoiceNumberPrefix,
     Value<String?>? devicePrefix,
     Value<int?>? lastBackupAt,
@@ -5432,6 +5830,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       singleton: singleton ?? this.singleton,
       defaultTaxRateBp: defaultTaxRateBp ?? this.defaultTaxRateBp,
       roundingUnitRial: roundingUnitRial ?? this.roundingUnitRial,
+      paymentTermDays: paymentTermDays ?? this.paymentTermDays,
       invoiceNumberPrefix: invoiceNumberPrefix ?? this.invoiceNumberPrefix,
       devicePrefix: devicePrefix ?? this.devicePrefix,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
@@ -5471,6 +5870,9 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     if (roundingUnitRial.present) {
       map['rounding_unit_rial'] = Variable<int>(roundingUnitRial.value);
     }
+    if (paymentTermDays.present) {
+      map['payment_term_days'] = Variable<int>(paymentTermDays.value);
+    }
     if (invoiceNumberPrefix.present) {
       map['invoice_number_prefix'] = Variable<String>(
         invoiceNumberPrefix.value,
@@ -5500,6 +5902,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
 ..write('singleton: $singleton, ')
 ..write('defaultTaxRateBp: $defaultTaxRateBp, ')
 ..write('roundingUnitRial: $roundingUnitRial, ')
+..write('paymentTermDays: $paymentTermDays, ')
 ..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
 ..write('devicePrefix: $devicePrefix, ')
 ..write('lastBackupAt: $lastBackupAt, ')
@@ -6567,6 +6970,11 @@ typedef $$InvoicesTableCreateCompanionBuilder = InvoicesCompanion Function({
   Value<int?> discountPercentBp,
   Value<int?> taxRateBp,
   Value<String?> notes,
+  Value<String?> customerNameSnapshot,
+  Value<String?> customerCompanySnapshot,
+  Value<String?> customerNationalIdSnapshot,
+  Value<String?> customerEconomicIdSnapshot,
+  Value<String?> customerAddressSnapshot,
   required InvoiceStatus status,
   Value<int> subtotalRial,
   Value<int> totalDiscountRial,
@@ -6592,6 +7000,11 @@ typedef $$InvoicesTableUpdateCompanionBuilder = InvoicesCompanion Function({
   Value<int?> discountPercentBp,
   Value<int?> taxRateBp,
   Value<String?> notes,
+  Value<String?> customerNameSnapshot,
+  Value<String?> customerCompanySnapshot,
+  Value<String?> customerNationalIdSnapshot,
+  Value<String?> customerEconomicIdSnapshot,
+  Value<String?> customerAddressSnapshot,
   Value<InvoiceStatus> status,
   Value<int> subtotalRial,
   Value<int> totalDiscountRial,
@@ -6741,6 +7154,31 @@ class $$InvoicesTableFilterComposer
 
   ColumnFilters<String> get notes => $composableBuilder(
     column: $table.notes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerNameSnapshot => $composableBuilder(
+    column: $table.customerNameSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerCompanySnapshot => $composableBuilder(
+    column: $table.customerCompanySnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerNationalIdSnapshot => $composableBuilder(
+    column: $table.customerNationalIdSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerEconomicIdSnapshot => $composableBuilder(
+    column: $table.customerEconomicIdSnapshot,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get customerAddressSnapshot => $composableBuilder(
+    column: $table.customerAddressSnapshot,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6933,6 +7371,31 @@ class $$InvoicesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get customerNameSnapshot => $composableBuilder(
+    column: $table.customerNameSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerCompanySnapshot => $composableBuilder(
+    column: $table.customerCompanySnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerNationalIdSnapshot => $composableBuilder(
+    column: $table.customerNationalIdSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerEconomicIdSnapshot => $composableBuilder(
+    column: $table.customerEconomicIdSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get customerAddressSnapshot => $composableBuilder(
+    column: $table.customerAddressSnapshot,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get status => $composableBuilder(
     column: $table.status,
     builder: (column) => ColumnOrderings(column),
@@ -7053,6 +7516,31 @@ class $$InvoicesTableAnnotationComposer
 
   GeneratedColumn<String> get notes =>
       $composableBuilder(column: $table.notes, builder: (column) => column);
+
+  GeneratedColumn<String> get customerNameSnapshot => $composableBuilder(
+    column: $table.customerNameSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerCompanySnapshot => $composableBuilder(
+    column: $table.customerCompanySnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerNationalIdSnapshot => $composableBuilder(
+    column: $table.customerNationalIdSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerEconomicIdSnapshot => $composableBuilder(
+    column: $table.customerEconomicIdSnapshot,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get customerAddressSnapshot => $composableBuilder(
+    column: $table.customerAddressSnapshot,
+    builder: (column) => column,
+  );
 
   GeneratedColumnWithTypeConverter<InvoiceStatus, int> get status =>
       $composableBuilder(column: $table.status, builder: (column) => column);
@@ -7204,6 +7692,13 @@ class $$InvoicesTableTableManager
                 Value<int?> discountPercentBp = const Value.absent(),
                 Value<int?> taxRateBp = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> customerNameSnapshot = const Value.absent(),
+                Value<String?> customerCompanySnapshot = const Value.absent(),
+                Value<String?> customerNationalIdSnapshot =
+                    const Value.absent(),
+                Value<String?> customerEconomicIdSnapshot =
+                    const Value.absent(),
+                Value<String?> customerAddressSnapshot = const Value.absent(),
                 Value<InvoiceStatus> status = const Value.absent(),
                 Value<int> subtotalRial = const Value.absent(),
                 Value<int> totalDiscountRial = const Value.absent(),
@@ -7228,6 +7723,11 @@ class $$InvoicesTableTableManager
                 discountPercentBp: discountPercentBp,
                 taxRateBp: taxRateBp,
                 notes: notes,
+                customerNameSnapshot: customerNameSnapshot,
+                customerCompanySnapshot: customerCompanySnapshot,
+                customerNationalIdSnapshot: customerNationalIdSnapshot,
+                customerEconomicIdSnapshot: customerEconomicIdSnapshot,
+                customerAddressSnapshot: customerAddressSnapshot,
                 status: status,
                 subtotalRial: subtotalRial,
                 totalDiscountRial: totalDiscountRial,
@@ -7254,6 +7754,13 @@ class $$InvoicesTableTableManager
                 Value<int?> discountPercentBp = const Value.absent(),
                 Value<int?> taxRateBp = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
+                Value<String?> customerNameSnapshot = const Value.absent(),
+                Value<String?> customerCompanySnapshot = const Value.absent(),
+                Value<String?> customerNationalIdSnapshot =
+                    const Value.absent(),
+                Value<String?> customerEconomicIdSnapshot =
+                    const Value.absent(),
+                Value<String?> customerAddressSnapshot = const Value.absent(),
                 required InvoiceStatus status,
                 Value<int> subtotalRial = const Value.absent(),
                 Value<int> totalDiscountRial = const Value.absent(),
@@ -7278,6 +7785,11 @@ class $$InvoicesTableTableManager
                 discountPercentBp: discountPercentBp,
                 taxRateBp: taxRateBp,
                 notes: notes,
+                customerNameSnapshot: customerNameSnapshot,
+                customerCompanySnapshot: customerCompanySnapshot,
+                customerNationalIdSnapshot: customerNationalIdSnapshot,
+                customerEconomicIdSnapshot: customerEconomicIdSnapshot,
+                customerAddressSnapshot: customerAddressSnapshot,
                 status: status,
                 subtotalRial: subtotalRial,
                 totalDiscountRial: totalDiscountRial,
@@ -8543,6 +9055,7 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<int> singleton,
   Value<int> defaultTaxRateBp,
   Value<int> roundingUnitRial,
+  Value<int> paymentTermDays,
   Value<String> invoiceNumberPrefix,
   Value<String?> devicePrefix,
   Value<int?> lastBackupAt,
@@ -8558,6 +9071,7 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<int> singleton,
   Value<int> defaultTaxRateBp,
   Value<int> roundingUnitRial,
+  Value<int> paymentTermDays,
   Value<String> invoiceNumberPrefix,
   Value<String?> devicePrefix,
   Value<int?> lastBackupAt,
@@ -8616,6 +9130,11 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<int> get roundingUnitRial => $composableBuilder(
     column: $table.roundingUnitRial,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get paymentTermDays => $composableBuilder(
+    column: $table.paymentTermDays,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -8689,6 +9208,11 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<int> get paymentTermDays => $composableBuilder(
+    column: $table.paymentTermDays,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<String> get invoiceNumberPrefix => $composableBuilder(
     column: $table.invoiceNumberPrefix,
     builder: (column) => ColumnOrderings(column),
@@ -8750,6 +9274,11 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<int> get paymentTermDays => $composableBuilder(
+    column: $table.paymentTermDays,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<String> get invoiceNumberPrefix => $composableBuilder(
     column: $table.invoiceNumberPrefix,
     builder: (column) => column,
@@ -8806,6 +9335,7 @@ class $$SettingsTableTableManager
                 Value<int> singleton = const Value.absent(),
                 Value<int> defaultTaxRateBp = const Value.absent(),
                 Value<int> roundingUnitRial = const Value.absent(),
+                Value<int> paymentTermDays = const Value.absent(),
                 Value<String> invoiceNumberPrefix = const Value.absent(),
                 Value<String?> devicePrefix = const Value.absent(),
                 Value<int?> lastBackupAt = const Value.absent(),
@@ -8820,6 +9350,7 @@ class $$SettingsTableTableManager
                 singleton: singleton,
                 defaultTaxRateBp: defaultTaxRateBp,
                 roundingUnitRial: roundingUnitRial,
+                paymentTermDays: paymentTermDays,
                 invoiceNumberPrefix: invoiceNumberPrefix,
                 devicePrefix: devicePrefix,
                 lastBackupAt: lastBackupAt,
@@ -8836,6 +9367,7 @@ class $$SettingsTableTableManager
                 Value<int> singleton = const Value.absent(),
                 Value<int> defaultTaxRateBp = const Value.absent(),
                 Value<int> roundingUnitRial = const Value.absent(),
+                Value<int> paymentTermDays = const Value.absent(),
                 Value<String> invoiceNumberPrefix = const Value.absent(),
                 Value<String?> devicePrefix = const Value.absent(),
                 Value<int?> lastBackupAt = const Value.absent(),
@@ -8850,6 +9382,7 @@ class $$SettingsTableTableManager
                 singleton: singleton,
                 defaultTaxRateBp: defaultTaxRateBp,
                 roundingUnitRial: roundingUnitRial,
+                paymentTermDays: paymentTermDays,
                 invoiceNumberPrefix: invoiceNumberPrefix,
                 devicePrefix: devicePrefix,
                 lastBackupAt: lastBackupAt,

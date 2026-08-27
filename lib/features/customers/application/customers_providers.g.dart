@@ -350,7 +350,7 @@ final class CustomerDetailProvider
   }
 }
 
-String _$customerDetailHash() => r'9b3b45ae35a171614b1b7530d9832efea9edb807';
+String _$customerDetailHash() => r'c746d01b84ca4c4d3826bf4a509fefdc7582c9ff';
 
 /// Everything the customer detail screen shows, read together.
 ///

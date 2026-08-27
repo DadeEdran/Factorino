@@ -29,6 +29,22 @@ class Settings extends Table with SyncColumns {
   /// Round the grand total to the nearest N Rial. `0` disables it (§4).
   IntColumn get roundingUnitRial => integer().withDefault(const Constant(0))();
 
+  /// How many days after issue an invoice is due, by default (D-052).
+  ///
+  /// A payment term is a property of the business, not of the application. It
+  /// was a 30-day constant in `features/invoices/domain/` until v3, which is
+  /// correct for most Iranian businesses and wrong for every one that bills on
+  /// 45 or 60 days -- and wrong invisibly, because a due date thirty days out
+  /// looks deliberate.
+  ///
+  /// The literal `30` here rather than `kDefaultPaymentTermDays`, for the
+  /// reason `withLength(max:)` cannot take a constant either: `drift_dev` reads
+  /// this argument from the source expression, and what it does with a named
+  /// constant is not something to find out from a shipped default.
+  /// `field_limits_test.dart` asserts the generated default equals the
+  /// constant, which is the same trade the length limits make.
+  IntColumn get paymentTermDays => integer().withDefault(const Constant(30))();
+
   /// The `{prefix}` in `{prefix}-{jalaliYear}-{sequence:0000}` (D-013).
   TextColumn get invoiceNumberPrefix =>
       text().withLength(min: 1, max: 12).withDefault(const Constant('INV'))();

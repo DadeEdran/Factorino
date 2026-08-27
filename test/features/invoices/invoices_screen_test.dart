@@ -35,7 +35,7 @@ void main() {
 
   InvoiceListItem item(
     String id, {
-    required String customerName,
+    required String liveCustomerName,
     InvoiceStatus status = InvoiceStatus.unpaid,
     int sequence = 1,
     int grandTotalRial = 12000000,
@@ -45,7 +45,7 @@ void main() {
   }) {
     final DateTime issued = DateTime.utc(2026, 8, 20, 6);
     return InvoiceListItem(
-      customerName: customerName,
+      liveCustomerName: liveCustomerName,
       invoice: Invoice(
         id: id,
         number: numbered
@@ -151,7 +151,7 @@ void main() {
           FakeInvoiceRepository(<InvoiceListItem>[
             item(
               'a',
-              customerName: 'مریم احمدی',
+              liveCustomerName: 'مریم احمدی',
               status: InvoiceStatus.draft,
               numbered: false,
             ),
@@ -179,7 +179,7 @@ void main() {
           FakeInvoiceRepository(<InvoiceListItem>[
             item(
               'a',
-              customerName: 'مریم احمدی',
+              liveCustomerName: 'مریم احمدی',
               status: InvoiceStatus.draft,
               numbered: false,
             ),
@@ -210,7 +210,7 @@ void main() {
           FakeInvoiceRepository(<InvoiceListItem>[
             item(
               'a',
-              customerName: 'مریم احمدی',
+              liveCustomerName: 'مریم احمدی',
               status: InvoiceStatus.draft,
               numbered: false,
             ),
@@ -241,7 +241,7 @@ void main() {
         const InvoicesScreen(),
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
         ),
         size: kMobileSize,
@@ -261,7 +261,7 @@ void main() {
         const InvoicesScreen(),
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
         ),
         size: kMobileSize,
@@ -281,7 +281,7 @@ void main() {
         const InvoicesScreen(),
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
         ),
         size: kDesktopSize,
@@ -309,7 +309,7 @@ void main() {
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
             for (int i = 0; i < 400; i++)
-              item('i$i', customerName: 'مشتری $i', sequence: i + 1),
+              item('i$i', liveCustomerName: 'مشتری $i', sequence: i + 1),
           ]),
         ),
         size: kDesktopSize,
@@ -335,7 +335,7 @@ void main() {
         const InvoicesScreen(),
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
         ),
         size: kDesktopSize,
@@ -358,7 +358,7 @@ void main() {
         const InvoicesScreen(),
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی', grandTotalRial: 12000000),
+            item('a', liveCustomerName: 'مریم احمدی', grandTotalRial: 12000000),
           ]),
         ),
       );
@@ -383,7 +383,7 @@ void main() {
         const InvoicesScreen(),
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی', sequence: 1),
+            item('a', liveCustomerName: 'مریم احمدی', sequence: 1),
           ]),
         ),
       );
@@ -405,7 +405,7 @@ void main() {
           FakeInvoiceRepository(<InvoiceListItem>[
             item(
               'a',
-              customerName: 'مریم احمدی',
+              liveCustomerName: 'مریم احمدی',
               status: InvoiceStatus.partiallyPaid,
             ),
           ]),
@@ -432,7 +432,7 @@ void main() {
           FakeInvoiceRepository(<InvoiceListItem>[
             item(
               'a',
-              customerName: 'مریم احمدی',
+              liveCustomerName: 'مریم احمدی',
               status: InvoiceStatus.unpaid,
               dueDate: DateTime.utc(2026, 8, 1),
             ),
@@ -454,7 +454,7 @@ void main() {
       final FakeInvoiceRepository repository = FakeInvoiceRepository(
         <InvoiceListItem>[
           for (int i = 0; i < 200; i++)
-            item('i$i', customerName: 'مشتری $i', sequence: i + 1),
+            item('i$i', liveCustomerName: 'مشتری $i', sequence: i + 1),
         ],
       );
       await pumpScreen(
@@ -473,7 +473,7 @@ void main() {
       final FakeInvoiceRepository repository = FakeInvoiceRepository(
         <InvoiceListItem>[
           for (int i = 0; i < 200; i++)
-            item('i$i', customerName: 'مشتری $i', sequence: i + 1),
+            item('i$i', liveCustomerName: 'مشتری $i', sequence: i + 1),
         ],
       );
       late WidgetRef capturedRef;
@@ -504,7 +504,7 @@ void main() {
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
             for (int i = 0; i < 3; i++)
-              item('i$i', customerName: 'مشتری $i', sequence: i + 1),
+              item('i$i', liveCustomerName: 'مشتری $i', sequence: i + 1),
           ]),
         ),
       );
@@ -525,7 +525,7 @@ void main() {
         const InvoicesScreen(),
         overrides: withRepository(
           FakeInvoiceRepository(<InvoiceListItem>[
-            item('a', customerName: 'مریم احمدی'),
+            item('a', liveCustomerName: 'مریم احمدی'),
           ]),
         ),
         size: kDesktopSize,

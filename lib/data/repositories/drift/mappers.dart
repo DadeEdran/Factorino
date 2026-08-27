@@ -1,6 +1,7 @@
 import '../../../core/money/money.dart';
 import '../../database/app_database.dart';
 import '../../models/customer.dart';
+import '../../models/customer_snapshot.dart';
 import '../../models/invoice.dart';
 import '../../models/invoice_item.dart';
 import '../../models/payment.dart';
@@ -62,12 +63,35 @@ Product productFromRow(ProductRow row) => Product(
   updatedAt: instantFromMillis(row.updatedAt),
 );
 
+/// The party snapshot on an invoice row, or null if it has none (D-052).
+///
+/// **[CustomerSnapshot.fullName] is what decides.** The five columns are
+/// nullable together — written in one statement by `issue()` and never
+/// individually — so the name being present is the same question as the
+/// snapshot being present, and it is the one field a document cannot be
+/// printed without. A draft has no snapshot; nor has any invoice issued before
+/// schema v3, which the read path handles by falling back to the live customer
+/// (`Invoice.party`).
+CustomerSnapshot? customerSnapshotFromRow(InvoiceRow row) {
+  final String? fullName = row.customerNameSnapshot;
+  if (fullName == null) return null;
+
+  return CustomerSnapshot(
+    fullName: fullName,
+    companyName: row.customerCompanySnapshot,
+    nationalId: row.customerNationalIdSnapshot,
+    economicId: row.customerEconomicIdSnapshot,
+    address: row.customerAddressSnapshot,
+  );
+}
+
 Invoice invoiceFromRow(InvoiceRow row) => Invoice(
   id: row.id,
   number: row.number,
   numberYear: row.numberYear,
   numberSequence: row.numberSequence,
   customerId: row.customerId,
+  customerSnapshot: customerSnapshotFromRow(row),
   issueDate: instantFromMillis(row.issueDate),
   dueDate: instantFromMillisOrNull(row.dueDate),
   status: row.status,

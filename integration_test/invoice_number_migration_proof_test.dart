@@ -156,7 +156,9 @@ void main() {
       debugPrint('payments      : ${await count("payments")}');
       debugPrint('file state    : ${inspectDatabaseFile(file).name}');
 
-      expect(version, 2);
+      // The whole ladder runs on open, so a v1 file lands on the newest
+      // schema rather than stopping at this migration's own version.
+      expect(version, migrated.schemaVersion);
       expect(fk, 1, reason: 'alterTable must restore foreign keys');
 
       expect(await count('invoices'), 1);

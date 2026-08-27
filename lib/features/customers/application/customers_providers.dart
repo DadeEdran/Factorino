@@ -85,11 +85,16 @@ Future<CustomerDetailView?> customerDetail(Ref ref, String id) async {
     // The name is the one already loaded, not a lookup per row (D-040). A
     // customer's own page is the one place the join `watchList` performs is
     // genuinely unnecessary -- there is exactly one name and it is in hand.
+    //
+    // The **live** name: an invoice issued under an older one shows the older
+    // one, because `InvoiceListItem.customerName` prefers the party snapshot
+    // (D-052). On this page in particular that is worth having -- it is the
+    // page where a rename is most likely to have just happened.
     invoices: invoices
         .map(
           (Invoice invoice) => InvoiceListItem(
             invoice: invoice,
-            customerName: customer.fullName,
+            liveCustomerName: customer.fullName,
           ),
         )
         .toList(),

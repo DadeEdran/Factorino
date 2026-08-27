@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:drift/native.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/database/app_database.dart';
+import 'package:factorino/data/models/app_settings.dart';
 import 'package:factorino/data/models/field_limits.dart';
 import 'package:flutter_test/flutter_test.dart';
 
@@ -118,6 +119,51 @@ void main() {
         reason: 'a product unit must fit in an invoice line unit',
       );
     });
+  });
+
+  group('the customer snapshot on an invoice (D-052)', () {
+    test('every snapshot column matches its source column exactly', () {
+      // Not "at least as wide" but **equal**, and the direction that matters
+      // is the narrow one: a snapshot column shorter than the customer column
+      // it copies from would make a customer with a long address impossible to
+      // issue an invoice to -- the write failing inside `issue()`, at the
+      // moment the invoice is meant to become a document, for exactly the
+      // users whose records are the fullest.
+      expectLimit(db.invoices.customerNameSnapshot, CustomerLimits.fullName);
+      expectLimit(
+        db.invoices.customerCompanySnapshot,
+        CustomerLimits.companyName,
+      );
+      expectLimit(
+        db.invoices.customerNationalIdSnapshot,
+        CustomerLimits.nationalId,
+      );
+      expectLimit(
+        db.invoices.customerEconomicIdSnapshot,
+        CustomerLimits.economicId,
+      );
+      expectLimit(db.invoices.customerAddressSnapshot, CustomerLimits.address);
+    });
+  });
+
+  test('the payment term column defaults to the constant that names it', () {
+    // `withDefault(const Constant(30))` carries a literal for the same reason
+    // `withLength(max:)` does -- `drift_dev` reads the source expression, and
+    // what it makes of a named constant is not a thing to discover from a
+    // shipped default. So the constant and the column are checked against each
+    // other here instead.
+    //
+    // Read off the generated column's default expression rather than by
+    // inserting a row, because the question is what the *schema* declares:
+    // that is what a migrated database's existing settings row takes.
+    expect(
+      db.settings.paymentTermDays.defaultValue?.toString(),
+      contains('$kDefaultPaymentTermDays'),
+      reason:
+          'settings.payment_term_days must default to kDefaultPaymentTermDays, '
+          'because that default is what every pre-v3 settings row is given by '
+          'the migration.',
+    );
   });
 
   test('the amount field is as wide as the largest amount that can exist', () {

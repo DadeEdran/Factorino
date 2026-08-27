@@ -295,24 +295,18 @@ class InvoiceEditorState {
   }
 }
 
-/// How long after issue an invoice is due, by default.
+/// The due date a form starts with: [issueDate] plus the configured term.
 ///
-/// **A constant here, not a setting, and that is a gap rather than a decision.**
-/// A payment term is exactly the sort of thing a business configures, and it
-/// belongs in `settings` beside the VAT rate and the numbering prefix. Putting
-/// it there is a schema change — `settings` has no such column — and D-051
-/// records why a schema change is not folded into an increment that is not
-/// about one. Until then the app picks the common term and lets the user
-/// override it per invoice, which it can already do.
-const int kDefaultPaymentTermDays = 30;
-
-/// The due date a freshly opened form starts with: [issueDate] plus the
-/// default term.
+/// [termDays] comes from `settings` as of D-052 — it was a 30-day constant in
+/// this file until schema v3, which is right for most Iranian businesses and
+/// quietly wrong for every one that bills on 45 or 60 days. The seed default
+/// is `kDefaultPaymentTermDays` in `data/models/app_settings.dart`; nothing
+/// here should reach for it, because the term in force is the one in settings.
 ///
 /// Computed by adding days to the **instant**, not by adding to a Jalali date
 /// and converting back. Iran keeps a fixed offset with no DST transitions
 /// (D-005), so the two agree — and the instant arithmetic is the one that stays
 /// correct if that ever stops being true, because a term is a duration and not
 /// a calendar-field operation.
-DateTime defaultDueDate(DateTime issueDate) =>
-    issueDate.toUtc().add(const Duration(days: kDefaultPaymentTermDays));
+DateTime defaultDueDate(DateTime issueDate, int termDays) =>
+    issueDate.toUtc().add(Duration(days: termDays));

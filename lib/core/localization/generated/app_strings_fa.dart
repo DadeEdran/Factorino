@@ -133,6 +133,16 @@ class AppStringsFa extends AppStrings {
   String get settingsRoundingUnit => 'رند کردن مبلغ نهایی';
 
   @override
+  String get settingsPaymentTerm => 'مهلت پرداخت پیش‌فرض';
+
+  @override
+  String get settingsPaymentTermHint =>
+      'سررسید فاکتور تازه به‌صورت پیش‌فرض این تعداد روز پس از تاریخ صدور تعیین می‌شود.';
+
+  @override
+  String get unitDays => 'روز';
+
+  @override
   String get settingsBackupSection => 'پشتیبان‌گیری';
 
   @override

@@ -81,6 +81,13 @@ class _SettingsContent extends StatelessWidget {
                     : formatGroupedPersian(settings.roundingUnitRial),
                 trailingLabel: strings.unitRial,
               ),
+              const _RowDivider(),
+              _SettingRow(
+                label: strings.settingsPaymentTerm,
+                value: formatGroupedPersian(settings.paymentTermDays),
+                hint: strings.settingsPaymentTermHint,
+                trailingLabel: strings.unitDays,
+              ),
             ],
           ),
         ),
@@ -125,50 +132,79 @@ class _SettingRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
+    // A `Wrap`, not a `Row`, and for a measured reason. The value is rendered
+    // in the prominent figure style, and one of these rows carries a
+    // *sentence* there rather than a figure -- «هنوز پشتیبان تهیه نشده است»,
+    // when no backup has been taken. In a `Row` that group is the
+    // non-flexible child, so it takes its natural width first and the label
+    // beside it is squeezed to nothing: measured at 132 logical pixels of
+    // horizontal overflow at phone width, which is a row of content the user
+    // cannot see.
+    //
+    // The wrap costs nothing while both halves fit -- `spaceBetween` places
+    // them exactly where the row did -- and drops the value onto its own line
+    // when they do not. The label is bounded to the available width so that it
+    // wraps rather than becoming the overflowing child in turn.
+    //
+    // Found by `settings_screen_test.dart`, which is the first test this
+    // screen has had; the defect predates the payment-term row.
     return Padding(
       padding: const EdgeInsets.symmetric(
         horizontal: AppSpacing.lg,
         vertical: AppSpacing.lg,
       ),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(label, style: theme.textTheme.bodyLarge),
-                if (hint != null) ...<Widget>[
-                  const SizedBox(height: AppSpacing.xxs),
-                  Text(
-                    hint!,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-              ],
-            ),
-          ),
-          const SizedBox(width: AppSpacing.lg),
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.baseline,
-            textBaseline: TextBaseline.alphabetic,
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          return Wrap(
+            alignment: WrapAlignment.spaceBetween,
+            crossAxisAlignment: WrapCrossAlignment.start,
+            spacing: AppSpacing.lg,
+            runSpacing: AppSpacing.sm,
             children: <Widget>[
-              Text(value, style: theme.textTheme.displaySmall),
-              if (trailingLabel != null) ...<Widget>[
-                const SizedBox(width: AppSpacing.xs),
-                Text(
-                  trailingLabel!,
-                  style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
-                  ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    Text(label, style: theme.textTheme.bodyLarge),
+                    if (hint != null) ...<Widget>[
+                      const SizedBox(height: AppSpacing.xxs),
+                      Text(
+                        hint!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
                 ),
-              ],
+              ),
+              ConstrainedBox(
+                constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.baseline,
+                  textBaseline: TextBaseline.alphabetic,
+                  children: <Widget>[
+                    Flexible(
+                      child: Text(value, style: theme.textTheme.displaySmall),
+                    ),
+                    if (trailingLabel != null) ...<Widget>[
+                      const SizedBox(width: AppSpacing.xs),
+                      Text(
+                        trailingLabel!,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ],
+                  ],
+                ),
+              ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }

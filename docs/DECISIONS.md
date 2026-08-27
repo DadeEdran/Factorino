@@ -2194,7 +2194,7 @@ two beside it under the user's finger.
 ## D-051 — An issued invoice must snapshot its customer, and that is its own increment
 
 **Date:** 2026-08-26
-**Status:** ACCEPTED in principle; **implementation deferred to increment (c2)**
+**Status:** ACCEPTED in principle; **implemented in increment (c2)** as schema v3 — see **D-052**
 **Extends:** D-004 (price snapshots), D-003 (soft delete)
 
 **The question.** `invoices` stores `customer_id` and nothing else about the customer. Every screen
@@ -2254,3 +2254,136 @@ issued invoices only.
 VAT rate and the numbering prefix, and putting it there is the same kind of schema change. It is a
 **gap, not a decision** — noted so it is scheduled rather than discovered. Until then the user
 overrides the due date per invoice, which they can already do.
+
+---
+
+## D-052 — The party snapshot, schema v3, and what a migration may not invent
+
+**Date:** 2026-08-27
+**Status:** ACCEPTED — implemented in Phase 4 increment (c2)
+**Implements:** D-051 · **Extends:** D-004 (price snapshots), D-048 and D-049 (the first migration)
+
+D-051 decided *that* an issued invoice must snapshot its customer, and deferred the schema change to
+its own reviewable increment on (a2)'s precedent. This records what building it settled.
+
+### The columns
+
+Five nullable columns on `invoices` — `customer_name_snapshot`, `customer_company_snapshot`,
+`customer_national_id_snapshot`, `customer_economic_id_snapshot`, `customer_address_snapshot` — and
+one on `settings`, `payment_term_days`, `INTEGER NOT NULL DEFAULT 30`.
+
+Each snapshot column's length **equals** its source column on `customers` rather than merely being
+generous. The direction that matters is the narrow one: a snapshot column shorter than the record it
+copies would make a customer with a long address impossible to issue an invoice to — the write
+failing inside `issue()`, at the moment the invoice becomes a document, and only for the users whose
+records are the fullest. `field_limits_test.dart` asserts the equality.
+
+The mobile number is excluded, as D-051 said: contact detail rather than document content. An
+invoice reprinted next year should reach the customer on the number they have now.
+
+### Where the fallback lives, and why there is only one
+
+`Invoice.party(live)` and `Invoice.partyName(liveName)` are the only two places the rule
+`snapshot ?? live` is written. `InvoiceDetail.party` and `InvoiceListItem.customerName` are getters
+over them, so **there is nowhere for a second answer to be written**: the two sites that construct an
+`InvoiceListItem` supply the live name they already have and cannot apply — or forget — the rule.
+`liveCustomerName` was renamed from `customerName` for exactly that reason. The field that carries
+the live value and the field a row displays are now different names, so reaching for the wrong one
+does not quietly compile into a plausible-looking screen.
+
+### What existing invoices display: the live customer, and that is deliberate
+
+**Every invoice issued before v3 has a null snapshot, and the migration writes nothing into it.**
+Those invoices fall back to the live customer record — exactly the behaviour they had before this
+change, unchanged.
+
+This is a decision, not an omission. The alternative is to backfill the snapshot columns from the
+customer rows as they stand on the day the user updates, and that would be **worse than doing
+nothing**: it would look like a snapshot while being precisely the live join it replaces, frozen at
+an arbitrary moment that corresponds to no document. A customer renamed last year would have last
+year's invoices stamped with this year's name, and the record would then assert, permanently, that
+this is what those documents said. Leaving the columns null keeps the honest statement — *this
+invoice predates the snapshot; here is the customer as they are now* — and it stays recoverable if a
+future phase ever finds real history to fill them from. Two tests pin it, one on the migration and
+one on the read path.
+
+The consequence to be plain about: for those invoices the defect D-051 names is still present and
+cannot be fixed. There is no history to recover.
+
+### `assertForeignKeysCanBeDisabled` is **not** called by this migration
+
+D-049's guard checks exactly one property: that `PRAGMA foreign_keys = OFF` takes effect on this
+connection. A table rebuild needs it because its step 6 is `DROP TABLE invoices`, which with foreign
+keys on cascades through every line and every payment. This migration is six
+`ALTER TABLE ... ADD COLUMN`s. It drops nothing, so it has no such precondition.
+
+Calling the guard anyway was considered and rejected. It costs two pragmas and would have looked
+diligent, and that is the objection: it would teach the next reader that the guard is a ritual
+performed before migrations rather than a check on a property the migration depends on — which is how
+a guard stops being read and starts being copied.
+
+The claim is not left as prose. `customer_snapshot_migration_test.dart` runs the step **inside a
+transaction**, with foreign keys on and children present — the exact condition that empties
+`invoice_items` and `payments` under the v1 → v2 rebuild — and counts the rows afterwards. If anyone
+later converts this step to a rebuild, that test fails on the children, which is the same news the
+guard would have delivered.
+
+### The defect the v1 ladder found
+
+`Migrator.alterTable` builds the replacement table from the table **as it is currently declared**,
+then copies every one of those columns across with an `INSERT ... SELECT`. The moment the v3 columns
+were declared, the shipped v1 → v2 rebuild began failing with `no such column:
+customer_name_snapshot` — on open, for every user who had not updated since the first release, and
+for nobody else. It was found by writing the v1 → v3 test, not by reasoning about it.
+
+Two consequences, both structural rather than remembered:
+
+1. **The rebuild computes its `newColumns` from the database.** It asks the old table what columns it
+   actually has and passes drift everything the current declaration adds. A hand-written list would
+   be one the next person to add a column to `invoices` does not know exists, and the failure would
+   again reach only the users furthest behind. Computed, the v1 → v2 step needs no edit for any
+   future column.
+2. **The v2 → v3 step adds each column only if absent.** A v1 database arrives with the snapshot
+   columns already present (empty, which is right for a pre-v3 invoice) and a v2 database arrives
+   without them; both must land on the same shape. The check is `PRAGMA table_info`, asked of the
+   database rather than inferred from which steps ran.
+
+**The ladder's shape test now targets `db.schemaVersion` rather than a literal.** The v2 shape
+stopped being independently observable at v3 — `alterTable` rebuilds at the current declaration, so a
+v1 database migrated "to v2" comes out carrying the v3 columns too. Pointing the test at the newest
+version is also what makes it the test that catches the next column added without the rebuild being
+told, so it must stay pointed there.
+
+**The ladder's steps are now bounded above by `to` as well as below by `from`.** In the application
+`to` is always `schemaVersion`, so no production path changes; it is what lets a test migrate to an
+intermediate version and stop there. The DDL of the shipped step is untouched.
+
+### The payment term
+
+Folded into this migration rather than given its own, at the owner's direction: two migrations for
+two columns is worse than one, and a hardcoded term is otherwise discovered by a user whose terms are
+45 days. `kDefaultPaymentTermDays` moves to `data/models/app_settings.dart` and names the **seed
+default**; the term in force is `AppSettings.paymentTermDays`, read from the row.
+
+`defaultDueDate` now takes the term, and **a derived due date follows the term as well as the issue
+date** — by (c)'s own argument, that a derived date is a statement about the term rather than a
+commitment to a calendar day. A date the user chose is not moved by either.
+
+The column carries a literal `30` rather than the constant, for the reason `withLength(max:)` does
+(D-043): `drift_dev` reads the source expression, and what it makes of a named constant is not
+something to find out from a shipped default. `field_limits_test.dart` asserts that the generated
+default equals the constant.
+
+**Still to do, recorded rather than assumed:** the settings screen is read-only, so nothing can yet
+set a bad term. **When it becomes editable, the form must bound this field** — a negative term
+produces an invoice due before it was issued. `AppSettings` deliberately does not clamp it, because a
+clamp there would hide the bad value rather than refuse it.
+
+**Alternatives considered.**
+
+- *Backfill the snapshots from today's customer rows.* Rejected — see above. It manufactures history.
+- *One migration per column set.* Rejected by the owner, and correctly: each migration is a risk, and
+  two of them for two columns on the same open is two risks where one would do.
+- *A tenth `lib/` scan asserting that no widget reads `invoice.customerSnapshot` directly.* Rejected:
+  the fallback is a getter with no second path, so a scan would have nothing to catch. Each of the
+  nine existing scans guards a rule that **can** be broken silently; this one cannot.
