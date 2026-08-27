@@ -299,18 +299,26 @@ class _LinesTable extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    // **The two money columns are fixed-width and leading-aligned**, like every
+    // other money column in the application (D-037). (b) gave them `flex: 2`
+    // and `alignEnd: true`, which was a deviation on both counts and went
+    // unnoticed while this table had a whole page to itself. Composing it into
+    // the screen in (d) narrowed the column and the amounts overflowed their
+    // cells by 58 logical pixels — an invoice line total clipped, which is the
+    // one thing a table of money may never do. A flexed money column is a
+    // column whose width depends on the window, so the amount that fits today
+    // clips at another size; `alignEnd` in RTL puts the figure against the
+    // wrong edge and breaks the vertical alignment of a column of them.
     final List<TableColumnSpec> columns = <TableColumnSpec>[
-      TableColumnSpec(label: strings.invoiceLineColumnDescription, flex: 4),
+      TableColumnSpec(label: strings.invoiceLineColumnDescription, flex: 3),
       TableColumnSpec(label: strings.invoiceLineColumnQuantity, flex: 2),
       TableColumnSpec(
         label: strings.invoiceLineColumnUnitPrice,
-        flex: 2,
-        alignEnd: true,
+        width: AppLayout.tablePriceWidth,
       ),
       TableColumnSpec(
         label: strings.invoiceLineColumnTotal,
-        flex: 2,
-        alignEnd: true,
+        width: AppLayout.tablePriceWidth,
       ),
     ];
 

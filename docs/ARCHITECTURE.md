@@ -171,8 +171,9 @@ decided by the file header, never by a pragma - see the three named traps in D-0
   the same transaction (§6).
 - **Routing:** `go_router` with a `StatefulShellRoute` over five destinations, each keeping its own
   stack and scroll position. Only routes whose screens exist are registered: `/customers/new`,
-  `/customers/:id/edit`, `/customers/:id`, `/products/new` and `/products/:id/edit`, each a child of
-  its destination so the URL reads as a hierarchy and the shell keeps the right item selected.
+  `/customers/:id/edit`, `/customers/:id`, `/products/new`, `/products/:id/edit` and
+  **`/invoices/new`**, each a child of its destination so the URL reads as a hierarchy and the shell
+  keeps the right item selected.
   **`:id` is declared after the literal `new`**, or it would swallow it. گزارش‌ها is absent from
   navigation *and* from the router (D-021), and so are `/invoices/:id` and `/products/:id`.
 - **Screens:** six, all on real data. Customers and Products list, search, page, create, edit and
@@ -460,6 +461,23 @@ the one condition under which the cascade cannot reproduce.
 `integration_test/customer_snapshot_migration_proof_test.dart` repeat the data proofs on the real
 target, for the reason D-020's proof exists. The second runs **both** ladders — v2 → v3 and
 v1 → v3 — because they are different code paths and only one of them rebuilds a table.
+
+### The invoice form's three layouts (D-053)
+
+The one screen where the tiers are three different arrangements rather than three widths, and the one
+where the arrangement was decided by a measurement:
+
+| Tier | Fields | Lines | Summary |
+|---|---|---|---|
+| Mobile | one column, one per row | cards, below the fields | breakdown **and** actions in a bar pinned to the bottom |
+| Tablet | left pane | right pane, independently scrolling | breakdown and actions in a bar across both |
+| Desktop | beside the breakdown | a real table, **full width** | breakdown scrolls with the fields; grand total and actions pinned |
+
+**Why desktop is not a panel down the side, which is what §10 asks for.** `PageBody` caps content at
+1240 for readability; a 320-pixel panel leaves 616 for a four-column table with two money columns, and
+the amounts overflowed by 58. Money columns are fixed-width by rule (D-037), so they cannot absorb it.
+The width goes to the table and the summary splits by purpose: the breakdown scrolls, the decision
+stays. Full reasoning in D-053.
 
 ## B.6 The money engine — **built** (increment b)
 

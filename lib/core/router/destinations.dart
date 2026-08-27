@@ -83,6 +83,13 @@ abstract final class AppRoutes {
 
   static String customerEditFor(String id) => '/customers/$id/edit';
 
+  /// The invoice form.
+  ///
+  /// `/invoices/new`, and — for the same reason `/customers/new` is declared
+  /// before `/customers/:id` — it must stay ahead of any future
+  /// `/invoices/:id`, which does not exist yet (Phase 5).
+  static const String invoiceCreate = '/invoices/new';
+
   /// The new product or service form.
   static const String productCreate = '/products/new';
 

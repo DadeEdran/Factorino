@@ -1,9 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 
 import '../../../core/formatting/jalali_display.dart';
 import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/responsive/breakpoints.dart';
+import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/clock.dart';
@@ -33,11 +35,11 @@ import '../domain/invoice_status_view.dart';
 /// builds every row it is handed, which is invisible at fifty invoices and
 /// fatal at five thousand.
 ///
-/// **Rows are not tappable, and there is no create button.** Neither the
-/// invoice detail screen nor the invoice form exists yet — they are Phases 5
-/// and 4 — and `/invoices/:id` stays unregistered until the screen it opens
-/// exists (D-021, one level down). An affordance leading nowhere is worse than
-/// its absence.
+/// **There is a create button now, and rows are still not tappable.** The
+/// invoice form arrived in Phase 4 (d), so «فاکتور جدید» leads somewhere; the
+/// invoice *detail* screen is Phase 5, and `/invoices/:id` stays unregistered
+/// until the screen it opens exists (D-021, one level down). An affordance
+/// leading nowhere is worse than its absence.
 class InvoicesScreen extends ConsumerWidget {
   const InvoicesScreen({super.key});
 
@@ -52,6 +54,21 @@ class InvoicesScreen extends ConsumerWidget {
 
     return PageBody(
       title: strings.invoicesTitle,
+      actions: <Widget>[
+        if (!tier.isMobile)
+          FilledButton.icon(
+            onPressed: () => context.go(AppRoutes.invoiceCreate),
+            icon: const Icon(Icons.add, size: AppIconSize.md),
+            label: Text(strings.invoiceCreateAction),
+          ),
+      ],
+      floatingAction: tier.isMobile
+          ? FloatingActionButton.extended(
+              onPressed: () => context.go(AppRoutes.invoiceCreate),
+              icon: const Icon(Icons.add),
+              label: Text(strings.invoiceCreateAction),
+            )
+          : null,
       child: invoices.when(
         loading: () => SkeletonList(
           rowBuilder: (BuildContext context) => _InvoiceSkeletonRow(tier: tier),
@@ -69,6 +86,16 @@ class InvoicesScreen extends ConsumerWidget {
                 icon: Icons.receipt_long_outlined,
                 title: strings.emptyInvoicesTitle,
                 body: strings.emptyInvoicesBody,
+                // The call to action §10 asks for. On mobile the floating
+                // button is already on screen over this state, so a second
+                // button saying the same thing would be one too many.
+                action: tier.isMobile
+                    ? null
+                    : FilledButton.icon(
+                        onPressed: () => context.go(AppRoutes.invoiceCreate),
+                        icon: const Icon(Icons.add, size: AppIconSize.md),
+                        label: Text(strings.invoiceCreateAction),
+                      ),
               )
             : _InvoiceList(
                 items: items,

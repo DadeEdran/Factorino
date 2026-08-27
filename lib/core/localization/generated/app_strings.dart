@@ -253,7 +253,7 @@ abstract class AppStrings {
   /// No description provided for @emptyInvoicesBody.
   ///
   /// In fa, this message translates to:
-  /// **'فاکتورهای شما پس از ثبت، همراه با وضعیت پرداخت در این فهرست نمایش داده می‌شوند.'**
+  /// **'اولین فاکتور خود را بسازید تا همراه با وضعیت پرداختش در این فهرست نمایش داده شود.'**
   String get emptyInvoicesBody;
 
   /// No description provided for @customersTitle.
@@ -1105,6 +1105,114 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'برای ذخیره، دست‌کم یک سطر اضافه کنید.'**
   String get invoiceIncompleteLines;
+
+  /// No description provided for @invoiceCreateTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور جدید'**
+  String get invoiceCreateTitle;
+
+  /// No description provided for @invoiceCreateAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور جدید'**
+  String get invoiceCreateAction;
+
+  /// No description provided for @invoiceSummaryTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'جمع‌بندی'**
+  String get invoiceSummaryTitle;
+
+  /// No description provided for @invoiceSummaryGross.
+  ///
+  /// In fa, this message translates to:
+  /// **'جمع سطرها'**
+  String get invoiceSummaryGross;
+
+  /// No description provided for @invoiceSummaryDiscount.
+  ///
+  /// In fa, this message translates to:
+  /// **'کسر تخفیف'**
+  String get invoiceSummaryDiscount;
+
+  /// No description provided for @invoiceSummaryTax.
+  ///
+  /// In fa, this message translates to:
+  /// **'مالیات بر ارزش افزوده'**
+  String get invoiceSummaryTax;
+
+  /// No description provided for @invoiceSummaryRounding.
+  ///
+  /// In fa, this message translates to:
+  /// **'رند کردن'**
+  String get invoiceSummaryRounding;
+
+  /// No description provided for @invoiceSummaryGrandTotal.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ قابل پرداخت'**
+  String get invoiceSummaryGrandTotal;
+
+  /// No description provided for @invoiceSummaryEmpty.
+  ///
+  /// In fa, this message translates to:
+  /// **'با افزودن سطر، مبلغ فاکتور همین‌جا محاسبه می‌شود.'**
+  String get invoiceSummaryEmpty;
+
+  /// No description provided for @invoiceActionSaveDraftHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'قابل ویرایش می‌ماند و شماره نمی‌گیرد.'**
+  String get invoiceActionSaveDraftHint;
+
+  /// No description provided for @invoiceIssueConfirmTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور صادر شود؟'**
+  String get invoiceIssueConfirmTitle;
+
+  /// No description provided for @invoiceIssueConfirmBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'با صدور، فاکتور شمارهٔ رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.'**
+  String get invoiceIssueConfirmBody;
+
+  /// No description provided for @invoiceIssueConfirmAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'صدور و ثبت نهایی'**
+  String get invoiceIssueConfirmAction;
+
+  /// No description provided for @invoiceDiscardTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور رها شود؟'**
+  String get invoiceDiscardTitle;
+
+  /// No description provided for @invoiceDiscardBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور هنوز ذخیره نشده است. اگر خارج شوید، آنچه وارد کرده‌اید از بین می‌رود.'**
+  String get invoiceDiscardBody;
+
+  /// No description provided for @invoiceDiscardAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'رها کردن'**
+  String get invoiceDiscardAction;
+
+  /// No description provided for @invoiceDiscardKeepAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'ادامهٔ ویرایش'**
+  String get invoiceDiscardKeepAction;
+
+  /// No description provided for @invoiceBackTooltip.
+  ///
+  /// In fa, this message translates to:
+  /// **'بازگشت به فهرست فاکتورها'**
+  String get invoiceBackTooltip;
 
   /// Heading over the invoice's line items in the create/edit form.
   ///

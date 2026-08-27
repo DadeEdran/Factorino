@@ -2387,3 +2387,97 @@ clamp there would hide the bad value rather than refuse it.
 - *A tenth `lib/` scan asserting that no widget reads `invoice.customerSnapshot` directly.* Rejected:
   the fallback is a getter with no second path, so a scan would have nothing to catch. Each of the
   nine existing scans guards a rule that **can** be broken silently; this one cannot.
+
+---
+
+## D-053 — The desktop invoice form: what the width measurement decided
+
+**Date:** 2026-08-27
+**Status:** ACCEPTED — implemented in Phase 4 increment (d)
+**Touches:** the project spec ("a sticky invoice summary panel" on desktop), D-037 (money columns)
+
+### The requirement, and the number that would not fit it
+
+§10 asks the desktop tier for a **sticky invoice summary panel** beside the form. It was built that
+way first: a 320-pixel panel (`AppLayout.detailPanelWidth`) down one side, the fields and the lines
+in the column beside it.
+
+The lines table did not fit. `PageBody` caps content at 1240 logical pixels for readability; minus
+the page margins that is 1144, minus the panel and its gutter it is **792** for the main column, and
+minus the row padding and the row-actions column, **616 for four cells** — a description, a quantity
+and **two money columns**. The amounts overflowed their cells by 58 logical pixels, measured by the
+screen's own widget test.
+
+Widening the money columns does not help: a money column is fixed-width by rule (below), and two of
+them at `tablePriceWidth` are 464 of the 616. Narrowing them clips a figure at some invoice size,
+which is the thing that may never happen on a document. **The panel and the table cannot both have
+the width, at any window size**, because the content cap is what bounds them both.
+
+### What was done instead, and why it still meets the requirement
+
+The width goes to the table, and the summary **splits by purpose**:
+
+- the **breakdown** — gross, discount, tax, rounding — sits beside the invoice-level fields at the
+  top of the column, which are short and were wasting the width anyway, and scrolls with them;
+- the **decision** — the grand total and the two actions — is pinned to the bottom of the window and
+  does not scroll.
+
+Detail scrolls; the figure being agreed to does not. That is the requirement met by its purpose
+rather than by its silhouette, and it is what makes the desktop arrangement distinct from the
+phone's single column and the tablet's two panes rather than a wider version of either.
+
+The grand total therefore appears twice on this tier — once at the end of the breakdown, once in the
+pinned bar. That is deliberate: a checkout total restated where the action is, not two answers to one
+question, and the panel is the only place the arithmetic is shown.
+
+### Two deviations in the lines table, corrected here
+
+Composing (b)'s table into a narrower column surfaced both:
+
+1. **The money columns were `flex`, not fixed.** A flexed money column is a column whose width
+   depends on the window, so the amount that fits at one size clips at another — which is how the
+   58-pixel overflow happened at all. They are `AppLayout.tablePriceWidth` now, like every other
+   money column in the application.
+2. **They were `alignEnd: true`.** D-037's RTL note says a money column is leading-aligned in a
+   fixed-width column: `alignEnd` in RTL puts the figure against the wrong edge and breaks the
+   vertical alignment of a column of them, which is the only reason to put money in a column.
+
+Neither was visible while that table had a page to itself. This is the general case worth naming: a
+widget tested only at its own full width has not been tested at the width it will be composed into.
+
+### The three layouts, stated so they are not collapsed later
+
+- **Mobile** — one column, one field per row, the lines reached by scrolling; the summary and both
+  actions in a bar pinned to the bottom, so the figure being decided stays visible while the lines
+  that change it are edited.
+- **Tablet** — two panes: the document's fields on the leading side, its lines on the other, each
+  scrolling independently. A tablet in portrait and a large phone in landscape both have width to
+  spend and height to save.
+- **Desktop** — fields and breakdown side by side, the table full width beneath, the decision pinned.
+
+### Draft and issue are not two equal buttons
+
+Saving a draft is reversible and costs nothing — no number, still editable (D-048). Issuing spends a
+number **permanently**, even if the invoice is later cancelled (D-013), and ends editability: from
+then on the document is corrected by cancellation, never by editing (§6). Neither consequence is
+visible from a button.
+
+So the draft is a tonal button with a one-line note about what it does *not* do, issue is the filled
+one, and issue is behind a confirmation whose Persian copy names **both** consequences and restates
+the amount. A confirmation that only asks "are you sure" is one people learn to dismiss; the test
+asserts the copy contains both «شماره» and «ویرایش» so it cannot quietly become that.
+
+`issue()` saves first and then allocates, so a confirmation placed after the save would leave a draft
+behind on every declined "no" — permanent litter from a question the user answered no to. A test
+asserts that declining writes nothing at all.
+
+### Leaving the form asks, when there is something to lose
+
+The editor is auto-disposed and nothing outside the screen watches it, so leaving discards the
+invoice — right for something never saved, and stated as intended in (a). But back is one tap away on
+every tier, and a typed invoice is the most expensive thing on this screen. A `PopScope` asks first,
+and only when there is content: **a customer or a line, not the dates**, because a freshly opened
+form already has both and a confirmation triggered on every exit is one nobody reads.
+
+Not requested in the increment brief. Recorded as a judgement call: shipping a form whose back button
+destroys work without asking is the kind of thing that is only ever found by losing work.

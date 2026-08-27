@@ -729,10 +729,10 @@ already enforced. What this phase adds is the length and character-class boundar
 
 ## Phase 4 — Invoice Creation
 
-**Status:** `IN_PROGRESS` — (a), (a2), (a3), (b) and (c) are all accepted; (c2) is complete with its
-device proof passed and is awaiting review. **(d) is the only increment left.** The largest and most
-consequential phase in the project, split into four increments at the owner's instruction and grown
-to seven, each reported and stopped for review rather than landing whole.
+**Status:** `COMPLETED` 2026-08-27 — every increment delivered; (d) awaits the owner's manual pass on
+the phone. The largest and most consequential phase in the project, split into four increments at the
+owner's instruction and grown to seven, each reported and stopped for review rather than landing
+whole.
 
 | # | Increment | Status |
 |---|---|---|
@@ -741,8 +741,8 @@ to seven, each reported and stopped for review rather than landing whole.
 | a3 | **The table-rebuild guard** (D-049) — the cascade defect made structural | `COMPLETED` 2026-08-26, **accepted** |
 | b | Line item entry: product picker, free-text lines, quantity, per-line discount and tax | `COMPLETED` 2026-08-26, **accepted** |
 | c | Invoice-level fields: customer, dates, discount, tax, notes, **and the save** | `COMPLETED` 2026-08-26, **accepted** |
-| c2 | **The party snapshot and the payment term** (D-051, D-052) — `schemaVersion = 3` | `COMPLETED` 2026-08-27 — device proof **passed** |
-| d | The assembled screen at all three tiers, on real data | `NOT_STARTED` |
+| c2 | **The party snapshot and the payment term** (D-051, D-052) — `schemaVersion = 3` | `COMPLETED` 2026-08-27, **accepted** |
+| d | **The assembled screen** at all three tiers, on real data (D-053) | `COMPLETED` 2026-08-27 — device pass **passed** |
 
 Increment (a2) was not in the owner's original four-way split. It was pulled out of (c) and placed
 **before (b)** on the owner's instruction when D-048 was approved: it is the project's first schema
@@ -1053,6 +1053,90 @@ change is not neutral and is worth stating:
 - **Backup and export (Phase 6) inherit this.** An exported backup will now carry the identifiers
   twice. That does not change what §8 requires — the export is encrypted with a user-supplied
   password either way — but it is worth knowing when that phase is built.
+
+**Increment (d) — completed 2026-08-27 · the assembled screen, and the route**
+
+**Phase 4 closes here.** `/invoices/new` exists, the invoice list has a create button, and a user can
+build an invoice from customers and products, see the totals move, save it as a draft or issue it.
+
+```
+lib/features/invoices/presentation/invoice_editor_screen.dart          NEW  the screen
+lib/features/invoices/presentation/widgets/invoice_totals_summary.dart NEW  the breakdown
+lib/core/router/{app_router,destinations}.dart      + /invoices/new, declared before any :id
+lib/features/invoices/presentation/invoices_screen.dart  + the create button, the FAB, the
+                                                    empty state's call to action
+lib/features/invoices/presentation/widgets/invoice_lines_section.dart
+                                                    money columns fixed-width and leading-aligned
+```
+
+- **Three layouts, and the desktop one was decided by a measurement** (D-053). A 320-pixel summary
+  panel down the side of the desktop form leaves 616 logical pixels for a four-column table with two
+  money columns in it, and the amounts overflowed by 58. The width goes to the table; the summary
+  splits by purpose — the **breakdown** beside the fields, the **decision** (grand total and both
+  actions) pinned. Mobile is one column with a pinned bar; tablet is two panes with the fields on the
+  leading side and the lines on the other.
+- **Two deviations in (b)'s table, corrected.** Its money columns were `flex` and `alignEnd`, against
+  D-037 on both counts. Invisible while that table had a page to itself, which is the general lesson:
+  **a widget tested only at its own full width has not been tested at the width it is composed into.**
+- **Every figure is the engine's.** The panel is the reconciliation equation rendered — it starts
+  from `grossTotal`, not `subtotal` (D-047), so the summary adds up by hand; a subtotal-based one is
+  short by exactly the line discounts. The screen calls no arithmetic;
+  `single_calculation_path_test.dart` still fails the build if it tries.
+- **A designed empty state for the summary**, not a column of zeros. An invoice with no lines has
+  totals, all zero, and rendering them would be honest and useless — it reads as a fault. Until there
+  is a line the panel says what will appear there.
+- **Draft and issue are visibly different actions.** Tonal versus filled, a one-line note under the
+  draft saying what it does *not* do, and a confirmation for issue whose Persian copy names both
+  irreversible consequences — the number allocated and the end of editability — and restates the
+  amount. A test asserts the copy contains both «شماره» and «ویرایش», so it cannot decay into "are
+  you sure". Declining writes **nothing**, not even the draft `issue()` would otherwise have saved
+  first.
+- **Leaving asks, when there is something to lose.** The editor is auto-disposed, so back discards a
+  typed invoice. `PopScope` confirms — but only when a customer or a line has been entered, never for
+  the dates a fresh form already has. Not in the brief; recorded in D-053 as a judgement call.
+- **The blocked reason is stated, not just the disabled button.** «برای ذخیره، مشتری را انتخاب کنید»
+  or «…دست‌کم یک سطر اضافه کنید», whichever half is missing.
+- **17 new tests; 693 pass in total** (was 676). Decision recorded: **D-053**.
+
+**The device pass — the debt (b) and (c) left, paid**
+
+`integration_test/invoice_form_device_test.dart` drives the whole form through the **real sheets** on
+the real phone, and collects every layout overflow raised anywhere in the run rather than letting
+Flutter print a red band and carry on. On the **Redmi Note 8 Pro**, 2026-08-27:
+
+```
+logical size: 392.7 x 803.6      pixel ratio 2.75      16sp renders at 16.0
+customer: picked through the sheet's search, typed «مريم» with the Arabic ي
+add-line at: 400 px down        <- the finding below
+line: added at quantity ۲٫۵ through the numeric sheet
+issue date: picked from the Jalali grid
+issued: INV-1405-0001      party snapshot written
+grand total: 34,375,000 rial    = 31,250,000 + 10%, reconciled by hand
+layout errors : 0
+```
+
+**One finding, measured rather than felt: the buttons that add a line are 400 logical pixels down.**
+The invoice-level fields fill the first viewport of a 393 × 804 phone, so the first thing a user
+wants to do on an invoice form — say what is being billed — is below the fold. Not a defect and not
+changed unilaterally: the field order (customer, then dates, then lines) is the order the document
+reads in. Recorded for the owner's judgement.
+
+**What this pass cannot do**, and why the manual one still stands: synthetic taps never miss, never
+hesitate, and never try the thing nobody designed for. It proves the flow works and the layout holds
+at real metrics in Vazirmatn; it does not prove the form is pleasant to use with a thumb.
+
+**Security note (increment d).** No new data is stored and no new input is accepted — every field on
+this screen was built and reviewed in (b) and (c), and every write goes through `InvoiceEditor`, whose
+paths were reviewed in (c). What is new:
+
+- **A route.** `/invoices/new` takes no parameters, so there is no input from the URL to validate, and
+  it is declared before any future `/invoices/:id` so a typed URL cannot resolve to the wrong screen.
+- **Nothing on this screen logs.** The screen makes no `AppLog` call at all; the one failure path
+  returns null from the controller, which logs through the wrapper without the amount or the party.
+  `logging_path_test.dart` covers the new file like every other.
+- **A repository exception still never reaches the user** (§7): a failed write becomes «ذخیره فاکتور
+  ممکن نشد…» and the screen stays put, with the invoice still in the form to retry from.
+- **No new dependency, permission or platform surface.**
 
 ---
 

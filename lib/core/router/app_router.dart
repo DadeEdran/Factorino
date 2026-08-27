@@ -5,6 +5,7 @@ import '../../features/customers/presentation/customer_detail_screen.dart';
 import '../../features/customers/presentation/customer_form_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/invoices/presentation/invoice_editor_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/products/presentation/product_form_screen.dart';
 import '../../features/products/presentation/products_screen.dart';
@@ -16,8 +17,9 @@ import 'destinations.dart';
 /// The router (D-009).
 ///
 /// **Only routes whose screens exist are registered.** The remaining routes
-/// named in the project spec — product detail, invoice detail, create/edit
-/// invoice — arrive with the screens they open, in later phases. Registering
+/// named in the project spec — product detail and invoice detail — arrive with
+/// the screens they open, in later phases. `/invoices/new` arrived with
+/// Phase 4 (d). Registering
 /// them now would mean a typed URL or a restored deep link could land on a
 /// route that resolves to nothing, which is the same failure D-021 rejects for
 /// گزارش‌ها, one level down.
@@ -64,7 +66,21 @@ GoRouter createRouter() {
             },
         branches: <StatefulShellBranch>[
           _branch(AppDestination.dashboard, const DashboardScreen()),
-          _branch(AppDestination.invoices, const InvoicesScreen()),
+          _branch(
+            AppDestination.invoices,
+            const InvoicesScreen(),
+            children: <RouteBase>[
+              // `new` first, as under /customers: go_router matches in
+              // declaration order, and a future `/invoices/:id` declared above
+              // this would resolve /invoices/new to a detail page for an
+              // invoice whose id is the word "new".
+              GoRoute(
+                path: 'new',
+                builder: (BuildContext context, GoRouterState state) =>
+                    const InvoiceEditorScreen(),
+              ),
+            ],
+          ),
           _branch(
             AppDestination.customers,
             const CustomersScreen(),

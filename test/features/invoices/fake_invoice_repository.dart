@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:factorino/core/date/jalali_period.dart';
+import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/models/customer_totals.dart';
 import 'package:factorino/data/models/invoice.dart';
@@ -162,19 +163,72 @@ class FakeInvoiceRepository implements InvoiceRepository {
   Stream<InvoiceDetail?> watchDetail(String id) =>
       throw UnimplementedError('not exercised by these tests');
 
+  /// Whether a write should fail, for the screen's «ذخیره ممکن نشد» path.
+  bool failWrites = false;
+
+  /// Every draft handed to [create], in order.
+  ///
+  /// Recorded rather than asserted here, because what matters at the screen is
+  /// **what it sent** — a screen that writes a different invoice from the one
+  /// it previewed is the defect, and `invoice_preview_matches_write_test.dart`
+  /// pins the other half against the real database.
+  final List<InvoiceDraft> createdDrafts = <InvoiceDraft>[];
+
+  /// The ids passed to [issue], in order. Empty is the assertion that matters
+  /// when a confirmation was declined.
+  final List<String> issuedIds = <String>[];
+
   @override
   Future<InvoiceCreationResult> create(
     InvoiceDraft draft, {
     InvoiceStatus status = InvoiceStatus.draft,
-  }) => throw UnimplementedError('not exercised by these tests');
+  }) async {
+    if (failWrites) throw StateError('write refused by the fake');
+    createdDrafts.add(draft);
+    return InvoiceCreationResult(
+      invoice: _invoice(status: status),
+      // The engine's warnings reach the screen from the live preview, not from
+      // the write result, so there is nothing to synthesize here.
+      warnings: const <InvoiceWarning>[],
+    );
+  }
 
   @override
   Future<InvoiceCreationResult> updateDraft(String id, InvoiceDraft draft) =>
       throw UnimplementedError('not exercised by these tests');
 
   @override
-  Future<Invoice> issue(String id) =>
-      throw UnimplementedError('not exercised by these tests');
+  Future<Invoice> issue(String id) async {
+    if (failWrites) throw StateError('write refused by the fake');
+    issuedIds.add(id);
+    return _invoice(status: InvoiceStatus.unpaid, number: issuedNumber);
+  }
+
+  /// The number [issue] hands back. Fixed rather than allocated: allocation is
+  /// the repository's own concern and has its own tests against the real
+  /// database (D-013, D-048).
+  static const String issuedNumber = 'INV-1405-0001';
+
+  Invoice _invoice({required InvoiceStatus status, String? number}) {
+    final DateTime now = DateTime.utc(2026, 8, 24, 12);
+    return Invoice(
+      id: 'invoice-1',
+      number: number,
+      numberYear: number == null ? null : 1405,
+      numberSequence: number == null ? null : 1,
+      customerId: 'customer-1',
+      issueDate: now,
+      status: status,
+      discount: Money.zero,
+      subtotal: Money.zero,
+      totalDiscount: Money.zero,
+      totalTax: Money.zero,
+      roundingAdjustment: Money.zero,
+      grandTotal: Money.zero,
+      createdAt: now,
+      updatedAt: now,
+    );
+  }
 
   @override
   Future<Invoice> cancel(String id) =>

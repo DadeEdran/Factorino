@@ -91,7 +91,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get emptyInvoicesBody =>
-      'فاکتورهای شما پس از ثبت، همراه با وضعیت پرداخت در این فهرست نمایش داده می‌شوند.';
+      'اولین فاکتور خود را بسازید تا همراه با وضعیت پرداختش در این فهرست نمایش داده شود.';
 
   @override
   String get customersTitle => 'مشتریان';
@@ -544,6 +544,64 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceIncompleteLines => 'برای ذخیره، دست‌کم یک سطر اضافه کنید.';
+
+  @override
+  String get invoiceCreateTitle => 'فاکتور جدید';
+
+  @override
+  String get invoiceCreateAction => 'فاکتور جدید';
+
+  @override
+  String get invoiceSummaryTitle => 'جمع‌بندی';
+
+  @override
+  String get invoiceSummaryGross => 'جمع سطرها';
+
+  @override
+  String get invoiceSummaryDiscount => 'کسر تخفیف';
+
+  @override
+  String get invoiceSummaryTax => 'مالیات بر ارزش افزوده';
+
+  @override
+  String get invoiceSummaryRounding => 'رند کردن';
+
+  @override
+  String get invoiceSummaryGrandTotal => 'مبلغ قابل پرداخت';
+
+  @override
+  String get invoiceSummaryEmpty =>
+      'با افزودن سطر، مبلغ فاکتور همین‌جا محاسبه می‌شود.';
+
+  @override
+  String get invoiceActionSaveDraftHint =>
+      'قابل ویرایش می‌ماند و شماره نمی‌گیرد.';
+
+  @override
+  String get invoiceIssueConfirmTitle => 'این فاکتور صادر شود؟';
+
+  @override
+  String get invoiceIssueConfirmBody =>
+      'با صدور، فاکتور شمارهٔ رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.';
+
+  @override
+  String get invoiceIssueConfirmAction => 'صدور و ثبت نهایی';
+
+  @override
+  String get invoiceDiscardTitle => 'این فاکتور رها شود؟';
+
+  @override
+  String get invoiceDiscardBody =>
+      'این فاکتور هنوز ذخیره نشده است. اگر خارج شوید، آنچه وارد کرده‌اید از بین می‌رود.';
+
+  @override
+  String get invoiceDiscardAction => 'رها کردن';
+
+  @override
+  String get invoiceDiscardKeepAction => 'ادامهٔ ویرایش';
+
+  @override
+  String get invoiceBackTooltip => 'بازگشت به فهرست فاکتورها';
 
   @override
   String get invoiceLinesTitle => 'سطرهای فاکتور';

@@ -91,12 +91,45 @@ void main() {
       expect(find.byType(CircularProgressIndicator), findsNothing);
     });
 
-    testWidgets('the empty state offers no create action', (
+    testWidgets('the empty state offers the create action it now can', (
       WidgetTester tester,
     ) async {
-      // The invoice form is Phase 4 and its route is unregistered, so an
-      // affordance here would lead nowhere (D-021, one level down). The empty
-      // state explains and stops.
+      // Until Phase 4 (d) the invoice form did not exist and its route was
+      // unregistered, so this state deliberately explained and stopped —
+      // an affordance leading nowhere is worse than its absence (D-021, one
+      // level down). The form exists now, so the state gets its call to
+      // action (§10).
+      await pumpScreen(
+        tester,
+        const InvoicesScreen(),
+        overrides: withRepository(
+          FakeInvoiceRepository(const <InvoiceListItem>[]),
+        ),
+        size: kDesktopSize,
+      );
+      await tester.pumpAndSettle();
+
+      final AppStrings strings = stringsOf(tester, InvoicesScreen);
+      expect(find.text(strings.emptyInvoicesTitle), findsOneWidget);
+      expect(find.text(strings.emptyInvoicesBody), findsOneWidget);
+      // Scoped to the empty state, because this page carries a second create
+      // button in its header at this tier: an unscoped `find.text` would pass
+      // with the empty state's own action missing entirely.
+      expect(
+        find.descendant(
+          of: find.byType(EmptyState),
+          matching: find.text(strings.invoiceCreateAction),
+        ),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('on a phone the empty state leaves the button to the FAB', (
+      WidgetTester tester,
+    ) async {
+      // The floating action button already sits over this state on a phone,
+      // and two buttons saying «فاکتور جدید» a centimetre apart is one too
+      // many.
       await pumpScreen(
         tester,
         const InvoicesScreen(),
@@ -107,16 +140,14 @@ void main() {
       await tester.pumpAndSettle();
 
       final AppStrings strings = stringsOf(tester, InvoicesScreen);
-      expect(find.text(strings.emptyInvoicesTitle), findsOneWidget);
-      expect(find.text(strings.emptyInvoicesBody), findsOneWidget);
+      expect(find.byType(FloatingActionButton), findsOneWidget);
       expect(
         find.descendant(
           of: find.byType(EmptyState),
-          matching: find.byType(FilledButton),
+          matching: find.text(strings.invoiceCreateAction),
         ),
         findsNothing,
       );
-      expect(find.byType(FloatingActionButton), findsNothing);
     });
 
     testWidgets('surfaces a failure as Persian copy, never as the exception', (
