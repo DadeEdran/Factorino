@@ -926,6 +926,44 @@
     "placeholders": { "amount": { "type": "String" } }
   },
 
+  "errorBackupExportFailedTitle": "تهیهٔ پشتیبان انجام نشد",
+  "@errorBackupExportFailedTitle": {
+    "description": "Export failed. The file is deleted on any failure, so there is never a half-written backup to explain away."
+  },
+  "errorBackupExportFailedBody": "فایل پشتیبان ساخته نشد. لطفاً دوباره تلاش کنید.",
+  "@errorBackupExportFailedBody": {},
+
+  "errorBackupCannotOpenTitle": "فایل پشتیبان باز نشد",
+  "@errorBackupCannotOpenTitle": {
+    "description": "Covers a wrong password, a corrupted file and a tampered file together, because SQLCipher cannot tell them apart -- so the copy names both plausible remedies instead of guessing one (D-069)."
+  },
+  "errorBackupCannotOpenBody": "گذرواژه نادرست است یا فایل آسیب دیده. گذرواژه را دوباره وارد کنید یا فایل دیگری انتخاب کنید. اطلاعات فعلی شما دست‌نخورده است.",
+  "@errorBackupCannotOpenBody": {},
+
+  "errorBackupNotABackupTitle": "این فایل پشتیبان فاکتورینو نیست",
+  "@errorBackupNotABackupTitle": {},
+  "errorBackupNotABackupBody": "فایل باز شد اما محتوای آن یک پشتیبان فاکتورینو نیست. فایل دیگری انتخاب کنید. اطلاعات فعلی شما دست‌نخورده است.",
+  "@errorBackupNotABackupBody": {},
+
+  "errorBackupFromNewerVersionTitle": "این پشتیبان با نسخهٔ جدیدتری ساخته شده است",
+  "@errorBackupFromNewerVersionTitle": {
+    "description": "Refused rather than attempted: this build has no migration step for a shape it has never seen. The copy says what to do -- update the app -- rather than only that it failed."
+  },
+  "errorBackupFromNewerVersionBody": "برای بازیابی این فایل، ابتدا برنامه را به‌روز کنید. اطلاعات فعلی شما دست‌نخورده است.",
+  "@errorBackupFromNewerVersionBody": {},
+
+  "errorBackupCountMismatchTitle": "فایل پشتیبان ناقص است",
+  "@errorBackupCountMismatchTitle": {},
+  "errorBackupCountMismatchBody": "تعداد رکوردهای داخل فایل با آنچه در آن ثبت شده هم‌خوانی ندارد، بنابراین بازیابی انجام نشد. اطلاعات فعلی شما دست‌نخورده است.",
+  "@errorBackupCountMismatchBody": {},
+
+  "errorBackupRestoreFailedTitle": "بازیابی انجام نشد",
+  "@errorBackupRestoreFailedTitle": {
+    "description": "The replace-all transaction rolled back. The body leads with the reassurance because it is the one thing the user most needs to know and the one thing they cannot check for themselves."
+  },
+  "errorBackupRestoreFailedBody": "هیچ تغییری در اطلاعات شما ایجاد نشد و همه‌چیز مانند قبل است. لطفاً دوباره تلاش کنید.",
+  "@errorBackupRestoreFailedBody": {},
+
   "errorGenericTitle": "خطایی رخ داد",
   "@errorGenericTitle": {
     "description": "Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user."

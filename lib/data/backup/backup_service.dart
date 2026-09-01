@@ -47,6 +47,51 @@ enum BackupExportProblem {
   notEncrypted,
 }
 
+/// Why an import was refused.
+///
+/// Machine-readable; each maps to its own Persian copy in `describeFailure`,
+/// because "could not restore" tells a user nothing about whether to try a
+/// different password, a different file, or a newer version of the app.
+enum BackupImportProblem {
+  /// The file could not be opened with this passphrase.
+  ///
+  /// **Deliberately one case, not three.** A wrong password, a corrupted file
+  /// and a tampered file are indistinguishable here by design: SQLCipher
+  /// authenticates the page, and a failure means only "this passphrase did not
+  /// produce a readable page". Splitting them would mean guessing, and the
+  /// guess would be a claim about the user's file that nothing supports.
+  cannotOpen,
+
+  /// It opened, but it is not a Factorino backup — no `backup_meta`.
+  notABackup,
+
+  /// Written by a **newer** version of the application.
+  ///
+  /// Refused rather than attempted: this build has no migration step for a
+  /// shape it has never seen, and a partial read of a newer format is how
+  /// silently-wrong data gets in.
+  fromNewerVersion,
+
+  /// The container's own row counts disagree with what it holds.
+  countMismatch,
+
+  /// The replace-all transaction failed. **The live database is unchanged** —
+  /// that is the guarantee this problem exists to report.
+  restoreFailed,
+}
+
+/// Raised when an import was refused or failed.
+///
+/// Carries no passphrase and no path (D-069).
+class BackupImportFailure implements Exception {
+  const BackupImportFailure(this.problem);
+
+  final BackupImportProblem problem;
+
+  @override
+  String toString() => 'BackupImportFailure: ${problem.name}';
+}
+
 /// Raised when an export could not be completed.
 ///
 /// Carries no passphrase and no path: nothing about a backup is logged
@@ -98,6 +143,53 @@ abstract interface class BackupService {
   /// [file] is a path in **app-private storage**. Delivering it to a location
   /// the user chose is the gateway's job, not this one (D-071).
   Future<BackupSummary> exportTo({
+    required File file,
+    required String passphrase,
+  });
+
+  /// Opens [file] and reports what it holds, **without touching live data**.
+  ///
+  /// Every refusal an import can raise is raised here first, so the
+  /// confirmation the user is shown describes a backup that has already been
+  /// proved readable. Nothing about the live database changes.
+  Future<BackupSummary> inspect({
+    required File file,
+    required String passphrase,
+  });
+
+  /// **Replaces** the live database with the contents of [file].
+  ///
+  /// Not a merge. See [BackupService] docs and the Persian copy: a user who
+  /// expects a merge and receives a replacement loses everything entered since
+  /// the backup was taken (D-069).
+  ///
+  /// [file] must be a path in **app-private storage** — the gateway copies the
+  /// user's chosen file there before this is called (D-071). That matters
+  /// beyond tidiness: an older backup is **migrated up the ladder in place** on
+  /// open, and doing that to the user's own file would rewrite the artifact
+  /// they are restoring from.
+  ///
+  /// ### A restore is a decrypt and a re-encrypt, under two different keys
+  ///
+  /// Stated here rather than left to be inferred from the code path, because
+  /// getting it wrong in either direction is a security defect:
+  ///
+  /// - The **backup** is keyed by the **user's password**, through sqlite3mc's
+  ///   SQLCipher KDF. That is what makes it portable to a replacement device.
+  /// - The **live database** is keyed by **this device's key**, a random value
+  ///   held in `flutter_secure_storage` (Android Keystore / Windows DPAPI).
+  ///
+  /// So rows read out of the container are decrypted under the password and
+  /// written back under the device key. **The password never becomes the
+  /// database key, and the device key is never written into a backup.** A
+  /// restored database is therefore protected by the receiving device from the
+  /// moment the transaction commits — not by whatever password the user chose
+  /// months ago, and not by the key of the device the backup came from, which
+  /// may be lost or stolen.
+  ///
+  /// The device key is neither read nor touched here: it is already applied to
+  /// `_live`'s connection (D-020), and this method only writes rows through it.
+  Future<BackupSummary> importFrom({
     required File file,
     required String passphrase,
   });
@@ -365,6 +457,213 @@ class DriftBackupService implements BackupService {
       throw ArgumentError.value(name, 'name', 'not a backup table');
     }
     return name;
+  }
+
+  @override
+  Future<BackupSummary> inspect({
+    required File file,
+    required String passphrase,
+  }) async {
+    final AppDatabase container = await _openContainer(file, passphrase);
+    try {
+      return await _readAndCheck(container, file);
+    } finally {
+      await container.close();
+    }
+  }
+
+  @override
+  Future<BackupSummary> importFrom({
+    required File file,
+    required String passphrase,
+  }) async {
+    // ---- Phase 1: verify. Nothing below this line touches live data. -------
+    //
+    // Every refusal happens here, with the user's database untouched. Only
+    // once the container has been opened, identified, version-checked and
+    // counted does anything get deleted.
+    final AppDatabase container = await _openContainer(file, passphrase);
+
+    try {
+      final BackupSummary summary = await _readAndCheck(container, file);
+
+      // ---- Phase 2: replace, in one transaction. --------------------------
+      //
+      // Read everything out of the container FIRST, before the live
+      // transaction opens. Interleaving two databases inside one transaction
+      // would mean a read failure on the container aborting a live
+      // transaction that is already half-way through deleting the user's data.
+      final Map<String, List<Insertable<dynamic>>> incoming = await _readAll(
+        container,
+      );
+
+      try {
+        await _live.transaction(() async {
+          for (final String name in kBackupTableOrder.reversed) {
+            await _live.customStatement('delete from ${_tableSql(name)}');
+          }
+
+          await _insertAll(_live.customers, incoming['customers']!);
+          await _insertAll(_live.products, incoming['products']!);
+          await _insertAll(_live.invoices, incoming['invoices']!);
+          await _insertAll(_live.invoiceItems, incoming['invoice_items']!);
+          await _insertAll(_live.payments, incoming['payments']!);
+          await _insertAll(_live.settings, incoming['settings']!);
+        });
+      } catch (_) {
+        // drift rolls the transaction back, so the live database is exactly
+        // as it was. Reported as its own problem so the Persian copy can say
+        // the one thing the user most needs to hear: nothing was lost.
+        throw const BackupImportFailure(BackupImportProblem.restoreFailed);
+      }
+
+      return summary;
+    } finally {
+      await container.close();
+    }
+  }
+
+  /// Opens [file] as a backup container, mapping any failure to [cannotOpen].
+  ///
+  /// **An older backup migrates itself here.** The container is opened as an
+  /// [AppDatabase], so drift runs the same `onUpgrade` ladder the application
+  /// uses — the ladder that is already covered by migration tests. A newer one
+  /// cannot be handled that way and is refused in [_readAndCheck]; drift would
+  /// otherwise throw on a `schemaVersion` below the file's.
+  Future<AppDatabase> _openContainer(File file, String passphrase) async {
+    late final AppDatabase container;
+    try {
+      container = AppDatabase(
+        openPassphraseKeyedDatabase(file: file, passphrase: passphrase),
+      );
+      // Forces the keyed open and the migration ladder to actually run. The
+      // executor is lazy; constructing it proves nothing.
+      // soft-delete-exempt: forces decryption and migration. Reads no user
+      // rows.
+      await container.customSelect('select 1').get();
+    } on BackupPassphraseRejected {
+      // An empty or NUL-bearing passphrase is the caller's error, not the
+      // file's, and keeps its own type.
+      rethrow;
+    } catch (_) {
+      throw const BackupImportFailure(BackupImportProblem.cannotOpen);
+    }
+    return container;
+  }
+
+  /// Reads `backup_meta`, checks the version and the counts.
+  Future<BackupSummary> _readAndCheck(AppDatabase container, File file) async {
+    late final List<QueryRow> metaRows;
+    try {
+      metaRows = await container
+          // soft-delete-exempt: `backup_meta` is the container's own metadata
+          // and has no `deleted_at` column.
+          .customSelect(
+            'select format_version, app_schema_version, created_at '
+            'from backup_meta',
+          )
+          .get();
+    } catch (_) {
+      // No such table: it opened, so the passphrase was right, but it is not
+      // one of ours.
+      throw const BackupImportFailure(BackupImportProblem.notABackup);
+    }
+
+    if (metaRows.length != 1) {
+      throw const BackupImportFailure(BackupImportProblem.notABackup);
+    }
+
+    final QueryRow meta = metaRows.single;
+    final int formatVersion = meta.read<int>('format_version');
+    final int schemaVersion = meta.read<int>('app_schema_version');
+
+    // Newer in EITHER dimension is refused. The two move for different
+    // reasons — the container's shape and the data's shape — and being behind
+    // on either one means this build is reading something it does not know.
+    if (formatVersion > kBackupFormatVersion ||
+        schemaVersion > container.schemaVersion) {
+      throw const BackupImportFailure(BackupImportProblem.fromNewerVersion);
+    }
+
+    final List<QueryRow> countRows = await container
+        // soft-delete-exempt: `backup_table_counts` is the container's own
+        // metadata and has no `deleted_at` column.
+        .customSelect('select table_name, row_count from backup_table_counts')
+        .get();
+    final Map<String, int> stored = <String, int>{
+      for (final QueryRow row in countRows)
+        row.read<String>('table_name'): row.read<int>('row_count'),
+    };
+
+    final Map<String, int> actual = <String, int>{};
+    for (final String name in kBackupTableOrder) {
+      final List<QueryRow> rows = await container
+          // soft-delete-exempt: this count must include tombstones, because
+          // the backup carries them. Filtering here would report every backup
+          // taken from a database with a deleted row as inconsistent.
+          .customSelect('select count(*) as c from ${_tableSql(name)}')
+          .get();
+      actual[name] = rows.single.read<int>('c');
+
+      if (stored[name] != actual[name]) {
+        throw const BackupImportFailure(BackupImportProblem.countMismatch);
+      }
+    }
+
+    return BackupSummary(
+      formatVersion: formatVersion,
+      appSchemaVersion: schemaVersion,
+      createdAt: DateTime.fromMillisecondsSinceEpoch(
+        meta.read<int>('created_at'),
+        isUtc: true,
+      ),
+      rowCounts: Map<String, int>.unmodifiable(actual),
+      sizeBytes: file.lengthSync(),
+    );
+  }
+
+  /// Reads every row out of the container, before the live transaction opens.
+  Future<Map<String, List<Insertable<dynamic>>>> _readAll(
+    AppDatabase container,
+  ) async {
+    return <String, List<Insertable<dynamic>>>{
+      'customers': await _readTable(container, container.customers),
+      'products': await _readTable(container, container.products),
+      'invoices': await _readTable(container, container.invoices),
+      'invoice_items': await _readTable(container, container.invoiceItems),
+      'payments': await _readTable(container, container.payments),
+      'settings': await _readTable(container, container.settings),
+    };
+  }
+
+  /// Every row of one container table, tombstones included.
+  ///
+  /// Extracted so the soft-delete exemption is stated **once, where it can be
+  /// reviewed**, rather than copied above six call sites where the sixth copy
+  /// is the one nobody reads.
+  // Returns the widened element type rather than `List<D>`: the map this
+  // feeds is `List<Insertable<dynamic>>`, and asking inference to solve for a
+  // `D extends Insertable<D>` against that produces `Insertable<Insertable<…>>`
+  // and fails. The rows keep their real type at the insert site, which is where
+  // it matters.
+  Future<List<Insertable<dynamic>>> _readTable<
+    T extends Table,
+    D extends Insertable<D>
+  >(AppDatabase container, TableInfo<T, D> table) {
+    // soft-delete-exempt: a backup restores tombstones as tombstones. A
+    // deleted customer must come back deleted, not resurrected -- and the
+    // future sync layer needs the deletion to have happened at all.
+    return container.select(table).get();
+  }
+
+  Future<void> _insertAll<T extends Table, D extends Insertable<D>>(
+    TableInfo<T, D> table,
+    List<Insertable<dynamic>> rows,
+  ) async {
+    if (rows.isEmpty) return;
+    await _live.batch((Batch batch) {
+      batch.insertAll(table, rows.cast<Insertable<D>>());
+    });
   }
 
   void _discard(File file) {

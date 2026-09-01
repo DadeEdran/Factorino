@@ -2231,7 +2231,61 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 6 (a) and (b) are done.** Next is **(c): import, transactional, with the refusals.**
+**Phase 6 (a), (b) and (c) are done.** Next is **(d): the screen, and settings becomes editable.**
+
+### What (c) delivered — import, and what every refusal leaves behind
+
+**1068 tests, was 1052** (+16); analyze clean.
+
+**Two phases, and the boundary between them is the whole design.** `importFrom` opens the container,
+identifies it, version-checks it and counts it — **before a single row of live data is removed**.
+Only then does it read everything out of the container, and only then does the live transaction open.
+Reading the container **before** the transaction is deliberate: interleaving two databases inside one
+transaction would let a read failure on the backup abort a live transaction already half-way through
+deleting the user's data.
+
+**The rollback is tested by failing, not only by succeeding.** The container is made genuinely
+invalid in a way that bites *part-way through* — two issued invoices sharing one number, which the
+live unique index refuses — so by the time it fails, `customers` and `products` have already been
+deleted and reinserted. The live database comes back **row-for-row identical**. Writing that test
+turned up something reassuring: the container carries the same unique index, so it refused the
+duplicate too, and the index had to be dropped **inside the container** first.
+
+**Refusals, each asserting what it left behind** — the Phase 5 (c) pattern:
+
+| Refusal | Problem | Live data |
+|---|---|---|
+| Wrong passphrase | `cannotOpen` | unchanged |
+| Tampered byte | `cannotOpen` — **deliberately the same case** | unchanged |
+| A keyed database that is not a backup | `notABackup` | unchanged |
+| Newer app schema version | `fromNewerVersion` | unchanged |
+| Newer container format version | `fromNewerVersion` — checked separately | unchanged |
+| Counts disagreeing with contents | `countMismatch` | unchanged |
+| Empty passphrase | `BackupPassphraseRejected` | unchanged |
+
+A wrong password, a corrupt file and a tampered file are **one case on purpose**: SQLCipher
+authenticates the page and cannot tell them apart, so splitting them would mean guessing, and the
+guess would be a claim about the user's file that nothing supports. The Persian copy therefore names
+both plausible remedies rather than one.
+
+**Version compatibility both ways.** Downward through the **real ladder**: the container is opened as
+an `AppDatabase`, so drift runs the same `onUpgrade` steps the application runs — tested by building
+an actual v3 container with the generated `DatabaseAtV3` and restoring from it. Upward it is refused,
+with copy that says *update the app* rather than failing generically.
+
+**Every Persian body states that the existing data is untouched**, because that is the thing the user
+most needs to know and cannot check for themselves.
+
+**Also pinned:** a tombstone restores as a tombstone, settings restore without defaults being reseeded
+over them, and an import **replaces rather than merges** — the behaviour the confirmation copy
+promises.
+
+**And a restore is a decrypt under one key and a re-encrypt under another**, now stated rather than
+implied (D-069, owner's question). The backup is keyed by the **user's password**; the live database
+by **this device's key** in `flutter_secure_storage`. So the password never becomes the database key,
+and the device key is never written into a backup — which is what lets a backup be restored onto a
+device that has never seen the original, and why there is deliberately no mechanism to move a device
+key anywhere.
 
 ### The device session, 2026-09-01 — all five owed items cleared
 

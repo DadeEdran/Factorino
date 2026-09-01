@@ -4309,3 +4309,31 @@ truncated or empty write could not pass by looking plausible.
   `backup_file_gateway.dart` imports `flutter_file_dialog` or `file_selector`. It also fails if the
   gateway *stops* importing them, so it cannot pass vacuously after a rename or a well-meaning
   tidy-up. A note in this log would not have made that true; the guard does.
+
+### Amendment, 2026-09-01 (third) — what a restore does to the encryption key
+
+Raised by the project owner as something that should be **stated rather than implied by the code
+path**, and they are right: it is a security property, and a reader who infers it from two call sites
+can infer it wrongly in either direction.
+
+**A restore is a decrypt under one key and a re-encrypt under another.**
+
+| | Keyed by | Held where |
+|---|---|---|
+| The backup container | the **user's password** | nowhere — the user remembers it, and §8 says losing it loses the backup |
+| The live database | **this device's random key** | `flutter_secure_storage` — Android Keystore / Windows DPAPI (D-010) |
+
+Rows are read out of the container decrypted under the password, and written into the live database
+encrypted under the device key. Two consequences worth naming:
+
+1. **The backup password never becomes the database key.** A restored database is protected by the
+   receiving device from the moment the transaction commits — not by a password the user chose months
+   ago and may have written down.
+2. **The device key is never written into a backup.** A backup carries no key material at all, which
+   is what lets it be restored onto a device that has never seen the original. It also means a stolen
+   backup file is worth exactly what its password is worth, and nothing more.
+
+The device key is neither read nor handled by the import path. It is already applied to the live
+connection before drift issues anything (D-020); import only writes rows through that connection.
+**Restoring onto a new device therefore needs no key export, and there is deliberately no mechanism
+to move a device key anywhere** — adding one would turn the strongest part of D-010 into a file.

@@ -1033,6 +1033,49 @@ class AppStringsFa extends AppStrings {
   }
 
   @override
+  String get errorBackupExportFailedTitle => 'تهیهٔ پشتیبان انجام نشد';
+
+  @override
+  String get errorBackupExportFailedBody =>
+      'فایل پشتیبان ساخته نشد. لطفاً دوباره تلاش کنید.';
+
+  @override
+  String get errorBackupCannotOpenTitle => 'فایل پشتیبان باز نشد';
+
+  @override
+  String get errorBackupCannotOpenBody =>
+      'گذرواژه نادرست است یا فایل آسیب دیده. گذرواژه را دوباره وارد کنید یا فایل دیگری انتخاب کنید. اطلاعات فعلی شما دست‌نخورده است.';
+
+  @override
+  String get errorBackupNotABackupTitle => 'این فایل پشتیبان فاکتورینو نیست';
+
+  @override
+  String get errorBackupNotABackupBody =>
+      'فایل باز شد اما محتوای آن یک پشتیبان فاکتورینو نیست. فایل دیگری انتخاب کنید. اطلاعات فعلی شما دست‌نخورده است.';
+
+  @override
+  String get errorBackupFromNewerVersionTitle =>
+      'این پشتیبان با نسخهٔ جدیدتری ساخته شده است';
+
+  @override
+  String get errorBackupFromNewerVersionBody =>
+      'برای بازیابی این فایل، ابتدا برنامه را به‌روز کنید. اطلاعات فعلی شما دست‌نخورده است.';
+
+  @override
+  String get errorBackupCountMismatchTitle => 'فایل پشتیبان ناقص است';
+
+  @override
+  String get errorBackupCountMismatchBody =>
+      'تعداد رکوردهای داخل فایل با آنچه در آن ثبت شده هم‌خوانی ندارد، بنابراین بازیابی انجام نشد. اطلاعات فعلی شما دست‌نخورده است.';
+
+  @override
+  String get errorBackupRestoreFailedTitle => 'بازیابی انجام نشد';
+
+  @override
+  String get errorBackupRestoreFailedBody =>
+      'هیچ تغییری در اطلاعات شما ایجاد نشد و همه‌چیز مانند قبل است. لطفاً دوباره تلاش کنید.';
+
+  @override
   String get errorGenericTitle => 'خطایی رخ داد';
 
   @override

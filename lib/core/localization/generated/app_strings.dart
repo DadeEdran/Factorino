@@ -1958,6 +1958,78 @@ abstract class AppStrings {
   /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقهٔ پرداخت را اصلاح می‌کند.'**
   String paymentDeleteBodyCancelled(String amount);
 
+  /// Export failed. The file is deleted on any failure, so there is never a half-written backup to explain away.
+  ///
+  /// In fa, this message translates to:
+  /// **'تهیهٔ پشتیبان انجام نشد'**
+  String get errorBackupExportFailedTitle;
+
+  /// No description provided for @errorBackupExportFailedBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'فایل پشتیبان ساخته نشد. لطفاً دوباره تلاش کنید.'**
+  String get errorBackupExportFailedBody;
+
+  /// Covers a wrong password, a corrupted file and a tampered file together, because SQLCipher cannot tell them apart -- so the copy names both plausible remedies instead of guessing one (D-069).
+  ///
+  /// In fa, this message translates to:
+  /// **'فایل پشتیبان باز نشد'**
+  String get errorBackupCannotOpenTitle;
+
+  /// No description provided for @errorBackupCannotOpenBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'گذرواژه نادرست است یا فایل آسیب دیده. گذرواژه را دوباره وارد کنید یا فایل دیگری انتخاب کنید. اطلاعات فعلی شما دست‌نخورده است.'**
+  String get errorBackupCannotOpenBody;
+
+  /// No description provided for @errorBackupNotABackupTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فایل پشتیبان فاکتورینو نیست'**
+  String get errorBackupNotABackupTitle;
+
+  /// No description provided for @errorBackupNotABackupBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'فایل باز شد اما محتوای آن یک پشتیبان فاکتورینو نیست. فایل دیگری انتخاب کنید. اطلاعات فعلی شما دست‌نخورده است.'**
+  String get errorBackupNotABackupBody;
+
+  /// Refused rather than attempted: this build has no migration step for a shape it has never seen. The copy says what to do -- update the app -- rather than only that it failed.
+  ///
+  /// In fa, this message translates to:
+  /// **'این پشتیبان با نسخهٔ جدیدتری ساخته شده است'**
+  String get errorBackupFromNewerVersionTitle;
+
+  /// No description provided for @errorBackupFromNewerVersionBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای بازیابی این فایل، ابتدا برنامه را به‌روز کنید. اطلاعات فعلی شما دست‌نخورده است.'**
+  String get errorBackupFromNewerVersionBody;
+
+  /// No description provided for @errorBackupCountMismatchTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'فایل پشتیبان ناقص است'**
+  String get errorBackupCountMismatchTitle;
+
+  /// No description provided for @errorBackupCountMismatchBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'تعداد رکوردهای داخل فایل با آنچه در آن ثبت شده هم‌خوانی ندارد، بنابراین بازیابی انجام نشد. اطلاعات فعلی شما دست‌نخورده است.'**
+  String get errorBackupCountMismatchBody;
+
+  /// The replace-all transaction rolled back. The body leads with the reassurance because it is the one thing the user most needs to know and the one thing they cannot check for themselves.
+  ///
+  /// In fa, this message translates to:
+  /// **'بازیابی انجام نشد'**
+  String get errorBackupRestoreFailedTitle;
+
+  /// No description provided for @errorBackupRestoreFailedBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'هیچ تغییری در اطلاعات شما ایجاد نشد و همه‌چیز مانند قبل است. لطفاً دوباره تلاش کنید.'**
+  String get errorBackupRestoreFailedBody;
+
   /// Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user.
   ///
   /// In fa, this message translates to:

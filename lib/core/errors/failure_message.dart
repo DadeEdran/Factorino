@@ -1,3 +1,4 @@
+import '../../data/backup/backup_service.dart';
 import '../../data/repositories/invoice_repository.dart';
 import '../../data/repositories/payment_repository.dart';
 import '../localization/generated/app_strings.dart';
@@ -43,6 +44,40 @@ FailureMessage describeFailure(Object error, AppStrings strings) {
       title: strings.errorPaymentNotAcceptedTitle,
       body: strings.errorPaymentNotAcceptedBody,
     ),
+    // Each backup refusal gets its own copy rather than sharing one. "Could
+    // not restore" tells a user nothing about whether to retype the password,
+    // pick a different file, or update the app -- and every one of these
+    // bodies also states that the existing data is untouched, because that is
+    // the thing the user most needs to know and cannot check for themselves.
+    BackupExportFailure() => FailureMessage(
+      title: strings.errorBackupExportFailedTitle,
+      body: strings.errorBackupExportFailedBody,
+    ),
+    BackupImportFailure(problem: BackupImportProblem.cannotOpen) =>
+      FailureMessage(
+        title: strings.errorBackupCannotOpenTitle,
+        body: strings.errorBackupCannotOpenBody,
+      ),
+    BackupImportFailure(problem: BackupImportProblem.notABackup) =>
+      FailureMessage(
+        title: strings.errorBackupNotABackupTitle,
+        body: strings.errorBackupNotABackupBody,
+      ),
+    BackupImportFailure(problem: BackupImportProblem.fromNewerVersion) =>
+      FailureMessage(
+        title: strings.errorBackupFromNewerVersionTitle,
+        body: strings.errorBackupFromNewerVersionBody,
+      ),
+    BackupImportFailure(problem: BackupImportProblem.countMismatch) =>
+      FailureMessage(
+        title: strings.errorBackupCountMismatchTitle,
+        body: strings.errorBackupCountMismatchBody,
+      ),
+    BackupImportFailure(problem: BackupImportProblem.restoreFailed) =>
+      FailureMessage(
+        title: strings.errorBackupRestoreFailedTitle,
+        body: strings.errorBackupRestoreFailedBody,
+      ),
     _ => FailureMessage(
       title: strings.errorGenericTitle,
       body: strings.errorGenericBody,

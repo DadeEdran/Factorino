@@ -1678,7 +1678,7 @@ ladder: an older backup migrates itself on open, a newer one is refused.
 |---|---|---|
 | a | **The container proved, and the file gateway chosen** — no UI, no product paths | `COMPLETED` on Windows (D-071); **Android proof owed with the cable** |
 | b | **Export in the data layer**, with the round-trip test to the Rial | `COMPLETED` |
-| c | **Import, transactional, with the refusals** | `NOT_STARTED` |
+| c | **Import, transactional, with the refusals** | `COMPLETED` |
 | d | **The screen — both flows, and settings becomes editable**; phone device pass; close | `NOT_STARTED` |
 
 **(a) The container proved, and the file gateway chosen.** An `integration_test/` proof on both
