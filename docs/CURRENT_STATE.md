@@ -13,10 +13,11 @@
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
 **Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
 **accepted**, including (d).
-**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. The first boundary,
-the D-047 ruling, and **(a2) schema v4** are all **accepted**. **(b), the detail screen**, is
-delivered and accepted in substance, **known issue 19** is fixed (D-059), and **(c), payments**, is
-delivered and **awaiting review** (D-060). Cancellation, filters and the phase close remain.
+**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. Everything up to and
+including **(a2), schema v4** is **accepted**. Three boundaries are delivered, committed and
+**awaiting review**: **(b)** the detail screen with the tier rule and the money-width audit (D-057,
+D-058), **the known-issue-19 fix** (D-059), and **(c)** payments (D-060). Cancellation, list filters
+and the phase close remain.
 
 | # | Increment | Status |
 |---|---|---|
@@ -45,18 +46,17 @@ delivered and **awaiting review** (D-060). Cancellation, filters and the phase c
 
 ## Where the project stands, in one paragraph
 
-**A user can create an invoice.** That was the last thing missing. Seven screens work end to end on
-real data — Dashboard, Invoices, **the invoice form**, Customers, Customer detail, Products, Settings
-— inside a Persian, RTL, three-tier responsive shell over an encrypted SQLite database at **schema
-v4**. From the invoice list, «فاکتور جدید» opens `/invoices/new`; the form takes a customer, dates, a
-discount, a tax override, notes and any number of lines from the catalogue or freehand; the totals
-come from `core/money/` and move as the lines do; the invoice saves as a draft or issues with a
-number and a party snapshot.
+**An invoice can be created, read as a document, and paid off.** Eight screens work end to end on real
+data — Dashboard, Invoices, the invoice **form**, the invoice **detail** page, Customers, Customer
+detail, Products, Settings — inside a Persian, RTL, three-tier responsive shell over an encrypted
+SQLite database at **schema v4**. «فاکتور جدید» opens `/invoices/new`; a row in the list opens
+`/invoices/:id`; and from there a payment can be recorded and taken back off again, with the derived
+status recomputed by the repository in the same transaction.
 
-**Phase 4 is complete and accepted. Phase 5 is three boundaries in**: the two carry-overs from (d)
-plus **the D-047 ruling** (D-055); **(a2), `schemaVersion = 4`** (D-056); and now **(b), the detail
-screen** — the first consumer of what (a2) stored, and the increment that turned the owner's ruling on
-known issue 18 into a process (D-057) and an audit (D-058).
+**Phase 4 is complete and accepted. Phase 5 is five boundaries in**, the last three of them awaiting
+review: the two carry-overs from (d) plus **the D-047 ruling** (D-055); **(a2), `schemaVersion = 4`**
+(D-056); **(b), the detail screen** (D-057, D-058); **the known-issue-19 fix** (D-059); and **(c),
+payments** (D-060).
 
 **An invoice can now be read as the document it is.** `/invoices/:id` lays a line out from storage
 alone — شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع, with no
@@ -66,8 +66,9 @@ a pre-v4 figure was refused the screen says «ثبت‌نشده» on the line as
 deleted.
 
 **The party a document states is finally distinguishable from the customer record.** Four cases, one of
-them silence; a renamed or soft-deleted customer is said in Persian, and `InvoiceDetail.customerIsDeleted`
-is new because the customer behind an invoice is read soft-delete-exempt and nothing else could tell.
+them silence; a renamed or soft-deleted customer is said in Persian, and
+`InvoiceDetail.customerIsDeleted` is new because the customer behind an invoice is read
+soft-delete-exempt and nothing else could tell.
 
 **Verification changed shape, which was the point.** A phase now closes only after its layout check has
 run at **all three tiers** over a **written ladder of amounts** (D-057, and the project spec). The ladder
@@ -75,31 +76,39 @@ lives in `test/support/money_magnitudes.dart`. The audit it demanded found a sec
 site — `tablePriceWidth`, wrong by exactly the cell padding it never accounted for — and cleared the
 dashboard tiles, which scale rather than clip.
 
-**An invoice can now be paid off, and unpaid again.** (c) adds the way in to a write side that already
-existed: a sheet that offers the outstanding balance and fills it, a payments list with a deletion that
-says what it does — including, only where it is true, that it takes the invoice out of «پرداخت شده» —
-and the refusal tests that matter, called against the **repository** rather than through the screen,
-each asserting what the refusal left behind.
+**An invoice can be paid off, and unpaid again.** (c) adds the way in to a write side that already
+existed: a sheet that offers the outstanding balance and fills it, a payments list whose deletion says
+what it does — including, only where it is true, that it takes the invoice out of «پرداخت شده» — and
+the refusal tests that matter, called against the **repository** rather than through the screen, each
+asserting what the refusal left behind.
 
-**And D-057 paid for itself inside one increment.** Writing the device fixture at the ladder's top
-rung surfaced known issue 19 — the money engine refused an invoice above roughly 30 million تومان
-carrying a 10% discount, because §4 step 4 was the only place multiplying **two amounts** together.
-**Fixed before (c) at the owner's direction** (D-059): `mulDivFloor` computes that one intermediate in
-`BigInt` and hands back quotient and remainder together. The guard is untouched, VM/Web parity is
-unchanged, and the arithmetic is pinned share-for-share against a plain-`int` reference of the old
-algorithm wherever that reference is still exact.
+**And D-057 paid for itself inside one increment.** Writing the device fixture at the ladder's top rung
+surfaced known issue 19 — the money engine refused an invoice above roughly 30 million تومان carrying a
+10% discount, because §4 step 4 was the only place multiplying **two amounts** together. **Fixed before
+(c) at the owner's direction** (D-059): `mulDivFloor` computes that one intermediate in `BigInt` and
+hands back quotient and remainder together. The guard is untouched, VM/Web parity is unchanged, and the
+arithmetic is pinned share-for-share against a plain-`int` reference of the old algorithm wherever that
+reference is still exact.
 
-**Working tree is clean and everything is committed.** `main` at **`2747b2d`** "Phase 5 (c): payments,
-recorded and taken back"; behind it `6675456` is the known-issue-19 fix, and behind that **`b901c37`** is (b), "Phase 5 (b): the detail screen, and the
-layout check that would have caught its predecessor"; behind that `42bbaae`
-is the (a2) cold-resume note, `712c921` is (a2) itself, `d087c2a` is the first Phase 5 boundary,
-`a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2`
-is Phase 4's (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
+**Working tree is clean and everything is committed.** `main` at **`241f446`**, the commit-hash note
+over **`2747b2d`** "Phase 5 (c): payments, recorded and taken back". Behind it: `ca1bc53`/**`6675456`**
+is the known-issue-19 fix; `435f8cb`/**`b901c37`** is (b), "the detail screen, and the layout check
+that would have caught its predecessor"; `42bbaae` is the (a2) cold-resume note and `712c921` is (a2)
+itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` its
+(c), `3164b8f` its (b), `0e0cd37` its (a3), `7345ca2` its (a2), `bf4c02f` its (a); `d8682ee` is Phases
+2 and 3.
 
-**Nothing is half-finished.** (b) is complete, verified at every tier by widget test and on Windows at
-the desktop tier on the real device, with its documentation written. **Note the collision when reading
-older sections of this file:** Phase 4 and Phase 5 both have increments lettered (a2), (b), (c) and
-(d). Every reference below names its phase; where one does not, it belongs to the section it sits in.
+**Nothing is half-finished.** All three unreviewed boundaries are complete, tested, documented and
+committed. **The session ended here at the owner's instruction** — "stopping here" — with no work in
+progress and no question waiting on an answer. A fresh session starts at the Next Action at the bottom
+of this file and needs nothing re-explained.
+
+**One thing is genuinely owed and is not a boundary: the Android phone-tier device pass**, for (b) and
+(c) both. See the Next Action; the owner's instruction is that the phase does not close without it.
+
+**Note the collision when reading older sections of this file:** Phase 4 and Phase 5 both have
+increments lettered (a2), (b), (c) and (d). Every reference below names its phase; where one does not,
+it belongs to the section it sits in.
 
 ## Verification status
 
@@ -124,6 +133,9 @@ Startup proof - Android:    PASS   re-run on the Redmi (2026-08-27)
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 Form on the Redmi:          PASS   the whole flow through the real sheets, 0 layout errors (d)
 Windows run:                PASS   the app starts and renders at the desktop tier (d)
+                                   -- kept for the record, and NOT a layout check: this is the
+                                   line D-057 exists because of. Superseded by the device pass
+                                   above.
 Web build:                  NOT_RETESTED since plugins were added
 ```
 
@@ -955,13 +967,26 @@ flutter run -d windows --debug
 
 # The encryption proof, on the real target.
 flutter test integration_test/d020_encryption_proof_test.dart -d windows
+
+# The layout + payment device pass (D-057). Runs on whichever target it is
+# given; on Windows that is the desktop tier. The Android phone tier is owed.
+flutter test integration_test/invoice_detail_device_test.dart -d windows
 ```
 
+**Run `dart run build_runner build` from PowerShell, not from a POSIX shell wrapper.** Learned in
+Phase 5 (b): invoked through the agent's Bash tool it sat at ~0.2 s of CPU indefinitely, twice, and had
+to be killed with `Stop-Process`; the same command from PowerShell in the project directory completed
+in 40 s. If a build appears hung, check for orphaned `dart.exe` processes and remove
+`.dart_tool/build/lock/build_runner.lock` before retrying.
+
 **To see a screen with data in it:** the Windows dev database holds twelve demo invoices and twelve
-customers. There is still no invoice-creation UI, so new invoices must be written by a throwaway
-`integration_test/` script through the **real repositories** — never by raw inserts, or the totals
-and numbers would not be the ones the app produces. Such a script can also render a screen to a PNG
-via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it after use.
+customers, all at small amounts — which is exactly the trap D-057 exists for, so never judge a money
+layout against it. Invoices can now be created through the UI, and a throwaway `integration_test/`
+script through the **real repositories** is still the way to seed a specific case (never raw inserts,
+or the totals and numbers would not be the ones the app produces). Such a script can also render a
+screen to a PNG via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it after
+use. `integration_test/invoice_detail_device_test.dart` is a worked example of seeding through the
+repositories and driving the real sheets.
 
 ## Known issues
 
@@ -985,6 +1010,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
 | 19 | ~~A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed~~ | **Resolved 2026-09-01** (D-059), before (c), at the owner's direction. §4 step 4 was the only place in the engine multiplying **two amounts** together — an invoice discount by a line's net — so the product was quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount. `mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together; the guard is untouched and VM/Web parity is unchanged. Pinned over the whole D-057 ladder in the allocation, the engine and the editor preview, plus the exact old boundary, and verified to bite against the old implementation. |
+| 20 | **Cancelling an invoice leaves its recorded payments untouched, and nothing says so** | `_recomputeStatus` returns early for a `cancelled` invoice (§6: `cancelled` is set by hand and never derived), so the payments stay on record and the total paid stays whatever it was. **This is very probably right** — the money did change hands, and erasing it would lose a real record — but it is currently implicit, decided by an early return rather than by a decision, and a user cancelling a part-paid invoice is told nothing about it. Raised while writing (c); belongs to **(d)**, which owns the cancellation copy. Needs a ruling and a sentence, not a code change. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -1433,10 +1459,19 @@ their own transaction (§6). (c) added the way in and the guard tests that matte
 repository, the real encrypted database, and the status read back **from the database** — 2,117,500
 rial recorded (status `paid`), then deleted (status `unpaid`), 0 layout errors.
 
+**The owner then stopped the session**, after (c) and before any of (d). Three boundaries are awaiting
+review together — (b), the known-issue-19 fix, and (c) — and none of them has been through the owner's
+own pass. There is no work in progress, nothing uncommitted and no open question: the next session
+starts cold at the Next Action below.
+
 ## Next action
 
-**Build Phase 5 increment (d): cancellation, and the Persian copy that says what it does and does not
-do.**
+**First, note that three boundaries are awaiting the owner's review** — (b), the known-issue-19 fix and
+(c). None has had the owner's own pass. If the session opens with review feedback, that comes first;
+otherwise proceed.
+
+**Then build Phase 5 increment (d): cancellation, and the Persian copy that says what it does and does
+not do.**
 
 The detail screen is where it goes, beside the payments section (c) added. From the owner's standing
 constraints and what is already in place:
@@ -1451,10 +1486,12 @@ constraints and what is already in place:
    Test it by calling the repository directly, in every status, and assert the refusal left nothing
    behind. A draft is deleted rather than cancelled (`softDeleteDraft`), and the screen should not
    offer both for the same invoice.
-4. **What cancelling does to payments already recorded needs an explicit answer**, and the copy has to
-   carry it: today `_recomputeStatus` leaves a cancelled invoice alone, so its payments stay on record
-   and its total paid stays whatever it was. That is defensible — the money did change hands — but it
-   is currently implicit, and a user cancelling a part-paid invoice deserves to be told.
+4. **What cancelling does to payments already recorded needs an explicit answer** — **known issue
+   20**, raised while writing (c). Today `_recomputeStatus` returns early for a cancelled invoice, so
+   its payments stay on record and its total paid stays whatever it was. That is very probably right
+   — the money did change hands — but it is decided by an early return rather than by a decision, and
+   a user cancelling a part-paid invoice is told nothing about it. It needs a ruling and a sentence of
+   Persian copy, not a code change.
 5. **Any new layout goes through D-057** — all three tiers over the ladder in
    `test/support/money_magnitudes.dart`, and a new fixed-width money site joins
    `test/core/widgets/money_layout_test.dart`.
