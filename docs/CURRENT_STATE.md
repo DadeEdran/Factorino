@@ -89,8 +89,8 @@ carrying a 10% discount, because §4 step 4 was the only place multiplying **two
 unchanged, and the arithmetic is pinned share-for-share against a plain-`int` reference of the old
 algorithm wherever that reference is still exact.
 
-**Working tree is clean and everything is committed.** `main` at **`6675456`** "Fix known issue 19:
-allocate the invoice discount exactly, at any invoice size"; behind it **`b901c37`** is (b), "Phase 5 (b): the detail screen, and the
+**Working tree is clean and everything is committed.** `main` at **`2747b2d`** "Phase 5 (c): payments,
+recorded and taken back"; behind it `6675456` is the known-issue-19 fix, and behind that **`b901c37`** is (b), "Phase 5 (b): the detail screen, and the
 layout check that would have caught its predecessor"; behind that `42bbaae`
 is the (a2) cold-resume note, `712c921` is (a2) itself, `d087c2a` is the first Phase 5 boundary,
 `a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2`
