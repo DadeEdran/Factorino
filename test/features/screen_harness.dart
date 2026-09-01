@@ -21,6 +21,15 @@ import 'package:go_router/go_router.dart';
 /// **Size.** `LayoutTier` is read from the width, so a test that does not set
 /// one is testing whichever tier the default surface happens to land in.
 ///
+/// **No keyboard, unless one is asked for.** This builder installs a fresh
+/// `MediaQueryData`, which means every screen in every test has rendered with
+/// `viewInsets: EdgeInsets.zero` — no soft keyboard, ever. That is the right
+/// default for a layout test and it is also **why 892 tests could not see known
+/// issue 21**: the payment sheet's «ذخیره» was below the fold only once a
+/// keyboard took a third of the viewport, and nothing here has ever raised one.
+/// Pass [viewInsets] to test a sheet in the state a phone actually opens it in
+/// (D-062); `test/core/widgets/sheet_keyboard_test.dart` is where that is done.
+///
 /// **A router.** These screens navigate: a form calls `context.go` after a
 /// successful save, and a list row opens an edit route. Without a `GoRouter` in
 /// the tree those calls throw *"No GoRouter found in context"* at the end of an
@@ -33,6 +42,7 @@ Future<void> pumpScreen(
   List<Override> overrides = const <Override>[],
   Size size = kMobileSize,
   bool disableAnimations = false,
+  EdgeInsets viewInsets = EdgeInsets.zero,
 }) async {
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
@@ -93,6 +103,7 @@ Future<void> pumpScreen(
             data: MediaQueryData(
               size: size,
               disableAnimations: disableAnimations,
+              viewInsets: viewInsets,
             ),
             child: Directionality(
               textDirection: TextDirection.rtl,

@@ -95,7 +95,9 @@ Factorino/
         app_text_field.dart                       #   THE text field; maxLength required (D-043)
         stat_tile.dart                            #   StatTile + TileGrid, shared by two features
         skeleton.dart  search_field.dart  load_more_footer.dart
-        form_scaffold.dart  async_error_view.dart
+        form_scaffold.dart                        #   screen forms: fields scroll, actions pinned
+        editor_sheet.dart                         #   the same, for sheets (D-062, known issue 21)
+        async_error_view.dart
     features/<feature>/
       presentation/                               # screens and forms
       application/                                # feature providers + the write-path controller
@@ -204,6 +206,11 @@ decided by the file header, never by a pragma - see the three named traps in D-0
   `core/theme/` (D-033). One Persian-turquoise accent, warm neutrals, six semantic status pairs as a
   `StatusPalette` theme extension, and a type scale whose largest style is the financial numeral
   style. Enforced: a literal colour or dimension outside the token files fails the build.
+- **Editing surfaces pin their commit action.** `FormScaffold` for screens and `EditorSheet` for
+  bottom sheets both put the fields in the scrolling region and the primary action outside it, above
+  the soft keyboard (D-053's split-by-purpose, D-062). A sheet built through `EditorSheet` cannot put
+  its action among its fields, because it does not supply the layout. The **picker** sheets are
+  deliberately outside this: they commit by tapping a row, so their list is their action.
 - **Form input:** one text field, `core/widgets/app_text_field.dart`, with a **required**
   `maxLength` drawn from `data/models/field_limits.dart` — the same numbers the columns carry
   (D-043). A `lib/` scan fails the build on a raw `TextFormField`/`TextField` or on a limit written

@@ -124,7 +124,7 @@ it belongs to the section it sits in.
 
 ```
 flutter analyze:            PASS   (No issues found)                          as of (d)
-flutter test:               PASS   (892/892, was 861)                         as of (d)
+flutter test:               PASS   (895/895, was 892)                         as of KI-21
 Android build:              PASS   debug APK built (2026-09-01, re-run for (d))
 Layout, all 3 tiers x 4 amounts (D-057):
   widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart,
@@ -139,6 +139,10 @@ Layout, all 3 tiers x 4 amounts (D-057):
                                    through the real sheet; a cancellation through the real menu with
                                    705,833 rial still on record; correction leaving it cancelled.
                                    Clears the debt for (b), (c) and (d) together.
+Keyboard rule (D-062):
+  widget sweep:             PASS   sheet_keyboard_test.dart, 255 px inset, verified to bite
+  device - Android phone:   PASS   both editor sheets: keyboard 254.9 of 803.6, action bottom 532.7,
+                                   limit 548.7 (2026-09-01). Was 618.6 before the fix.
 D-020 proof - Android:      PASS   re-run on the Redmi (2026-09-01), unblocked by 10b clearing
 Startup proof - Android:    PASS   re-run on the Redmi (2026-09-01)
 D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
@@ -155,7 +159,7 @@ Windows run:                PASS   the app starts and renders at the desktop tie
 Web build:                  NOT_RETESTED since plugins were added
 ```
 
-**Test count is 892**, was 861 at the end of (c), 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
+**Test count is 895**, was 892 after (d) and the device pass, 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
 
 ## What the phone-tier device pass found (2026-09-01) — D-062
 
@@ -1141,7 +1145,7 @@ repositories and driving the real sheets.
 | 8 | `nowProvider` does not tick | Deliberate (D-041). A Jalali month boundary or a due date crossing midnight while the app sits open does not update until relaunch. |
 | 9 | The Windows debug exe shows no window when launched **directly** | Under `flutter run -d windows` it is fine. Worth a look in Phase 12. |
 | 10b | ~~The Redmi ran out of internal storage~~ | Seen 2026-08-27 after three integration runs: `Requested internal only, but not enough space`, and the follow-up uninstall failed `DELETE_FAILED_INTERNAL_ERROR`. The D-020 and startup proofs could not be re-run because of it. **Cleared 2026-09-01** — 4.9 GB free, three installs and both blocked proofs ran. Kept as history: it is currently absent rather than fixed. |
-| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install (**did not recur 2026-09-01**) | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
+| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install (**recurred 2026-09-01**, on the fourth install of the session; the documented remedy worked unchanged) | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
 | 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last** — every `pub get` rewrites all 123 `url:` entries to the Tsinghua mirror, and they must be put back to `https://pub.dev` before committing. (a2) also picked up a transitive `dart_style` 3.1.12 → 3.1.13 bump that way; it is committed deliberately, because pinning the lockfile to a version that is not installed would make it lie, and `dart format` output is unchanged under it. |
 | 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
 | 13 | Release builds signed with debug keys | Phase 15. |
@@ -1152,7 +1156,7 @@ repositories and driving the real sheets.
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
 | 19 | ~~A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed~~ | **Resolved 2026-09-01** (D-059), before (c), at the owner's direction. §4 step 4 was the only place in the engine multiplying **two amounts** together — an invoice discount by a line's net — so the product was quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount. `mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together; the guard is untouched and VM/Web parity is unchanged. Pinned over the whole D-057 ladder in the allocation, the engine and the editor preview, plus the exact old boundary, and verified to bite against the old implementation. |
 | 20 | ~~Cancelling an invoice leaves its recorded payments untouched, and nothing says so~~ | **Resolved in (d)** (D-061), by a ruling rather than a code change. A cancelled invoice **keeps** its payments: the money changed hands, and a cancellation is a statement about the claim rather than about the cash. What changed is that it is now said — in the confirmation before the commitment, on the page afterwards (both the payments card and «مانده»), and at the early return in `_recomputeStatus` that decides it. Recording against a cancelled invoice stays refused and the copy names the replacement invoice as the way forward; deleting stays allowed, with its own wording, because a mis-entered receipt must be correctable on a void document too. |
-| 21 | **The payment sheet's «ذخیره» starts below the fold on a phone** | Found by the 2026-09-01 phone pass (D-062), and **not a defect**: the sheet is a `SingleChildScrollView` under `isScrollControlled` with `viewInsets` padding, and the run reported 0 layout errors. But the amount field's `autofocus: true` raises the soft keyboard on open, which takes **254.9 of 803.6 logical pixels**, and the button's centre sits at 618.6 against a visible area ending at 548.7 — about **70 px down**. A user must scroll a sheet to save. The precedent for a fix is D-053: split by purpose, let the fields scroll and pin the action. **Needs the owner's ruling, not a quiet correction inside a device pass.** |
+| 21 | ~~The payment sheet's «ذخیره» starts below the fold on a phone~~ | **Resolved 2026-09-01** at the owner's direction (D-062). The shape is now a primitive, `core/widgets/editor_sheet.dart`: fields scroll, the primary action is pinned above the keyboard — D-053's split-by-purpose applied to sheets. The line editor moved onto it unchanged; the **picker** sheets are deliberately outside it, since they commit by tapping a row. On the Redmi the action now sits at **532.7 against a limit of 548.7**, was 618.6. Guarded at both levels: `sheet_keyboard_test.dart` at the measured 255-pixel inset (verified to bite), and the device pass, which now raises the real keyboard and refuses a vacuous assertion on Android. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -1310,7 +1314,23 @@ repositories and driving the real sheets.
 
 ## Recently changed files
 
-### The phone-tier device pass — the newest work
+### Known issue 21 and the keyboard rule — the newest work
+
+```
+lib/core/widgets/editor_sheet.dart                 NEW  fields scroll, the action is pinned
+lib/features/invoices/presentation/widgets/payment_editor_sheet.dart      onto EditorSheet (the fix)
+lib/features/invoices/presentation/widgets/invoice_line_editor_sheet.dart onto EditorSheet (unchanged
+                                                     behaviour; so the shape has one home)
+integration_test/device_assertions.dart            NEW  reach(), raiseKeyboard(),
+                                                     expectActionAboveKeyboard()
+integration_test/invoice_detail_device_test.dart   asserts instead of measuring; no ensureVisible
+integration_test/invoice_form_device_test.dart     raises the real keyboard on the line sheet
+test/features/screen_harness.dart                  + viewInsets -- the harness had erased the
+                                                     keyboard for every test ever run
+test/core/widgets/sheet_keyboard_test.dart         NEW  3 tests, at the measured 255 px
+```
+
+### The phone-tier device pass — the boundary before it
 
 ```
 integration_test/invoice_detail_device_test.dart   + reach(); tier-blind assertions fixed;
@@ -1618,7 +1638,20 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**The Android phone-tier device pass, for (b), (c) and (d) together (D-062).**
+**Known issue 21 fixed, and the keyboard folded into the check (D-062).**
+
+`EditorSheet` is the D-053 shape as a primitive: fields scroll, the commit action is pinned above the
+keyboard. The survey behind it is the useful part — `FormScaffold` and the invoice line sheet were
+**already** correct (the line sheet having arrived there independently), the payment sheet was the one
+defect, and the two **picker** sheets do not take the shape at all because they commit by tapping a
+row. A rule stated in one file was not a rule; it is a primitive now.
+
+**And the reason 892 tests missed it:** `pumpScreen` installs its own `MediaQueryData`, so every widget
+test this project has run had `viewInsets: EdgeInsets.zero` — no test *could* raise a keyboard. The
+harness now takes `viewInsets`; the sweep asserts at the measured 255 px and is verified to bite; the
+device pass raises the **real** keyboard and, on Android, refuses to pass on a vacuous assertion.
+
+**The boundary before it — the Android phone-tier device pass for (b), (c) and (d) (D-062).**
 
 Ran on the Redmi Note 8 Pro at 392.7 × 803.6, clearing three sessions of debt, plus the D-020 and
 startup proofs that known issue 10b had blocked. **The product had no defects on the phone tier** —
@@ -1707,12 +1740,13 @@ From the owner's standing constraints and what is already in place:
 the D-020 and startup proofs (D-062). (f) still owns the phase close, but it no longer carries a
 backlog: what it needs is a pass over whatever (e) adds.
 
-**One thing is waiting on the owner: known issue 21.** The payment sheet's «ذخیره» starts about 70
-logical pixels below the fold on a phone, because the amount field's `autofocus` raises a keyboard that
-takes 254.9 of 803.6 pixels. Not a defect and not an overflow — the sheet scrolls — but the fix, if
-there is to be one, is D-053's split-by-purpose applied to the sheet, and that is a design call.
+**Known issue 21 is fixed** (D-062), at the owner's direction: `EditorSheet` pins every editing
+sheet's primary action above the keyboard and scrolls its fields. Both editor sheets are on it, both
+pickers are deliberately not, and the rule is guarded by a widget sweep at the measured inset **and**
+by a device pass that raises the real keyboard.
 
-After (e) the order is (f), a device pass over the new filter UI, and the phase close.
+After (e) the order is (f), a device pass over the new filter UI under the keyboard rule, and the
+phase close.
 
 ### Standing constraints for the rest of Phase 5, from the owner
 

@@ -6,6 +6,7 @@ import '../../../../core/localization/generated/app_strings.dart';
 import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/editor_sheet.dart';
 import '../../../../data/models/field_limits.dart';
 import '../../../../data/models/product.dart';
 import '../../domain/invoice_editor_state.dart';
@@ -163,225 +164,161 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     final AppStrings strings = AppStrings.of(context);
     final ThemeData theme = Theme.of(context);
 
-    return FractionallySizedBox(
-      heightFactor: 0.9,
-      child: Padding(
-        padding: EdgeInsets.only(
-          bottom: MediaQuery.viewInsetsOf(context).bottom,
+    return EditorSheet(
+      title: widget.existing == null
+          ? strings.invoiceLineCreateTitle
+          : strings.invoiceLineEditTitle,
+      closeTooltip: strings.actionCancel,
+      formKey: _formKey,
+      // This sheet already pinned its action, independently, before there was
+      // a primitive for it. Going through [EditorSheet] changes nothing it did
+      // -- it stops the shape being a habit that the next sheet can miss, which
+      // is exactly what the payment sheet did in (c) (known issue 21, D-062).
+      action: FilledButton(onPressed: _submit, child: Text(strings.actionSave)),
+      children: <Widget>[
+        AppTextField(
+          controller: _title,
+          label: strings.invoiceLineFieldTitle,
+          maxLength: InvoiceLimits.lineTitle,
+          autofocus: widget.product == null,
+          textInputAction: TextInputAction.next,
+          validator: _requiredField(strings),
         ),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
+        const SizedBox(height: AppSpacing.lg),
+        Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Padding(
-              padding: const EdgeInsets.fromLTRB(
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.lg,
-                AppSpacing.sm,
-              ),
-              child: Row(
-                children: <Widget>[
-                  Expanded(
-                    child: Text(
-                      widget.existing == null
-                          ? strings.invoiceLineCreateTitle
-                          : strings.invoiceLineEditTitle,
-                      style: theme.textTheme.titleLarge,
-                    ),
-                  ),
-                  IconButton(
-                    icon: const Icon(Icons.close),
-                    tooltip: strings.actionCancel,
-                    onPressed: () => Navigator.of(context).pop(),
-                  ),
-                ],
-              ),
-            ),
             Expanded(
-              child: Form(
-                key: _formKey,
-                child: ListView(
-                  padding: const EdgeInsets.fromLTRB(
-                    AppSpacing.lg,
-                    AppSpacing.sm,
-                    AppSpacing.lg,
-                    AppSpacing.lg,
-                  ),
-                  children: <Widget>[
-                    AppTextField(
-                      controller: _title,
-                      label: strings.invoiceLineFieldTitle,
-                      maxLength: InvoiceLimits.lineTitle,
-                      autofocus: widget.product == null,
-                      textInputAction: TextInputAction.next,
-                      validator: _requiredField(strings),
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    Row(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: <Widget>[
-                        Expanded(
-                          child: AppTextField(
-                            controller: _quantity,
-                            label: strings.invoiceLineFieldQuantity,
-                            // A quantity has no column length — it is stored as
-                            // an integer — but the field still needs a bound,
-                            // and this one is far past any real quantity.
-                            maxLength: AmountLimits.tomanDigits,
-                            helperText: strings.invoiceLineFieldQuantityHelper,
-                            // NOT digitsOnly: the decimal separator is
-                            // meaningful here (§4 allows three places), and a
-                            // formatter that ate it would make a fractional
-                            // quantity impossible to type rather than merely
-                            // invalid.
-                            keyboardType: const TextInputType.numberWithOptions(
-                              decimal: true,
-                            ),
-                            textInputAction: TextInputAction.next,
-                            validator: (String? value) =>
-                                _validateQuantity(value, strings),
-                          ),
-                        ),
-                        const SizedBox(width: AppSpacing.md),
-                        Expanded(
-                          child: AppTextField(
-                            controller: _unit,
-                            label: strings.productFieldUnit,
-                            maxLength: InvoiceLimits.lineUnit,
-                            hintText: strings.productFieldUnitHint,
-                            textInputAction: TextInputAction.next,
-                            validator: _requiredField(strings),
-                          ),
-                        ),
-                      ],
-                    ),
-                    const SizedBox(height: AppSpacing.lg),
-                    AppTextField(
-                      controller: _unitPrice,
-                      label: strings.invoiceLineFieldUnitPrice,
-                      maxLength: AmountLimits.tomanDigits,
-                      suffixText: strings.unitToman,
-                      keyboardType: const TextInputType.numberWithOptions(
-                        decimal: false,
-                      ),
-                      textInputAction: TextInputAction.next,
-                      digitsOnly: true,
-                      validator: (String? value) =>
-                          _validateAmount(value, strings, required: true),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _SectionLabel(strings.invoiceLineDiscountSection),
-                    const SizedBox(height: AppSpacing.sm),
-                    SegmentedButton<_DiscountMode>(
-                      segments: <ButtonSegment<_DiscountMode>>[
-                        ButtonSegment<_DiscountMode>(
-                          value: _DiscountMode.amount,
-                          label: Text(strings.invoiceLineDiscountModeAmount),
-                        ),
-                        ButtonSegment<_DiscountMode>(
-                          value: _DiscountMode.percent,
-                          label: Text(strings.invoiceLineDiscountModePercent),
-                        ),
-                      ],
-                      selected: <_DiscountMode>{_discountMode},
-                      onSelectionChanged: (Set<_DiscountMode> selection) =>
-                          setState(() {
-                            _discountMode = selection.first;
-                            // The two are alternatives, not two views of one
-                            // number: `10` means ten Toman in one mode and ten
-                            // percent in the other. Carrying the text across
-                            // would silently change what the user entered.
-                            _discount.clear();
-                          }),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    AppTextField(
-                      controller: _discount,
-                      label: _discountMode == _DiscountMode.amount
-                          ? strings.invoiceLineDiscountModeAmount
-                          : strings.invoiceLineDiscountModePercent,
-                      maxLength: AmountLimits.tomanDigits,
-                      suffixText: _discountMode == _DiscountMode.amount
-                          ? strings.unitToman
-                          : kPersianPercentSign,
-                      helperText: strings.fieldOptional,
-                      keyboardType: TextInputType.numberWithOptions(
-                        decimal: _discountMode == _DiscountMode.percent,
-                      ),
-                      digitsOnly: _discountMode == _DiscountMode.amount,
-                      validator: (String? value) =>
-                          _discountMode == _DiscountMode.amount
-                          ? _validateAmount(value, strings, required: false)
-                          : _validatePercent(value, strings, required: false),
-                    ),
-                    const SizedBox(height: AppSpacing.xl),
-                    _SectionLabel(strings.invoiceLineTaxSection),
-                    const SizedBox(height: AppSpacing.sm),
-                    SegmentedButton<_TaxMode>(
-                      segments: <ButtonSegment<_TaxMode>>[
-                        ButtonSegment<_TaxMode>(
-                          value: _TaxMode.inherit,
-                          label: Text(strings.invoiceLineTaxInherit),
-                        ),
-                        ButtonSegment<_TaxMode>(
-                          value: _TaxMode.custom,
-                          label: Text(strings.invoiceLineTaxCustom),
-                        ),
-                      ],
-                      selected: <_TaxMode>{_taxMode},
-                      onSelectionChanged: (Set<_TaxMode> selection) =>
-                          setState(() => _taxMode = selection.first),
-                    ),
-                    const SizedBox(height: AppSpacing.md),
-                    if (_taxMode == _TaxMode.custom)
-                      AppTextField(
-                        controller: _taxRate,
-                        label: strings.invoiceLineTaxCustom,
-                        maxLength: AmountLimits.tomanDigits,
-                        suffixText: kPersianPercentSign,
-                        keyboardType: const TextInputType.numberWithOptions(
-                          decimal: true,
-                        ),
-                        // Required in this mode, and `0` passes: an explicit
-                        // zero is the entire point of the mode (D-026).
-                        validator: (String? value) =>
-                            _validatePercent(value, strings, required: true),
-                      )
-                    else if (widget.resolvedTaxRateBp != null)
-                      // "Default" is only reassuring if it says which default.
-                      // The figure is the engine's, read off the calculated
-                      // line — this widget resolves nothing.
-                      Text(
-                        strings.invoiceLineTaxInheritedNote(
-                          formatPercentFromBasisPoints(
-                            widget.resolvedTaxRateBp!,
-                          ),
-                        ),
-                        style: theme.textTheme.bodySmall,
-                      ),
-                    const SizedBox(height: AppSpacing.xxl),
-                  ],
+              child: AppTextField(
+                controller: _quantity,
+                label: strings.invoiceLineFieldQuantity,
+                // A quantity has no column length — it is stored as
+                // an integer — but the field still needs a bound,
+                // and this one is far past any real quantity.
+                maxLength: AmountLimits.tomanDigits,
+                helperText: strings.invoiceLineFieldQuantityHelper,
+                // NOT digitsOnly: the decimal separator is
+                // meaningful here (§4 allows three places), and a
+                // formatter that ate it would make a fractional
+                // quantity impossible to type rather than merely
+                // invalid.
+                keyboardType: const TextInputType.numberWithOptions(
+                  decimal: true,
                 ),
+                textInputAction: TextInputAction.next,
+                validator: (String? value) => _validateQuantity(value, strings),
               ),
             ),
-            SafeArea(
-              top: false,
-              child: Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  AppSpacing.lg,
-                  0,
-                  AppSpacing.lg,
-                  AppSpacing.lg,
-                ),
-                child: FilledButton(
-                  onPressed: _submit,
-                  child: Text(strings.actionSave),
-                ),
+            const SizedBox(width: AppSpacing.md),
+            Expanded(
+              child: AppTextField(
+                controller: _unit,
+                label: strings.productFieldUnit,
+                maxLength: InvoiceLimits.lineUnit,
+                hintText: strings.productFieldUnitHint,
+                textInputAction: TextInputAction.next,
+                validator: _requiredField(strings),
               ),
             ),
           ],
         ),
-      ),
+        const SizedBox(height: AppSpacing.lg),
+        AppTextField(
+          controller: _unitPrice,
+          label: strings.invoiceLineFieldUnitPrice,
+          maxLength: AmountLimits.tomanDigits,
+          suffixText: strings.unitToman,
+          keyboardType: const TextInputType.numberWithOptions(decimal: false),
+          textInputAction: TextInputAction.next,
+          digitsOnly: true,
+          validator: (String? value) =>
+              _validateAmount(value, strings, required: true),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _SectionLabel(strings.invoiceLineDiscountSection),
+        const SizedBox(height: AppSpacing.sm),
+        SegmentedButton<_DiscountMode>(
+          segments: <ButtonSegment<_DiscountMode>>[
+            ButtonSegment<_DiscountMode>(
+              value: _DiscountMode.amount,
+              label: Text(strings.invoiceLineDiscountModeAmount),
+            ),
+            ButtonSegment<_DiscountMode>(
+              value: _DiscountMode.percent,
+              label: Text(strings.invoiceLineDiscountModePercent),
+            ),
+          ],
+          selected: <_DiscountMode>{_discountMode},
+          onSelectionChanged: (Set<_DiscountMode> selection) => setState(() {
+            _discountMode = selection.first;
+            // The two are alternatives, not two views of one
+            // number: `10` means ten Toman in one mode and ten
+            // percent in the other. Carrying the text across
+            // would silently change what the user entered.
+            _discount.clear();
+          }),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        AppTextField(
+          controller: _discount,
+          label: _discountMode == _DiscountMode.amount
+              ? strings.invoiceLineDiscountModeAmount
+              : strings.invoiceLineDiscountModePercent,
+          maxLength: AmountLimits.tomanDigits,
+          suffixText: _discountMode == _DiscountMode.amount
+              ? strings.unitToman
+              : kPersianPercentSign,
+          helperText: strings.fieldOptional,
+          keyboardType: TextInputType.numberWithOptions(
+            decimal: _discountMode == _DiscountMode.percent,
+          ),
+          digitsOnly: _discountMode == _DiscountMode.amount,
+          validator: (String? value) => _discountMode == _DiscountMode.amount
+              ? _validateAmount(value, strings, required: false)
+              : _validatePercent(value, strings, required: false),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        _SectionLabel(strings.invoiceLineTaxSection),
+        const SizedBox(height: AppSpacing.sm),
+        SegmentedButton<_TaxMode>(
+          segments: <ButtonSegment<_TaxMode>>[
+            ButtonSegment<_TaxMode>(
+              value: _TaxMode.inherit,
+              label: Text(strings.invoiceLineTaxInherit),
+            ),
+            ButtonSegment<_TaxMode>(
+              value: _TaxMode.custom,
+              label: Text(strings.invoiceLineTaxCustom),
+            ),
+          ],
+          selected: <_TaxMode>{_taxMode},
+          onSelectionChanged: (Set<_TaxMode> selection) =>
+              setState(() => _taxMode = selection.first),
+        ),
+        const SizedBox(height: AppSpacing.md),
+        if (_taxMode == _TaxMode.custom)
+          AppTextField(
+            controller: _taxRate,
+            label: strings.invoiceLineTaxCustom,
+            maxLength: AmountLimits.tomanDigits,
+            suffixText: kPersianPercentSign,
+            keyboardType: const TextInputType.numberWithOptions(decimal: true),
+            // Required in this mode, and `0` passes: an explicit
+            // zero is the entire point of the mode (D-026).
+            validator: (String? value) =>
+                _validatePercent(value, strings, required: true),
+          )
+        else if (widget.resolvedTaxRateBp != null)
+          // "Default" is only reassuring if it says which default.
+          // The figure is the engine's, read off the calculated
+          // line — this widget resolves nothing.
+          Text(
+            strings.invoiceLineTaxInheritedNote(
+              formatPercentFromBasisPoints(widget.resolvedTaxRateBp!),
+            ),
+            style: theme.textTheme.bodySmall,
+          ),
+      ],
     );
   }
 

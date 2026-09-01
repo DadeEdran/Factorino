@@ -3325,11 +3325,12 @@ phase does not close without it.
 
 ---
 
-## D-062 — A device test written at one tier is a device test for one tier
+## D-062 — A check must reproduce the conditions the user is in: the tier, and the keyboard
 
 **Date:** 2026-09-01
 **Status:** ACCEPTED — arising from the Phase 5 phone-tier pass for (b), (c) and (d)
-**Extends:** D-057, D-044, §10's unbounded-card rule
+**Extends:** D-057, D-053, D-044, §10's unbounded-card rule
+**Resolves:** known issue 21
 
 ### 1. What the phone pass actually found
 
@@ -3393,3 +3394,77 @@ Known issue 10 (MIUI blocking `flutter test`'s install on a fresh install) **did
 installed first try, three times. Known issue 10b (the device out of internal storage) is cleared —
 4.9 GB free, and the D-020 and startup proofs that it blocked in the (a2) session both pass now. Both
 entries stay in the table as history, since neither is fixed so much as currently absent.
+
+*(Amended the same day, after known issue 21 was fixed: known issue 10 **did** recur on the fourth
+install of the session — `INSTALL_FAILED_USER_RESTRICTED` — and the documented remedy worked
+unchanged: build the debug APK, `adb install -r` it by hand once, then `flutter test -d` installs on
+its own again. The entry stays.)*
+
+### 5. The keyboard rule, and what the survey found
+
+Known issue 21 is fixed rather than carried, at the owner's direction, and the rule generalised: **a
+sheet's primary action is pinned above the keyboard; its fields are what scroll.** That is D-053
+applied to sheets — the thing being agreed to must not scroll away from the person agreeing to it.
+
+**The survey mattered more than the fix.** Four sheets and two form screens use text fields:
+
+| Surface | Shape before | Verdict |
+|---|---|---|
+| `FormScaffold` (customer, product forms) | fixed action bar | **already correct** — and its doc comment has said *why* since Phase 2: "with the keyboard up it is off screen entirely" |
+| invoice line editor sheet | header, `Expanded` scroll, pinned `SafeArea` action | **already correct**, arrived at independently |
+| payment editor sheet | one `SingleChildScrollView`, action inside it | **the defect** |
+| customer picker, product picker | pinned title + search, `Expanded` list, **no commit button** | **does not apply, and is not forced** — a picker commits by tapping a row, so its list *is* its action; adding a pinned button would duplicate the list |
+
+So the rule was already stated in one place and independently rediscovered in a second, and the third
+surface still got it wrong. **A rule stated in a file is not a rule.** The shape is now a primitive,
+`core/widgets/editor_sheet.dart`, and a sheet built through it does not get to say where its action
+goes. The line editor moved onto it unchanged — not because it was broken, but because leaving one
+correct implementation outside the primitive is how the next sheet learns the wrong pattern from the
+nearest example.
+
+`EditorSheet` caps its height rather than fixing it: a three-field sheet hugs its content on a desktop
+window instead of standing 90% tall over a gap, and a ten-field one stops growing and scrolls. The
+`viewInsets` padding sits **inside** the cap, so the keyboard takes the fields' room and the action
+lands exactly on top of it.
+
+### 6. Why 892 tests could not have caught it, which is the more useful finding
+
+`pumpScreen`, the shared widget-test harness, installs its own `MediaQueryData(size:, disableAnimations:)`
+— so **every screen test this project has ever run had `viewInsets: EdgeInsets.zero`.** No test could
+raise a keyboard; the capability did not exist. That is not a bug in any one test, it is the harness
+quietly guaranteeing that a whole class of defect is invisible.
+
+The harness now takes `viewInsets`, defaulting to zero so nothing else changes, and
+`test/core/widgets/sheet_keyboard_test.dart` asserts every sheet that can raise a keyboard with the
+**measured** inset — 255 logical pixels, what a Redmi Note 8 Pro actually takes, not a round number
+chosen to pass. **Verified to bite**: restoring the (c) shape puts the action at 591 against a limit
+of 545 and fails both sheet assertions.
+
+### 7. And the device check now reproduces the keyboard
+
+A widget test with a synthetic inset is a fast guard, not proof. `integration_test/device_assertions.dart`
+adds two shared helpers:
+
+- **`raiseKeyboard`** taps the field and polls for the inset. `enterText` injects straight into the
+  engine and raises nothing, so a device test built on it exercises a phone that has no keyboard —
+  which is exactly what the form pass had been doing.
+- **`expectActionAboveKeyboard`** asserts the action is inside `height - viewInsets.bottom`, and **on
+  Android additionally requires the inset to be non-zero**. An assertion made against a keyboard that
+  never came up is vacuous, and a vacuous check reporting success is worse than no check. On a desktop
+  target it degrades to "the action is on screen" — which is why D-062 requires the phone run and does
+  not accept the Windows one in its place.
+
+The detail pass no longer calls `ensureVisible` before tapping «ذخیره», deliberately: scrolling to the
+button first would hide a regression of the very defect being guarded.
+
+**On the Redmi, after the fix:**
+
+```
+payment sheet: keyboard 254.9 of 803.6, action bottom 532.7, limit 548.7
+line editor sheet: keyboard 254.9 of 803.6, action bottom 532.7, limit 548.7
+layout errors: 0
+```
+
+Before it, the payment sheet's «ذخیره» sat at 618.6 against the same 548.7 limit. The rule is now the
+same in three places — the primitive, the widget sweep and the device pass — and **the check
+reproduces the conditions the user is actually in**, which is the whole of D-062 stated once.

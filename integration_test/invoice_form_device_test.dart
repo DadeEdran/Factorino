@@ -21,6 +21,8 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:go_router/go_router.dart';
 import 'package:integration_test/integration_test.dart';
 
+import 'device_assertions.dart';
+
 /// The assembled invoice form, on the real phone — Phase 4 (d).
 ///
 /// **Why this exists when there are already sixteen widget tests for it.** A
@@ -225,14 +227,49 @@ void main() {
     // **The numeric field, on the real phone.** A fractional quantity through
     // `tryParseScaledInput(scale: 1000)`, typed in Persian digits as a user
     // would with the Persian keyboard.
-    await tester.enterText(
-      find.widgetWithText(TextField, strings.invoiceLineFieldQuantity),
-      '۲٫۵',
+    //
+    // **Tapped before it is typed into, so the real keyboard comes up**
+    // (D-062). `enterText` injects straight into the engine and raises nothing,
+    // so a device test that only ever calls it is exercising a phone with no
+    // keyboard — which is how known issue 21 survived a Windows pass and 892
+    // widget tests. This sheet is opened from the catalogue, so its title field
+    // does not autofocus and the keyboard has to be asked for.
+    final Finder quantity = find.widgetWithText(
+      TextField,
+      strings.invoiceLineFieldQuantity,
     );
+    final double keyboard = await raiseKeyboard(tester, quantity);
+    debugPrint('line sheet    : keyboard ${keyboard.toStringAsFixed(1)}');
+
+    expectActionAboveKeyboard(
+      tester,
+      find.widgetWithText(FilledButton, strings.actionSave),
+      sheet: 'line editor sheet',
+    );
+
+    await tester.enterText(quantity, '۲٫۵');
     await tester.pumpAndSettle();
-    await tester.tap(find.text(strings.actionSave));
+    await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
     await tester.pumpAndSettle();
     debugPrint('line          : added at quantity ۲٫۵');
+
+    // **Put the keyboard away before carrying on with the form**, because a
+    // user who dismisses the sheet gets it put away and the rest of this run
+    // should be the form as they then see it. Raising it above is the point of
+    // the assertion; leaving it up would run the remaining two thirds of the
+    // flow against a viewport 254.9 pixels shorter than the real one, which is
+    // the same class of mistake as never raising it at all.
+    FocusManager.instance.primaryFocus?.unfocus();
+    await tester.pumpAndSettle();
+    for (int step = 0; step < 40; step++) {
+      if (MediaQuery.viewInsetsOf(
+            tester.element(find.byType(InvoiceEditorScreen)),
+          ).bottom ==
+          0) {
+        break;
+      }
+      await tester.pump(const Duration(milliseconds: 100));
+    }
 
     // ---- the calendar grid --------------------------------------------------
     await _scrollTo(tester, find.text(strings.invoiceFieldIssueDate));

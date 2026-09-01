@@ -7,6 +7,7 @@ import '../../../../core/localization/generated/app_strings.dart';
 import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_text_field.dart';
+import '../../../../core/widgets/editor_sheet.dart';
 import '../../../../core/widgets/jalali_date_picker.dart';
 import '../../../../data/models/field_limits.dart';
 import '../../../../data/models/payment.dart';
@@ -26,6 +27,13 @@ import '../../domain/payment_method_label.dart';
 /// balance out here would be a second answer to a question the aggregate has
 /// already answered, and the two would eventually disagree in favour of
 /// whichever one the user happened to be looking at.
+///
+/// **Its fields scroll and its «ذخیره» does not** — [EditorSheet], which is
+/// D-053's split-by-purpose applied to a sheet. The amount field carries
+/// `autofocus`, so a phone raises the soft keyboard before the user touches
+/// anything, and this sheet used to end its own scrolling column with the
+/// button: measured on the Redmi, that put the primary action about 70 logical
+/// pixels below the fold (known issue 21, D-062).
 ///
 /// **An overpayment is warned about, never refused.** The repository accepts
 /// one — an invoice cannot owe a negative amount, so it clamps and reports —
@@ -107,125 +115,93 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
     final bool overpaying =
         typedToman != null && Money.toman(typedToman) > widget.amountDue;
 
-    return Padding(
-      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
-      child: SingleChildScrollView(
-        child: Padding(
-          padding: const EdgeInsets.all(AppSpacing.lg),
-          child: Form(
-            key: _formKey,
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Expanded(
-                      child: Text(
-                        strings.paymentCreateTitle,
-                        style: theme.textTheme.titleLarge,
-                      ),
-                    ),
-                    IconButton(
-                      icon: const Icon(Icons.close),
-                      tooltip: strings.actionCancel,
-                      onPressed: () => Navigator.of(context).pop(),
-                    ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppTextField(
-                  controller: _amount,
-                  label: strings.paymentFieldAmount,
-                  maxLength: AmountLimits.tomanDigits,
-                  suffixText: strings.unitToman,
-                  autofocus: true,
-                  digitsOnly: true,
-                  keyboardType: const TextInputType.numberWithOptions(
-                    decimal: false,
-                  ),
-                  // The balance, named rather than implied, so the commonest
-                  // payment -- settling the rest -- needs no arithmetic from
-                  // the user.
-                  helperText: strings.paymentAmountRemainingHelper(
-                    formatGroupedPersian(widget.amountDue.toman),
-                  ),
-                  validator: (String? value) => _validateAmount(value, strings),
-                ),
-                if (widget.amountDue.rial > 0) ...<Widget>[
-                  const SizedBox(height: AppSpacing.sm),
-                  Align(
-                    alignment: AlignmentDirectional.centerStart,
-                    child: TextButton(
-                      onPressed: () =>
-                          _amount.text = '${widget.amountDue.toman}',
-                      child: Text(strings.paymentAmountFillRemaining),
-                    ),
-                  ),
-                ],
-                if (overpaying) ...<Widget>[
-                  const SizedBox(height: AppSpacing.sm),
-                  Text(
-                    strings.paymentAmountExceedsDue,
-                    style: theme.textTheme.bodySmall?.copyWith(
-                      color: theme.colorScheme.onSurfaceVariant,
-                    ),
-                  ),
-                ],
-                const SizedBox(height: AppSpacing.lg),
-                JalaliDateField(
-                  label: strings.paymentFieldDate,
-                  value: _paidAt,
-                  onPick: _pickDate,
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                Text(
-                  strings.paymentFieldMethod,
-                  style: theme.textTheme.labelLarge,
-                ),
-                const SizedBox(height: AppSpacing.sm),
-                // A `Wrap` of choices rather than a `SegmentedButton`: five
-                // methods do not fit across a phone in one row, and the
-                // Persian labels are not the same length. Wrapping costs a
-                // line of height and cannot clip.
-                Wrap(
-                  spacing: AppSpacing.sm,
-                  runSpacing: AppSpacing.sm,
-                  children: <Widget>[
-                    for (final PaymentMethod method in PaymentMethod.values)
-                      ChoiceChip(
-                        label: Text(paymentMethodLabel(method, strings)),
-                        selected: _method == method,
-                        onSelected: (bool selected) {
-                          if (selected) setState(() => _method = method);
-                        },
-                      ),
-                  ],
-                ),
-                const SizedBox(height: AppSpacing.lg),
-                AppTextField(
-                  controller: _note,
-                  label: strings.paymentFieldNote,
-                  maxLength: PaymentLimits.note,
-                  hintText: strings.paymentFieldNoteHint,
-                  helperText: strings.fieldOptional,
-                  maxLines: 2,
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                // «ذخیره», as the invoice line sheet's submit says, rather
-                // than repeating the sheet's own title: a button and the
-                // heading above it saying the same three words reads as two
-                // controls to a reader scanning for one.
-                FilledButton(
-                  onPressed: _submit,
-                  child: Text(strings.actionSave),
-                ),
-                const SizedBox(height: AppSpacing.sm),
-              ],
+    return EditorSheet(
+      title: strings.paymentCreateTitle,
+      closeTooltip: strings.actionCancel,
+      formKey: _formKey,
+      // «ذخیره», as the invoice line sheet's submit says, rather than
+      // repeating the sheet's own title: a button and the heading above it
+      // saying the same three words reads as two controls to a reader
+      // scanning for one.
+      //
+      // **Pinned by [EditorSheet], not placed here** (known issue 21, D-062).
+      // This sheet previously ended its scrolling column with the button, and
+      // on a phone the keyboard this field's `autofocus` raises pushed it ~70
+      // logical pixels below the fold.
+      action: FilledButton(onPressed: _submit, child: Text(strings.actionSave)),
+      children: <Widget>[
+        AppTextField(
+          controller: _amount,
+          label: strings.paymentFieldAmount,
+          maxLength: AmountLimits.tomanDigits,
+          suffixText: strings.unitToman,
+          autofocus: true,
+          digitsOnly: true,
+          keyboardType: const TextInputType.numberWithOptions(decimal: false),
+          // The balance, named rather than implied, so the commonest
+          // payment -- settling the rest -- needs no arithmetic from
+          // the user.
+          helperText: strings.paymentAmountRemainingHelper(
+            formatGroupedPersian(widget.amountDue.toman),
+          ),
+          validator: (String? value) => _validateAmount(value, strings),
+        ),
+        if (widget.amountDue.rial > 0) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: TextButton(
+              onPressed: () => _amount.text = '${widget.amountDue.toman}',
+              child: Text(strings.paymentAmountFillRemaining),
             ),
           ),
+        ],
+        if (overpaying) ...<Widget>[
+          const SizedBox(height: AppSpacing.sm),
+          Text(
+            strings.paymentAmountExceedsDue,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+        const SizedBox(height: AppSpacing.lg),
+        JalaliDateField(
+          label: strings.paymentFieldDate,
+          value: _paidAt,
+          onPick: _pickDate,
         ),
-      ),
+        const SizedBox(height: AppSpacing.lg),
+        Text(strings.paymentFieldMethod, style: theme.textTheme.labelLarge),
+        const SizedBox(height: AppSpacing.sm),
+        // A `Wrap` of choices rather than a `SegmentedButton`: five
+        // methods do not fit across a phone in one row, and the
+        // Persian labels are not the same length. Wrapping costs a
+        // line of height and cannot clip.
+        Wrap(
+          spacing: AppSpacing.sm,
+          runSpacing: AppSpacing.sm,
+          children: <Widget>[
+            for (final PaymentMethod method in PaymentMethod.values)
+              ChoiceChip(
+                label: Text(paymentMethodLabel(method, strings)),
+                selected: _method == method,
+                onSelected: (bool selected) {
+                  if (selected) setState(() => _method = method);
+                },
+              ),
+          ],
+        ),
+        const SizedBox(height: AppSpacing.lg),
+        AppTextField(
+          controller: _note,
+          label: strings.paymentFieldNote,
+          maxLength: PaymentLimits.note,
+          hintText: strings.paymentFieldNoteHint,
+          helperText: strings.fieldOptional,
+          maxLines: 2,
+        ),
+      ],
     );
   }
 
