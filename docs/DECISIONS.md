@@ -4423,3 +4423,47 @@ field raises a **284.0**-pixel keyboard against an ordinary field's 254.9, leavi
 button about **16 logical pixels** of slack — is recorded in the **ARB description of
 `backupPasswordWarning` itself**, not only here. The person who lengthens that warning is editing a
 `.arb` file and has no reason to be reading a decision log.
+
+### Amendment, 2026-09-01 — the ZWNJ cause, corrected: it is the subsetting, not the glyph
+
+Phase 7 opened on the ZWNJ remedy. **The cause recorded above is wrong in its second half and the
+correction matters, because it rules out the obvious fix.**
+
+What D-070 said: *"It is not the font. U+200C is in Vazirmatn's `cmap` at glyph 322 … Only the
+control's own glyph is wrong."* The first sentence holds. The second does not.
+
+**What was established mechanically, without rendering anything:**
+
+1. **Vazirmatn's ZWNJ glyph is genuinely blank.** Parsed from `loca`/`glyf`: glyph 322 has length 0,
+   as do `.notdef`, space and ZWSP, while alef (681) and Persian zero (901) carry real outlines. The
+   parser was validated against those letters rather than trusted.
+2. **The `pdf` package's placeholder path is never reached for U+200C.** That path prints a
+   diagnostic under asserts, and a probe that renders «پیش‌نویس» prints nothing. So the box is not
+   "no font can draw this".
+3. **The box is a real glyph in the finished document.** Rendering `ش‌ن` emits **three** glyphs where
+   `شن` emits two, and in the embedded subset **all three carry outlines** — 24 bytes each, the same
+   size as the letters beside them. A blank source glyph comes out of the package's subsetting with
+   an outline on it.
+4. **`arabic.convert` has no concept of ZWNJ.** It is not in its alphabet, which is *why* the join
+   breaks: an unknown character between two letters stops them joining. That is accidental
+   correctness, and it is also why simply deleting the ZWNJ re-joins them into «پیشنویس», a
+   misspelling rather than a near-miss.
+
+**So the remedy cannot be a substitution.** Every zero-width candidate either fails to break the join
+(U+FEFF re-joins the letters, verified) or is itself a character that must survive subsetting — and
+point 3 says a blank character does not survive it. Sending *any* invisible character through this
+renderer is unsafe.
+
+**The candidate that remains** is to shape the text ourselves with the ZWNJ present, then strip it and
+hand the renderer already-shaped presentation forms. A first mechanical check is **not encouraging**:
+the prepared string emits two glyphs, correctly one fewer, but their outlines match neither the
+ZWNJ version's letters nor the joined version's — so the package appears to re-shape text that is
+already shaped. **Unverified either way**, and it must be verified on a rendered page, not inferred
+from glyph counts: the owner's first requirement on this remedy is that the join break be confirmed
+visually, ش in final form and ن in initial form.
+
+**Blocked on a renderer.** The browser extension that rasterised probes 1–4 disconnected mid-session,
+and every remaining question about this is a question about what the page *looks like*. The glyph-level
+work above is what could be settled without one, and it is worth the correction on its own: it moves
+the fault from "a wrong control character" to "a blank glyph does not survive subsetting", which is a
+different problem with a different set of fixes.
