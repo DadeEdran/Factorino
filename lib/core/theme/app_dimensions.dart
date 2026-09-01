@@ -212,6 +212,36 @@ abstract final class AppLayout {
   /// rediscover the difference (D-057).
   static const double tablePriceWidth = amountWidthSmall + AppSpacing.md;
 
+  /// The narrowest **content** a flexible column carrying Persian prose may be
+  /// given before the table has to change shape.
+  ///
+  /// Content, not column: `tableMinimumWidth` adds the `AppSpacing.md` gap a
+  /// cell spends on its neighbour, exactly as [tablePriceWidth] adds it to
+  /// [amountWidthSmall]. So a prose column's floor and one money column's width
+  /// come to the same number, which is the point.
+  ///
+  /// **Derived, not chosen.** A description is the primary content of a row,
+  /// and the project already spends [amountWidthSmall] on each *secondary*
+  /// figure beside it (D-037). A primary column narrower than every secondary
+  /// column on the same row is wrong on its face, so the floor for prose is the
+  /// width of one money column — which also means the two move together if the
+  /// money scale is ever retuned, instead of drifting apart the way
+  /// [tablePriceWidth] and [amountWidthSmall] once did.
+  ///
+  /// **What it is for.** A fixed-width money column always gets its width; a
+  /// flexible column gets whatever is left, and `Expanded` is a *tight* fit, so
+  /// "whatever is left" can be nothing and the layout still succeeds. The
+  /// invoice document's description was laid out at 21.6 pixels on every
+  /// desktop width, rendering Persian one glyph per row, and no check fired
+  /// because there is no overflow. A table that cannot give this much to its
+  /// prose column drops a column instead (D-065).
+  static const double tableMinTextWidth = amountWidthSmall;
+
+  /// The same floor for a column holding one short measured value — a quantity
+  /// and its unit, «۲٫۵ ساعت». Half the prose floor: it holds a number and a
+  /// word, never a sentence.
+  static const double tableMinValueWidth = amountWidthSmall / 2;
+
   /// A table column holding a Jalali date.
   ///
   /// Fixed, and wide enough for the zero-padded `۱۴۰۵/۰۶/۰۲` form. Dates are

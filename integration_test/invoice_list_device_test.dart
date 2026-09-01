@@ -273,6 +273,11 @@ void main() {
     );
     debugPrint('unfiltered    : both customers rendered, ladder laid out');
 
+    // No column crushed by the fixed money column beside it (D-065). The list's
+    // table is the other place in the application where prose shares a row with
+    // a fixed-width amount.
+    expectNoCrushedText(tester, where: 'the invoice list');
+
     expect(
       find.text(strings.invoiceFilterAction),
       findsOneWidget,

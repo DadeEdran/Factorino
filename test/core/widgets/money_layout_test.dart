@@ -137,7 +137,10 @@ void main() {
           Builder(
             builder: (BuildContext context) => AppTableRow(
               columns: const <TableColumnSpec>[
-                TableColumnSpec(label: 'X', width: AppLayout.tablePriceWidth),
+                TableColumnSpec.fixed(
+                  label: 'X',
+                  width: AppLayout.tablePriceWidth,
+                ),
               ],
               cells: <Widget>[
                 AmountText(

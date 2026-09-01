@@ -2,6 +2,7 @@ import 'package:factorino/core/formatting/jalali_display.dart';
 import 'package:factorino/core/formatting/number_display.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
+import 'package:factorino/core/theme/app_dimensions.dart';
 import 'package:factorino/core/utils/clock.dart';
 import 'package:factorino/core/widgets/app_table.dart';
 import 'package:factorino/core/widgets/empty_state.dart';
@@ -24,6 +25,7 @@ import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 import '../../support/money_magnitudes.dart';
+import '../../support/text_fit.dart';
 import '../screen_harness.dart';
 import 'fake_invoice_repository.dart';
 
@@ -178,6 +180,69 @@ void main() {
     await tester.pumpAndSettle();
     return stringsOf(tester, InvoiceDetailScreen);
   }
+
+  group('the document table is never crushed by what sits beside it', () {
+    // **The defect this group exists for, reported on the Windows build.** The
+    // desktop tier lays the lines out beside a `detailPanelWidth` panel, and
+    // the three money columns in the table are fixed-width by D-037. The
+    // arithmetic was never done for the composed width: 1240 content, less 96
+    // of page padding, less the 320 panel and the 24 gap beside it, less 32 of
+    // row padding, is **768** — and three columns at `tablePriceWidth` are 732
+    // of it. The description and the quantity shared the remaining 36, so the
+    // description was laid out at **21.6 pixels** and Persian rendered one
+    // glyph per row, vertically.
+    //
+    // D-058 did the same sum and reached 1144, which is the *full* content
+    // column. That is §10's own rule, missed in the file that quotes it: a
+    // widget measured at its own full width has not been measured at the width
+    // it is composed into.
+    for (final MapEntry<String, Size> tier in kAllTierSizes.entries) {
+      testWidgets('at ${tier.key}, with a real line title', (
+        WidgetTester tester,
+      ) async {
+        await pumpDetail(
+          tester,
+          view: detail(
+            status: InvoiceStatus.cancelled,
+            payments: <Payment>[payment(5000000)],
+            items: <InvoiceItem>[
+              line(title: PersianFixtures.longLineTitle),
+              line(id: 'l2', position: 1, title: PersianFixtures.longLineTitle),
+            ],
+          ),
+          size: Size(tier.value.width, 2400),
+        );
+
+        expectNoCrushedText(tester, where: 'the invoice detail screen');
+      });
+    }
+
+    testWidgets('the description keeps a readable column on desktop', (
+      WidgetTester tester,
+    ) async {
+      // Stated as a width rather than only as "not crushed", because the
+      // failure mode above is continuous: a column one word wide passes the
+      // crushed-text check and is still not a column anybody can read.
+      await pumpDetail(
+        tester,
+        view: detail(
+          items: <InvoiceItem>[line(title: PersianFixtures.longLineTitle)],
+        ),
+        size: const Size(1400, 2400),
+      );
+
+      final Finder description = find.text(PersianFixtures.longLineTitle);
+      expect(description, findsOneWidget);
+      expect(
+        tester.getSize(description).width,
+        greaterThanOrEqualTo(AppLayout.tableMinTextWidth),
+        reason:
+            'the description is the primary content of a document line, and a '
+            'primary column narrower than the secondary figures beside it is '
+            'wrong on its face (AppLayout.tableMinTextWidth)',
+      );
+    });
+  });
 
   group('states', () {
     testWidgets('a skeleton, not a spinner, while the invoice loads', (
@@ -372,8 +437,20 @@ void main() {
         size: kDesktopSize,
       );
 
-      // The desktop table has a مبلغ کل column, so the absence is a cell.
-      expect(find.text(strings.invoiceFigureUnrecorded), findsWidgets);
+      // **The rule, not the shape.** This used to assert the bare «ثبت‌نشده»
+      // on the grounds that "the desktop table has a مبلغ کل column, so the
+      // absence is a cell" — which stopped being true when the table learned to
+      // give that column up at the width it is actually composed into (D-065).
+      // The rule D-055 states survives the change and is what is asserted now:
+      // an unrecorded figure is admitted, never zeroed, and it keeps the label
+      // saying *which* figure is missing — which the sentence form does more
+      // plainly than the cell ever did.
+      expect(
+        find.text(
+          strings.invoiceLineLabelUnrecorded(strings.invoiceLineColumnGross),
+        ),
+        findsWidgets,
+      );
     });
 
     testWidgets('an unrecorded share names which figure is missing', (

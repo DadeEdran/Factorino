@@ -184,12 +184,16 @@ class _ProductList extends StatelessWidget {
 }
 
 List<TableColumnSpec> _columns(AppStrings strings) => <TableColumnSpec>[
-  TableColumnSpec(label: strings.tableColumnName, flex: 4),
-  TableColumnSpec(
+  TableColumnSpec.flexible(
+    label: strings.tableColumnName,
+    flex: 4,
+    minWidth: AppLayout.tableMinTextWidth,
+  ),
+  TableColumnSpec.fixed(
     label: strings.tableColumnType,
     width: AppLayout.tableTypeWidth,
   ),
-  TableColumnSpec(
+  TableColumnSpec.fixed(
     label: strings.tableColumnUnit,
     width: AppLayout.tableUnitWidth,
   ),
@@ -200,7 +204,7 @@ List<TableColumnSpec> _columns(AppStrings strings) => <TableColumnSpec>[
   // alignment in RTL puts the digits' right edge -- the units digit -- on a
   // common line, and that is what makes a column of money scannable.
   // Caught by looking at the running build, not by any test.
-  TableColumnSpec(
+  TableColumnSpec.fixed(
     label: strings.tableColumnPrice,
     width: AppLayout.tablePriceWidth,
   ),

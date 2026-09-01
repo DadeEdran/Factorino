@@ -200,9 +200,23 @@ class _CustomerList extends StatelessWidget {
 }
 
 List<TableColumnSpec> _columns(AppStrings strings) => <TableColumnSpec>[
-  TableColumnSpec(label: strings.tableColumnName, flex: 3),
-  TableColumnSpec(label: strings.tableColumnCompany, flex: 2),
-  TableColumnSpec(label: strings.tableColumnMobile, flex: 2),
+  TableColumnSpec.flexible(
+    label: strings.tableColumnName,
+    flex: 3,
+    minWidth: AppLayout.tableMinTextWidth,
+  ),
+  TableColumnSpec.flexible(
+    label: strings.tableColumnCompany,
+    flex: 2,
+    minWidth: AppLayout.tableMinTextWidth,
+  ),
+  // A mobile number is one unbreakable bidi-isolated run of eleven digits, so
+  // it is a measured value rather than prose (D-065).
+  TableColumnSpec.flexible(
+    label: strings.tableColumnMobile,
+    flex: 2,
+    minWidth: AppLayout.tableMinValueWidth,
+  ),
 ];
 
 /// A customer as a card: mobile and tablet.

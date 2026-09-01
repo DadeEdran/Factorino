@@ -59,37 +59,87 @@ class InvoiceDocumentLines extends StatelessWidget {
       return _LinesTable(invoice: invoice, items: items, strings: strings);
     }
 
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: <Widget>[
-        for (int index = 0; index < items.length; index++) ...<Widget>[
-          if (index > 0) const SizedBox(height: AppSpacing.md),
-          _LineCard(invoice: invoice, item: items[index], strings: strings),
-        ],
-      ],
-    );
+    return _LineCards(invoice: invoice, items: items, strings: strings);
   }
 }
 
+/// One column of the document table, named so that a shape can be a list of
+/// them rather than a set of booleans nobody can read at a glance.
+enum _LineColumn { description, quantity, unitPrice, gross, total }
+
+/// The shapes the document table can take, widest first.
+///
+/// **A column that degrades to unreadable is worse than one that is not shown**
+/// (D-065). Every money column here is fixed-width by D-037, so when the table
+/// is composed into a region narrower than they need, the *flexible* columns
+/// absorb the whole shortfall — and `Expanded` is a tight fit, so they absorb it
+/// all the way down to nothing. That is what happened: on the detail screen the
+/// table sits beside a `detailPanelWidth` panel, and the description was laid
+/// out at **21.6 logical pixels**, rendering Persian one glyph per row, at every
+/// desktop width, with no overflow and no error of any kind.
+///
+/// So the table gives up **columns** rather than giving up width it does not
+/// have. The two alternatives were considered and refused:
+///
+/// * **Horizontal scrolling** — a document is read by carrying the description
+///   across to the total, and a scroll that puts those on different screens
+///   breaks the one comparison the page exists for. It also hides figures below
+///   the fold sideways, where nothing suggests they are there.
+/// * **Wrapping the row** — a row that takes two lines has stopped being a
+///   table, and this file already has the shape for a line that is not a table
+///   row. It is [_LineCard], and it is what the narrow tiers use.
+///
+/// **Nothing is lost when a column goes.** Each dropped figure reappears as a
+/// labelled detail line under the description, through the same strings the
+/// card already uses — so the wide table, the narrow table and the card all say
+/// the same things in the same words, which is the rule this file was built on.
+const List<List<_LineColumn>> _lineTableShapes = <List<_LineColumn>>[
+  <_LineColumn>[
+    _LineColumn.description,
+    _LineColumn.quantity,
+    _LineColumn.unitPrice,
+    _LineColumn.gross,
+    _LineColumn.total,
+  ],
+  // مبلغ کل goes first. It is the one figure on the row that is a *step* in the
+  // arithmetic rather than a term of the agreement — the customer checks the
+  // unit price they agreed and the total they owe; the gross between them is
+  // working. It is already a sentence on every card for the same reason.
+  <_LineColumn>[
+    _LineColumn.description,
+    _LineColumn.quantity,
+    _LineColumn.unitPrice,
+    _LineColumn.total,
+  ],
+  <_LineColumn>[
+    _LineColumn.description,
+    _LineColumn.quantity,
+    _LineColumn.total,
+  ],
+  // The floor. شرح and جمع are what a document line *is*: what was sold, and
+  // what it came to. Below the width even these two need, the table becomes
+  // cards rather than becoming unreadable.
+  <_LineColumn>[_LineColumn.description, _LineColumn.total],
+];
+
 /// A real table on desktop (§10).
 ///
-/// **Five columns, and the choice of which five is a measurement.** The printed
-/// Iranian line is شرح · تعداد · مبلغ واحد · مبلغ کل · تخفیف · مبلغ پس از
-/// تخفیف · مالیات · جمع — six money columns. A money column is fixed-width by
-/// D-037 and `AppLayout.tablePriceWidth` is 244 of them, so six is 1464 logical
-/// pixels before the description has any, against the 1144 a desktop content
-/// column actually has at `AppLayout.maxContentWidth`. **Eight columns do not
-/// fit at any window size**, exactly as the summary panel did not fit beside the
-/// editor's table (D-053), and the same answer applies: state the constraint
-/// rather than squeeze the layout.
+/// **Five columns at its widest, and the choice of which five is a
+/// measurement.** The printed Iranian line is شرح · تعداد · مبلغ واحد · مبلغ کل
+/// · تخفیف · مبلغ پس از تخفیف · مالیات · جمع — six money columns. A money
+/// column is fixed-width by D-037 and `AppLayout.tablePriceWidth` is 244 of
+/// them, so six is 1464 logical pixels before the description has any. **Eight
+/// columns do not fit at any window size**, exactly as the summary panel did not
+/// fit beside the editor's table (D-053).
 ///
-/// So the three columns that vary independently keep the width — قیمت واحد,
-/// مبلغ کل and جمع سطر — and the deductions between them run underneath the
-/// description as labelled detail lines, which is the shape the editor's table
-/// and every card on the narrow tiers already use. Every stored figure is on
-/// the row; what changes is whether it is a column or a line. The eight-column
-/// document layout is the renderer's problem (§12), on a page rather than in a
-/// viewport, and it has every figure it needs.
+/// **And five do not always fit either, which is the half that was missed.**
+/// D-058 checked the five against **1144**, the full desktop content column —
+/// but on the detail screen this table is composed into what is left beside a
+/// 320-pixel panel, which is **768**, and three fixed money columns are 732 of
+/// it. That is §10's own composition rule, missed in the file that quotes it: a
+/// widget measured at its own full width has not been measured at the width it
+/// is composed into. The shape is chosen from the width the table is actually
+/// given now — see [_lineTableShapes].
 class _LinesTable extends StatelessWidget {
   const _LinesTable({
     required this.invoice,
@@ -101,65 +151,178 @@ class _LinesTable extends StatelessWidget {
   final List<InvoiceItem> items;
   final AppStrings strings;
 
+  /// Fixed-width and leading-aligned for the money columns, like every money
+  /// column in the application: numbers render left-to-right whatever the
+  /// surrounding direction, so `alignEnd` in RTL lines up their *first* digits
+  /// and leaves the units ragged (D-037).
+  TableColumnSpec _spec(_LineColumn column) => switch (column) {
+    _LineColumn.description => TableColumnSpec.flexible(
+      label: strings.invoiceLineColumnDescription,
+      flex: 3,
+      minWidth: AppLayout.tableMinTextWidth,
+    ),
+    _LineColumn.quantity => TableColumnSpec.flexible(
+      label: strings.invoiceLineColumnQuantity,
+      flex: 2,
+      minWidth: AppLayout.tableMinValueWidth,
+    ),
+    _LineColumn.unitPrice => TableColumnSpec.fixed(
+      label: strings.invoiceLineColumnUnitPrice,
+      width: AppLayout.tablePriceWidth,
+    ),
+    _LineColumn.gross => TableColumnSpec.fixed(
+      label: strings.invoiceLineColumnGross,
+      width: AppLayout.tablePriceWidth,
+    ),
+    _LineColumn.total => TableColumnSpec.fixed(
+      label: strings.invoiceLineColumnTotal,
+      width: AppLayout.tablePriceWidth,
+    ),
+  };
+
+  /// The widest shape that fits in [available], or null if not even the floor
+  /// does.
+  List<_LineColumn>? _shapeFor(double available) {
+    for (final List<_LineColumn> shape in _lineTableShapes) {
+      if (tableMinimumWidth(shape.map(_spec).toList()) <= available) {
+        return shape;
+      }
+    }
+    return null;
+  }
+
+  /// The figures [shape] gave up, said as sentences instead.
+  ///
+  /// Ordered as the columns were, so a reader who has seen the wide table finds
+  /// them in the sequence they expect.
+  List<String> _droppedDetails(List<_LineColumn> shape, InvoiceItem item) {
+    final List<String> details = <String>[];
+
+    // Quantity and unit price share one sentence — «۲٫۵ ساعت × ۱۲۵٬۰۰۰ تومان» —
+    // which is the string the card has always used, so a line reads the same
+    // way in both places rather than nearly the same way.
+    if (!shape.contains(_LineColumn.quantity)) {
+      details.add(
+        strings.invoiceLineLabelQuantity(
+          formatQuantityMilli(item.quantityMilli),
+          item.unit,
+          formatGroupedPersian(item.unitPrice.toman),
+        ),
+      );
+    } else if (!shape.contains(_LineColumn.unitPrice)) {
+      details.add(
+        strings.invoiceLineLabelUnitPrice(
+          formatGroupedPersian(item.unitPrice.toman),
+        ),
+      );
+    }
+
+    if (!shape.contains(_LineColumn.gross)) {
+      details.add(switch (item.gross) {
+        final Money gross => strings.invoiceLineLabelGross(
+          formatGroupedPersian(gross.toman),
+        ),
+        // Null means *unknown*, never zero (D-055). The admission keeps its
+        // label whether the figure is a column or a sentence.
+        null => strings.invoiceLineLabelUnrecorded(
+          strings.invoiceLineColumnGross,
+        ),
+      });
+    }
+
+    return details;
+  }
+
+  Widget _cell(
+    _LineColumn column,
+    List<_LineColumn> shape,
+    InvoiceItem item,
+    ThemeData theme,
+  ) => switch (column) {
+    _LineColumn.description => Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(item.title),
+        for (final String detail in <String>[
+          ..._droppedDetails(shape, item),
+          ...lineDetails(invoice, item, strings),
+        ])
+          Text(detail, style: theme.textTheme.bodySmall),
+      ],
+    ),
+    _LineColumn.quantity => Text(
+      '${formatQuantityMilli(item.quantityMilli)} ${item.unit}',
+    ),
+    _LineColumn.unitPrice => AmountText(
+      item.unitPrice,
+      unitLabel: strings.unitToman,
+      size: AmountSize.small,
+    ),
+    _LineColumn.gross => _MaybeAmount(amount: item.gross, strings: strings),
+    _LineColumn.total => AmountText(
+      item.lineTotal,
+      unitLabel: strings.unitToman,
+      size: AmountSize.small,
+    ),
+  };
+
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
 
-    // Fixed-width and leading-aligned, like every money column in the
-    // application: numbers render left-to-right whatever the surrounding
-    // direction, so `alignEnd` in RTL lines up their *first* digits and leaves
-    // the units ragged (D-037).
-    final List<TableColumnSpec> columns = <TableColumnSpec>[
-      TableColumnSpec(label: strings.invoiceLineColumnDescription, flex: 3),
-      TableColumnSpec(label: strings.invoiceLineColumnQuantity, flex: 2),
-      TableColumnSpec(
-        label: strings.invoiceLineColumnUnitPrice,
-        width: AppLayout.tablePriceWidth,
-      ),
-      TableColumnSpec(
-        label: strings.invoiceLineColumnGross,
-        width: AppLayout.tablePriceWidth,
-      ),
-      TableColumnSpec(
-        label: strings.invoiceLineColumnTotal,
-        width: AppLayout.tablePriceWidth,
-      ),
-    ];
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final List<_LineColumn>? shape = _shapeFor(constraints.maxWidth);
 
+        // Narrower than even شرح · جمع needs. A table is not the shape for this
+        // width, and the application already has the one that is.
+        if (shape == null) {
+          return _LineCards(invoice: invoice, items: items, strings: strings);
+        }
+
+        final List<TableColumnSpec> columns = shape.map(_spec).toList();
+
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            AppTableHeader(columns: columns),
+            for (final InvoiceItem item in items)
+              AppTableRow(
+                columns: columns,
+                cells: <Widget>[
+                  for (final _LineColumn column in shape)
+                    _cell(column, shape, item, theme),
+                ],
+              ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// The lines as cards: the narrow tiers, and the fallback for a table region
+/// too narrow to be a table.
+class _LineCards extends StatelessWidget {
+  const _LineCards({
+    required this.invoice,
+    required this.items,
+    required this.strings,
+  });
+
+  final Invoice invoice;
+  final List<InvoiceItem> items;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        AppTableHeader(columns: columns),
-        for (final InvoiceItem item in items)
-          AppTableRow(
-            columns: columns,
-            cells: <Widget>[
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(item.title),
-                  for (final String detail in lineDetails(
-                    invoice,
-                    item,
-                    strings,
-                  ))
-                    Text(detail, style: theme.textTheme.bodySmall),
-                ],
-              ),
-              Text('${formatQuantityMilli(item.quantityMilli)} ${item.unit}'),
-              AmountText(
-                item.unitPrice,
-                unitLabel: strings.unitToman,
-                size: AmountSize.small,
-              ),
-              _MaybeAmount(amount: item.gross, strings: strings),
-              AmountText(
-                item.lineTotal,
-                unitLabel: strings.unitToman,
-                size: AmountSize.small,
-              ),
-            ],
-          ),
+        for (int index = 0; index < items.length; index++) ...<Widget>[
+          if (index > 0) const SizedBox(height: AppSpacing.md),
+          _LineCard(invoice: invoice, item: items[index], strings: strings),
+        ],
       ],
     );
   }

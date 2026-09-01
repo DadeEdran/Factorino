@@ -305,10 +305,44 @@ abstract final class AppTheme {
         columnSpacing: AppSpacing.xl,
       ),
 
+      // **A chip's label colour is state-dependent, and stating a flat
+      // `labelStyle` here is what took it away** (D-066). Material's `RawChip`
+      // uses the theme's `labelStyle` in place of its own state-dependent
+      // default rather than merging over it, and `AppTypography.label` names no
+      // colour — so the label was painted with **no colour at all** and fell
+      // through to the engine's fallback, which is **white**. On the dark
+      // theme's surfaces that is 16:1 and looks deliberate; on the light
+      // theme's it is **1.12:1**, which is the payment sheet's method selector
+      // as the user reported it.
+      //
+      // The tell was that the *checkmark* was right: it takes its colour from a
+      // separate default the flat `labelStyle` never touched, so a selected
+      // chip showed a correctly-coloured tick beside an invisible word.
+      //
+      // `RawChip` resolves `labelStyle.color` as a widget-state property, so a
+      // `WidgetStateColor` is the supported way to say which foreground goes
+      // with which background — and saying both halves in one place is what
+      // stops them drifting apart again.
       chipTheme: ChipThemeData(
         backgroundColor: scheme.surfaceContainer,
+        // Named rather than left to the M3 default, so the label colours below
+        // are chosen against backgrounds this file actually decided.
+        selectedColor: scheme.secondaryContainer,
+        checkmarkColor: scheme.onSecondaryContainer,
         labelStyle: AppTypography.label.copyWith(
           fontFamily: AppTypography.fontFamily,
+          color: _chipLabelColor(scheme),
+        ),
+        // **`ChoiceChip` reads its selected label from here, not from
+        // `labelStyle`** — which is the second half of this defect and was
+        // found only because the contrast check measures pixels. Fixing
+        // `labelStyle` alone left a selected chip in dark mode at **3.75:1**,
+        // passing every token-level reading and still not readable. The same
+        // resolver is used for both so the two cannot be right and wrong at the
+        // same time.
+        secondaryLabelStyle: AppTypography.label.copyWith(
+          fontFamily: AppTypography.fontFamily,
+          color: _chipLabelColor(scheme),
         ),
         side: BorderSide.none,
         shape: RoundedRectangleBorder(
@@ -331,3 +365,16 @@ abstract final class AppTheme {
     );
   }
 }
+
+/// The chip label colour, paired with the background the chip is painting.
+///
+/// One resolver for both `labelStyle` and `secondaryLabelStyle`, because
+/// `ChoiceChip` takes its selected label from the second and every other chip
+/// takes its from the first — and a pairing stated twice is a pairing that gets
+/// fixed once (D-066).
+WidgetStateColor _chipLabelColor(ColorScheme scheme) =>
+    WidgetStateColor.resolveWith(
+      (Set<WidgetState> states) => states.contains(WidgetState.selected)
+          ? scheme.onSecondaryContainer
+          : scheme.onSurfaceVariant,
+    );

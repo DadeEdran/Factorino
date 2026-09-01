@@ -1,6 +1,7 @@
 import 'dart:io';
 
 import 'package:flutter/material.dart';
+import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
 
 /// The two assertions a device pass needs that a widget test cannot make, and
@@ -119,5 +120,59 @@ void expectActionAboveKeyboard(
         '$sheet must keep its primary action inside the space the keyboard '
         'leaves. A user who types a value and cannot see the button has to '
         'discover it by scrolling (known issue 21, D-062)',
+  );
+}
+
+/// Fails if any text on screen was laid out **narrower than its own longest
+/// word**, which is text broken inside a word — one Persian glyph per row.
+///
+/// **This is the check the reported defect walked past.** The invoice document
+/// table's fixed money columns took everything, the flexible description was
+/// handed what was left, and `Expanded` is a *tight* fit, so it was laid out
+/// successfully at 21.6 logical pixels. No overflow, no error, zero layout
+/// errors reported by this very suite — and a column of vertical text on the
+/// screen the user was looking at (D-065).
+///
+/// Duplicated from `test/support/text_fit.dart` rather than imported, for the
+/// reason the amount ladder is duplicated here too: `integration_test/` cannot
+/// see `test/`. If the two ever disagree, this comment is the reason to fix it
+/// rather than to shrug.
+void expectNoCrushedText(WidgetTester tester, {required String where}) {
+  final List<String> crushed = <String>[];
+
+  void visit(RenderObject node) {
+    if (node is RenderParagraph) {
+      final String text = node.text.toPlainText().trim();
+      // Ellipsis and fade are deliberate truncation; `maxLines: 1` with clip is
+      // a single-line label whose author accepted the cut.
+      final bool truncatesOnPurpose =
+          node.overflow != TextOverflow.clip || node.maxLines == 1;
+
+      if (text.isNotEmpty && node.softWrap && !truncatesOnPurpose) {
+        final double needed = node.getMinIntrinsicWidth(double.infinity);
+        if (node.size.width + 1 < needed) {
+          crushed.add(
+            '"${text.length > 40 ? '${text.substring(0, 40)}...' : text}" at '
+            '${node.size.width.toStringAsFixed(1)} px, needs '
+            '${needed.toStringAsFixed(1)}',
+          );
+        }
+      }
+    }
+    node.visitChildren(visit);
+  }
+
+  visit(tester.binding.rootElement!.renderObject!);
+
+  for (final String line in crushed) {
+    debugPrint('  ! crushed: $line');
+  }
+  expect(
+    crushed,
+    isEmpty,
+    reason:
+        'text laid out narrower than its own longest word breaks inside the '
+        'word and renders vertically in Persian, with no overflow and nothing '
+        'raised. In $where',
   );
 }

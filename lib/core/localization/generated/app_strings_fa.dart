@@ -841,6 +841,11 @@ class AppStringsFa extends AppStrings {
   }
 
   @override
+  String invoiceLineLabelUnitPrice(String amount) {
+    return 'مبلغ واحد $amount';
+  }
+
+  @override
   String invoiceLineLabelTaxAmount(String rate, String amount) {
     return 'مالیات $rate: $amount';
   }

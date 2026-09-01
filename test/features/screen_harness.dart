@@ -1,6 +1,8 @@
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/theme/app_theme.dart';
+import 'package:factorino/core/theme/app_typography.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -36,6 +38,40 @@ import 'package:go_router/go_router.dart';
 /// otherwise passing test, which reads as a failure of the thing being tested
 /// rather than of the harness. [lastLocation] exposes where the screen asked to
 /// go, so navigation can be asserted rather than merely survived.
+bool _persianFontLoaded = false;
+
+/// Loads the real **Vazirmatn** into the test binding.
+///
+/// **Because a widget test in the wrong font is measuring a screen nobody
+/// sees.** Flutter's test environment substitutes a fallback font whose glyphs
+/// are far wider than Vazirmatn's, and this project has carried that as a known
+/// caveat since Phase 1 — "a fixed-width column that passes a widget test has
+/// margin in the shipped layout". That caveat is only comforting in one
+/// direction. It makes every width assertion conservative, and it makes every
+/// *minimum*-width assertion wrong the other way: a column measured against
+/// inflated glyph metrics looks crushed when it is fine, and the noise is
+/// indistinguishable from the signal.
+///
+/// The font is a declared asset, so `rootBundle` has it in tests too. Loaded
+/// once per process and cached; the three weights match `pubspec.yaml`, because
+/// a bold heading measured in regular is the same mistake one step smaller.
+///
+/// This is D-062's rule applied to the widget tier: the check reproduces the
+/// conditions the user is in, and the font is one of them.
+Future<void> loadPersianFont() async {
+  if (_persianFontLoaded) return;
+  final FontLoader loader = FontLoader(AppTypography.fontFamily);
+  for (final String path in <String>[
+    'assets/fonts/Vazirmatn-Regular.ttf',
+    'assets/fonts/Vazirmatn-Medium.ttf',
+    'assets/fonts/Vazirmatn-Bold.ttf',
+  ]) {
+    loader.addFont(rootBundle.load(path));
+  }
+  await loader.load();
+  _persianFontLoaded = true;
+}
+
 Future<void> pumpScreen(
   WidgetTester tester,
   Widget screen, {
@@ -44,6 +80,7 @@ Future<void> pumpScreen(
   bool disableAnimations = false,
   EdgeInsets viewInsets = EdgeInsets.zero,
 }) async {
+  await loadPersianFont();
   tester.view.physicalSize = size;
   tester.view.devicePixelRatio = 1;
   addTearDown(tester.view.reset);

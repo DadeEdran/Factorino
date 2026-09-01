@@ -152,7 +152,15 @@ void main() {
               discount: Money.rial(rial ~/ 20),
               items: <InvoiceItemDraft>[
                 InvoiceItemDraft(
-                  title: 'مشاورهٔ فنی و مهندسی',
+                  // **Long, because a short title fits anywhere.** The document
+                  // table's description column was crushed to 21.6 pixels on
+                  // this very screen and this very suite reported 0 layout
+                  // errors, truthfully: a crushed column does not overflow, and
+                  // «مشاورهٔ فنی و مهندسی» is short enough to survive one
+                  // anyway (D-065).
+                  title:
+                      'طراحی و پیاده‌سازی وب‌سایت فروشگاهی به همراه '
+                      'پشتیبانی فنی یک‌ساله',
                   unit: 'ساعت',
                   unitPrice: Money.rial(rial),
                   quantityMilli: 1000,
@@ -293,6 +301,12 @@ void main() {
         findsOneWidget,
         reason: 'and it must say why that is not the name in the record',
       );
+
+      // **No column crushed, at this rung, on this target** (D-065). Checked
+      // per rung rather than once: the description's width depends on what the
+      // money columns beside it take, and those are fixed-width, so the rung is
+      // exactly the variable.
+      expectNoCrushedText(tester, where: 'the invoice detail screen at $toman');
 
       // Whether the figure that was never recorded is admitted rather than
       // zeroed, on the widest invoice of the four.

@@ -91,7 +91,9 @@ Factorino/
       widgets/                                    # shared design-system components
         app_card.dart  status_badge.dart  empty_state.dart
         amount_text.dart  page_body.dart
-        app_table.dart                            #   virtualized desktop table (D-037)
+        app_table.dart                            #   virtualized desktop table (D-037); a
+                                                  #   flexible column must declare its minimum,
+                                                  #   and the header asserts the total (D-065)
         app_text_field.dart                       #   THE text field; maxLength required (D-043)
         stat_tile.dart                            #   StatTile + TileGrid, shared by two features
         skeleton.dart  search_field.dart  load_more_footer.dart
@@ -150,7 +152,8 @@ Factorino/
       customer_repository_test.dart  invoice_repository_test.dart
       payment_repository_test.dart   product_and_settings_test.dart
   integration_test/
-    device_assertions.dart                          # reach / raiseKeyboard / above-the-keyboard
+    device_assertions.dart                          # reach / raiseKeyboard / above-the-keyboard /
+                                                    #   no-crushed-text (D-062, D-065)
     d020_encryption_proof_test.dart                 # the end-to-end proof, per platform
     startup_test.dart                               # the real startup path, per platform
     invoice_form_device_test.dart                   # the form, both tiers it is given (D-062)

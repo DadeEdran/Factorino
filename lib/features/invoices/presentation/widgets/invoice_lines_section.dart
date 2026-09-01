@@ -310,13 +310,21 @@ class _LinesTable extends StatelessWidget {
     // clips at another size; `alignEnd` in RTL puts the figure against the
     // wrong edge and breaks the vertical alignment of a column of them.
     final List<TableColumnSpec> columns = <TableColumnSpec>[
-      TableColumnSpec(label: strings.invoiceLineColumnDescription, flex: 3),
-      TableColumnSpec(label: strings.invoiceLineColumnQuantity, flex: 2),
-      TableColumnSpec(
+      TableColumnSpec.flexible(
+        label: strings.invoiceLineColumnDescription,
+        flex: 3,
+        minWidth: AppLayout.tableMinTextWidth,
+      ),
+      TableColumnSpec.flexible(
+        label: strings.invoiceLineColumnQuantity,
+        flex: 2,
+        minWidth: AppLayout.tableMinValueWidth,
+      ),
+      TableColumnSpec.fixed(
         label: strings.invoiceLineColumnUnitPrice,
         width: AppLayout.tablePriceWidth,
       ),
-      TableColumnSpec(
+      TableColumnSpec.fixed(
         label: strings.invoiceLineColumnTotal,
         width: AppLayout.tablePriceWidth,
       ),

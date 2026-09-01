@@ -273,18 +273,28 @@ List<TableColumnSpec> invoiceColumns(
   AppStrings strings, {
   bool includeCustomer = true,
 }) => <TableColumnSpec>[
-  TableColumnSpec(label: strings.tableColumnNumber, flex: 2),
+  // An invoice number is one unbreakable bidi-isolated run, so it needs a
+  // measured value's room rather than prose's (D-065).
+  TableColumnSpec.flexible(
+    label: strings.tableColumnNumber,
+    flex: 2,
+    minWidth: AppLayout.tableMinValueWidth,
+  ),
   if (includeCustomer)
-    TableColumnSpec(label: strings.tableColumnCustomer, flex: 3),
-  TableColumnSpec(
+    TableColumnSpec.flexible(
+      label: strings.tableColumnCustomer,
+      flex: 3,
+      minWidth: AppLayout.tableMinTextWidth,
+    ),
+  TableColumnSpec.fixed(
     label: strings.tableColumnDate,
     width: AppLayout.tableDateWidth,
   ),
-  TableColumnSpec(
+  TableColumnSpec.fixed(
     label: strings.tableColumnStatus,
     width: AppLayout.tableStatusWidth,
   ),
-  TableColumnSpec(
+  TableColumnSpec.fixed(
     label: strings.tableColumnAmount,
     width: AppLayout.tablePriceWidth,
   ),

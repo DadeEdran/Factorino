@@ -1628,6 +1628,12 @@ abstract class AppStrings {
   /// **'مبلغ کل {amount}'**
   String invoiceLineLabelGross(String amount);
 
+  /// The line's unit price as a detail line rather than a column, for the document table shape that gave that column up to keep the description readable (D-065). Worded like invoiceLineLabelGross, because it is the same kind of statement about the same kind of figure.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ واحد {amount}'**
+  String invoiceLineLabelUnitPrice(String amount);
+
   /// The resolved rate AND the tax it came to, on a stored document line. The editor's invoiceLineLabelTax shows the rate alone, which is right on a form where the amount is a row away and about to change; on a document the amount is what the customer reconciles.
   ///
   /// In fa, this message translates to:

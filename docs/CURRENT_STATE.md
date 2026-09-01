@@ -1,8 +1,9 @@
 # Current State
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
-> Last updated: **2026-09-01** — end of the session that closed **Phase 5**. The owner accepted the
-> five outstanding boundaries and directed (f); (f) ran, and the phase is `COMPLETED`.
+> Last updated: **2026-09-01** — Phase 5 is `COMPLETED` and accepted. Since the close, two visual
+> defects reported off the Windows build have been fixed (D-065, D-066) with the checks that would
+> have caught them, and widget tests now render in the real font (D-067).
 
 ---
 
@@ -21,6 +22,11 @@ and the keyboard rule (D-062, known issue 21), and (e) filters and paging (D-063
 the phase. **Nothing is awaiting review.**
 
 **Phase 6 — Backup and Restore · `NOT_STARTED`** ← next.
+
+**After the close, before Phase 6:** two visual defects reported off the Windows build, both fixed —
+the invoice document table's crushed description column (**D-065**) and chip labels painted with no
+colour (**D-066**) — together with the checks that would have caught them and the harness change that
+made one of them checkable (**D-067**).
 
 | # | Increment | Status |
 |---|---|---|
@@ -166,9 +172,16 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (f)
-flutter test:               PASS   (938/938, was 935)                         as of (f)
-Android build:              PASS   debug APK built (2026-09-01, re-run for (f))
+flutter analyze:            PASS   (No issues found)                          as of D-065/D-066
+flutter test:               PASS   (1004/1004, was 938)                       as of D-065/D-066
+Android build:              PASS   debug APK built (2026-09-01, for (f))
+
+Persian content sweep:      PASS   11 screens x 3 tiers, strings at the length real data reaches,
+                                   over the real repositories -- no crushed text anywhere (D-065)
+Component contrast:         PASS   every chip variant, both themes, both states, measured off the
+                                   painted pixels: 6.3:1 to 11.4:1 (D-066). Verified to bite
+Table minimum guard:        PASS   app_table_test.dart, one pixel either side of the threshold
+Document line ladder:       PASS   4 rungs plus every threshold minus one (D-065)
 
 Layout, all 3 tiers x 4 amounts (D-057) -- the phase-close check:
   widget sweep:             PASS   money_layout_test.dart (every fixed-width money site, plus the
@@ -176,9 +189,18 @@ Layout, all 3 tiers x 4 amounts (D-057) -- the phase-close check:
                                    rungs on screen at once -- new in (f)),
                                    invoice_detail_screen_test.dart, invoices_screen_test.dart
   device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, ratio 2.75 (2026-09-01)
-                                   list, detail and form suites. 0 layout errors on all three
-  device - Windows desktop: PASS   1264 x 681 (2026-09-01)
                                    list, detail and form suites. 0 layout errors on all three.
+                                   **NOT re-run after the D-065/D-066 fixes** -- the phone was
+                                   physically disconnected before they were finished, and nothing
+                                   on this machine can reconnect it. Both defects were reported on
+                                   and verified on the desktop tier; the phone tier renders the
+                                   line cards rather than the table, so D-065 does not change it,
+                                   but the run is owed and is the first thing to do with the cable
+                                   back in.
+  device - Windows desktop: PASS   1264 x 681 (2026-09-01)
+                                   list, detail and form suites. 0 layout errors on all three,
+                                   and no crushed text -- the detector runs there too now (D-065).
+                                   Re-run after the D-065/D-066 fixes.
                                    The FORM suite's first desktop run ever -- see D-064
   tablet tier:              widget sweep only. There is no tablet device; stated rather than
                                    implied, because a pass on one tier is a pass on one tier
@@ -203,8 +225,81 @@ D-048 proof - Android:      PASS   (2026-08-27)
 Web build:                  NOT_RETESTED since plugins were added -- Phase 12, known issue 14
 ```
 
-**Test count is 938**, was 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
+**Test count is 1004**, was 938 after (f), 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
 D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What the two post-close fixes delivered — D-065, D-066, D-067
+
+**Two visual defects reported off the Windows build**, both invisible to every check the project had,
+and both fixed where the rule lives rather than at the call site.
+
+```
+lib/core/widgets/app_table.dart              TableColumnSpec.fixed / .flexible; tableMinimumWidth;
+                                             the header's guard
+lib/core/theme/app_dimensions.dart           + tableMinTextWidth, tableMinValueWidth
+lib/core/theme/app_theme.dart                the chip label/background pairs, state-resolved
+lib/features/invoices/.../invoice_document_lines.dart  the degradation ladder
+lib/features/{customers,products,invoices}/…  four tables declare their column floors
+lib/core/localization/arb/app_fa.arb         + invoiceLineLabelUnitPrice
+test/support/text_fit.dart                   NEW  expectNoCrushedText + PersianFixtures
+test/features/persian_content_sweep_test.dart NEW  11 screens x 3 tiers, real Persian
+test/core/theme/component_contrast_test.dart NEW  pixel-sampled WCAG contrast
+test/core/widgets/app_table_test.dart        NEW  the guard, either side of the threshold
+test/features/invoices/invoice_document_lines_test.dart NEW  the ladder, rung by rung
+test/features/screen_harness.dart            loadPersianFont() -- every widget test, real font
+integration_test/device_assertions.dart      + expectNoCrushedText
+integration_test/*_device_test.dart          all three run it; the detail fixture got a long title
+```
+
+### The table: 21.6 pixels, and no error of any kind
+
+The document table's description column was **21.6 logical pixels** at every desktop width — Persian
+one glyph per row, vertically — because three fixed money columns take 732 of the 768 the table is
+composed into beside the detail panel. **`Expanded` is a tight fit**, so the flexible column was handed
+what was left, which was nothing, and laid out successfully. No overflow. No error. The device suite
+for that exact screen reported 0 layout errors, truthfully.
+
+D-058 had done exactly the right sum against exactly the wrong number: 1144, the *full* content
+column, in a file whose own doc comment quotes §10's rule about composed width.
+
+**Fixed structurally** (D-065): a flexible column cannot be declared without a `minWidth` — D-043's
+required-parameter shape, for D-043's reason — the header asserts the total once per table, and the
+document table **drops a money column into a labelled detail line** rather than crushing its prose.
+Horizontal scrolling and row wrapping were both considered and refused, with reasons. Making the
+parameter required immediately surfaced the other four tables, none of which was crushed and none of
+which could have said so.
+
+### The chips: not a wrong token, an absent one
+
+`chipTheme.labelStyle` named no colour, and `RawChip` uses the theme's style *instead of* its
+state-dependent default rather than merging over it — so labels were painted with the engine's
+fallback white, at **1.12:1** on the light theme. Dark mode looked fine, which is why it survived; the
+checkmark was correctly coloured, which is why it looked plausible.
+
+**And `ChoiceChip` reads its selected label from `secondaryLabelStyle`**, so fixing `labelStyle` alone
+left a selected chip in dark at **3.75:1**. Only the pixel check found that. One shared resolver feeds
+both now; all ten combinations sit between 6.3:1 and 11.4:1.
+
+### What was added, since nothing caught either
+
+- **`expectNoCrushedText`** — a `RenderParagraph` narrower than its own `getMinIntrinsicWidth` cannot
+  place its longest word, so it breaks *inside* the word. That is "renders vertically", stated so a
+  machine can check it anywhere in any tree. In the widget harness **and** in the device suites.
+- **The Persian content sweep** — every screen, every tier, strings at the length real data reaches,
+  over the real repositories. The answer to "what else" is a check that looks everywhere rather than a
+  list of places to go and look. **It found nothing further.**
+- **The contrast test**, pixel-sampled, over every chip variant in both themes and both states.
+- **Vazirmatn in widget tests** (D-067). Until now no widget test in this project had ever rendered in
+  the real font, and the first crushed-text run reported three false positives from glyph metrics 40%
+  too wide. Loading it broke none of the 940 tests that existed.
+
+### Both new checks are verified to bite
+
+Forcing the old table shape, the **Windows device run** reports the description at **9.6 px needing
+62.7** and the quantity at **2.4 px** — from the suite that used to say "0 layout errors" about that
+frame. Restoring the old `chipTheme` fails four of the ten contrast cases at 1.12:1 and 1.26:1.
+
+**68 new tests; 1004 pass.**
 
 ## What Phase 5 increment (f) delivered — the phase close, and the fault it found in an old check
 
@@ -1369,6 +1464,31 @@ editable — it is unreachable today because `lastBackupAt` is always null.
 
 ## Important context for a future session
 
+- **A flexible table column cannot be declared without a `minWidth`, and a table that cannot meet the
+  total changes shape rather than crushing a column** (D-065). `Expanded` is a *tight* fit: a flexible
+  column handed nothing is laid out successfully at nothing, with **no overflow and no error**, and
+  Persian then renders one glyph per row. `AppTableHeader` asserts the total once per table;
+  `InvoiceDocumentLines` drops a money column into a labelled detail line instead. **Never widen a
+  minimum to make the assertion pass** — that is the defect with a bigger number on it.
+- **A widget measured at its own full width has not been measured at the width it is composed into**
+  — §10's rule, and D-058 broke it *in the file that quotes it* by checking against 1144 when the table
+  gets 768 beside the detail panel. When a widget sits next to a fixed-width panel, do the subtraction.
+- **A component's foreground and background are named together, as a pair** (D-066). A `TextStyle` in
+  a component theme that names no colour does **not** inherit the framework's default — Material
+  replaces its default with yours — so the label paints with the engine's fallback white. And
+  `ChoiceChip` reads its *selected* label from `secondaryLabelStyle`, not `labelStyle`: fixing one and
+  not the other leaves a state at 3.75:1 that reads fine in every token-level check.
+- **`expectNoCrushedText` is the detector for this whole class** — text laid out narrower than its own
+  longest word. It lives in `test/support/text_fit.dart` and is duplicated into
+  `integration_test/device_assertions.dart` (which cannot import from `test/`). Add a new screen to
+  `persian_content_sweep_test.dart` rather than writing a per-screen version.
+- **Widget tests render in Vazirmatn now** (D-067) — `pumpScreen` loads the real font. The old caveat
+  that "a fixed-width column passing a widget test has margin in the shipped layout" is retired: the
+  measurements mean what they say. A *minimum*-width check was impossible before this, because the
+  fallback font's glyphs are ~40% wider and the false positives are indistinguishable from real ones.
+- **Test fixtures use Persian at the length real data reaches** (`PersianFixtures`). A four-character
+  title fits anywhere and proves nothing — the same small-test-data mistake D-057 wrote the amount
+  ladder about, in the other dimension.
 - **Every device suite runs on every target, and the phase close is what runs it there** (D-064).
   `invoice_form_device_test.dart` ran on the Redmi for two phases and had never been pointed at
   Windows; the first time it was, it failed on its first measurement, because the desktop layout is
@@ -1559,7 +1679,31 @@ editable — it is unreachable today because `lastBackupAt` is always null.
 
 ## Recently changed files
 
-### Phase 5 increment (f) — the phase close, the newest work
+### The two post-close fixes — the newest work
+
+```
+lib/core/widgets/app_table.dart              two constructors; tableMinimumWidth; the guard
+lib/core/theme/app_dimensions.dart           + tableMinTextWidth, tableMinValueWidth
+lib/core/theme/app_theme.dart                chip label/background pairs, state-resolved
+lib/features/invoices/presentation/widgets/invoice_document_lines.dart  the ladder
+lib/features/customers/presentation/customers_screen.dart      column floors
+lib/features/products/presentation/products_screen.dart        column floors
+lib/features/invoices/presentation/invoices_screen.dart        column floors
+lib/features/invoices/presentation/widgets/invoice_lines_section.dart   column floors
+lib/core/localization/arb/app_fa.arb         + invoiceLineLabelUnitPrice
+test/support/text_fit.dart                   NEW
+test/features/persian_content_sweep_test.dart NEW
+test/core/theme/component_contrast_test.dart NEW
+test/core/widgets/app_table_test.dart        NEW
+test/features/invoices/invoice_document_lines_test.dart NEW
+test/features/screen_harness.dart            loadPersianFont()
+test/core/widgets/money_layout_test.dart     TableColumnSpec.fixed
+test/features/invoices/invoice_detail_screen_test.dart  the crushed-text group
+integration_test/device_assertions.dart      + expectNoCrushedText
+integration_test/invoice_{list,detail,form}_device_test.dart  run it
+```
+
+### Phase 5 increment (f) — the phase close, the boundary before it
 
 ```
 integration_test/invoice_list_device_test.dart   NEW  the list, its filters, and the picker they
@@ -1916,7 +2060,28 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 5 increment (f) — the phase close (D-064). Phase 5 is `COMPLETED`.**
+**Two visual defects reported off the Windows build, fixed with the checks that would have caught
+them (D-065, D-066, D-067).**
+
+- **The invoice document table's description column was laid out at 21.6 logical pixels** on every
+  desktop width, rendering Persian vertically — with **no overflow and no error**, which is why 935
+  tests and a device suite reporting "0 layout errors" all missed it. Fixed in the primitive: a
+  flexible column must declare a `minWidth`, the header asserts the total, and the document table
+  drops a money column into a labelled detail line rather than crushing its prose.
+- **Chip labels were painted with no colour at all**, falling through to the engine's white at
+  **1.12:1** on the light theme. Fixed by pairing foreground and background as state-resolved tokens —
+  in `secondaryLabelStyle` as well, because `ChoiceChip` reads its selected label from there and
+  fixing only `labelStyle` left dark-selected at 3.75:1.
+- **Four checks added and one harness change**: `expectNoCrushedText` (widget *and* device), the
+  Persian content sweep over 11 screens x 3 tiers, a pixel-sampled contrast test over every chip
+  variant, the ladder pinned rung by rung — and **Vazirmatn in widget tests** (D-067), without which
+  the crushed-text detector produces three false positives for every real one.
+- **Both new checks verified to bite.** The sweep found nothing further.
+- **66 new tests; 1004 pass.** Analyzer clean; all three device suites re-run green on Windows.
+- **Owed:** the Android phone run. The Redmi was physically disconnected before the fixes were
+  finished.
+
+**The boundary before it — Phase 5 increment (f), the phase close (D-064). Phase 5 is `COMPLETED`.**
 
 - **The owner accepted all five outstanding boundaries** — (b), the known-issue-19 fix, (c), the
   device pass and keyboard rule (D-062), and (e) — so nothing is awaiting review.
@@ -2029,7 +2194,14 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 5 is closed and accepted. Start Phase 6 — Backup and Restore.**
+**First, with the cable back in: re-run the three device suites on the Redmi.** They have not run on
+the phone since the D-065/D-066 fixes. Neither defect is expected to appear there — the phone tier
+renders invoice lines as cards rather than as a table, and the chip fix is tier-independent — but
+"not expected" is not a run, and D-064 is explicit that a suite which has only run on one target is
+evidence about one target. `adb devices` empty with an ADB interface present means a stale daemon
+(known issue 22), not a bad cable.
+
+**Then start Phase 6 — Backup and Restore.**
 
 The project spec makes this an **MVP requirement, not a later nicety**: the users keep their business
 records only in this app, so an offline-only financial application with no backup path means a lost

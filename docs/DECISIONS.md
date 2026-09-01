@@ -3658,4 +3658,226 @@ after unfolding, the same figures it reported before the change.
 **No product defect was found by any of it.** Both new tiers, all four rungs, both new suites: 0
 layout errors. That is the outcome to expect from a close and it is not an argument against running
 it — known issue 18 shipped through a phase that reported the same thing about one tier.
+---
+
+## D-065 — A flexible column declares its minimum, and a table that cannot meet it changes shape
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — arising from a defect reported off the Windows build after the Phase 5 close
+**Extends:** D-037 (money columns are fixed-width), D-058 (which five columns fit), the project spec
+(a widget measured at its own full width has not been measured at the width it is composed into)
+
+### 1. The defect, and why nothing saw it
+
+On the invoice detail screen at the desktop tier, the document table's **description column was laid
+out at 21.6 logical pixels**. Persian rendered one glyph per row, vertically. The money columns beside
+it held their width perfectly.
+
+The arithmetic is not marginal and it is not an edge case:
+
+```
+AppLayout.maxContentWidth                    1240
+  less PageBody's desktop padding, 2 x 48    1144   <- the number D-058 checked against
+  less the side panel and its gap, 320 + 24   800
+  less AppTableRow's own padding, 2 x 16      768   <- the width the table actually gets
+three money columns at tablePriceWidth        732
+                                        ------------
+left for شرح (flex 3) and تعداد (flex 2)        36
+```
+
+The page is capped at `maxContentWidth`, so **768 is the table's width at every desktop window size**.
+This was not a narrow-window failure; it was every user, every time.
+
+**Nothing failed, and that is the substance of this decision.** `_cell` lays a flexible column out with
+`Expanded`, which is a **tight** fit: the column is given what the fixed columns leave, and if that is
+nothing, nothing is what it is given — laid out successfully. There is no `RenderFlex` overflow,
+because nothing is too big for its box; the box was made too small for its content. The device suite
+for this exact screen reported **0 layout errors**, truthfully. 935 widget tests passed. It took a
+person looking at the screen.
+
+**And D-058 did the sum with the right method and the wrong number.** It compared six columns against
+1144 — the *full* desktop content column — in a file whose own doc comment quotes §10's rule about
+composed width. The rule was known, written down, and applied to the wrong figure one paragraph later.
+
+### 2. What was decided: the table gives up columns, not width
+
+The description gets a floor. Where the table cannot meet it, it drops a money column and says that
+figure as a labelled detail line under the description instead — the shape D-058 already chose when it
+moved تخفیف, مبلغ پس از تخفیف and مالیات out of the columns.
+
+```
+                                              needs
+شرح · تعداد · مبلغ واحد · مبلغ کل · جمع        1130
+شرح · تعداد · مبلغ واحد · جمع                   886
+شرح · تعداد · جمع                               648   <- what the detail screen selects, at 768
+شرح · جمع                                       520
+below that: the card layout
+```
+
+**مبلغ کل goes first** because it is the one figure on the row that is a *step in the arithmetic*
+rather than a term of the agreement: the customer checks the unit price they agreed and the total they
+owe, and the gross between them is working. It has been a sentence on every card for that same reason
+since the cards were built.
+
+**Nothing is lost when a column goes.** Each dropped figure reappears through the string the card
+already uses, so the wide table, the narrow table and the card say the same things in the same words.
+Only `invoiceLineLabelUnitPrice` is new, worded to match `invoiceLineLabelGross`.
+
+**The two alternatives were refused, and the reasons are the requirement stated properly:**
+
+- **Horizontal scrolling.** A document is read by carrying the description across to the total. A
+  scroll that puts those on different screens breaks the one comparison the page exists for, and it
+  hides figures sideways where nothing suggests they are there.
+- **Wrapping the row.** A row that takes two lines has stopped being a table — and the application
+  already has a shape for a line that is not a table row. It is the card, and it is what the narrow
+  tiers use. So *that* is the floor: below the width شرح · جمع needs, the desktop tier renders cards.
+
+### 3. Why the fix is in the primitive, not in the screen
+
+`TableColumnSpec` has two constructors now, and **a flexible column cannot be declared without a
+`minWidth`**. This is D-043's shape — a required parameter rather than a lint or a convention — for
+the same reason: the failure is silent, so the only reliable moment to catch it is the one where the
+code will not compile without an answer.
+
+`AppTableHeader` checks the total once per table and **asserts** rather than falling back. Only the
+caller knows which of its columns are recoverable somewhere else, so the primitive's job is to make the
+failure loud, not to guess a remedy.
+
+**Making the parameter required immediately found the other four tables.** Customers, products,
+invoices and the invoice editor all had flexed prose columns with no stated floor. None of them was
+crushed at any width the application reaches — checked, not assumed — but all four were one layout
+change away from it, and none of them could have told anybody.
+
+### 4. The checks, and what each one is for
+
+- **`tableMinimumWidth` + the header's assertion** — the structural guard. `app_table_test.dart` pins
+  it one pixel either side of the threshold.
+- **`invoice_document_lines_test.dart`** — the ladder, rung by rung, at widths that select each, plus
+  every threshold minus one. The screen test could only ever reach one rung, because the page cap fixes
+  the table's region at 768; three of the four would have been untested, and an untested rung is a rung
+  that will be wrong when something finally selects it.
+- **`expectNoCrushedText`** (`test/support/text_fit.dart`, duplicated into
+  `integration_test/device_assertions.dart`) — the general detector, and the one that generalises past
+  tables. A `RenderParagraph` laid out narrower than its own `getMinIntrinsicWidth` cannot place its
+  longest word, so it breaks *inside* the word. That is precisely "renders vertically", stated in a
+  way a machine can check anywhere in any tree. Ellipsised text is excluded: truncation is a decision
+  somebody made, crushing is not.
+- **`persian_content_sweep_test.dart`** — every screen, every tier, real Persian at the length real
+  data reaches, over the real repositories. This is the answer to "what else": not a list of places to
+  go and look, but a check that looks at all of them. It found nothing further, which is the outcome to
+  expect and not a reason the sweep was unnecessary.
+- **The three device suites** now run the detector too, and the detail suite's fixture carries a
+  *long* line title, because «مشاورهٔ فنی و مهندسی» is short enough to survive a crushed column and
+  that is what it had been proving.
+
+**Verified to bite at the device tier**, in Vazirmatn, on the screen as reported: forcing the old
+single-shape behaviour, the Windows run reports the description at **9.6 px needing 62.7** and the
+quantity at **2.4 px** — from the suite that used to say "0 layout errors" about that exact frame.
+
+---
+
+## D-066 — A component's foreground is a token somebody chose, and it is checked in pixels
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — arising from a defect reported off the Windows build after the Phase 5 close
+**Extends:** D-033 (tokens enforced rather than offered)
+
+### 1. The defect: not a wrong colour, an absent one
+
+The payment sheet's method selector — نقدی, کارت به کارت and the rest — had unreadable labels. The
+cause was one line in `chipTheme`:
+
+```dart
+labelStyle: AppTypography.label.copyWith(fontFamily: AppTypography.fontFamily),
+```
+
+`AppTypography.label` names **no colour**, and Material's `RawChip` uses the theme's `labelStyle` *in
+place of* its own state-dependent default rather than merging over it. So the label was painted with no
+colour at all and fell through to the engine's fallback, which is **white**. Measured off the rendered
+pixels:
+
+| | background | painted | ratio |
+|---|---|---|---|
+| light, unselected | `#f3f2ef` | `#ffffff` | **1.12:1** |
+| light, selected | `#cfebe7` | `#ffffff` | **1.26:1** |
+| dark, unselected | `#1d2220` | `#ffffff` | 16.1:1 |
+| dark, selected | `#0b554f` | `#ffffff` | 8.7:1 |
+
+**It survived because the accident ran the right way in one place.** White on the dark theme's surfaces
+is perfectly readable, so dark mode looked deliberate. And the *checkmark* on a selected chip takes its
+colour from a separate default the flat `labelStyle` never touched — so a selected chip showed a
+correctly-coloured tick beside an invisible word, which is exactly the kind of half-right rendering
+that reads as "fine" in a screenshot.
+
+### 2. The fix, and the second half of it that only pixels found
+
+Both the background and the foreground are named, together, as a state-resolved pair — `RawChip`
+resolves `labelStyle.color` as a widget-state property, which is the supported mechanism:
+
+```
+unselected  surfaceContainer     / onSurfaceVariant
+selected    secondaryContainer   / onSecondaryContainer
+```
+
+**And `ChoiceChip` reads its selected label from `secondaryLabelStyle`, not from `labelStyle`.**
+Fixing `labelStyle` alone left a selected chip in dark mode at **3.75:1** — still failing, still
+looking plausible, and invisible to any amount of reading. One shared resolver now feeds both, so the
+two cannot be right and wrong at the same time.
+
+Result: 6.3:1 to 11.4:1 across all ten combinations.
+
+### 3. Why the check reads pixels rather than tokens
+
+A test that compared theme tokens would have had **nothing to compare**. The whole failure is that the
+token is absent, and the value that reached the screen came from neither the theme nor the scheme — it
+came from the engine. Only the rendered output knows.
+
+`component_contrast_test.dart` renders each component under each theme in each state, captures it, and
+computes the WCAG ratio between what it painted its label in and what it painted that on. Threshold
+4.5:1, the AA floor for body text; chip labels are 12px, so the 3:1 large-text allowance does not
+apply.
+
+Two things about the sampler are worth keeping, because both were wrong first:
+
+- **It samples inside the label's own box.** Sampling the whole component and taking the colour
+  furthest from the background finds the *checkmark*, which is correctly coloured, and reports a
+  healthy ratio for a chip whose label is invisible beside it.
+- **It looks for the extreme in either direction.** "The darkest colour, because text is dark" is an
+  assumption a broken foreground breaks: looking only downwards for a white-on-pale label finds nothing
+  and returns the background as its own foreground — a ratio of exactly 1.00, which reads as a broken
+  measurement rather than as the defect it is.
+
+**The table is the generalisation.** Every chip variant the application uses is a row in it —
+`ChoiceChip` (payment methods, filter periods), `FilterChip` (filter statuses), `ActionChip` (the
+customer picker) — so "check the same component everywhere else it is used" is not something to
+remember next time.
+
+**Verified to bite:** restoring the old `chipTheme` fails four of the ten at 1.12:1 and 1.26:1.
+
+---
+
+## D-067 — Widget tests render in Vazirmatn
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED
+**Extends:** D-022 (the bundled font), D-062 (a check reproduces the conditions the user is in)
+
+Flutter's test environment substitutes a fallback font whose glyphs are far wider than Vazirmatn's, and
+this project carried that as a known caveat from Phase 1: *"a fixed-width column that passes a widget
+test has margin in the shipped layout."*
+
+**That caveat is only comforting in one direction.** It makes every *maximum*-width assertion
+conservative — and it makes every *minimum*-width assertion wrong the other way. The first run of the
+crushed-text detector under the fallback font reported four failures on the invoice detail screen, of
+which one was real and three were the font: a bidi-isolated invoice number, a Jalali date and a status
+badge, all of them fine in Vazirmatn and all of them "too narrow" in a font 40% wider. Noise that
+cannot be told from signal is worse than no check.
+
+`pumpScreen` now loads the three real weights through `FontLoader` before pumping — the font is a
+declared asset, so `rootBundle` has it in tests. Loaded once per process and cached.
+
+**It broke nothing.** All 940 tests that existed at the time passed unchanged, which is what the
+direction of the caveat predicts: narrower glyphs mean more room, so every assertion written against
+the wider font still holds. What changes is that a width assertion now means what it says, and the
+project no longer has a standing reason to discount its own layout measurements.
 

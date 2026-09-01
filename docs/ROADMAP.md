@@ -1596,6 +1596,33 @@ tablet tier                                     widget sweep only -- there is no
                                                       stated rather than implied (D-057)
 ```
 
+**Two visual defects found after the close, fixed 2026-09-01.** Reported by the owner off the Windows
+build, and both of a class no check in the project could see. Recorded here rather than reopening the
+phase: the phase's *scope* was delivered, and these are corrections to the design system and the table
+primitive that Phase 6 inherits.
+
+- **The document table's description column was laid out at 21.6 logical pixels** on every desktop
+  width, rendering Persian one glyph per row (D-065). The money columns are fixed-width by D-037 and
+  the flexible description absorbed the whole shortfall; `Expanded` is a tight fit, so it absorbed it
+  down to nothing, **with no overflow and no error** — the device suite for this screen reported 0
+  layout errors, truthfully. D-058 had done the sum against 1144, the full content column, rather than
+  the 768 this table is composed into beside the detail panel. Fixed structurally: a flexible column
+  cannot be declared without a `minWidth`, the header asserts the total once per table, and the
+  document table drops a money column into a labelled detail line rather than crushing its prose.
+- **Chip labels were painted with no colour at all** (D-066), falling through to the engine's white:
+  **1.12:1** against the light theme's `surfaceContainer`. Not a wrong token — an absent one, which is
+  why a token-level test would have had nothing to compare. Fixed by naming background and foreground
+  as a state-resolved pair, in both `labelStyle` **and** `secondaryLabelStyle`, since `ChoiceChip`
+  reads its selected label from the second.
+- **Checks added**, since nothing existing caught either: a crushed-text detector (`expectNoCrushedText`,
+  in the widget harness *and* the device suites), the ladder pinned rung by rung, a pixel-sampling
+  contrast test over every chip variant in both themes, and a **Persian content sweep** — every screen,
+  every tier, strings at the length real data reaches. Both new checks are verified to bite. And
+  **widget tests now render in Vazirmatn** (D-067) rather than a fallback font 40% wider, which is what
+  made the crushed-text detector usable at all.
+- **The sweep found nothing further.** 11 screens x 3 tiers, plus all three device suites on Windows.
+- **68 new tests; 1004 pass** (was 938). Decisions recorded: **D-065**, **D-066**, **D-067**.
+
 **Security note (increment f).** **No new data class, no new stored field, no new input and no new
 platform surface** — (f) is tests and documentation. The new device suite writes only to a probe
 database (`list_probe.db`) created through the production bootstrap and deleted in its teardown, so

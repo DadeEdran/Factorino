@@ -284,6 +284,10 @@ void main() {
     await tester.pumpAndSettle();
     debugPrint('line          : added at quantity ۲٫۵');
 
+    // The editor's line table has the same shape as the document's — prose
+    // beside fixed-width money — so it gets the same check (D-065).
+    expectNoCrushedText(tester, where: 'the invoice form, with a line on it');
+
     // **Put the keyboard away before carrying on with the form**, because a
     // user who dismisses the sheet gets it put away and the rest of this run
     // should be the form as they then see it. Raising it above is the point of
