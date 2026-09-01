@@ -1,7 +1,16 @@
 # Current State
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
-> Last updated: **2026-09-01** — Phase 5 is `COMPLETED` and accepted. Since the close, two visual
+>
+> **Last updated: 2026-09-02 — the ZWNJ blocker is solved (D-073), and two earlier diagnoses of it
+> were wrong.** It is not a missing glyph, not the subsetting, and not the control character:
+> `TtfParser.readGlyph` never checks whether a glyph is empty, so U+200C draws the **next glyph in
+> the font** — «à» in Vazirmatn — and every zero-width control is in the same hazard class. The
+> remedy is to cut the run at the ZWNJ and send no control character at all; it is proven on
+> rendered pages over all **68** ARB entries that contain one. Phase 7 has **not** started. See the
+> Next Action. Rendering is now local — `tools/pdf_raster/` — and no longer depends on a browser.
+>
+> Earlier: **2026-09-01** — Phase 5 is `COMPLETED` and accepted. Since the close, two visual
 > defects reported off the Windows build have been fixed (D-065, D-066) with the checks that would
 > have caught them, and widget tests now render in the real font (D-067).
 >
@@ -215,6 +224,12 @@ Backup gateway - Windows:   PASS   confirmed save through file_selector_windows,
                                    any suite -- MIUI refuses adb input injection
 Phase 7 cold-start baseline: TAKEN 1,401 ms median of runs 2-5 (1,330-1,465); run 1 was 3,440 ms
                                    and is kept separate as first-launch work. On `60b5cd5`
+ZWNJ remedy (D-073):        PROVEN on rendered pages, in the scratchpad probe -- NOT yet in the
+                                   product, which has no PDF code at all. 68/68 ARB entries
+                                   containing U+200C are unsafe through the current path and
+                                   0/68 through the remedy; the join break read off the page
+                                   (sh final, n initial); no line break at the split, at 7 widths.
+                                   The cause is pinned byte-for-byte: readGlyph(322) == readGlyph(323)
 
 Persian content sweep:      PASS   11 screens x 3 tiers, strings at the length real data reaches,
                                    over the real repositories -- no crushed text anywhere (D-065)
@@ -2238,14 +2253,27 @@ session starts cold at the Next Action below.
 
 **Phase 6 is CLOSED.** Nothing is owed and nothing is awaiting review.
 
-**The single specific next action: start Phase 7 — PDF Generation, beginning with the ZWNJ remedy**,
-which D-070 names as the first thing that phase fixes. U+200C renders as a missing-glyph box, it is in
-the application's own ARB strings, and a document with boxes through its own labels is not
-deliverable. It is **not** the font — U+200C is in Vazirmatn's `cmap` at glyph 322 and the join around
-it already breaks correctly — so the remedy is at the glyph-mapping layer. Three requirements from the
-owner: it must preserve the join break (verified on a rendered page, ش final and ن initial), it must
-be tested over **every** ARB entry containing U+200C rather than over examples, and it must not be
-mistaken for a fix to the bidi finding.
+**The ZWNJ blocker is diagnosed and its remedy is proven on rendered pages — D-073.** No product
+code has been written for it yet; Phase 7 has not started and `pdf` is still not in `pubspec.yaml`.
+
+**The single specific next action: start Phase 7 — PDF Generation, whose first commit adds the `pdf`
+dependency and the ZWNJ-safe text builder D-073 specifies**, together with its two guards. Concretely:
+
+1. Add `pdf` 3.13.0 to `pubspec.yaml` with the `docs/DECISIONS.md` justification §2 requires.
+2. Build the ZWNJ-safe text builder: a string is cut at every U+200C and the pieces are emitted as a
+   `WidgetSpan(Row(...))` **atom** — pieces in logical order, because the line's RTL mirroring does
+   not reach inside a `WidgetSpan`. Every Persian string the document draws goes through it.
+3. The **class guard**, which is the part that outlives this character: over the bundled font, no
+   rune the renderer is handed may map to a **zero-length glyph**. Ships with a negative control
+   that feeds it a raw ZWNJ and requires a failure (D-072).
+4. The ARB sweep as a test, not a probe: all **68** entries containing U+200C, through the real
+   renderer path.
+
+**Why the remedy is what it is, in one line:** the mark is not a missing-glyph box — `readGlyph`
+does not check whether a glyph is empty, so U+200C draws the **next glyph in Vazirmatn**, which is
+«à». Substitution is dead for the whole class (every zero-width control has a zero-length glyph),
+and pre-shaping was never actually tested — it had been aimed at `arabic.convert`, which this
+configuration never calls. Read D-073 before touching any of it.
 
 **The Phase 7 entry gate is already satisfied**: the baseline sits on `60b5cd5` (arm64 APK
 21,520,524 bytes; Windows bundle 32,876,606 bytes; cold start **1,401 ms** median of runs 2–5, run 1

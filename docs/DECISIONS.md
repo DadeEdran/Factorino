@@ -4065,6 +4065,11 @@ them is a step at the view-model boundary, and it needs a test, not a comment.
 Latin or Persian-digit run inside RTL on its own), U+200E LRM (in the font, glyph 319, renders
 invisibly), or an explicit `pw.Directionality(textDirection: ltr)` around the run.
 
+> **Withdrawn 2026-09-02 — U+200E LRM is not usable and was never verified on a page (D-073).**
+> The renderer deletes it (Unicode Bidi rule X9) and the letters either side then **join**, so it
+> silently produces a misspelling wherever it is used to break a join; its glyph is zero-length, so
+> anywhere it survived it would draw «₪». "Nothing at all" and the explicit `Directionality` stand.
+
 ### 2. A number containing spaces or a `+` still scrambles, and that is the real isolation case
 
 `+98 912 123 4567` rendered, left to right, as `۴۵۶۷ ۱۲۳ ۹۱۲ ۹۸+` — the groups reversed. Space and
@@ -4076,6 +4081,12 @@ form `09121234567` renders correctly with no help at all.
 the view model makes and the renderer must then protect.
 
 ### 3. Open, and owned by Phase 7: ZWNJ draws a box
+
+> **Closed 2026-09-02 by D-073, and the diagnosis below is wrong in its cause.** It is not a
+> missing-glyph box: `TtfParser.readGlyph` does not check whether a glyph is empty, so U+200C draws
+> the **next glyph in the font**, which in Vazirmatn is «à». The remedy is to cut the run at the
+> ZWNJ and send no control character at all. Read D-073 instead of this section and its D-072
+> amendment.
 
 U+200C renders as a missing-glyph box: «پیش‌نویس» prints as «پیش▯نویس». This matters — ZWNJ is
 ordinary Persian, it is in this application's own status labels, and it is in customer-entered product
@@ -4412,6 +4423,15 @@ it found a darker pixel elsewhere in the tree. Had it shipped, the suite would h
 the real instrument is not a control** — it is a second instrument, with its own faults, asserting
 about nothing.
 
+**Corollary to D-072, named so it can be cited: a control must call the real instrument, never a
+copy of it.** The reimplementation is the dangerous shape precisely because it is easy and looks
+diligent — writing the measurement out a second time feels like independent confirmation and is the
+opposite. Whenever a check needs a known-answer case, hand that case to the production code path;
+if the production path is awkward to call, that is a fact about the design worth fixing, not a
+reason to write a second one. Cited since by **D-073**, where a sanity check comparing split
+shaping against a hand-rebuilt concatenation reported 62 of 68 strings "differing" — all 62 of them
+faults in the rebuild, none in the subject.
+
 **`expectNoCrushedText` was the one guard with nothing proving it could fire**, and every device suite
 calls it. Its precondition — `softWrap && !truncatesOnPurpose` — is exactly the kind of thing a future
 change to how this application sets `maxLines` could make permanently false, at which point it would
@@ -4425,6 +4445,13 @@ button about **16 logical pixels** of slack — is recorded in the **ARB descrip
 `.arb` file and has no reason to be reading a decision log.
 
 ### Amendment, 2026-09-01 — the ZWNJ cause, corrected: it is the subsetting, not the glyph
+
+> **Superseded 2026-09-02 by D-073.** It is not the subsetting either. The glyph is already wrong
+> when `TtfParser.readGlyph` returns it, one stage before the writer — and points 3 and 4 below are
+> both mistaken: the outline is not acquired during subsetting, and `arabic.convert` never runs
+> (`useArabic` defaults to `!useBidi`, so `bidi.logicalToVisual` does the shaping). The
+> "pre-shape and strip" candidate this amendment left open had been tested against a shaper the
+> renderer does not call, which is why it appeared to be re-shaped. Kept for the record.
 
 Phase 7 opened on the ZWNJ remedy. **The cause recorded above is wrong in its second half and the
 correction matters, because it rules out the obvious fix.**
@@ -4467,3 +4494,166 @@ and every remaining question about this is a question about what the page *looks
 work above is what could be settled without one, and it is worth the correction on its own: it moves
 the fault from "a wrong control character" to "a blank glyph does not survive subsetting", which is a
 different problem with a different set of fixes.
+
+---
+
+## D-073 — The ZWNJ mark is `readGlyph` reading the *next* glyph, and the remedy is to cut the run
+
+**Date:** 2026-09-02
+**Status:** ACCEPTED
+**Corrects:** D-070 finding 3 (twice — the original text and its D-072 amendment), and D-070's
+"what to use instead" list.
+**Gates:** Phase 7's first commit.
+
+Phase 7's blocking item — «پیش‌نویس» printing with a mark where the ZWNJ is — is now understood at
+the byte level, confirmed on a rendered page, and fixed. **The cause is not the font, not the
+character, and not the subsetting.** It is a missing emptiness check in the package's glyph reader,
+and it is a **class** of fault rather than one character.
+
+### The cause, proven
+
+`TtfParser.readGlyph(index)` computes `start = glyfTableOffset + glyphOffsets[index]` and parses the
+outline there. **It never checks whether the glyph is empty** — that is, whether
+`glyphOffsets[i] == glyphOffsets[i + 1]`. For a zero-length glyph, `start` is the offset of the
+**next** glyph, so the reader returns that glyph's outline under this glyph's index.
+
+Measured in Vazirmatn, printed by `bin/probe10.dart`:
+
+| glyph | own length | what `readGlyph` returns | so the character draws |
+|---|---|---|---|
+| 322 ← **U+200C ZWNJ** | 0 | 24 bytes, **byte-identical to glyph 323** | **U+00E0 «à»** |
+| 320 ← U+200D ZWJ | 0 | 90 bytes, glyph 321 | U+20AA «₪» |
+| 319 ← U+200E LRM | 0 | 90 bytes, glyph 321 | U+20AA «₪» |
+| 318 ← U+200F RLM | 0 | 90 bytes, glyph 321 | U+20AA «₪» |
+| 0 ← `.notdef` | 0 | 56 bytes, glyph 3 | whatever glyph 3 is |
+
+`readGlyph(322)` and `readGlyph(323)` compare **equal byte for byte**, and glyph 323 is the glyph
+for `U+00E0`. On the rendered page the mark between ش and ن is an **a with a grave accent**, and a
+control page printing `aàa` in the same font at the same size shows the same shape. It is not a
+missing-glyph box and never was.
+
+**Why nobody hit this with spaces.** `TtfWriter` special-cases exactly one character —
+`if (char == 32)` — and hands the subsetter a genuinely empty glyph for it. That is the workaround
+for the only zero-length glyph anyone had run into. It is also why the "blank glyphs come through
+subsetting fine, look at spaces" objection is not an objection: `RichText` splits on `\s` and
+advances `offsetX` for spaces, so **a space is never drawn as a glyph at all**.
+
+### Three corrections to what is written above in D-070 and D-072
+
+1. **D-072's amendment said the subsetting gives a blank glyph an outline.** It does not. The
+   outline is already wrong when `readGlyph` returns it, before the writer sees it. The observation
+   that fed that conclusion — "in the embedded subset all three carry outlines, 24 bytes each" — was
+   correct, and was read one stage too late in the pipeline.
+
+2. **D-072's amendment said `arabic.convert` breaks the join, and called that accidental
+   correctness.** `arabic.convert` **never runs.** `options.dart` defines
+   `useArabic = bool.fromEnvironment('use_arabic', defaultValue: !useBidi)` and `useBidi` defaults
+   to `true`, so the widget path is `bidi.logicalToVisual` — the `bidi` package's Unicode
+   Bidirectional Algorithm, which does the shaping. This is not pedantry: **the "pre-shape and
+   strip" candidate D-072 left open was built on `arabic.convert`**, so it pre-shaped with a
+   function the renderer does not use and then had its output reshaped by the one it does. That is
+   why probe 8's prepared word came out reversed and garbled. The candidate was not defeated by the
+   package "re-shaping already-shaped text"; it was tested against the wrong shaper.
+
+3. **D-070's "what to use instead" list names U+200E LRM as verified working. Withdraw it.**
+   Measured three ways — the `ToUnicode` tables of three uncompressed documents, identical `Td`
+   offsets, and a **zero-pixel** raster diff — `pw.Text` given «پیش‎نویس» renders **identically to
+   «پیشنویس»**: the LRM is deleted (the Unicode Bidi Algorithm's rule X9 removes explicit
+   formatting characters) and the letters then **join across the boundary**. So LRM is not a
+   join-breaker, and the mechanism that makes it look harmless — silent deletion — is the same one
+   that makes it useless as an isolation mark. Nothing had been verified about LRM on a page; the
+   earlier entry recorded an inference from the `cmap`.
+
+### The rule that replaces "do not send a ZWNJ"
+
+**No rune whose glyph is zero-length in the bundled font may be handed to the renderer.** In
+Vazirmatn that is every zero-width control this application might reach for — U+200C, U+200D,
+U+200E, U+200F — and the failure mode is *drawing a different letter*, silently, with zero advance
+width so it does not even disturb the layout. Stated per-character, the rule would have to be
+restated for the next font and the next control.
+
+### The remedy: cut the run at the ZWNJ; substitute nothing
+
+The ZWNJ's only job in the shaping is to stop two letters joining. A run that **ends** stops them
+joining just as well, and costs no character:
+
+```
+'پیش‌نویس'  ->  ['پیش', 'نویس']   each shaped on its own
+```
+
+`bidi.logicalToVisual` is applied **per span**, so the two pieces never meet a shaper together:
+
+```
+'پیش‌نویس'  whole  ->  FEB2 FBFE FEEE FEE7 [200C] FEB6 FBFF FB58
+'پیش'       alone  ->                              FEB6 FBFF FB58
+'نویس'      alone  ->  FEB2 FBFE FEEE FEE7
+```
+
+The pieces reproduce the ZWNJ shaping **exactly** — ش in final form (FEB6), ن in initial form
+(FEE7) — with the control character gone. D-070's requirement 1 is met by construction and
+confirmed on the page: ش carries its final tail and ن its initial form, and the joined control
+«پیشنویس» is visibly a different word.
+
+**And it is a `WidgetSpan` atom, not a bare span split.** Both forms were rendered and compared at
+seven column widths:
+
+| form | glyphs | order | line break at the ZWNJ |
+|---|---|---|---|
+| two `TextSpan`s | correct | correct | **splits the word across lines at 4 of 7 widths** |
+| `WidgetSpan(Row(pieces))` | correct | correct once a reversal was dropped | **never** |
+
+A bare span split makes the ZWNJ a permitted break point, and a word broken across lines at its
+half-space is a misspelling of a different kind. The `WidgetSpan` holds the word together and
+overflows its box instead when it genuinely cannot fit, which is what any unbreakable word does.
+Note that `pw.Row` has no `textDirection` and the line's RTL mirroring does **not** reach inside a
+`WidgetSpan` child, so the pieces go in **logical** order inside the `Row` — reversing them, which
+looked obviously right, produced «نویس‌پیش».
+
+### Tested over the real ARB, not over examples — D-070 requirement 2
+
+`bin/probe18.dart` reads `lib/core/localization/arb/app_fa.arb` and takes **every** entry
+containing U+200C. There are **68 of 356** — 19% of the application's strings.
+
+```
+unsafe through the current path : 68 / 68
+unsafe through the split path:  0 / 68
+```
+
+where *unsafe* is the class rule above — the entry shapes to at least one rune whose glyph is
+zero-length — not "contains a ZWNJ". Both variants were then rendered and rasterised and the pages
+read side by side: «پرداخت‌نشده», «همین‌جا», «مشتری‌ای», «می‌کنید» each carry an **à** in the current
+path and are correct in the fixed one, with every other word on the page in the same place.
+
+**One check written for this was wrong, and is recorded because of D-072.** A first sanity control
+compared the split shaping against a hand-rebuilt concatenation of the whole, and reported 62 of 68
+"differing" — because it had reimplemented the renderer's word-order handling, badly. That is
+exactly D-072's corollary about the contrast control: *a control that does not exercise the real
+instrument is a second instrument, with its own faults.* It was replaced by rendering both pages and
+diffing the pixels.
+
+### Requirement 3: this is not the answer to finding 2
+
+Finding 2 — a value carrying internal bidi-neutral characters sharing one run with RTL text — is
+untouched by any of this. It is answered by **D-070's contract rule 2** (the label and the value are
+separate widgets, never concatenated into one string), which is still owed and is a separate piece
+of Phase 7. The ZWNJ remedy removes control characters that were never the subject of finding 2.
+
+### What Phase 7 must carry out of this
+
+1. A ZWNJ-safe text builder in the renderer, taking a string and producing the atom described above.
+   **Every** Persian string the document draws goes through it — labels, statuses, party fields,
+   line titles, notes — because 19% of the ARB and an unknown share of customer input contain a ZWNJ.
+2. **The class guard, falsifiable**: over the bundled font, assert that no rune the renderer is
+   handed maps to a zero-length glyph. Fed a raw ZWNJ it must fail, and that negative control ships
+   with it (D-072).
+3. The ARB sweep above as a test rather than a probe: all 68 entries, asserted through the real
+   renderer path.
+
+### Method note
+
+Rendered locally with `Windows.Data.Pdf` — see `tools/pdf_raster/`, added here so this loop never
+again depends on a browser connection. D-070's rule that the probe reads the pixels rather than the
+content stream held, and paid twice: the à was identified by looking at it, and the LRM deletion was
+found by a raster diff that came back zero after the source had been read three times without
+finding it. The dependency still has not entered `pubspec.yaml`; all of this ran in the scratchpad
+probe package.

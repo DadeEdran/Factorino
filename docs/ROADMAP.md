@@ -1800,6 +1800,17 @@ dependency never entered `pubspec.yaml` and the baseline below still sits on a P
    already broken correctly. **The first thing this phase fixes**, as a correctness item under D-068,
    not a polish one.
 
+   **Solved 2026-09-02 — D-073, and it is not a box.** `TtfParser.readGlyph` never checks whether a
+   glyph is empty, so U+200C draws the **next glyph in the font**: «à» in Vazirmatn, at zero advance
+   width, so it does not even disturb the layout. Every zero-width control is in the same class
+   (U+200D/200E/200F all draw «₪»), which kills substitution outright; the "pre-shape and strip"
+   candidate turned out never to have been tested, because it targeted `arabic.convert` and this
+   configuration calls `bidi.logicalToVisual`. The remedy is to **cut the run at the ZWNJ** and emit
+   the pieces as one `WidgetSpan` atom so the word cannot break across lines. Proven on rendered
+   pages over all **68** ARB entries containing U+200C. **No product code yet** — it is the content
+   of this phase's first commit, along with the falsifiable class guard (*no rune the renderer is
+   handed may map to a zero-length glyph*) and the ARB sweep as a test.
+
 **Entry-gate baseline, taken on `60b5cd5`** (the commit before any PDF dependency):
 
 | Measurement | Value |
