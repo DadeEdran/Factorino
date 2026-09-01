@@ -20,11 +20,13 @@ import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/status_badge.dart';
 import '../../../data/models/customer_snapshot.dart';
 import '../../../data/models/invoice_detail.dart';
+import '../../../data/models/invoice_status.dart';
 import '../application/invoices_providers.dart';
 import '../domain/invoice_number_label.dart';
 import '../domain/invoice_party_view.dart';
 import '../domain/invoice_status_view.dart';
 import '../domain/invoice_summary_figures.dart';
+import 'widgets/invoice_cancel_action.dart';
 import 'widgets/invoice_document_lines.dart';
 import 'widgets/invoice_payments_section.dart';
 import 'widgets/invoice_totals_summary.dart';
@@ -47,10 +49,14 @@ import 'widgets/invoice_totals_summary.dart';
 /// decides which of four sentences the screen owes the user, so a name that is
 /// no longer the customer's reads as history rather than as stale data.
 ///
-/// **Read-only, deliberately, in this increment.** Recording a payment is (c),
-/// cancelling is (d). There is no action here that pretends to do either: an
-/// affordance leading nowhere is worse than its absence (D-021), and that
-/// applies to a button on a page as much as to an item in a nav rail.
+/// **Cancellation is the correction path, and this page is where it lives**
+/// (§6, D-061). It is an item in the title row's menu, never an edit: an issued
+/// invoice is corrected by being cancelled and reissued, and the confirmation
+/// says what that does *and does not* do — the number stays spent (D-013), the
+/// record stays, and any payment already recorded stays with it. A cancelled
+/// invoice that carries payments says so on the page afterwards too, in two
+/// places: the balance is not a claim any more, and the paid figure is money
+/// that really was received.
 ///
 /// **Nothing here is logged.** Like the customer detail screen, this page holds
 /// a whole party — name, company, کد ملی, کد اقتصادی, address — beside a column
@@ -136,6 +142,12 @@ class InvoiceDetailScreen extends ConsumerWidget {
               strings: strings,
               now: ref.watch(nowProvider),
             ),
+            // In the title row rather than in a card of its own, and that is
+            // the §10 layout rule rather than a preference: a card here would
+            // be the fourth thing added above the lines on this family of
+            // screens, after the customer record card (D-044), the party card
+            // (b) and the payments card (c). See [InvoiceCancelAction].
+            InvoiceCancelAction(detail: view, strings: strings),
           ],
           child: _DetailBody(detail: view, strings: strings),
         );
@@ -540,6 +552,21 @@ class _Summary extends StatelessWidget {
                 const SizedBox(height: AppSpacing.sm),
                 Text(
                   strings.invoiceDetailOverpaidNote,
+                  style: theme.textTheme.bodySmall?.copyWith(
+                    color: theme.colorScheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
+              // **«مانده» is still shown on a cancelled invoice, and explained
+              // rather than hidden** (D-061). The figure is real -- it is what
+              // was never paid -- but on a void document it reads as money the
+              // customer still owes, which is the one thing a cancellation
+              // means it is not. Removing the row instead would leave the page
+              // silently missing a number it shows on every other invoice.
+              if (detail.invoice.status == InvoiceStatus.cancelled) ...<Widget>[
+                const SizedBox(height: AppSpacing.sm),
+                Text(
+                  strings.invoiceDetailCancelledDueNote,
                   style: theme.textTheme.bodySmall?.copyWith(
                     color: theme.colorScheme.onSurfaceVariant,
                   ),

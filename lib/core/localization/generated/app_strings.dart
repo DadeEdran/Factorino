@@ -1700,10 +1700,10 @@ abstract class AppStrings {
   /// **'برای ثبت پرداخت، ابتدا فاکتور را صادر کنید. پیش‌نویس هنوز مطالبه‌ای از کسی نیست.'**
   String get invoiceDetailPaymentsUnavailableDraft;
 
-  /// No description provided for @invoiceDetailPaymentsUnavailableCancelled.
+  /// Explains the refusal rather than only stating it, and names the way forward: the correction path is a replacement invoice, so a payment received against a cancelled document belongs on that one. Deleting a payment from a cancelled invoice stays allowed — see paymentDeleteBodyCancelled.
   ///
   /// In fa, this message translates to:
-  /// **'این فاکتور باطل شده است و دیگر مطالبه‌ای از کسی نیست، بنابراین پرداخت تازه‌ای برای آن ثبت نمی‌شود.'**
+  /// **'این فاکتور باطل شده است و دیگر مطالبه‌ای از کسی نیست، بنابراین پرداخت تازه‌ای برای آن ثبت نمی‌شود. اگر مبلغی دریافت کرده‌اید، آن را روی فاکتور جایگزین ثبت کنید.'**
   String get invoiceDetailPaymentsUnavailableCancelled;
 
   /// No description provided for @paymentCreateTitle.
@@ -1801,6 +1801,60 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'ثبت این پرداخت ممکن نشد.'**
   String get paymentSaveFailed;
+
+  /// The menu item and the confirming button, deliberately the same words. Distinct from actionCancel, which is a dialog's «انصراف» and means the opposite here.
+  ///
+  /// In fa, this message translates to:
+  /// **'ابطال فاکتور'**
+  String get invoiceCancelAction;
+
+  /// No description provided for @invoiceCancelTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور باطل شود؟'**
+  String get invoiceCancelTitle;
+
+  /// Cancellation is the correction path, so the copy states what it does and what it does not do before the user commits: the record stays, the number stays spent (D-013), and editing is still not the way back. A confirmation that only asks «are you sure» is one people learn to dismiss.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شمارهٔ آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.'**
+  String get invoiceCancelBody;
+
+  /// Shown only when the invoice actually carries payments (D-060's rule). Cancelling never touches the payments table (D-061), and a user cancelling a part-paid invoice must be told that before committing, not discover it afterwards.
+  ///
+  /// In fa, this message translates to:
+  /// **'{amount} تومان پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.'**
+  String invoiceCancelPaymentsNote(String amount);
+
+  /// Restates the half of the outcome that is easiest to doubt afterwards. Where there are no payments the sentence is still true and still harmless.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور باطل شد. پرداخت‌های ثبت‌شده دست‌نخورده ماند.'**
+  String get invoiceCancelSuccess;
+
+  /// No description provided for @invoiceCancelFailed.
+  ///
+  /// In fa, this message translates to:
+  /// **'ابطال این فاکتور ممکن نشد.'**
+  String get invoiceCancelFailed;
+
+  /// The remaining balance is still shown, because hiding a figure is worse than explaining it — but on a void document it would otherwise read as money still owed.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور باطل شده است؛ مانده‌ی آن مطالبه‌ای از مشتری نیست.'**
+  String get invoiceDetailCancelledDueNote;
+
+  /// Shown on a cancelled invoice that carries payments (D-061). A void document showing a paid amount with no explanation reads as a fault in the software rather than as a fact about the record.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور باطل شده است، اما پرداخت‌های زیر واقعاً دریافت شده‌اند و در سوابق می‌مانند. ابطال، پرداختی را حذف یا بازنمی‌گرداند.'**
+  String get invoiceDetailCancelledPaymentsNote;
+
+  /// The cancelled invoice's version of paymentDeleteBody. «مانده افزایش می‌یابد» is false there — nothing is owed on a void document — and the fact worth stating instead is that correcting the money record does not resurrect the invoice (D-061).
+  ///
+  /// In fa, this message translates to:
+  /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقهٔ پرداخت را اصلاح می‌کند.'**
+  String paymentDeleteBodyCancelled(String amount);
 
   /// Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user.
   ///

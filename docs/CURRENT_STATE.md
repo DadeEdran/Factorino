@@ -14,10 +14,10 @@
 **Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
 **accepted**, including (d).
 **Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. Everything up to and
-including **(a2), schema v4** is **accepted**. Three boundaries are delivered, committed and
+including **(a2), schema v4** is **accepted**. Four boundaries are delivered, committed and
 **awaiting review**: **(b)** the detail screen with the tier rule and the money-width audit (D-057,
-D-058), **the known-issue-19 fix** (D-059), and **(c)** payments (D-060). Cancellation, list filters
-and the phase close remain.
+D-058), **the known-issue-19 fix** (D-059), **(c)** payments (D-060), and **(d)** cancellation
+(D-061). List filters and the phase close remain.
 
 | # | Increment | Status |
 |---|---|---|
@@ -39,8 +39,8 @@ and the phase close remain.
 | b | **`/invoices/:id`**, the detail screen; rows tappable; the money-width audit and the tier rule (D-057, D-058) | `COMPLETED` 2026-09-01, **awaiting review** |
 | — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01, **awaiting review** |
 | c | **Payments: record and delete**, derived status in the same transaction (D-060) | `COMPLETED` 2026-09-01, **awaiting review** |
-| d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` ← **next** |
-| e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` |
+| d | **Cancellation**, the copy that says what it does not do, and the ruling on the payments it keeps (D-061) | `COMPLETED` 2026-09-01, **awaiting review** |
+| e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` ← **next** |
 | f | The device pass, and the phase close | `NOT_STARTED` |
 
 
@@ -53,10 +53,10 @@ SQLite database at **schema v4**. «فاکتور جدید» opens `/invoices/new
 `/invoices/:id`; and from there a payment can be recorded and taken back off again, with the derived
 status recomputed by the repository in the same transaction.
 
-**Phase 4 is complete and accepted. Phase 5 is five boundaries in**, the last three of them awaiting
+**Phase 4 is complete and accepted. Phase 5 is six boundaries in**, the last four of them awaiting
 review: the two carry-overs from (d) plus **the D-047 ruling** (D-055); **(a2), `schemaVersion = 4`**
-(D-056); **(b), the detail screen** (D-057, D-058); **the known-issue-19 fix** (D-059); and **(c),
-payments** (D-060).
+(D-056); **(b), the detail screen** (D-057, D-058); **the known-issue-19 fix** (D-059); **(c),
+payments** (D-060); and **(d), cancellation** (D-061).
 
 **An invoice can now be read as the document it is.** `/invoices/:id` lays a line out from storage
 alone — شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع, with no
@@ -90,6 +90,13 @@ hands back quotient and remainder together. The guard is untouched, VM/Web parit
 arithmetic is pinned share-for-share against a plain-`int` reference of the old algorithm wherever that
 reference is still exact.
 
+**An issued invoice can be corrected, and the correction says what it costs.** (d) makes
+cancellation reachable — a menu item in the title row, behind a confirmation that names what stays: the
+number, the record, and every payment already taken. **Known issue 20 is resolved by a ruling** rather
+than by a code change (D-061): a cancelled invoice keeps its payments, because the money did change
+hands, and the three places that were silent about it now say so. Only an issued invoice may be
+cancelled, and that rule moved into the repository where a deep link cannot get round it.
+
 **Working tree is clean and everything is committed.** `main`'s tip is this continuity update; the
 increment it describes is **`2747b2d`** "Phase 5 (c): payments, recorded and taken back", with
 `241f446` recording its hash. Behind them: `ca1bc53`/**`6675456`**
@@ -99,13 +106,14 @@ itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 
 (c), `3164b8f` its (b), `0e0cd37` its (a3), `7345ca2` its (a2), `bf4c02f` its (a); `d8682ee` is Phases
 2 and 3.
 
-**Nothing is half-finished.** All three unreviewed boundaries are complete, tested, documented and
-committed. **The session ended here at the owner's instruction** — "stopping here" — with no work in
-progress and no question waiting on an answer. A fresh session starts at the Next Action at the bottom
-of this file and needs nothing re-explained.
+**Nothing is half-finished.** All four unreviewed boundaries are complete, tested, documented and
+committed, with no work in progress and no question waiting on an answer. A fresh session starts at
+the Next Action at the bottom of this file and needs nothing re-explained.
 
-**One thing is genuinely owed and is not a boundary: the Android phone-tier device pass**, for (b) and
-(c) both. See the Next Action; the owner's instruction is that the phase does not close without it.
+**One thing is genuinely owed and is not a boundary: the Android phone-tier device pass**, now for
+(b), (c) and (d). No device has been attached in any of the three sessions. See the Next Action; the
+owner's instruction is that the phase does not close without it, and that if no device appears the
+owner is told rather than the requirement quietly sliding.
 
 **Note the collision when reading older sections of this file:** Phase 4 and Phase 5 both have
 increments lettered (a2), (b), (c) and (d). Every reference below names its phase; where one does not,
@@ -114,15 +122,18 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (c)
-flutter test:               PASS   (861/861, was 837)                         as of (c)
-Android build:              PASS   debug APK built (2026-09-01)
+flutter analyze:            PASS   (No issues found)                          as of (d)
+flutter test:               PASS   (892/892, was 861)                         as of (d)
+Android build:              PASS   debug APK built (2026-09-01, re-run for (d))
 Layout, all 3 tiers x 4 amounts (D-057):
-  widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart
+  widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart,
+                                   including the cancellation confirmation at every rung
   device - Windows desktop: PASS   0 layout errors, 1264 x 681, Vazirmatn, all four rungs each with
-                                   an invoice-level discount; and a payment recorded and deleted
-                                   through the real sheet against the real database (2026-09-01)
-  device - Android phone:   OUTSTANDING  no device attached this session, for (b) or (c);
+                                   an invoice-level discount; a payment recorded and deleted through
+                                   the real sheet; and a cancellation through the real menu and
+                                   confirmation, with 705,833 rial still on record afterwards
+                                   (2026-09-01)
+  device - Android phone:   OUTSTANDING  no device attached this session, for (b), (c) or (d);
                                    carried to (f) -- do not close the phase without it
 D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
 D-055 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
@@ -140,7 +151,91 @@ Windows run:                PASS   the app starts and renders at the desktop tie
 Web build:                  NOT_RETESTED since plugins were added
 ```
 
-**Test count is 861**, was 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
+**Test count is 892**, was 861 at the end of (c), 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What Phase 5 increment (d) delivered — cancellation, and what it does not do
+
+**The correction path §6 prescribes, finally reachable — and a ruling on the money it leaves behind.**
+`InvoiceRepository.cancel` has existed since Phase 4 (d); (d) is the way in, the copy, the guard and
+**D-061**, which resolves known issue 20.
+
+```
+lib/features/invoices/presentation/widgets/invoice_cancel_action.dart  NEW  the menu + confirmation
+lib/features/invoices/application/invoice_cancellation.dart            NEW  the one write
+lib/data/models/invoice.dart                             + Invoice.isCancellable
+lib/data/repositories/invoice_repository.dart            + InvoiceNotCancellable; cancel() contract
+lib/data/repositories/drift/drift_invoice_repository.dart  cancel() guards, in its own transaction
+lib/data/repositories/drift/drift_payment_repository.dart  the early return names its ruling
+lib/features/invoices/presentation/invoice_detail_screen.dart  the menu; the cancelled «مانده» note
+lib/features/invoices/presentation/widgets/invoice_payments_section.dart
+                                                         cancelled notice; cancelled delete wording
+lib/core/localization/arb/app_fa.arb                     + 9 strings, 1 reworded
+The project spec                                            the unbounded-card rule, three instances named
+test/data/repositories/invoice_repository_test.dart      + 3 guard/ruling tests
+test/features/invoices/invoice_detail_screen_test.dart   + 28 tests (16 + the 12-rung dialog sweep)
+test/features/invoices/fake_invoice_repository.dart      cancel() implemented, ids recorded
+integration_test/invoice_detail_device_test.dart         + cancellation on the real target
+```
+
+- **The ruling (D-061, known issue 20): a cancelled invoice keeps its payments.** The money changed
+  hands. A cancellation is a statement about the **claim**, not about the **cash**, and deleting the
+  payments with the invoice would falsify the financial record in the one direction it must never
+  move — making received money disappear. That was already the behaviour, via an early return in
+  `_recomputeStatus`; what was wrong is that it was decided by nobody and said to nobody.
+- **So it is said in three places, each pinned by test.** In the confirmation *before* the
+  commitment; on the page *after* it; and in the code, where the early return now names the ruling
+  instead of looking like an oversight.
+- **The confirmation names three consequences and, conditionally, a fourth.** The record is kept
+  rather than removed, the number stays spent (D-013), editing is still not the way back — and, **only
+  where the invoice carries payments**, that they are neither erased nor refunded, with the amount
+  named rather than described. `invoiceCancelBody` is asserted to contain «حذف نمی‌شود», «شماره» and
+  «ویرایش», exactly as the issue confirmation's copy is pinned, so it cannot decay into «مطمئن
+  هستید؟».
+- **Afterwards the page owes two more sentences, and gives them.** A cancelled invoice carrying
+  payments says the payments below were really received — a void document showing a paid figure with
+  no explanation reads as a bug rather than as a fact. And **«مانده» is explained, not hidden**: the
+  figure is real, but on a void document it reads as money still owed. Removing the row was considered
+  and refused, because a number that vanishes by status is harder to trust than one that explains
+  itself.
+- **Both payment operations on a cancelled invoice are now decided rather than inherited.** Recording
+  stays **refused**, and the copy names the way forward — money genuinely received belongs on the
+  replacement invoice, the correction path §6 already prescribes; a refusal that names no alternative
+  leaves the user holding real money with nowhere to put it. Deleting stays **allowed**, because a
+  mis-entered receipt is a fault in the money record and the record must be correctable either way —
+  and it gets its own confirmation wording, since the ordinary one («مانده به همان اندازه افزایش
+  می‌یابد») is *false* on a document where nothing is owed.
+- **Only an issued invoice may be cancelled, and the rule is the repository's.** `cancel` accepted any
+  status; it now throws `InvoiceNotCancellable` for a draft and for one already cancelled, **checked
+  inside the same transaction as the write**, on (c)'s precedent. A draft is withdrawn by deletion —
+  it has no number and nobody has seen it — and a second cancellation would change no fact while
+  bumping `updated_at` into a sync-pending row. `InvoiceNotCancellable` is a separate type from
+  `InvoiceNotEditable` because they are opposite refusals, and one exception could not tell the UI
+  which of two contradictory things to advise.
+- **The action went in the title row, and that is the §10 rule this increment wrote down.** A cancel
+  card would have been the fourth thing to push the first invoice line off a 400 × 800 phone, after
+  D-044's customer record card, (b)'s party card and (c)'s payments card. §10 now carries the rule with
+  all three instances named, and (d) is the first thing it applied to: a `PopupMenuButton` in the page
+  title costs no vertical space at any tier and matches the customer and product screens.
+- **The page does not navigate away after cancelling**, unlike the customer screen's delete: the state
+  just created is precisely the one that needs explaining.
+- **31 new tests; 892 pass** (was 861). Decision recorded: **D-061**.
+
+### The device pass cancels, as well as pays
+
+On Windows, at the desktop tier in Vazirmatn: the **real** menu, the **real** confirmation with money
+sitting on the invoice, the write through the real repository into the real encrypted database, and
+every status read back **from the database** rather than from the screen.
+
+```
+payment: 2117500 rial recorded, status paid
+deletion: status unpaid
+cancellation: status cancelled, 705833 rial still on record, number INV-1405-0001
+correction: status cancelled          (a payment deleted off the cancelled invoice)
+layout errors : 0
+```
+
+**The Android phone tier is now owed for (b), (c) and (d).** No device has been attached in any of the
+three sessions. Carried to (f).
 
 ## What Phase 5 increment (c) delivered — payments, recorded and taken back
 
@@ -1011,7 +1106,7 @@ repositories and driving the real sheets.
 | 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
 | 19 | ~~A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed~~ | **Resolved 2026-09-01** (D-059), before (c), at the owner's direction. §4 step 4 was the only place in the engine multiplying **two amounts** together — an invoice discount by a line's net — so the product was quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount. `mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together; the guard is untouched and VM/Web parity is unchanged. Pinned over the whole D-057 ladder in the allocation, the engine and the editor preview, plus the exact old boundary, and verified to bite against the old implementation. |
-| 20 | **Cancelling an invoice leaves its recorded payments untouched, and nothing says so** | `_recomputeStatus` returns early for a `cancelled` invoice (§6: `cancelled` is set by hand and never derived), so the payments stay on record and the total paid stays whatever it was. **This is very probably right** — the money did change hands, and erasing it would lose a real record — but it is currently implicit, decided by an early return rather than by a decision, and a user cancelling a part-paid invoice is told nothing about it. Raised while writing (c); belongs to **(d)**, which owns the cancellation copy. Needs a ruling and a sentence, not a code change. |
+| 20 | ~~Cancelling an invoice leaves its recorded payments untouched, and nothing says so~~ | **Resolved in (d)** (D-061), by a ruling rather than a code change. A cancelled invoice **keeps** its payments: the money changed hands, and a cancellation is a statement about the claim rather than about the cash. What changed is that it is now said — in the confirmation before the commitment, on the page afterwards (both the payments card and «مانده»), and at the early return in `_recomputeStatus` that decides it. Recording against a cancelled invoice stays refused and the copy names the replacement invoice as the way forward; deleting stays allowed, with its own wording, because a mis-entered receipt must be correctable on a void document too. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -1030,7 +1125,19 @@ repositories and driving the real sheets.
 - **A card whose height has no upper bound does not belong above the thing the page exists to show.**
   D-044 found it on the customer record card, (b) on the party card, (c) on the payments card — which
   costs 182 logical pixels empty. On a phone the primary action moves to `PageBody.floatingAction` and
-  the inline one is omitted, so each tier offers it exactly once.
+  the inline one is omitted, so each tier offers it exactly once. **This is now a rule in the project spec with all three instances named**, and (d) is the first increment it applied to: cancellation went
+  into the title row's menu, which costs no height at any tier, instead of becoming the fourth
+  instance. If it must be reachable without scrolling, put it where it costs no height — the title
+  row, or the floating slot.
+- **Cancelling an invoice keeps every payment recorded against it** (D-061), and the screen says so in
+  the confirmation, on the payments card and beside «مانده». `_recomputeStatus`'s early return for
+  `cancelled` is that ruling, not an oversight. **Recording** against a cancelled invoice is refused
+  and the copy points at the replacement invoice; **deleting** stays allowed with its own wording,
+  because a mis-entered receipt must be correctable whether or not the document still stands.
+- **Only an issued invoice may be cancelled** — `InvoiceNotCancellable`, checked in the same
+  transaction as the write. A draft is withdrawn with `softDeleteDraft`; an invoice already cancelled
+  has nothing left to cancel. The screen offers the menu only where `Invoice.isCancellable`, and never
+  offers a draft two ways out of one state.
 - **A phase closes only after its layout check has run at all three tiers, over the written ladder in
   `test/support/money_magnitudes.dart`** (D-057). Never take the amounts from whatever
   the dev database holds: a panel that fits at 100,000 تومان and breaks at 1,000,000 hides behind small
@@ -1157,7 +1264,27 @@ repositories and driving the real sheets.
 
 ## Recently changed files
 
-### Phase 5 increment (c) — the newest work
+### Phase 5 increment (d) — the newest work
+
+```
+lib/features/invoices/presentation/widgets/invoice_cancel_action.dart  NEW  menu + confirmation
+lib/features/invoices/application/invoice_cancellation.dart            NEW  the one write
+lib/data/models/invoice.dart                             + Invoice.isCancellable
+lib/data/repositories/invoice_repository.dart            + InvoiceNotCancellable; cancel() contract
+lib/data/repositories/drift/drift_invoice_repository.dart  cancel() guards, in its own transaction
+lib/data/repositories/drift/drift_payment_repository.dart  the early return names its ruling
+lib/features/invoices/presentation/invoice_detail_screen.dart  the menu; the cancelled «مانده» note
+lib/features/invoices/presentation/widgets/invoice_payments_section.dart
+                                               cancelled notice; cancelled delete wording
+lib/core/localization/arb/app_fa.arb           + 9 strings, 1 reworded
+The project spec                                  the unbounded-card rule, three instances named
+test/data/repositories/invoice_repository_test.dart      + 3 guard/ruling tests
+test/features/invoices/invoice_detail_screen_test.dart   + 28 tests, incl. the 12-rung dialog sweep
+test/features/invoices/fake_invoice_repository.dart      cancel() implemented, ids recorded
+integration_test/invoice_detail_device_test.dart         + cancellation on the real target
+```
+
+### Phase 5 increment (c) — the boundary before it
 
 ```
 lib/features/invoices/presentation/widgets/payment_editor_sheet.dart      NEW  the sheet
@@ -1438,7 +1565,30 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 5 increment (c) — payments, recorded and taken back (D-060).**
+**Phase 5 increment (d) — cancellation, and what it does not do (D-061).**
+
+`InvoiceRepository.cancel` existed since Phase 4 (d); (d) added the way in, the guard, the copy, and
+the ruling that resolves known issue 20:
+
+- **A cancelled invoice keeps its payments**, because the money changed hands — a cancellation speaks
+  about the claim, not about the cash. Already the behaviour, via an early return; now a decision, and
+  said in three places: the confirmation before the commitment, the page after it, and the code.
+- **The confirmation is pinned by test** — «حذف نمی‌شود», «شماره», «ویرایش» — and gains a second,
+  conditional sentence naming the amount that stays on record where the invoice actually carries
+  payments.
+- **«مانده» is explained rather than hidden** on a void document, and the payments card says the
+  payments below it were really received.
+- **Recording against a cancelled invoice stays refused** with the replacement invoice named as the
+  way forward; **deleting stays allowed** with its own wording, because a mis-entered receipt must be
+  correctable either way and it does not resurrect the invoice.
+- **Only an issued invoice may be cancelled** — `InvoiceNotCancellable`, guarded inside the write's own
+  transaction, tested at the repository by what each refusal left behind.
+- **The action went in the title row**, under the new §10 rule this increment wrote down, rather than
+  becoming the fourth card to push the first invoice line off a phone.
+- **31 new tests; 892 pass.** Analyzer clean, Android debug APK builds, Windows device pass green with
+  0 layout errors.
+
+**The previous boundary — Phase 5 increment (c), payments (D-060).**
 
 The write side already existed from Phase 4 (d), both halves recomputing the derived status inside
 their own transaction (§6). (c) added the way in and the guard tests that matter:
@@ -1460,51 +1610,46 @@ their own transaction (§6). (c) added the way in and the guard tests that matte
 repository, the real encrypted database, and the status read back **from the database** — 2,117,500
 rial recorded (status `paid`), then deleted (status `unpaid`), 0 layout errors.
 
-**The owner then stopped the session**, after (c) and before any of (d). Three boundaries are awaiting
-review together — (b), the known-issue-19 fix, and (c) — and none of them has been through the owner's
-own pass. There is no work in progress, nothing uncommitted and no open question: the next session
-starts cold at the Next Action below.
+**Four boundaries are now awaiting review together** — (b), the known-issue-19 fix, (c) and (d) — and
+none of them has been through the owner's own pass. There is no work in progress, nothing uncommitted
+and no open question: the next session starts cold at the Next Action below.
 
 ## Next action
 
-**First, note that three boundaries are awaiting the owner's review** — (b), the known-issue-19 fix and
-(c). None has had the owner's own pass. If the session opens with review feedback, that comes first;
-otherwise proceed.
+**First, note that four boundaries are awaiting the owner's review** — (b), the known-issue-19 fix,
+(c) and (d). None has had the owner's own pass. If the session opens with review feedback, that comes
+first; otherwise proceed.
 
-**Then build Phase 5 increment (d): cancellation, and the Persian copy that says what it does and does
-not do.**
+**Then build Phase 5 increment (e): list filters at the query level, and paging
+`watchForCustomer`.**
 
-The detail screen is where it goes, beside the payments section (c) added. From the owner's standing
-constraints and what is already in place:
+From the owner's standing constraints and what is already in place:
 
-1. **Cancellation is the correction path for an issued invoice and must not silently edit.**
-   `InvoiceRepository.cancel` already exists and is tested; (d) is the way in, the confirmation, and
-   the copy.
-2. **The copy must say what cancelling does *and does not* do, including that the number stays spent**
-   (D-013). A cancelled invoice keeps its number: a numbering sequence with holes in it is what an
-   auditor asks about, and re-using one is worse. This is the sentence (d) exists for.
-3. **Only an issued invoice can be cancelled**, and — as with payments — the rule is the repository's.
-   Test it by calling the repository directly, in every status, and assert the refusal left nothing
-   behind. A draft is deleted rather than cancelled (`softDeleteDraft`), and the screen should not
-   offer both for the same invoice.
-4. **What cancelling does to payments already recorded needs an explicit answer** — **known issue
-   20**, raised while writing (c). Today `_recomputeStatus` returns early for a cancelled invoice, so
-   its payments stay on record and its total paid stays whatever it was. That is very probably right
-   — the money did change hands — but it is decided by an early return rather than by a decision, and
-   a user cancelling a part-paid invoice is told nothing about it. It needs a ruling and a sentence of
-   Persian copy, not a code change.
-5. **Any new layout goes through D-057** — all three tiers over the ladder in
-   `test/support/money_magnitudes.dart`, and a new fixed-width money site joins
-   `test/core/widgets/money_layout_test.dart`.
+1. **The filters run in SQL, never in Dart over a loaded page.** Status, customer and **Jalali**
+   period. `InvoiceListQuery` already exists and already carries an unused search term (D-038); the
+   window is the shape to extend, and the limit must keep reaching the database.
+2. **A Jalali period is resolved to UTC instants and queried on those** (§5, D-006). `jalaliMonth` and
+   `InstantRange` exist and `totalIssuedRial` already takes one — a Gregorian boundary here is a bug,
+   not a simplification.
+3. **Paging `watchForCustomer`** is known issue 16: it caps at 1000 and does not page, so the customer
+   detail screen loads every one of a customer's invoices. Give it a `ListQuery` like the other lists.
+4. **Any new layout goes through D-057** — all three tiers over the ladder in
+   `test/support/money_magnitudes.dart` — and **any card added to a detail screen goes through the new
+   §10 rule**: if its height depends on data and it sits above the thing the page exists to show, it
+   goes below it, or somewhere that costs no height at all.
+5. **The filter controls are new UI on the invoice list**, which has both a card layout and a table
+   layout. A filter bar is exactly the kind of unbounded-height block §10 now rules on.
 
-**Still outstanding, and the owner's instruction is explicit: the Android phone-tier device pass, for
-(b) and (c) both.** No device has been attached in this session (`flutter devices` lists Windows,
-Chrome and Edge; the emulator is offline). `integration_test/invoice_detail_device_test.dart` runs on
-any target and now exercises the payment flow as well as the layout — point it at the Redmi the next
-time it is connected, freeing space on the device first (known issue 10b). **Do not close the phase
-without it.**
+**Still outstanding, and the owner's instruction is explicit: the Android phone-tier device pass, now
+for (b), (c) and (d).** No device has been attached in any of the three sessions — `flutter devices`
+lists Windows, Chrome and Edge, and the emulator is offline.
+`integration_test/invoice_detail_device_test.dart` runs on any target and now exercises the payment
+flow **and** the cancellation as well as the layout; point it at the Redmi the next time it is
+connected, freeing space on the device first (known issue 10b). **Do not close the phase without it —
+and if no device appears by the time (e) is done, say so and let the owner decide rather than letting
+it slide.**
 
-After (d) the order is (e) filters and paging, then (f) the device pass and the phase close.
+After (e) the order is (f), the device pass and the phase close.
 
 ### Standing constraints for the rest of Phase 5, from the owner
 
@@ -1514,10 +1659,11 @@ After (d) the order is (e) filters and paging, then (f) the device pass and the 
   both directions**, tested at the repository — done in (c) (D-060).
 - **Cancellation is the correction path** for an issued invoice and must not silently edit. The
   Persian copy states what cancelling does **and does not** do, *including that the number stays
-  spent* (D-013).
+  spent* (D-013) — done in (d) via `InvoiceCancelAction`, with the ruling on the payments it keeps
+  (D-061).
 - **List filters over status, customer and Jalali period, at the query level** — not in Dart over a
   loaded page.
 - **Paging `watchForCustomer`**, known issue 16.
 - **A device pass before the phase is called done** — at **all three tiers**, over the written ladder
-  (D-057), not on one tier at whatever amounts the flow produces. **The phone tier is owed for both
-  (b) and (c).**
+  (D-057), not on one tier at whatever amounts the flow produces. **The phone tier is owed for (b),
+  (c) and (d).**

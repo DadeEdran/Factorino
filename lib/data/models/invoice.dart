@@ -137,6 +137,18 @@ class Invoice {
   bool get acceptsPayments =>
       status != InvoiceStatus.draft && status != InvoiceStatus.cancelled;
 
+  /// Whether cancellation is the correction path available to it (D-061).
+  ///
+  /// The same two exclusions as [acceptsPayments], reached from the other
+  /// direction and kept separate on purpose. A **draft** is withdrawn by
+  /// deleting it — it has no number, nobody has seen it, and there is nothing
+  /// to correct — so offering both would present two ways out of one state and
+  /// spend a number that was never allocated. An **already cancelled** invoice
+  /// has nothing left to cancel, and a second cancellation would be a write
+  /// that changes no fact while bumping `updatedAt` into a sync-pending row.
+  bool get isCancellable =>
+      status != InvoiceStatus.draft && status != InvoiceStatus.cancelled;
+
   @override
   bool operator ==(Object other) =>
       other is Invoice && other.id == id && other.updatedAt == updatedAt;

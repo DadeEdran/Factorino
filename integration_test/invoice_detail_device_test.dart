@@ -10,6 +10,8 @@ import 'package:factorino/data/models/customer.dart';
 import 'package:factorino/data/models/invoice.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
 import 'package:factorino/data/models/invoice_status.dart';
+import 'package:factorino/data/models/payment.dart';
+import 'package:factorino/data/models/payment_method.dart';
 import 'package:factorino/data/providers.dart';
 import 'package:factorino/features/invoices/presentation/invoice_detail_screen.dart';
 import 'package:flutter/foundation.dart';
@@ -37,6 +39,13 @@ import 'package:integration_test/integration_test.dart';
 /// sweep is **Vazirmatn**: the widget tests render in a fallback font whose
 /// glyphs are much wider, so they are conservative about width and silent about
 /// everything else a real font does.
+///
+/// **It writes as well as renders.** (c) added a payment recorded and taken
+/// back off again through the real sheet; (d) adds the cancellation — the menu,
+/// the confirmation with money on the invoice, and the two sentences a void
+/// document carrying payments owes afterwards. Every status is read back from
+/// the **database**, never from the screen, because the screen believing it is
+/// not the claim.
 ///
 /// It also exercises the two states a screenshot of a happy invoice never shows:
 /// a customer **renamed after issue**, so the document and the record disagree
@@ -188,7 +197,7 @@ void main() {
       <Object?>[invoices.last.id],
     );
 
-    debugPrint('=== PHASE 5 (b)+(c) DETAIL SCREEN ON DEVICE ===');
+    debugPrint('=== PHASE 5 (b)+(c)+(d) DETAIL SCREEN ON DEVICE ===');
     debugPrint('platform      : ${Platform.operatingSystem}');
 
     for (int index = 0; index < invoices.length; index++) {
@@ -369,6 +378,123 @@ void main() {
               .totalPaidRial(invoice.id),
           0,
         );
+
+        // ---- cancel it, with money on it (Phase 5 (d)) ----------------------
+        //
+        // The payment is written through the repository this time rather than
+        // through the sheet: the sheet is already proven three paragraphs up,
+        // and what (d) adds is the **menu, the confirmation and the two
+        // sentences a cancelled invoice owes afterwards** — on the real target,
+        // in Vazirmatn, with a real amount sitting on the document.
+        await container
+            .read(paymentRepositoryProvider)
+            .record(
+              invoice.id,
+              PaymentDraft(
+                amount: Money.rial(invoice.grandTotal.rial ~/ 3),
+                paidAt: DateTime.utc(2026, 8, 25),
+                method: PaymentMethod.cash,
+              ),
+            );
+        await tester.pumpAndSettle();
+
+        await tester.tap(find.byIcon(Icons.more_vert).first);
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(strings.invoiceCancelAction).first);
+        await tester.pumpAndSettle();
+
+        // The half of the copy that only appears where money has changed hands
+        // (D-061). This is the sentence the increment exists for, so it is
+        // asserted on the device and not only in the widget sweep.
+        expect(
+          find.text(strings.invoiceCancelBody),
+          findsOneWidget,
+          reason: 'the confirmation must say what cancelling does not do',
+        );
+        expect(
+          find.textContaining('بازگردانده نمی‌شود'),
+          findsOneWidget,
+          reason: 'and, with a payment on it, that nothing is refunded',
+        );
+
+        await tester.tap(
+          find.widgetWithText(FilledButton, strings.invoiceCancelAction),
+        );
+        await tester.pumpAndSettle();
+
+        // Read back from the database rather than from the screen: the money
+        // stayed, and the status did not derive its way back out of
+        // `cancelled` (§6, D-061).
+        final Invoice afterCancel = (await container
+            .read(invoiceRepositoryProvider)
+            .findById(invoice.id))!;
+        final int paidAfterCancel = await container
+            .read(paymentRepositoryProvider)
+            .totalPaidRial(invoice.id);
+        debugPrint(
+          'cancellation  : status ${afterCancel.status.name}, '
+          '$paidAfterCancel rial still on record, '
+          'number ${afterCancel.number}',
+        );
+        expect(afterCancel.status, InvoiceStatus.cancelled);
+        expect(paidAfterCancel, invoice.grandTotal.rial ~/ 3);
+        expect(
+          afterCancel.number,
+          invoice.number,
+          reason: 'a spent number stays spent (D-013)',
+        );
+
+        // And the page says both of the things a void document carrying money
+        // has to say, rather than leaving a paid figure to be read as a fault.
+        //
+        // Scrolled back to the top first: the `ensureVisible` calls above moved
+        // the panel, and a `ListView` child scrolled past its cache extent is
+        // disposed rather than merely off screen -- so a finder would report it
+        // absent when it is only elsewhere.
+        for (final Element element
+            in find.byType(ListView).evaluate().toList()) {
+          for (int step = 0; step < 12; step++) {
+            await tester.drag(
+              find.byWidget(element.widget),
+              const Offset(0, 300),
+            );
+            await tester.pumpAndSettle();
+          }
+        }
+        expect(
+          find.text(strings.invoiceDetailCancelledPaymentsNote),
+          findsOneWidget,
+        );
+        expect(
+          find.text(strings.invoiceDetailCancelledDueNote),
+          findsOneWidget,
+        );
+
+        // Correcting the money record is still possible, and it does not
+        // resurrect the invoice.
+        await tester.ensureVisible(
+          find.byTooltip(strings.paymentDeleteAction).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip(strings.paymentDeleteAction).first);
+        await tester.pumpAndSettle();
+        expect(
+          find.textContaining('باطل می‌ماند'),
+          findsOneWidget,
+          reason:
+              'the cancelled invoice gets its own wording: nothing is owed on '
+              'a void document, so no balance goes up',
+        );
+        await tester.tap(
+          find.widgetWithText(FilledButton, strings.paymentDeleteAction),
+        );
+        await tester.pumpAndSettle();
+
+        final Invoice afterCorrection = (await container
+            .read(invoiceRepositoryProvider)
+            .findById(invoice.id))!;
+        debugPrint('correction    : status ${afterCorrection.status.name}');
+        expect(afterCorrection.status, InvoiceStatus.cancelled);
       }
 
       // Scroll the whole page rather than the first viewport: an off-screen

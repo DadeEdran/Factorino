@@ -238,9 +238,21 @@ class FakeInvoiceRepository implements InvoiceRepository {
     );
   }
 
+  /// The ids passed to [cancel], in order. Empty is the assertion that
+  /// matters when a confirmation was declined.
+  final List<String> cancelledIds = <String>[];
+
   @override
-  Future<Invoice> cancel(String id) =>
-      throw UnimplementedError('not exercised by these tests');
+  Future<Invoice> cancel(String id) async {
+    if (failWrites) throw StateError('write refused by the fake');
+    cancelledIds.add(id);
+    // The status the row would come back with. The screen never reads it — it
+    // follows `invoiceDetailProvider`, which is a live query — so this is here
+    // to satisfy the contract rather than to be asserted on. Whether the real
+    // write refuses a draft or a second cancellation is the **repository's**
+    // claim, pinned against a real database in `invoice_repository_test.dart`.
+    return _invoice(status: InvoiceStatus.cancelled, number: issuedNumber);
+  }
 
   @override
   Future<void> softDeleteDraft(String id) =>

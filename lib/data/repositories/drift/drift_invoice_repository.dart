@@ -472,7 +472,26 @@ class DriftInvoiceRepository implements InvoiceRepository {
   }
 
   @override
-  Future<Invoice> cancel(String id) => _setStatus(id, InvoiceStatus.cancelled);
+  Future<Invoice> cancel(String id) async {
+    // **Checked before the write, in the same transaction as it** (D-061), on
+    // the precedent the payment guard set: a guard that refuses after writing
+    // half the change is worse than no guard. The read and the write are one
+    // unit so a second window cannot cancel between them.
+    return _db.transaction(() async {
+      final row = await _findRow(id);
+      if (row == null) throw StateError('no invoice with id $id');
+      if (row.status == InvoiceStatus.draft ||
+          row.status == InvoiceStatus.cancelled) {
+        throw InvoiceNotCancellable(id, row.status);
+      }
+
+      // Nothing touches `payments` here, and that is the ruling rather than an
+      // omission (D-061): the money changed hands, so it stays on record, and
+      // the screen says so instead of leaving a paid figure on a void document
+      // to be read as a fault in the software.
+      return _setStatus(id, InvoiceStatus.cancelled);
+    });
+  }
 
   @override
   Future<void> softDeleteDraft(String id) async {

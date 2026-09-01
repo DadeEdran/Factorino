@@ -835,6 +835,403 @@ void main() {
     });
   });
 
+  group('cancellation (d)', () {
+    /// The same harness the payments group uses, so a cancelled invoice can be
+    /// rendered with real payments on it.
+    late _FakePaymentRepository payments;
+
+    setUp(() => payments = _FakePaymentRepository());
+
+    Future<(AppStrings, FakeInvoiceRepository)> pumpCancellable(
+      WidgetTester tester, {
+      required InvoiceDetail view,
+      Size size = tallPhone,
+      bool failWrites = false,
+    }) async {
+      final FakeInvoiceRepository repo = FakeInvoiceRepository(
+        const <InvoiceListItem>[],
+      );
+      repo.details[view.invoice.id] = view;
+      repo.failWrites = failWrites;
+      payments.invoice = view.invoice;
+
+      await pumpScreen(
+        tester,
+        const InvoiceDetailScreen(invoiceId: 'i1'),
+        overrides: <Override>[
+          invoiceRepositoryProvider.overrideWithValue(repo),
+          paymentRepositoryProvider.overrideWithValue(payments),
+          nowProvider.overrideWithValue(now),
+        ],
+        size: size,
+      );
+      await tester.pumpAndSettle();
+      return (stringsOf(tester, InvoiceDetailScreen), repo);
+    }
+
+    Future<AppStrings> openDialog(
+      WidgetTester tester, {
+      required InvoiceDetail view,
+      Size size = tallPhone,
+    }) async {
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: view,
+        size: size,
+      );
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceCancelAction));
+      await tester.pumpAndSettle();
+      return strings;
+    }
+
+    testWidgets('an issued invoice offers cancellation', (
+      WidgetTester tester,
+    ) async {
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      expect(find.text(strings.invoiceCancelAction), findsOneWidget);
+    });
+
+    testWidgets('a draft is not offered it: a draft is deleted, not voided', (
+      WidgetTester tester,
+    ) async {
+      // Absent, not disabled (D-021). A draft has no number and nobody has seen
+      // it; marking it «باطل شده» would void a document that never existed, and
+      // the screen must not offer two ways out of one state.
+      await pumpCancellable(tester, view: detail(status: InvoiceStatus.draft));
+
+      expect(find.byIcon(Icons.more_vert), findsNothing);
+    });
+
+    testWidgets('an invoice already cancelled is not offered it either', (
+      WidgetTester tester,
+    ) async {
+      await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.cancelled),
+      );
+
+      expect(find.byIcon(Icons.more_vert), findsNothing);
+    });
+
+    testWidgets('the confirmation says what cancelling does not do', (
+      WidgetTester tester,
+    ) async {
+      // **The copy is pinned, exactly as the issue confirmation's is.** Three
+      // consequences the button cannot show and the user cannot take back: the
+      // record is kept rather than removed, the number stays spent (D-013), and
+      // editing is still not the way back (§6). A confirmation that decays into
+      // «مطمئن هستید؟» is a dialog people learn to dismiss.
+      final AppStrings strings = await openDialog(tester, view: detail());
+
+      expect(find.text(strings.invoiceCancelTitle), findsOneWidget);
+      expect(find.text(strings.invoiceCancelBody), findsOneWidget);
+      expect(
+        strings.invoiceCancelBody,
+        allOf(contains('حذف نمی‌شود'), contains('شماره'), contains('ویرایش')),
+        reason:
+            'the Persian copy must say the record is kept, the number stays '
+            'spent and editing is not the way back',
+      );
+    });
+
+    testWidgets('and, where there are payments, that it refunds nothing', (
+      WidgetTester tester,
+    ) async {
+      // The sentence (d) exists for. Cancelling never touches the payments
+      // table (D-061), and a user cancelling a part-paid invoice has to be told
+      // that **before** committing rather than discover it on the page after.
+      final AppStrings strings = await openDialog(
+        tester,
+        view: detail(
+          status: InvoiceStatus.partiallyPaid,
+          payments: <Payment>[payment(5000000)],
+        ),
+      );
+
+      expect(
+        find.text(
+          strings.invoiceCancelPaymentsNote(formatGroupedPersian(500000)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        strings.invoiceCancelPaymentsNote('X'),
+        allOf(contains('حذف نمی‌شود'), contains('بازگردانده نمی‌شود')),
+        reason:
+            'both halves are the claim: the payment is neither erased from the '
+            'record nor returned to the customer',
+      );
+    });
+
+    testWidgets('an invoice with no payments gets no payments sentence', (
+      WidgetTester tester,
+    ) async {
+      // D-060's rule: a warning printed on every cancellation is one nobody
+      // reads on the cancellation where it matters.
+      final AppStrings strings = await openDialog(tester, view: detail());
+
+      expect(find.textContaining('بازگردانده نمی‌شود'), findsNothing);
+      expect(find.text(strings.invoiceCancelBody), findsOneWidget);
+    });
+
+    testWidgets('declining writes nothing at all', (WidgetTester tester) async {
+      final (AppStrings strings, FakeInvoiceRepository repo) =
+          await pumpCancellable(tester, view: detail());
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceCancelAction));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.actionCancel));
+      await tester.pumpAndSettle();
+
+      expect(repo.cancelledIds, isEmpty);
+    });
+
+    testWidgets('confirming cancels it, and says the payments stand', (
+      WidgetTester tester,
+    ) async {
+      final (
+        AppStrings strings,
+        FakeInvoiceRepository repo,
+      ) = await pumpCancellable(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceCancelAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.invoiceCancelAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repo.cancelledIds, <String>['i1']);
+      expect(find.text(strings.invoiceCancelSuccess), findsOneWidget);
+    });
+
+    testWidgets('a failed write is a Persian line, never an exception', (
+      WidgetTester tester,
+    ) async {
+      // §7: no stack trace, no SQL, no raw exception string in front of a user.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(),
+        failWrites: true,
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceCancelAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.invoiceCancelAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceCancelFailed), findsOneWidget);
+    });
+
+    testWidgets('a cancelled invoice carrying payments says so plainly', (
+      WidgetTester tester,
+    ) async {
+      // Requirement two of three. A void document showing «پرداخت‌شده:
+      // ۵۰۰٬۰۰۰ تومان» with no explanation reads as a fault in the software
+      // rather than as a fact about the record.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(
+          status: InvoiceStatus.cancelled,
+          payments: <Payment>[payment(5000000)],
+        ),
+      );
+
+      expect(
+        find.text(strings.invoiceDetailCancelledPaymentsNote),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a cancelled invoice with no payments does not say it', (
+      WidgetTester tester,
+    ) async {
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.cancelled),
+      );
+
+      expect(
+        find.text(strings.invoiceDetailCancelledPaymentsNote),
+        findsNothing,
+      );
+    });
+
+    testWidgets('the remaining balance is shown, and said not to be owed', (
+      WidgetTester tester,
+    ) async {
+      // «مانده» is a real figure — it is what was never paid — but on a void
+      // document it reads as money still owed, which is the one thing a
+      // cancellation means it is not. Explained rather than hidden: removing
+      // the row would leave the page silently missing a number every other
+      // invoice shows.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.cancelled),
+      );
+
+      expect(find.text(strings.invoiceDetailDueLabel), findsOneWidget);
+      expect(find.text(strings.invoiceDetailCancelledDueNote), findsOneWidget);
+    });
+
+    testWidgets('and an ordinary invoice says nothing of the kind', (
+      WidgetTester tester,
+    ) async {
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+      );
+
+      expect(find.text(strings.invoiceDetailCancelledDueNote), findsNothing);
+      expect(
+        find.text(strings.invoiceDetailCancelledPaymentsNote),
+        findsNothing,
+      );
+    });
+
+    testWidgets('the refusal to record names the way forward', (
+      WidgetTester tester,
+    ) async {
+      // The copy explains the refusal rather than only stating it. A payment
+      // genuinely received against a cancelled invoice belongs on the invoice
+      // that replaced it — the correction path §6 already prescribes.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.cancelled),
+      );
+
+      expect(
+        find.text(strings.invoiceDetailPaymentsUnavailableCancelled),
+        findsOneWidget,
+      );
+      expect(
+        strings.invoiceDetailPaymentsUnavailableCancelled,
+        contains('جایگزین'),
+        reason: 'a refusal that names no alternative leaves the user stuck',
+      );
+    });
+
+    testWidgets('deleting a payment off a cancelled invoice stays possible', (
+      WidgetTester tester,
+    ) async {
+      // The other half of the ruling. Correcting a mis-entered receipt is a fix
+      // to the money record, and the money record must be correctable whether
+      // or not the document still stands — it does not resurrect the invoice
+      // (`_recomputeStatus` returns early for `cancelled`, §6), and the copy
+      // says so instead of promising a balance that would go up.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(
+          status: InvoiceStatus.cancelled,
+          payments: <Payment>[payment(5000000)],
+        ),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.byTooltip(strings.paymentDeleteAction));
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(
+          strings.paymentDeleteBodyCancelled(formatGroupedPersian(500000)),
+        ),
+        findsOneWidget,
+      );
+      expect(
+        find.text(strings.paymentDeleteBody(formatGroupedPersian(500000))),
+        findsNothing,
+        reason:
+            'the ordinary wording promises a balance that would go up, and '
+            'nothing is owed on a void document',
+      );
+
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.paymentDeleteAction),
+      );
+      await tester.pumpAndSettle();
+      expect(payments.deleted, <String>['p1']);
+    });
+
+    testWidgets('the fold: the cancelled notices do not push the lines off', (
+      WidgetTester tester,
+    ) async {
+      // **The new copy lands in the summary card, which is above the lines on a
+      // phone**, so it goes through the same 400 x 800 check that caught the
+      // party card in (b) and the payments card in (c) — the §10 rule this
+      // increment writes down. The cancel action itself is in the title row and
+      // costs no height at all, which is why it is there.
+      await pumpCancellable(
+        tester,
+        view: detail(
+          status: InvoiceStatus.cancelled,
+          snapshot: CustomerSnapshot.of(customer()),
+          payments: <Payment>[payment(5000000)],
+          notes: 'تحویل تا پایان شهریور',
+          dueDate: DateTime.utc(2026, 9, 20, 6),
+        ),
+        size: kMobileSize,
+      );
+
+      expect(find.text('طراحی وب‌سایت'), findsOneWidget);
+    });
+
+    // **The dialog carries an amount, so it goes through the ladder** (D-057).
+    // A confirmation is the narrowest surface in the app that prints money, and
+    // the figure it prints is the one nobody can check afterwards.
+    for (final MapEntry<String, Size> tier in kAllTierSizes.entries) {
+      for (final int value in kMoneyStressToman) {
+        testWidgets('the confirmation at ${tier.key}, $value toman', (
+          WidgetTester tester,
+        ) async {
+          final int rial = value * 10;
+          final AppStrings strings = await openDialog(
+            tester,
+            size: Size(tier.value.width, 2400),
+            view: detail(
+              status: InvoiceStatus.partiallyPaid,
+              snapshot: CustomerSnapshot.of(customer()),
+              grossTotalRial: rial,
+              grandTotalRial: rial,
+              payments: <Payment>[payment(rial ~/ 3)],
+              items: <InvoiceItem>[
+                line(unitPriceRial: rial, grossRial: rial, lineNetRial: rial),
+              ],
+            ),
+          );
+
+          expect(find.text(strings.invoiceCancelBody), findsOneWidget);
+          expect(
+            find.text(
+              strings.invoiceCancelPaymentsNote(
+                formatGroupedPersian(Money.rial(rial ~/ 3).toman),
+              ),
+            ),
+            findsOneWidget,
+          );
+        });
+      }
+    }
+  });
+
   group('the fold on a real phone', () {
     testWidgets('the first line is reachable without scrolling', (
       WidgetTester tester,

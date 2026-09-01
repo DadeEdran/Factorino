@@ -124,7 +124,7 @@ final class InvoicePaymentsProvider
   }
 }
 
-String _$invoicePaymentsHash() => r'5c714c84a1e13bdae8510d5fdae4d4ef10f5621d';
+String _$invoicePaymentsHash() => r'9e8e03fd5be9d60039979fe11415c76576283e9c';
 
 /// The two payment writes, and nothing else.
 ///

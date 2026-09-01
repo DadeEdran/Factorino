@@ -884,7 +884,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDetailPaymentsUnavailableCancelled =>
-      'این فاکتور باطل شده است و دیگر مطالبه‌ای از کسی نیست، بنابراین پرداخت تازه‌ای برای آن ثبت نمی‌شود.';
+      'این فاکتور باطل شده است و دیگر مطالبه‌ای از کسی نیست، بنابراین پرداخت تازه‌ای برای آن ثبت نمی‌شود. اگر مبلغی دریافت کرده‌اید، آن را روی فاکتور جایگزین ثبت کنید.';
 
   @override
   String get paymentCreateTitle => 'ثبت پرداخت';
@@ -940,6 +940,41 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get paymentSaveFailed => 'ثبت این پرداخت ممکن نشد.';
+
+  @override
+  String get invoiceCancelAction => 'ابطال فاکتور';
+
+  @override
+  String get invoiceCancelTitle => 'این فاکتور باطل شود؟';
+
+  @override
+  String get invoiceCancelBody =>
+      'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شمارهٔ آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.';
+
+  @override
+  String invoiceCancelPaymentsNote(String amount) {
+    return '$amount تومان پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.';
+  }
+
+  @override
+  String get invoiceCancelSuccess =>
+      'فاکتور باطل شد. پرداخت‌های ثبت‌شده دست‌نخورده ماند.';
+
+  @override
+  String get invoiceCancelFailed => 'ابطال این فاکتور ممکن نشد.';
+
+  @override
+  String get invoiceDetailCancelledDueNote =>
+      'این فاکتور باطل شده است؛ مانده‌ی آن مطالبه‌ای از مشتری نیست.';
+
+  @override
+  String get invoiceDetailCancelledPaymentsNote =>
+      'این فاکتور باطل شده است، اما پرداخت‌های زیر واقعاً دریافت شده‌اند و در سوابق می‌مانند. ابطال، پرداختی را حذف یا بازنمی‌گرداند.';
+
+  @override
+  String paymentDeleteBodyCancelled(String amount) {
+    return '$amount تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقهٔ پرداخت را اصلاح می‌کند.';
+  }
 
   @override
   String get errorGenericTitle => 'خطایی رخ داد';

@@ -51,11 +51,29 @@ class InvoicePaymentsSection extends ConsumerWidget {
     // the wider tiers there is no floating action, and this is the only way in.
     final bool showInlineAction = acceptsPayments && !context.tier.isMobile;
 
+    final bool isCancelled = detail.invoice.status == InvoiceStatus.cancelled;
+
     return AppCard(
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
           SectionHeader(title: strings.invoiceDetailPaymentsSection),
+          // **Above the payments, not below them** (D-061). A void document
+          // listing money received is the sentence the user needs *before* they
+          // read the amounts, or the amounts read as a fault in the software
+          // rather than as a fact about the record. Only where there is
+          // actually something to explain: a cancelled invoice with no payments
+          // has no paid figure to account for, and the sentence below about
+          // recording covers it.
+          if (isCancelled && detail.payments.isNotEmpty) ...<Widget>[
+            Text(
+              strings.invoiceDetailCancelledPaymentsNote,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           if (detail.payments.isEmpty)
             Text(
               strings.invoiceDetailPaymentsEmpty,
@@ -83,6 +101,14 @@ class InvoicePaymentsSection extends ConsumerWidget {
               ),
             )
           else if (!acceptsPayments)
+            // **The refusal is explained, and the way forward is named.** A
+            // draft has to be issued first; a cancelled invoice is no longer a
+            // claim on anyone, so a payment actually received against it
+            // belongs on the invoice that replaced it -- which is the
+            // correction path §6 already prescribes. Deleting a payment off a
+            // cancelled invoice stays available, on the row itself: correcting
+            // a mis-entered receipt is a fix to the money record, and it does
+            // not resurrect the document (D-061).
             Text(
               detail.invoice.status == InvoiceStatus.draft
                   ? strings.invoiceDetailPaymentsUnavailableDraft
@@ -217,6 +243,13 @@ class _PaymentRow extends ConsumerWidget {
         detail.invoice.status == InvoiceStatus.paid &&
         detail.amountPaid - payment.amount < detail.invoice.grandTotal;
 
+    // A cancelled invoice gets its own sentence, because the ordinary one is
+    // **false** there: «مانده به همان اندازه افزایش می‌یابد» describes money
+    // becoming owed again, and nothing is owed on a void document. What is
+    // worth saying instead is that the invoice stays cancelled -- the money
+    // record is being corrected, not the document reopened (D-061).
+    final bool isCancelled = detail.invoice.status == InvoiceStatus.cancelled;
+
     final bool confirmed =
         await showDialog<bool>(
           context: context,
@@ -227,9 +260,13 @@ class _PaymentRow extends ConsumerWidget {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 Text(
-                  strings.paymentDeleteBody(
-                    formatGroupedPersian(payment.amount.toman),
-                  ),
+                  isCancelled
+                      ? strings.paymentDeleteBodyCancelled(
+                          formatGroupedPersian(payment.amount.toman),
+                        )
+                      : strings.paymentDeleteBody(
+                          formatGroupedPersian(payment.amount.toman),
+                        ),
                 ),
                 // Only where it is true. A warning shown on every deletion is a
                 // warning nobody reads on the one that matters.

@@ -124,9 +124,20 @@ abstract interface class InvoiceRepository {
   /// Moves a draft to `unpaid`, fixing its number as issued.
   Future<Invoice> issue(String id);
 
-  /// Cancels an invoice. The number is **not** released: an issued number is
-  /// spent, and a gap in the sequence is far better than two documents
-  /// sharing one identity (D-013).
+  /// Cancels an issued invoice. The number is **not** released: an issued
+  /// number is spent, and a gap in the sequence is far better than two
+  /// documents sharing one identity (D-013).
+  ///
+  /// Throws [InvoiceNotCancellable] for a draft — which is withdrawn with
+  /// [softDeleteDraft] instead — and for an invoice that is already cancelled.
+  ///
+  /// **Payments already recorded are left exactly where they are** (D-061).
+  /// The money did change hands, and a cancelled document is a statement about
+  /// the claim, not about the cash. `cancelled` is set by hand and never
+  /// derived, so the status does not move back afterwards
+  /// either; a payment may still be *deleted* off a cancelled invoice, because
+  /// a mis-entered receipt is a fault in the money record and the money record
+  /// must be correctable whether or not the document still stands.
   Future<Invoice> cancel(String id);
 
   /// Soft-deletes a **draft** invoice. Throws [InvoiceNotEditable] otherwise.
@@ -148,4 +159,24 @@ class InvoiceNotEditable implements Exception {
   String toString() =>
       'InvoiceNotEditable: invoice $invoiceId is ${status.name}; only a draft '
       'may be edited or deleted.';
+}
+
+/// Raised when cancellation is attempted on an invoice that has nothing to
+/// cancel: a draft, or one that is already cancelled.
+///
+/// The mirror of [InvoiceNotEditable], and a separate type because it is the
+/// opposite refusal — that one guards the *edit* path against issued invoices,
+/// this one guards the *correction* path against invoices that were never
+/// issued. Collapsing them into one exception would leave the UI unable to say
+/// which of two contradictory things the user should do instead.
+class InvoiceNotCancellable implements Exception {
+  const InvoiceNotCancellable(this.invoiceId, this.status);
+
+  final String invoiceId;
+  final InvoiceStatus status;
+
+  @override
+  String toString() =>
+      'InvoiceNotCancellable: invoice $invoiceId is ${status.name}; only an '
+      'issued invoice may be cancelled (D-061).';
 }

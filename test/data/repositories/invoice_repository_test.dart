@@ -550,6 +550,93 @@ void main() {
       );
     });
 
+    test('a draft cannot be cancelled, and is left a draft', () async {
+      // D-061. A draft is **withdrawn by deleting it**: it has no number,
+      // nobody has seen it, and there is nothing to correct. Offering
+      // cancellation as well would present two ways out of one state and mark
+      // a document «باطل شده» that was never a document.
+      //
+      // The refusal is asserted by what it *left behind*, on (c)'s precedent —
+      // a guard that throws after writing half the change is worse than no
+      // guard.
+      final created = await harness.invoices.create(harness.draft(customerId));
+
+      await expectLater(
+        harness.invoices.cancel(created.invoice.id),
+        throwsA(isA<InvoiceNotCancellable>()),
+      );
+
+      final Invoice after = (await harness.invoices.findById(
+        created.invoice.id,
+      ))!;
+      expect(after.status, InvoiceStatus.draft);
+      expect(after.isEditable, isTrue);
+      expect(after.hasNumber, isFalse, reason: 'no number may be spent here');
+      expect(after.updatedAt, created.invoice.updatedAt);
+    });
+
+    test(
+      'an invoice already cancelled refuses a second cancellation',
+      () async {
+        // Nothing left to cancel. The write would change no fact while bumping
+        // `updated_at` — which is a sync-pending row for a change that never
+        // happened (§6's sync-ready columns).
+        final created = await harness.invoices.create(
+          harness.draft(customerId),
+        );
+        await harness.invoices.issue(created.invoice.id);
+        final Invoice cancelled = await harness.invoices.cancel(
+          created.invoice.id,
+        );
+
+        await expectLater(
+          harness.invoices.cancel(created.invoice.id),
+          throwsA(isA<InvoiceNotCancellable>()),
+        );
+
+        final Invoice after = (await harness.invoices.findById(
+          created.invoice.id,
+        ))!;
+        expect(after.status, InvoiceStatus.cancelled);
+        expect(after.updatedAt, cancelled.updatedAt);
+      },
+    );
+
+    test('cancelling keeps every payment already recorded (D-061)', () async {
+      // **The ruling, pinned.** The money changed hands; a cancelled document
+      // is a statement about the claim, not about the cash. Erasing the
+      // payments would falsify the financial record, and until now this was
+      // decided by an early return in `_recomputeStatus` rather than by a
+      // decision anyone had made (known issue 20).
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: 1000000),
+      );
+      await harness.invoices.issue(created.invoice.id);
+      await harness.payments.record(
+        created.invoice.id,
+        PaymentDraft(
+          amount: Money.rial(400000),
+          paidAt: DateTime.utc(2026, 8, 25),
+          method: PaymentMethod.cash,
+        ),
+      );
+
+      final Invoice cancelled = await harness.invoices.cancel(
+        created.invoice.id,
+      );
+      expect(cancelled.status, InvoiceStatus.cancelled);
+
+      final InvoiceDetail detail = (await harness.invoices.findDetail(
+        created.invoice.id,
+      ))!;
+      expect(detail.payments, hasLength(1));
+      expect(detail.amountPaid, Money.rial(400000));
+      expect(await harness.payments.totalPaidRial(created.invoice.id), 400000);
+      // And the invoice does not derive its way back out of `cancelled`, which
+      // is set by hand and never derived (§6).
+      expect(detail.invoice.status, InvoiceStatus.cancelled);
+    });
+
     test('issuing moves a draft to unpaid and gives it its number', () async {
       final created = await harness.invoices.create(harness.draft(customerId));
       expect(created.invoice.status, InvoiceStatus.draft);

@@ -116,6 +116,14 @@ class DriftPaymentRepository implements PaymentRepository {
   ///
   /// `draft` and `cancelled` are set by hand and are never derived
   ///, so an invoice in either state is left exactly as it is.
+  ///
+  /// **For a cancelled invoice that early return is now a decision, not an
+  /// accident** (D-061, known issue 20). Deleting a mis-entered payment off a
+  /// cancelled invoice corrects the money record without resurrecting the
+  /// document into `unpaid`, and recording is refused outright — so the payments
+  /// a cancelled invoice carries are exactly the money that actually changed
+  /// hands, and the detail screen says so rather than leaving the figure to be
+  /// read as a bug.
   Future<InvoiceRow> _recomputeStatus(String invoiceId) async {
     final invoice = await _requireRow(invoiceId);
 

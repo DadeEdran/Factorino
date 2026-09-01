@@ -3182,3 +3182,143 @@ layout errors : 0
 
 **The Android phone tier is still outstanding** and is carried forward to (f), per D-057: no device was
 attached for either (b) or (c).
+
+---
+
+## D-061 — Cancellation keeps the money it was paid, and says so three times
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — implemented as Phase 5 increment (d)
+**Extends:** §6 (cancellation is the correction path; `cancelled` is set by hand and never derived),
+D-013, D-021, D-027, D-044, D-057, D-060
+**Resolves:** known issue 20
+
+### 1. The ruling: a cancelled invoice keeps its payments
+
+`_recomputeStatus` returns early for a cancelled invoice, so cancelling has always left the payments
+on record and the total paid where it was. **That is correct, and it is now a decision rather than an
+early return nobody chose.** The money did change hands. A cancellation is a statement about the
+*claim* — this document is no longer one — and not a statement about the *cash*. Deleting the
+payments with the invoice would falsify the financial record in the one direction a financial record
+must never move: it would make received money disappear.
+
+What was wrong was that it was **implicit**. A user cancelling a part-paid invoice was told nothing,
+and then met a void document showing «پرداخت‌شده: ۵۰۰٬۰۰۰ تومان» with no explanation — which reads as
+a bug in the software rather than as a fact about the record. So the rule is now said in three places,
+and pinned in tests so it cannot decay:
+
+- **Before the commitment**, in the confirmation: the number stays spent, the record is kept, editing
+  is still not the way back — and, where the invoice actually carries payments, that they are neither
+  erased nor refunded.
+- **On the page afterwards**: the payments card says the payments below it were really received, and
+  the paid/due card says the remaining balance is not a claim on anyone any more.
+- **In `invoice_repository.dart`, `drift_payment_repository.dart` and this entry**, so the next reader
+  of that early return finds a ruling instead of an accident.
+
+### 2. What the two payment operations do on a cancelled invoice, decided rather than inherited
+
+**Recording is refused** (`PaymentNotAccepted`, unchanged from (c)) — and the copy now names the way
+forward instead of only stating the refusal. A cancelled invoice is not a claim on anyone, so money
+genuinely received belongs on the invoice that replaced it, which is the correction path §6 already
+prescribes. «… اگر مبلغی دریافت کرده‌اید، آن را روی فاکتور جایگزین ثبت کنید.» A refusal that names no
+alternative leaves the user stuck with real money and nowhere to put it.
+
+**Deleting stays allowed**, and stays allowed deliberately. A mis-entered receipt is a fault in the
+money record, and the money record must be correctable whether or not the document still stands; the
+early return means it does not resurrect the invoice into `unpaid`. But the ordinary confirmation was
+**false** there: «مانده به همان اندازه افزایش می‌یابد» describes money becoming owed again, and
+nothing is owed on a void document. So a cancelled invoice gets its own sentence — the invoice stays
+cancelled, and only the payment record is being corrected. This is D-060's "only where it is true"
+applied to a *replacement* rather than to an addition.
+
+### 3. Only an issued invoice may be cancelled, and the rule is the repository's
+
+`cancel` accepted any status. It now throws `InvoiceNotCancellable` for a draft and for an invoice
+already cancelled, checked **inside the same transaction as the write** — (c)'s precedent, because a
+guard that refuses after writing half the change is worse than no guard.
+
+- **A draft is withdrawn by deleting it** (`softDeleteDraft`). It has no number, nobody has seen it,
+  and there is nothing to correct; marking it «باطل شده» would void a document that never existed and
+  would put two ways out of one state in front of the user. The screen offers neither for a draft
+  rather than offering the wrong one.
+- **An invoice already cancelled** has nothing left to cancel. The write would change no fact while
+  bumping `updated_at` — a sync-pending row for a change that never happened.
+
+`InvoiceNotCancellable` is a **separate type** from `InvoiceNotEditable` rather than a reuse. They are
+opposite refusals: one guards the edit path against issued invoices, the other guards the correction
+path against invoices that were never issued. Collapsed into one exception the UI could not say which
+of two contradictory things the user should do instead.
+
+Both refusals are tested at the repository, in every status, asserting what the refusal *left behind*:
+the draft still a draft, still editable, still numberless, with `updatedAt` unmoved; the cancelled
+invoice with `updatedAt` unmoved. And the ruling itself is pinned — cancel a part-paid invoice, then
+read the payments, the aggregate's `amountPaid` and `totalPaidRial` back out.
+
+### 4. The confirmation copy is pinned, on the issue confirmation's precedent
+
+`invoice_editor_screen_test.dart` asserts that the issue confirmation names **both** of its
+irreversible consequences, so it cannot decay into «مطمئن هستید؟». The cancellation confirmation gets
+the same treatment: `invoiceCancelBody` must contain «حذف نمی‌شود», «شماره» and «ویرایش», and
+`invoiceCancelPaymentsNote` must contain both «حذف نمی‌شود» and «بازگردانده نمی‌شود» — because the two
+halves are separate claims (the payment is not erased *from the record*, and it is not returned *to
+the customer*), and a copy edit that dropped either would leave the sentence looking fine.
+
+**The payments sentence is conditional**, on D-060's rule: a warning printed on every cancellation is
+one nobody reads on the cancellation where it matters. An invoice with no payments has nothing to say
+about payments, and saying it anyway is how the sentence becomes furniture.
+
+**The amount is named rather than described.** "Payments are kept" is a policy; «۵٬۰۰۰٬۰۰۰ تومان …
+بازگردانده نمی‌شود» is the figure the user is about to leave sitting on a void document, which is the
+thing they would otherwise query afterwards.
+
+### 5. «مانده» is explained on a cancelled invoice, not hidden
+
+The remaining balance is a real figure — it is what was never paid — and it is still shown. On a void
+document it would otherwise read as money the customer still owes, which is the one thing a
+cancellation means it is not. Removing the row instead was considered and refused: it would leave the
+page silently missing a number that every other invoice shows, and a figure that disappears by status
+is harder to trust than a figure that explains itself.
+
+### 6. The action went in the title row, because §10 now has a rule about that
+
+Every obvious home for a cancel control is a block of content — an actions card at the foot, a button
+under the summary, a bar above the lines — and all of them add height. The payments card in (c) was
+the **third** time a card added to this family of screens pushed the first invoice line off a
+400 × 800 phone, after the customer record card (D-044) and the party card in (b).
+
+That finding is now a rule in the project spec with all three instances named, so the fourth is
+prevented rather than caught, and **this increment is the first thing the rule applied to**:
+cancellation is a `PopupMenuButton` in the page's title row, which costs no vertical space at any
+tier and is where the customer and product screens already put exactly this pair of actions.
+
+A menu of one item is deliberate. A bare icon would put an irreversible, destructive action behind a
+glyph nobody can name; a menu item is a Persian phrase read before anything is committed, and it is
+the slot a draft's deletion and the Phase 7 export will join.
+
+**The page does not navigate away afterwards**, unlike the customer screen's delete. A cancelled
+invoice is still a document, still numbered, still the thing the user was looking at — and the state
+they have just created is precisely the one that needs explaining.
+
+### 7. Verified at every tier and on the target
+
+The confirmation prints an amount, and a dialog is the narrowest surface in the app that does, so it
+goes through D-057's ladder: three tiers × four magnitudes, with the payments note rendered at each.
+The new sentences land in the summary card, which is **above** the lines on a phone, so a cancelled
+invoice carrying payments also goes through the 400 × 800 fold test that caught (b) and (c).
+
+The device pass now writes a cancellation as well as a payment. On Windows, at the desktop tier, in
+Vazirmatn: the real menu, the real confirmation with money on the invoice, the write through the real
+repository into the real encrypted database, and every status read back **from the database** rather
+than from the screen.
+
+```
+payment: 2117500 rial recorded, status paid
+deletion: status unpaid
+cancellation: status cancelled, 705833 rial still on record, number INV-1405-0001
+correction: status cancelled          (payment deleted off the cancelled invoice)
+layout errors : 0
+```
+
+**The Android phone tier is still outstanding** for (b), (c) and now (d): no device has been attached
+in any of the three sessions. Carried to (f), per D-057 and the owner's standing instruction that the
+phase does not close without it.

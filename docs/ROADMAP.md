@@ -1144,7 +1144,7 @@ paths were reviewed in (c). What is new:
 
 ## Phase 5 — Invoice Management and Payments
 
-**Status:** `IN_PROGRESS` — (a2) and (b) are delivered; payments, cancellation, filters and the phase close remain.
+**Status:** `IN_PROGRESS` — (a2), (b), (c) and (d) are delivered; filters and the phase close remain.
 
 | # | Increment | Status |
 |---|---|---|
@@ -1154,7 +1154,7 @@ paths were reviewed in (c). What is new:
 | b | **`/invoices/:id`, the detail screen**; rows become tappable; known issue 18 fixed and every money width audited (D-057, D-058) | `COMPLETED` 2026-09-01 |
 | — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01 |
 | c | **Payments: record and delete**, both recomputing derived status in the same transaction (§6) (D-060) | `COMPLETED` 2026-09-01 |
-| d | Cancellation, and the Persian copy that says what it does and does not do | `NOT_STARTED` |
+| d | **Cancellation**, the copy that says what it does and does not do, and the ruling on payments it keeps (D-061) | `COMPLETED` 2026-09-01 |
 | e | List filters over status, customer and Jalali period, at the query level; paging `watchForCustomer` | `NOT_STARTED` |
 | f | The device pass, and the phase close | `NOT_STARTED` |
 
@@ -1408,8 +1408,63 @@ no new identifiers and no new personal data class. The note is bounded by `Payme
 matching its column. No new permission or platform surface. The failure path logs through `AppLog` with
 no amount, name or identifier in the message (§7); the threat model is unchanged.
 
+**Increment (d) — cancellation, completed 2026-09-01**
+
+The correction path §6 prescribes, made reachable — and the ruling on what it does to money already
+received. **Decision recorded: D-061. Resolves known issue 20.**
+
+- **The ruling: a cancelled invoice keeps its payments.** The money changed hands; a cancellation is a
+  statement about the claim, not about the cash, and erasing the payments would falsify the financial
+  record in the one direction it must never move. That was already the behaviour — `_recomputeStatus`
+  returns early for `cancelled` — but it was decided by an early return rather than by anyone, and the
+  user was told nothing. It is now said in three places and pinned in tests.
+- **The confirmation says what cancelling does *and does not* do**, before the commitment: the record
+  is kept rather than removed, the number stays spent (D-013), editing is still not the way back — and,
+  **only where the invoice carries payments**, that they are neither erased nor refunded, naming the
+  amount. The copy is pinned by test, on the issue confirmation's precedent, so it cannot decay into
+  «مطمئن هستید؟».
+- **The page says it afterwards too.** A cancelled invoice carrying payments states that the payments
+  below were really received; and «مانده» is explained rather than hidden, because on a void document a
+  remaining balance reads as money still owed.
+- **Both payment operations on a cancelled invoice are decided and documented.** Recording stays
+  refused, and the copy now names the way forward — a payment genuinely received belongs on the
+  replacement invoice. Deleting stays allowed, because a mis-entered receipt is a fault in the money
+  record and the record must be correctable either way; it gets its own confirmation wording, since the
+  ordinary one promises a balance that would go up and nothing is owed on a void document.
+- **Only an issued invoice may be cancelled, and the rule is the repository's.** `cancel` now throws
+  `InvoiceNotCancellable` for a draft — which is withdrawn by deletion — and for one already cancelled,
+  checked inside the same transaction as the write. Tested at the repository, asserting what each
+  refusal *left behind*, `updatedAt` included.
+- **The action went in the title row, not into a card**, which is the §10 rule this increment writes
+  down and the first thing it applied to. A card here would have been the fourth thing to push the
+  first invoice line off a 400 × 800 phone, after D-044's customer record card, (b)'s party card and
+  (c)'s payments card. A `PopupMenuButton` costs no vertical space at any tier.
+- **31 new tests; 892 pass** (was 861).
+
+**Verification (D-057), by tier:**
+
+```
+widget sweep, all three tiers, all four rungs   PASS  the confirmation carries an amount, so it goes
+                                                      through the ladder; plus the 400 x 800 fold
+                                                      test with a cancelled, part-paid invoice
+device pass - Windows, desktop, Vazirmatn       PASS  the real menu and confirmation against the real
+                                                      encrypted database: cancelled with 705,833 rial
+                                                      still on record, number kept, then a payment
+                                                      deleted off it leaving it cancelled;
+                                                      0 layout errors
+device pass - Android, phone tier               OUTSTANDING - no device attached; carried to (f),
+                                                      now owed for (b), (c) and (d)
+```
+
+**Security note (increment d).** No new data class, no new stored field and no new input beyond a
+confirmation. Cancellation is a status write on a row the application already owns; nothing is
+deleted, so no data leaves the encrypted database. The failure path logs through `AppLog` with no
+amount, name or identifier in the message (§7). No new permission or platform surface; the threat
+model is unchanged.
+
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
-a data-integrity control: only `draft` invoices are editable or deletable.
+a data-integrity control: only `draft` invoices are editable or deletable, and only an issued invoice
+may be cancelled.
 
 ---
 
