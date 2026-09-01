@@ -136,7 +136,9 @@ D-062 was written about. **D-064** is the rule that follows: every device suite 
 and the phase close is what runs it there. No product defect was found anywhere in the close: 0
 layout errors, two targets, four rungs.
 
-**Working tree is clean and everything is committed.** `main`'s tip is **`0389f1e`** "Phase 5 (f):
+**Working tree is clean and everything is committed.** `main`'s tip is **`9b9ae8b`** "Fix two visual
+defects, and add the checks that would have caught them" (D-065, D-066, D-067). Behind it,
+`01a6bbc`/**`0389f1e`** is the phase close, "Phase 5 (f):
 the phase close, and the tier fault it found in an older check". Behind it: `7117a33`/`248537d` are
 (e)'s continuity updates and **`4d604da`** "Phase 5 (e): invoice filters in SQL, and a paged customer
 list". Behind it: **`7775e0b`** is the known-issue-21 fix and the keyboard rule; **`099a437`** is the
