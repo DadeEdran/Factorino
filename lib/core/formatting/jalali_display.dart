@@ -139,3 +139,22 @@ const String kFirstStrongIsolate = '\u2068';
 /// U+2069 POP DIRECTIONAL ISOLATE.
 // l10n-exempt: see kFirstStrongIsolate.
 const String kPopDirectionalIsolate = '\u2069';
+
+/// A Jalali date for a **file name**: `1405-06-10`.
+///
+/// Latin digits and hyphens, deliberately, and the one place in the application
+/// where a Jalali date is not written in Persian digits. A file name travels
+/// outside the app — into a file manager, a cloud drive, an email attachment,
+/// a Windows dialog — and Persian digits in a name sort unpredictably, break
+/// some pickers, and are awkward to type when the user is looking for the file
+/// months later. The *date itself* is still Jalali, which is the part that
+/// matters: the user recognises 1405-06-10 as their own calendar.
+String formatJalaliDateForFileName(
+  DateTime instant, {
+  Duration offset = kIranStandardOffset,
+}) {
+  final Jalali jalali = jalaliAt(instant, offset: offset);
+  final String month = jalali.month.toString().padLeft(2, '0');
+  final String day = jalali.day.toString().padLeft(2, '0');
+  return '${jalali.year}-$month-$day';
+}

@@ -2231,7 +2231,78 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 6 (a), (b) and (c) are done.** Next is **(d): the screen, and settings becomes editable.**
+**Phase 6 (d) is built, tested and analysed clean. One thing is owed: the phone-tier device pass.**
+The Redmi disconnected part-way through the increment — Windows enumerates no `VID_2717` device and
+no ADB interface at all, so it is **not** known issue 22's stale-daemon symptom and a daemon restart
+does not help. **The single next action: reconnect the phone and run
+`flutter test integration_test/settings_device_test.dart -d <redmi>`.** Then Phase 6 closes.
+
+**Why that run is not optional here.** D-068 reduced this phase's device pass to the phone tier at one
+large amount, and reduced nothing else — the **keyboard rule is explicitly not among the reductions**,
+and a backup password field in a sheet is exactly what D-062 was written for. The Windows run below
+reports `keyboard 0.0`, which is the degraded form D-062 refuses to accept in its place.
+
+### What (d) delivered
+
+**1092 tests, was 1068** (+24); analyze clean.
+
+**Settings is editable, and that is a defect fix rather than a feature.** §4 requires the VAT rate to
+be configurable and never hardcoded; it was hardcoded at whatever the database was seeded with. The
+work belonged to no phase, which is how the scope cut would have made it permanent (D-068). The rate,
+the invoice prefix and the payment term are editable, and **every bound is reported rather than
+clamped** — `AppSettings` deliberately does not clamp (D-052), so the form is the only thing between a
+mistyped digit and an invoice due before it was issued. Zero days is **allowed**: paid-on-delivery is a
+real term, and a bound of "positive" would have refused most workshops.
+
+**The rate is shown in the unit the user thinks in.** 900 basis points is «۹», not «۹۰۰» — and the
+conversion back goes through `tryParseScaledInput(scale: 100)` rather than a `double` multiplication,
+because a tax rate is on the money path and there is no floating point on it (§4).
+
+**Backup is reachable, in both directions.** Export asks for the password **twice**; restore asks
+once, because a typo there costs a second rather than a file that can never be opened. The §8 warning
+sits **above** the fields rather than under them, so it reads as a condition of the task instead of
+small print. The password is returned **exactly as typed** — not trimmed, since a trailing space is
+part of it (pinned in both the widget test and the container test).
+
+**The restore confirmation names what will be lost**, replace-not-merge first (D-069), and describes
+**the file** — counts and creation date read out of a container already opened, its password accepted,
+its version checked and its counts verified. `inspect` runs before the dialog for exactly that reason:
+the numbers on screen are the file's, not a hope about it.
+
+**`markBackedUp` runs only after the file is actually delivered**, not after it is written. A reminder
+that reset itself when the user opened the save dialog and thought better of it would say a backup
+exists when none does.
+
+**Known issue 6's first half is closed**: the last-backup row goes through `formatJalaliDateLong` and
+would otherwise have rendered «۱٬۷۵۶٬۰۰۰٬۰۰۰٬۰۰۰» the moment `lastBackupAt` stopped being null — which
+until this increment nothing could make happen.
+
+**Two shared pieces grew rather than being worked around.** `AppTextField` gained `obscureText`,
+because `field_limit_path_test` forbids a raw `TextFormField` and is right to: a password field that
+skipped the shared component would also skip the length validator, and would be the precedent for the
+next field that skipped them. `formatJalaliDateForFileName` is new and is the one place a Jalali date
+is written in **Latin** digits — a file name travels into file managers, cloud drives and Windows
+dialogs, where Persian digits sort unpredictably and are awkward to type months later. The date is
+still Jalali, which is the part the user recognises.
+
+### Verification for (d)
+
+| Check | Result |
+|---|---|
+| `flutter analyze` | PASS |
+| `flutter test` | PASS 1092/1092 |
+| Keyboard rule, widget sweep | PASS — both new sheets at the measured 255 px inset |
+| Settings editing, widget | PASS 11 — bounds refused and **nothing written** on refusal |
+| Backup flow copy, widget | PASS 11 — warning, ask-twice, mismatch, not-trimmed, replace-not-merge |
+| Device — **Windows** | PASS — 0 layout errors, no crushed text, and the edit **reaches the real encrypted database**: term 60, rate 850bp read back out of it |
+| Device — **Android phone** | **OWED.** Windows reports `keyboard 0.0`; D-062 does not accept that for the keyboard rule |
+
+### What is deliberately not covered by an automated run
+
+Taking a **real** backup end to end from the screen opens the system save dialog, which needs a tap no
+automated run on this device can supply while MIUI refuses input injection. That link is proved
+separately and byte-for-byte in `integration_test/backup_gateway_save_test.dart` (D-071), on both
+targets. The device suite stops at the password sheet and says so.
 
 ### What (c) delivered — import, and what every refusal leaves behind
 

@@ -353,3 +353,128 @@ final class PaymentRepositoryProvider
 }
 
 String _$paymentRepositoryHash() => r'1251d4490008bdd5f07505e19df928b26f0e0089';
+
+/// Writes and reads encrypted backup containers (D-069).
+///
+/// Typed as the interface like every provider here, so a test can swap the
+/// whole backup path for a fake without a widget knowing.
+
+@ProviderFor(backupService)
+final backupServiceProvider = BackupServiceProvider._();
+
+/// Writes and reads encrypted backup containers (D-069).
+///
+/// Typed as the interface like every provider here, so a test can swap the
+/// whole backup path for a fake without a widget knowing.
+
+final class BackupServiceProvider
+    extends $FunctionalProvider<BackupService, BackupService, BackupService>
+    with $Provider<BackupService> {
+  /// Writes and reads encrypted backup containers (D-069).
+  ///
+  /// Typed as the interface like every provider here, so a test can swap the
+  /// whole backup path for a fake without a widget knowing.
+  BackupServiceProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'backupServiceProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$backupServiceHash();
+
+  @$internal
+  @override
+  $ProviderElement<BackupService> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  BackupService create(Ref ref) {
+    return backupService(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BackupService value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BackupService>(value),
+    );
+  }
+}
+
+String _$backupServiceHash() => r'9d42ff899dc587776d03bffbeba3c1ba9e9c0995';
+
+/// Moves a finished backup between app-private storage and a location the user
+/// chose (D-071).
+///
+/// Separate from [backupService] on purpose: this is the only thing in the
+/// application that talks to a file picker, and `gateway_boundary_test.dart`
+/// keeps it that way so replacing the dated `flutter_file_dialog` stays a
+/// one-file change.
+
+@ProviderFor(backupFileGateway)
+final backupFileGatewayProvider = BackupFileGatewayProvider._();
+
+/// Moves a finished backup between app-private storage and a location the user
+/// chose (D-071).
+///
+/// Separate from [backupService] on purpose: this is the only thing in the
+/// application that talks to a file picker, and `gateway_boundary_test.dart`
+/// keeps it that way so replacing the dated `flutter_file_dialog` stays a
+/// one-file change.
+
+final class BackupFileGatewayProvider
+    extends
+        $FunctionalProvider<
+          BackupFileGateway,
+          BackupFileGateway,
+          BackupFileGateway
+        >
+    with $Provider<BackupFileGateway> {
+  /// Moves a finished backup between app-private storage and a location the user
+  /// chose (D-071).
+  ///
+  /// Separate from [backupService] on purpose: this is the only thing in the
+  /// application that talks to a file picker, and `gateway_boundary_test.dart`
+  /// keeps it that way so replacing the dated `flutter_file_dialog` stays a
+  /// one-file change.
+  BackupFileGatewayProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'backupFileGatewayProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$backupFileGatewayHash();
+
+  @$internal
+  @override
+  $ProviderElement<BackupFileGateway> $createElement(
+    $ProviderPointer pointer,
+  ) => $ProviderElement(pointer);
+
+  @override
+  BackupFileGateway create(Ref ref) {
+    return backupFileGateway(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(BackupFileGateway value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<BackupFileGateway>(value),
+    );
+  }
+}
+
+String _$backupFileGatewayHash() => r'f4587d0677ee432f85bcf8475386530d9d7fda08';

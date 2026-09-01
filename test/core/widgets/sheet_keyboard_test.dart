@@ -9,6 +9,9 @@ import 'package:factorino/features/invoices/presentation/widgets/customer_picker
 import 'package:factorino/features/invoices/presentation/widgets/invoice_filter_sheet.dart';
 import 'package:factorino/features/invoices/presentation/widgets/invoice_line_editor_sheet.dart';
 import 'package:factorino/features/invoices/presentation/widgets/payment_editor_sheet.dart';
+import 'package:factorino/data/models/app_settings.dart';
+import 'package:factorino/features/settings/presentation/widgets/backup_password_sheet.dart';
+import 'package:factorino/features/settings/presentation/widgets/settings_editor_sheet.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -121,6 +124,48 @@ void main() {
     final AppStrings strings = await openSheet(
       tester,
       (BuildContext context) => showInvoiceLineEditorSheet(context),
+    );
+
+    expectActionAboveKeyboard(
+      tester,
+      find.widgetWithText(FilledButton, strings.actionSave),
+    );
+  });
+
+  testWidgets('the backup password sheet keeps «ذخیره» above the keyboard', (
+    WidgetTester tester,
+  ) async {
+    // **The sheet D-062 was written for.** Its password field carries
+    // `autofocus`, so a phone raises the keyboard before the user touches
+    // anything — and above the field sits the §8 warning, which is several
+    // lines of Persian and the tallest thing any sheet in this application has
+    // put above its fields. If the warning ever pushes «ذخیره» under the
+    // keyboard, the user cannot take a backup at all.
+    final AppStrings strings = await openSheet(
+      tester,
+      (BuildContext context) =>
+          showBackupPasswordSheet(context, confirming: true),
+    );
+
+    expectActionAboveKeyboard(
+      tester,
+      find.widgetWithText(FilledButton, strings.actionSave),
+    );
+  });
+
+  testWidgets('and so does the settings editor sheet', (
+    WidgetTester tester,
+  ) async {
+    final AppStrings strings = await openSheet(
+      tester,
+      (BuildContext context) => showSettingsEditorSheet(
+        context,
+        settings: const AppSettings(
+          defaultTaxRateBp: 1000,
+          roundingUnitRial: 0,
+          invoiceNumberPrefix: 'INV',
+        ),
+      ),
     );
 
     expectActionAboveKeyboard(

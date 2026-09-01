@@ -142,3 +142,31 @@ abstract final class InvoiceLimits {
   /// here and an invoice that truncates them is worse than one that scrolls.
   static const int notes = 2000;
 }
+
+/// Bounds for the settings form and the backup password.
+///
+/// **Two of these are not column limits, and that is stated rather than
+/// implied.** `settings.invoice_number_prefix` is a real column with a real
+/// `withLength(max: 12)`, so [prefix] is the usual kind. [password] is not: a
+/// backup password is never stored anywhere — it is fed to a KDF and forgotten
+/// (D-069) — so nothing in the schema constrains it. It lives here because
+/// `field_limit_path_test.dart` requires every `AppTextField` to name a
+/// `*Limits.` constant rather than a bare number, and a password field is not
+/// worth an exception to a rule that exists to stop exactly that.
+abstract final class SettingsFieldLimits {
+  /// Matches `settings.invoice_number_prefix`, `withLength(min: 1, max: 12)`.
+  static const int prefix = 12;
+
+  /// A percentage. Two digits plus a decimal point and two more is generous
+  /// for a VAT rate.
+  static const int taxRateDigits = 6;
+
+  /// Days. Four digits is well past [SettingsLimits.maxPaymentTermDays], which
+  /// is where the real bound is enforced and explained.
+  static const int paymentTermDigits = 4;
+
+  /// **Not a column limit.** Long enough that a passphrase — several words,
+  /// which is what §8's warning should encourage — is never cut short, and
+  /// bounded only so the field has one.
+  static const int password = 200;
+}

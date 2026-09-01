@@ -1033,6 +1033,117 @@ class AppStringsFa extends AppStrings {
   }
 
   @override
+  String get settingsEditTitle => 'ویرایش تنظیمات فاکتور';
+
+  @override
+  String get settingsEditTooltip => 'ویرایش';
+
+  @override
+  String get settingsFieldTaxRate => 'نرخ مالیات بر ارزش افزوده';
+
+  @override
+  String get settingsFieldTaxRateHint =>
+      'به درصد. تغییر آن روی فاکتورهای قبلی اثری ندارد.';
+
+  @override
+  String get settingsFieldPrefix => 'پیشوند شمارهٔ فاکتور';
+
+  @override
+  String get settingsFieldPrefixHint =>
+      'مثلاً INV در INV-۱۴۰۵-۰۰۰۱. شماره‌های صادرشده تغییر نمی‌کنند.';
+
+  @override
+  String get settingsFieldPaymentTerm => 'مهلت پرداخت پیش‌فرض';
+
+  @override
+  String get settingsFieldPaymentTermHint => 'تعداد روز پس از صدور فاکتور.';
+
+  @override
+  String get settingsErrorTaxRateRange =>
+      'نرخ مالیات باید بین ۰ تا ۱۰۰ درصد باشد.';
+
+  @override
+  String get settingsErrorPaymentTermRange =>
+      'مهلت پرداخت باید بین ۰ تا ۷۳۰ روز باشد.';
+
+  @override
+  String get settingsErrorPrefixEmpty => 'پیشوند نمی‌تواند خالی باشد.';
+
+  @override
+  String get settingsSaved => 'تنظیمات ذخیره شد.';
+
+  @override
+  String get backupExportAction => 'تهیهٔ پشتیبان';
+
+  @override
+  String get backupImportAction => 'بازیابی از پشتیبان';
+
+  @override
+  String get backupPasswordTitle => 'گذرواژهٔ فایل پشتیبان';
+
+  @override
+  String get backupPasswordField => 'گذرواژه';
+
+  @override
+  String get backupPasswordRepeatField => 'تکرار گذرواژه';
+
+  @override
+  String get backupPasswordWarning =>
+      'این گذرواژه در هیچ کجا ذخیره نمی‌شود. اگر آن را فراموش کنید، هیچ راهی برای باز کردن فایل پشتیبان وجود ندارد و اطلاعات آن برای همیشه از دست می‌رود.';
+
+  @override
+  String get backupPasswordEmpty => 'گذرواژه را وارد کنید.';
+
+  @override
+  String get backupPasswordMismatch => 'دو گذرواژه یکسان نیستند.';
+
+  @override
+  String get backupPasswordTooShort => 'گذرواژه باید دست‌کم ۸ نویسه باشد.';
+
+  @override
+  String get backupExportInProgress => 'در حال تهیهٔ پشتیبان…';
+
+  @override
+  String get backupExportDone => 'فایل پشتیبان ذخیره شد.';
+
+  @override
+  String get backupImportPasswordTitle => 'گذرواژهٔ این فایل پشتیبان';
+
+  @override
+  String get backupImportInProgress => 'در حال بازیابی…';
+
+  @override
+  String get backupImportDone => 'بازیابی انجام شد.';
+
+  @override
+  String get backupImportConfirmTitle => 'جایگزینی همهٔ اطلاعات';
+
+  @override
+  String get backupImportConfirmReplaces =>
+      'با بازیابی، همهٔ اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.';
+
+  @override
+  String get backupImportConfirmLoses =>
+      'هر چیزی که پس از تهیهٔ این پشتیبان ثبت کرده‌اید از بین می‌رود.';
+
+  @override
+  String backupImportConfirmContents(
+    String customers,
+    String invoices,
+    String payments,
+  ) {
+    return 'محتوای فایل: $customers مشتری، $invoices فاکتور، $payments پرداخت.';
+  }
+
+  @override
+  String backupImportConfirmDate(String date) {
+    return 'تاریخ تهیه: $date';
+  }
+
+  @override
+  String get backupImportConfirmAction => 'جایگزین کن';
+
+  @override
   String get errorBackupExportFailedTitle => 'تهیهٔ پشتیبان انجام نشد';
 
   @override

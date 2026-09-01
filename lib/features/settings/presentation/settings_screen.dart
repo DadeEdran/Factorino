@@ -1,27 +1,43 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import 'dart:io';
+
+import '../../../core/errors/failure_message.dart';
+import '../../../core/formatting/jalali_display.dart';
 import '../../../core/formatting/number_display.dart';
+import '../../../core/localization/month_names.dart';
 import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/page_body.dart';
 import '../../../data/models/app_settings.dart';
+import '../../../data/backup/backup_file_gateway.dart';
+import '../../../data/backup/backup_service.dart';
+import '../application/backup_controller.dart';
+import '../application/settings_editor.dart';
 import '../application/settings_providers.dart';
+import 'widgets/backup_password_sheet.dart';
+import 'widgets/backup_restore_confirm_dialog.dart';
+import 'widgets/settings_editor_sheet.dart';
 
-/// The settings screen.
+/// The settings screen: the invoicing configuration, and backup.
 ///
-/// **Read-only in this increment, and reading real values.** The settings row
-/// is seeded when the database is created, so these are the figures the invoice
-/// engine is actually using — not placeholders. Editing controls land with the
-/// settings feature work; showing the true configuration in the meantime is
-/// honest, whereas a form that looked editable and discarded input would not
-/// be (§15).
+/// **Editable since Phase 6 (d), and that is a defect fix rather than a
+/// feature** (D-068). The project spec requires the VAT rate to be configurable
+/// and never hardcoded; it was hardcoded at whatever the database happened to
+/// be seeded with, and a business on a different rate met that on its first
+/// invoice with no recourse. The work belonged to no phase in the plan, which
+/// is exactly how the scope cut would have made it permanent.
 ///
-/// It is also the one screen in this increment with real content, which makes
-/// it the place the type scale and the card treatment can be judged against
-/// something other than an empty state.
+/// **Changing the rate cannot alter an existing invoice**, because every item
+/// snapshots the rate that applied to it (§4, D-026). That property is what
+/// makes this screen safe to open at all, and the field says so in Persian.
+///
+/// **Backup lives here too**, per §8: export, restore, and the date of the last
+/// one — an offline-only financial application whose user has never taken a
+/// backup is one lost phone away from losing the business.
 class SettingsScreen extends ConsumerWidget {
   const SettingsScreen({super.key});
 
@@ -48,17 +64,158 @@ class SettingsScreen extends ConsumerWidget {
   }
 }
 
-class _SettingsContent extends StatelessWidget {
+class _SettingsContent extends ConsumerStatefulWidget {
   const _SettingsContent({required this.settings, required this.strings});
 
   final AppSettings settings;
   final AppStrings strings;
 
   @override
+  ConsumerState<_SettingsContent> createState() => _SettingsContentState();
+}
+
+class _SettingsContentState extends ConsumerState<_SettingsContent> {
+  /// True while an export or a restore is running.
+  ///
+  /// Both actions are disabled together, because they touch the same database:
+  /// a restore begun while an export is half-written would be reading a file
+  /// nobody has finished producing.
+  bool _busy = false;
+
+  AppSettings get settings => widget.settings;
+  AppStrings get strings => widget.strings;
+
+  Future<void> _edit() async {
+    final AppSettings? edited = await showSettingsEditorSheet(
+      context,
+      settings: settings,
+    );
+    if (edited == null || !mounted) return;
+
+    final bool saved = await ref
+.read(settingsEditorProvider.notifier)
+.save(edited);
+    if (!mounted) return;
+    _say(saved ? strings.settingsSaved : strings.errorGenericBody);
+  }
+
+  Future<void> _export() async {
+    final String? password = await showBackupPasswordSheet(
+      context,
+      confirming: true,
+    );
+    if (password == null || !mounted) return;
+
+    setState(() => _busy = true);
+    _say(strings.backupExportInProgress);
+    final BackupOutcome outcome = await ref
+.read(backupControllerProvider.notifier)
+.export(passphrase: password, suggestedName: _suggestedName());
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    switch (outcome) {
+      case BackupSucceeded():
+        _say(strings.backupExportDone);
+      // Backing out of a save dialog is an ordinary thing to do, and saying
+      // nothing is the right amount to say about it.
+      case BackupCancelled():
+        break;
+      case BackupFailed(error: final Object error):
+        _sayFailure(error);
+    }
+  }
+
+  Future<void> _restore() async {
+    final File? file = await ref
+.read(backupControllerProvider.notifier)
+.pickFile();
+    if (file == null || !mounted) return;
+
+    final String? password = await showBackupPasswordSheet(
+      context,
+      confirming: false,
+    );
+    if (password == null || !mounted) return;
+
+    setState(() => _busy = true);
+    // Read the file BEFORE asking for confirmation, so the dialog describes a
+    // backup already proved readable rather than one hoped to be. Every
+    // refusal a restore can raise happens here, with live data untouched.
+    final BackupOutcome inspected = await ref
+.read(backupControllerProvider.notifier)
+.inspect(file: file, passphrase: password);
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    if (inspected case BackupFailed(error: final Object error)) {
+      _sayFailure(error);
+      return;
+    }
+
+    final BackupSummary summary = (inspected as BackupSucceeded).summary;
+    final bool confirmed = await showBackupRestoreConfirmDialog(
+      context,
+      summary: summary,
+    );
+    if (!confirmed || !mounted) return;
+
+    setState(() => _busy = true);
+    _say(strings.backupImportInProgress);
+    final BackupOutcome restored = await ref
+.read(backupControllerProvider.notifier)
+.restore(file: file, passphrase: password);
+    if (!mounted) return;
+    setState(() => _busy = false);
+
+    switch (restored) {
+      case BackupSucceeded():
+        _say(strings.backupImportDone);
+      case BackupCancelled():
+        break;
+      case BackupFailed(error: final Object error):
+        _sayFailure(error);
+    }
+  }
+
+  /// `factorino-1405-06-10.factorino`.
+  ///
+  /// Jalali, because the user's calendar is Jalali: a filename they cannot date
+  /// at a glance is one they cannot choose between six months from now.
+  String _suggestedName() =>
+      'factorino-${formatJalaliDateForFileName(DateTime.now())}'
+      '.$kBackupFileExtension';
+
+  void _say(String message) {
+    ScaffoldMessenger.of(context)
+.showSnackBar(SnackBar(content: Text(message)));
+  }
+
+  void _sayFailure(Object error) {
+    // The only way an error reaches the screen (§7): never a stack trace, a
+    // file path or a raw exception string.
+    final FailureMessage message = describeFailure(error, strings);
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('${message.title} — ${message.body}')),
+    );
+  }
+
+  @override
   Widget build(BuildContext context) {
     return ListView(
       children: <Widget>[
-        SectionHeader(title: strings.settingsInvoicingSection),
+        SectionHeader(
+          title: strings.settingsInvoicingSection,
+          // In the header rather than as a row in the card, and rather than a
+          // floating action: the card's height is already the data's, and
+          // the project spec is explicit that a control which must be reachable
+          // without scrolling belongs where it costs no height at all.
+          trailing: IconButton(
+            onPressed: _busy ? null : _edit,
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: strings.settingsEditTooltip,
+          ),
+        ),
         AppCard(
           padding: EdgeInsets.zero,
           child: Column(
@@ -78,7 +235,7 @@ class _SettingsContent extends StatelessWidget {
                 label: strings.settingsRoundingUnit,
                 value: settings.roundingUnitRial == 0
                     ? formatGroupedPersian(0)
-                    : formatGroupedPersian(settings.roundingUnitRial),
+: formatGroupedPersian(settings.roundingUnitRial),
                 trailingLabel: strings.unitRial,
               ),
               const _RowDivider(),
@@ -95,13 +252,45 @@ class _SettingsContent extends StatelessWidget {
         SectionHeader(title: strings.settingsBackupSection),
         AppCard(
           padding: EdgeInsets.zero,
-          child: _SettingRow(
-            label: strings.settingsLastBackup,
-            value: settings.lastBackupAt == null
-                ? strings.settingsLastBackupNever
-                : formatGroupedPersian(
-                    settings.lastBackupAt!.millisecondsSinceEpoch,
-                  ),
+          child: Column(
+            children: <Widget>[
+              _SettingRow(
+                label: strings.settingsLastBackup,
+                // Known issue 6's first half, closed. This row would have
+                // rendered an epoch number -- 1,756,000,000,000 in Persian
+                // digits -- the moment `lastBackupAt` stopped being null,
+                // which until this increment it never did.
+                value: settings.lastBackupAt == null
+                    ? strings.settingsLastBackupNever
+: formatJalaliDateLong(
+                        settings.lastBackupAt!,
+                        monthNames: jalaliMonthNames(strings),
+                      ),
+              ),
+              const _RowDivider(),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Row(
+                  children: <Widget>[
+                    Expanded(
+                      child: FilledButton.icon(
+                        onPressed: _busy ? null : _export,
+                        icon: const Icon(Icons.save_alt_outlined),
+                        label: Text(strings.backupExportAction),
+                      ),
+                    ),
+                    const SizedBox(width: AppSpacing.md),
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: _busy ? null : _restore,
+                        icon: const Icon(Icons.settings_backup_restore),
+                        label: Text(strings.backupImportAction),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
         ),
         const SizedBox(height: AppSpacing.xxl),

@@ -53,6 +53,7 @@ class AppTextField extends StatelessWidget {
     this.autofocus = false,
     this.maxLines = 1,
     this.digitsOnly = false,
+    this.obscureText = false,
     this.onChanged,
     super.key,
   });
@@ -86,6 +87,15 @@ class AppTextField extends StatelessWidget {
   /// under the cursor.
   final bool digitsOnly;
 
+  /// Hides what is typed — the backup password, and nothing else so far.
+  ///
+  /// Kept on the shared field rather than met with a raw `TextFormField`,
+  /// because `field_limit_path_test.dart` forbids the raw form and it is right
+  /// to: a password field that skipped this class would also skip the length
+  /// validator and the Persian counter, and would be the precedent for the
+  /// next field that skipped them.
+  final bool obscureText;
+
   /// Fires on every keystroke.
   ///
   /// For a field whose value feeds a **live preview** — the invoice discount
@@ -105,6 +115,7 @@ class AppTextField extends StatelessWidget {
       textInputAction: textInputAction,
       maxLines: maxLines,
       maxLength: maxLength,
+      obscureText: obscureText,
       inputFormatters: digitsOnly
           ? const <TextInputFormatter>[_DigitsOnlyFormatter()]
 : null,

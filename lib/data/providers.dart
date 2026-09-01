@@ -1,5 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import 'backup/backup_file_gateway.dart';
+import 'backup/backup_service.dart';
 import 'database/app_database.dart';
 import 'repositories/customer_repository.dart';
 import 'repositories/drift/drift_customer_repository.dart';
@@ -66,3 +68,22 @@ InvoiceRepository invoiceRepository(Ref ref) => DriftInvoiceRepository(
 @Riverpod(keepAlive: true)
 PaymentRepository paymentRepository(Ref ref) =>
     DriftPaymentRepository(ref.watch(appDatabaseProvider));
+
+/// Writes and reads encrypted backup containers (D-069).
+///
+/// Typed as the interface like every provider here, so a test can swap the
+/// whole backup path for a fake without a widget knowing.
+@Riverpod(keepAlive: true)
+BackupService backupService(Ref ref) =>
+    DriftBackupService(ref.watch(appDatabaseProvider));
+
+/// Moves a finished backup between app-private storage and a location the user
+/// chose (D-071).
+///
+/// Separate from [backupService] on purpose: this is the only thing in the
+/// application that talks to a file picker, and `gateway_boundary_test.dart`
+/// keeps it that way so replacing the dated `flutter_file_dialog` stays a
+/// one-file change.
+@Riverpod(keepAlive: true)
+BackupFileGateway backupFileGateway(Ref ref) =>
+    const PlatformBackupFileGateway();

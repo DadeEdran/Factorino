@@ -1958,6 +1958,202 @@ abstract class AppStrings {
   /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقهٔ پرداخت را اصلاح می‌کند.'**
   String paymentDeleteBodyCancelled(String amount);
 
+  /// No description provided for @settingsEditTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش تنظیمات فاکتور'**
+  String get settingsEditTitle;
+
+  /// No description provided for @settingsEditTooltip.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش'**
+  String get settingsEditTooltip;
+
+  /// No description provided for @settingsFieldTaxRate.
+  ///
+  /// In fa, this message translates to:
+  /// **'نرخ مالیات بر ارزش افزوده'**
+  String get settingsFieldTaxRate;
+
+  /// States the property that makes the field safe to change at all: every invoice item snapshots the rate that applied to it (D-026).
+  ///
+  /// In fa, this message translates to:
+  /// **'به درصد. تغییر آن روی فاکتورهای قبلی اثری ندارد.'**
+  String get settingsFieldTaxRateHint;
+
+  /// No description provided for @settingsFieldPrefix.
+  ///
+  /// In fa, this message translates to:
+  /// **'پیشوند شمارهٔ فاکتور'**
+  String get settingsFieldPrefix;
+
+  /// No description provided for @settingsFieldPrefixHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'مثلاً INV در INV-۱۴۰۵-۰۰۰۱. شماره‌های صادرشده تغییر نمی‌کنند.'**
+  String get settingsFieldPrefixHint;
+
+  /// No description provided for @settingsFieldPaymentTerm.
+  ///
+  /// In fa, this message translates to:
+  /// **'مهلت پرداخت پیش‌فرض'**
+  String get settingsFieldPaymentTerm;
+
+  /// No description provided for @settingsFieldPaymentTermHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'تعداد روز پس از صدور فاکتور.'**
+  String get settingsFieldPaymentTermHint;
+
+  /// No description provided for @settingsErrorTaxRateRange.
+  ///
+  /// In fa, this message translates to:
+  /// **'نرخ مالیات باید بین ۰ تا ۱۰۰ درصد باشد.'**
+  String get settingsErrorTaxRateRange;
+
+  /// A negative term would produce an invoice due before it was issued (known issue 6). AppSettings deliberately does not clamp, so the form must refuse.
+  ///
+  /// In fa, this message translates to:
+  /// **'مهلت پرداخت باید بین ۰ تا ۷۳۰ روز باشد.'**
+  String get settingsErrorPaymentTermRange;
+
+  /// No description provided for @settingsErrorPrefixEmpty.
+  ///
+  /// In fa, this message translates to:
+  /// **'پیشوند نمی‌تواند خالی باشد.'**
+  String get settingsErrorPrefixEmpty;
+
+  /// No description provided for @settingsSaved.
+  ///
+  /// In fa, this message translates to:
+  /// **'تنظیمات ذخیره شد.'**
+  String get settingsSaved;
+
+  /// No description provided for @backupExportAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'تهیهٔ پشتیبان'**
+  String get backupExportAction;
+
+  /// No description provided for @backupImportAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'بازیابی از پشتیبان'**
+  String get backupImportAction;
+
+  /// No description provided for @backupPasswordTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'گذرواژهٔ فایل پشتیبان'**
+  String get backupPasswordTitle;
+
+  /// No description provided for @backupPasswordField.
+  ///
+  /// In fa, this message translates to:
+  /// **'گذرواژه'**
+  String get backupPasswordField;
+
+  /// No description provided for @backupPasswordRepeatField.
+  ///
+  /// In fa, this message translates to:
+  /// **'تکرار گذرواژه'**
+  String get backupPasswordRepeatField;
+
+  /// the project spec requires this to be stated plainly in Persian. There is no recovery path and nobody who can help, so the copy says so rather than softening it.
+  ///
+  /// In fa, this message translates to:
+  /// **'این گذرواژه در هیچ کجا ذخیره نمی‌شود. اگر آن را فراموش کنید، هیچ راهی برای باز کردن فایل پشتیبان وجود ندارد و اطلاعات آن برای همیشه از دست می‌رود.'**
+  String get backupPasswordWarning;
+
+  /// No description provided for @backupPasswordEmpty.
+  ///
+  /// In fa, this message translates to:
+  /// **'گذرواژه را وارد کنید.'**
+  String get backupPasswordEmpty;
+
+  /// No description provided for @backupPasswordMismatch.
+  ///
+  /// In fa, this message translates to:
+  /// **'دو گذرواژه یکسان نیستند.'**
+  String get backupPasswordMismatch;
+
+  /// No description provided for @backupPasswordTooShort.
+  ///
+  /// In fa, this message translates to:
+  /// **'گذرواژه باید دست‌کم ۸ نویسه باشد.'**
+  String get backupPasswordTooShort;
+
+  /// No description provided for @backupExportInProgress.
+  ///
+  /// In fa, this message translates to:
+  /// **'در حال تهیهٔ پشتیبان…'**
+  String get backupExportInProgress;
+
+  /// No description provided for @backupExportDone.
+  ///
+  /// In fa, this message translates to:
+  /// **'فایل پشتیبان ذخیره شد.'**
+  String get backupExportDone;
+
+  /// No description provided for @backupImportPasswordTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'گذرواژهٔ این فایل پشتیبان'**
+  String get backupImportPasswordTitle;
+
+  /// No description provided for @backupImportInProgress.
+  ///
+  /// In fa, this message translates to:
+  /// **'در حال بازیابی…'**
+  String get backupImportInProgress;
+
+  /// No description provided for @backupImportDone.
+  ///
+  /// In fa, this message translates to:
+  /// **'بازیابی انجام شد.'**
+  String get backupImportDone;
+
+  /// No description provided for @backupImportConfirmTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'جایگزینی همهٔ اطلاعات'**
+  String get backupImportConfirmTitle;
+
+  /// The replace-not-merge sentence, required by D-069 as a data-loss guard: a user who expects a merge loses everything entered since the backup and has no reason to expect it, because «restore» implies addition to most people.
+  ///
+  /// In fa, this message translates to:
+  /// **'با بازیابی، همهٔ اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.'**
+  String get backupImportConfirmReplaces;
+
+  /// No description provided for @backupImportConfirmLoses.
+  ///
+  /// In fa, this message translates to:
+  /// **'هر چیزی که پس از تهیهٔ این پشتیبان ثبت کرده‌اید از بین می‌رود.'**
+  String get backupImportConfirmLoses;
+
+  /// No description provided for @backupImportConfirmContents.
+  ///
+  /// In fa, this message translates to:
+  /// **'محتوای فایل: {customers} مشتری، {invoices} فاکتور، {payments} پرداخت.'**
+  String backupImportConfirmContents(
+    String customers,
+    String invoices,
+    String payments,
+  );
+
+  /// No description provided for @backupImportConfirmDate.
+  ///
+  /// In fa, this message translates to:
+  /// **'تاریخ تهیه: {date}'**
+  String backupImportConfirmDate(String date);
+
+  /// No description provided for @backupImportConfirmAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'جایگزین کن'**
+  String get backupImportConfirmAction;
+
   /// Export failed. The file is deleted on any failure, so there is never a half-written backup to explain away.
   ///
   /// In fa, this message translates to:

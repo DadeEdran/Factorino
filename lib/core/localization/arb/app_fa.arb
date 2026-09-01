@@ -926,6 +926,89 @@
     "placeholders": { "amount": { "type": "String" } }
   },
 
+  "settingsEditTitle": "ویرایش تنظیمات فاکتور",
+  "@settingsEditTitle": {},
+  "settingsEditTooltip": "ویرایش",
+  "@settingsEditTooltip": {},
+  "settingsFieldTaxRate": "نرخ مالیات بر ارزش افزوده",
+  "@settingsFieldTaxRate": {},
+  "settingsFieldTaxRateHint": "به درصد. تغییر آن روی فاکتورهای قبلی اثری ندارد.",
+  "@settingsFieldTaxRateHint": {
+    "description": "States the property that makes the field safe to change at all: every invoice item snapshots the rate that applied to it (D-026)."
+  },
+  "settingsFieldPrefix": "پیشوند شمارهٔ فاکتور",
+  "@settingsFieldPrefix": {},
+  "settingsFieldPrefixHint": "مثلاً INV در INV-۱۴۰۵-۰۰۰۱. شماره‌های صادرشده تغییر نمی‌کنند.",
+  "@settingsFieldPrefixHint": {},
+  "settingsFieldPaymentTerm": "مهلت پرداخت پیش‌فرض",
+  "@settingsFieldPaymentTerm": {},
+  "settingsFieldPaymentTermHint": "تعداد روز پس از صدور فاکتور.",
+  "@settingsFieldPaymentTermHint": {},
+  "settingsErrorTaxRateRange": "نرخ مالیات باید بین ۰ تا ۱۰۰ درصد باشد.",
+  "@settingsErrorTaxRateRange": {},
+  "settingsErrorPaymentTermRange": "مهلت پرداخت باید بین ۰ تا ۷۳۰ روز باشد.",
+  "@settingsErrorPaymentTermRange": {
+    "description": "A negative term would produce an invoice due before it was issued (known issue 6). AppSettings deliberately does not clamp, so the form must refuse."
+  },
+  "settingsErrorPrefixEmpty": "پیشوند نمی‌تواند خالی باشد.",
+  "@settingsErrorPrefixEmpty": {},
+  "settingsSaved": "تنظیمات ذخیره شد.",
+  "@settingsSaved": {},
+
+  "backupExportAction": "تهیهٔ پشتیبان",
+  "@backupExportAction": {},
+  "backupImportAction": "بازیابی از پشتیبان",
+  "@backupImportAction": {},
+  "backupPasswordTitle": "گذرواژهٔ فایل پشتیبان",
+  "@backupPasswordTitle": {},
+  "backupPasswordField": "گذرواژه",
+  "@backupPasswordField": {},
+  "backupPasswordRepeatField": "تکرار گذرواژه",
+  "@backupPasswordRepeatField": {},
+  "backupPasswordWarning": "این گذرواژه در هیچ کجا ذخیره نمی‌شود. اگر آن را فراموش کنید، هیچ راهی برای باز کردن فایل پشتیبان وجود ندارد و اطلاعات آن برای همیشه از دست می‌رود.",
+  "@backupPasswordWarning": {
+    "description": "the project spec requires this to be stated plainly in Persian. There is no recovery path and nobody who can help, so the copy says so rather than softening it."
+  },
+  "backupPasswordEmpty": "گذرواژه را وارد کنید.",
+  "@backupPasswordEmpty": {},
+  "backupPasswordMismatch": "دو گذرواژه یکسان نیستند.",
+  "@backupPasswordMismatch": {},
+  "backupPasswordTooShort": "گذرواژه باید دست‌کم ۸ نویسه باشد.",
+  "@backupPasswordTooShort": {},
+  "backupExportInProgress": "در حال تهیهٔ پشتیبان…",
+  "@backupExportInProgress": {},
+  "backupExportDone": "فایل پشتیبان ذخیره شد.",
+  "@backupExportDone": {},
+  "backupImportPasswordTitle": "گذرواژهٔ این فایل پشتیبان",
+  "@backupImportPasswordTitle": {},
+  "backupImportInProgress": "در حال بازیابی…",
+  "@backupImportInProgress": {},
+  "backupImportDone": "بازیابی انجام شد.",
+  "@backupImportDone": {},
+
+  "backupImportConfirmTitle": "جایگزینی همهٔ اطلاعات",
+  "@backupImportConfirmTitle": {},
+  "backupImportConfirmReplaces": "با بازیابی، همهٔ اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.",
+  "@backupImportConfirmReplaces": {
+    "description": "The replace-not-merge sentence, required by D-069 as a data-loss guard: a user who expects a merge loses everything entered since the backup and has no reason to expect it, because «restore» implies addition to most people."
+  },
+  "backupImportConfirmLoses": "هر چیزی که پس از تهیهٔ این پشتیبان ثبت کرده‌اید از بین می‌رود.",
+  "@backupImportConfirmLoses": {},
+  "backupImportConfirmContents": "محتوای فایل: {customers} مشتری، {invoices} فاکتور، {payments} پرداخت.",
+  "@backupImportConfirmContents": {
+    "placeholders": {
+      "customers": {"type": "String"},
+      "invoices": {"type": "String"},
+      "payments": {"type": "String"}
+    }
+  },
+  "backupImportConfirmDate": "تاریخ تهیه: {date}",
+  "@backupImportConfirmDate": {
+    "placeholders": {"date": {"type": "String"}}
+  },
+  "backupImportConfirmAction": "جایگزین کن",
+  "@backupImportConfirmAction": {},
+
   "errorBackupExportFailedTitle": "تهیهٔ پشتیبان انجام نشد",
   "@errorBackupExportFailedTitle": {
     "description": "Export failed. The file is deleted on any failure, so there is never a half-written backup to explain away."
