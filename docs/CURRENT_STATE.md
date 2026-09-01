@@ -80,7 +80,8 @@ multiplies before it divides, and the intermediate is checked against 2⁵³ for
 surfaced only because the ladder goes to 100,000,000. Known issue 19; it needs a ruling in
 `core/money/`, not a patch in a screen.
 
-**Working tree is clean and everything is committed.** `main` at the (b) commit; behind it `42bbaae`
+**Working tree is clean and everything is committed.** `main` at **`b901c37`** "Phase 5 (b): the detail
+screen, and the layout check that would have caught its predecessor"; behind it `42bbaae`
 is the (a2) cold-resume note, `712c921` is (a2) itself, `d087c2a` is the first Phase 5 boundary,
 `a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2`
 is Phase 4's (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
