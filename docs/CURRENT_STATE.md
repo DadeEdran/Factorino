@@ -90,8 +90,9 @@ hands back quotient and remainder together. The guard is untouched, VM/Web parit
 arithmetic is pinned share-for-share against a plain-`int` reference of the old algorithm wherever that
 reference is still exact.
 
-**Working tree is clean and everything is committed.** `main` at **`241f446`**, the commit-hash note
-over **`2747b2d`** "Phase 5 (c): payments, recorded and taken back". Behind it: `ca1bc53`/**`6675456`**
+**Working tree is clean and everything is committed.** `main`'s tip is this continuity update; the
+increment it describes is **`2747b2d`** "Phase 5 (c): payments, recorded and taken back", with
+`241f446` recording its hash. Behind them: `ca1bc53`/**`6675456`**
 is the known-issue-19 fix; `435f8cb`/**`b901c37`** is (b), "the detail screen, and the layout check
 that would have caught its predecessor"; `42bbaae` is the (a2) cold-resume note and `712c921` is (a2)
 itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` its
