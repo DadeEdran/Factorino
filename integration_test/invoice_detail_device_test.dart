@@ -112,17 +112,14 @@ void main() {
     for (final int toman in stressToman) {
       final int rial = toman * 10;
 
-      // **The top rung carries no invoice-level discount, and that is a finding
-      // rather than a convenience.** Largest-remainder allocation computes
-      // `checkedMultiply(invoiceDiscount, lineNet)` before dividing, and that
-      // intermediate is checked against 2^53 so the VM and the Web reject the
-      // same inputs (D-002). With a percentage discount the ceiling is therefore
-      // on the *product*: a 5% discount refuses an invoice above roughly
-      // 42 million تومان, a 10% one above roughly 30 million — far below
-      // `kMaxAmountRial`, and inside the range a real project invoice reaches.
-      // Writing this fixture is what surfaced it; it is recorded as a known
-      // issue and belongs to `core/money/`, not to this screen.
-      final bool discountFits = toman < 100000000;
+      // **Every rung carries an invoice-level discount, including the top
+      // one, and that is the point of this line rather than an incidental.**
+      // Writing this fixture is what surfaced known issue 19: largest-remainder
+      // allocation multiplied the discount by each line's net into an `int`, and
+      // that product is quadratic in the invoice total, so 100,000,000 تومان with
+      // a 5% discount threw `MoneyRangeError` here before it ever reached a
+      // screen. `mulDivFloor` removed the intermediate (D-059) and the rung came
+      // back. If this ever needs a special case again, the fix has regressed.
 
       final created = await container
           .read(invoiceRepositoryProvider)
@@ -134,7 +131,7 @@ void main() {
               notes: 'تحویل تا پایان شهریور، پرداخت پس از تأیید نهایی.',
               // An invoice-level discount, so each line carries a share of it
               // and the allocated column has something in it.
-              discount: discountFits ? Money.rial(rial ~/ 20) : Money.zero,
+              discount: Money.rial(rial ~/ 20),
               items: <InvoiceItemDraft>[
                 InvoiceItemDraft(
                   title: 'مشاورهٔ فنی و مهندسی',

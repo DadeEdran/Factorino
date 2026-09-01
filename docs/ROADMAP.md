@@ -1152,6 +1152,7 @@ paths were reviewed in (c). What is new:
 | a | **The D-047 ruling** (D-055): store the gross, and two per-line figures | `COMPLETED` 2026-08-27 — decision only, awaiting review |
 | a2 | **`schemaVersion = 4`** — the three columns and their backfill (D-055, D-056) | `COMPLETED` 2026-08-27 |
 | b | **`/invoices/:id`, the detail screen**; rows become tappable; known issue 18 fixed and every money width audited (D-057, D-058) | `COMPLETED` 2026-09-01 |
+| — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01 |
 | c | Payments: record and delete, both recomputing derived status in the same transaction (§6) | `NOT_STARTED` |
 | d | Cancellation, and the Persian copy that says what it does and does not do | `NOT_STARTED` |
 | e | List filters over status, customer and Jalali period, at the query level; paging `watchForCustomer` | `NOT_STARTED` |
@@ -1330,6 +1331,42 @@ data class, no new input, no new permission or platform surface. It is the first
 likeliest place for an innocuous debug line to violate §7; it makes **no log call at all**, and
 `logging_path_test.dart` scans for the accessors by name. D-030 holds: a stored کد ملی is displayed with
 no tick, no badge and no affirmative word anywhere near it. The threat model is unchanged.
+
+**Out-of-band — known issue 19, exact allocation, completed 2026-09-01**
+
+Taken before (c) at the owner's direction, because it blocked ordinary invoices. §4 step 4 was **the
+only place in the engine multiplying two amounts together** — an invoice discount by a line's net — so
+the product was quadratic in the invoice total and passed 2⁵³ at roughly 30,000,000 تومان with a 10%
+discount. Every other step multiplies an amount by a small factor and is linear, which is why one site
+changed and the rest did not.
+
+- **`mulDivFloor(a, b, c)`** in `core/money/rounding.dart` returns `(quotient, remainder)` for
+  `a × b ÷ c` floored, computing the product in `BigInt`. One call replaces both wide products in the
+  allocation. `BigInt` is compatible with §4 — it is an exact integer type that loses no digits, unlike
+  the `double`/`num` §4 forbids — and nothing stores, returns or compares one; both results are checked
+  back into the exactly-representable range before they leave.
+- **The guard is untouched, and that is deliberate.** The throw landed on the *preview* rather than the
+  save, so the invoice was blocked and no wrong total ever reached a document. Without
+  `checkedMultiply` the Web would have lost the low digits and produced an allocation that did not sum
+  to the discount. The intermediate goes; the rejection at `kMaxAmountRial` and D-002's VM/Web parity
+  stay.
+- **Proportions, ordering and tie-breaking are unchanged, and it is asserted rather than claimed**: a
+  plain-`int` reference implementation of the old algorithm runs on every input where plain `int` is
+  still exact, and the new implementation must match it share for share.
+- **Pinned over the D-057 ladder** in the allocation, in `calculateInvoice` and in
+  `InvoiceEditorState`, plus the exact old boundary (94906265 / 94906266) and a test that the sweep
+  still reaches a product the old code refused.
+- **Verified to bite**: the old implementation was restored and failed exactly four of the new tests
+  while the equivalence tests stayed green.
+- **43 new tests; 837 pass** (was 794). Decision recorded: **D-059**.
+
+**How it was found.** Writing the D-057 device fixture at the ladder's top rung, one increment after
+D-057 was written. No test failed and nothing in the code pointed at it — the demo data had never gone
+above a few million Toman. That is the rule paying for itself, and it is the argument for it that no
+reasoning about the rule could have produced.
+
+**Security note.** No new data, input, permission or platform surface. An arithmetic change inside the
+money engine; the threat model is unchanged.
 
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
 a data-integrity control: only `draft` invoices are editable or deletable.

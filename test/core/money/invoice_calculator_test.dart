@@ -2,6 +2,8 @@ import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/money_magnitudes.dart';
+
 /// the project spec, case by case. A wrong total here is the product-killing bug,
 /// so these tests are the specification rather than a sample of it.
 void main() {
@@ -626,6 +628,37 @@ void main() {
         throwsArgumentError,
       );
     });
+  });
+
+  group('a large invoice with an invoice discount (D-059)', () {
+    // Known issue 19, at the level a user met it. Step 4's allocation
+    // multiplied the discount by each line's net, and that product is quadratic
+    // in the invoice total — so a 30,000,000 تومان invoice with a 10% discount,
+    // which is ordinary Iranian business, could not be calculated at all. The
+    // whole ladder now goes through the real engine, and `expectReconciles`
+    // asserts every §4 identity on each rung, the exactness of the allocation
+    // among them.
+
+    for (final int toman in kMoneyStressToman) {
+      for (final int percent in <int>[1, 10, 25]) {
+        test('reconciles at $toman toman with a $percent% discount', () {
+          final int totalRial = toman * 10;
+          expectReconciles(
+            calculate(
+              <InvoiceLineInput>[
+                line(priceRial: totalRial ~/ 3),
+                line(priceRial: totalRial - totalRial ~/ 3),
+                // A third line with a discount of its own, so the invoice-level
+                // allocation runs over nets that are not simply the gross.
+                line(priceRial: totalRial ~/ 5, discountRial: totalRial ~/ 50),
+              ],
+              discountPercentBp: percent * 100,
+              defaultTaxRateBp: 900,
+            ),
+          );
+        });
+      }
+    }
   });
 
   group('the reconciliation invariant holds across the input space', () {

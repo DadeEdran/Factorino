@@ -16,6 +16,14 @@ import 'rounding.dart';
 /// [amount] must not exceed the sum of [weights]: a discount larger than the
 /// thing being discounted is clamped by the caller, not silently absorbed here.
 /// Returns a list the same length as [weights], summing to exactly [amount].
+///
+/// **The arithmetic is exact at every invoice size** (D-059). Until Phase 5 (c)
+/// this multiplied the discount by each line's net into an `int` and checked the
+/// product against 2^53, which meant an ordinary invoice — 30 million Toman with
+/// a 10% discount — could not be entered at all. The proportions, the ordering
+/// and the tie-breaking are untouched by that fix: for every invoice the old
+/// code accepted, this produces the identical allocation, and a test pins that
+/// against a plain-`int` reference wherever the reference is itself valid.
 List<int> allocateByLargestRemainder({
   required int amount,
   required List<int> weights,
@@ -44,15 +52,27 @@ List<int> allocateByLargestRemainder({
   }
 
   // Floor of the exact share, plus the remainder that floor discarded.
+  //
+  // **`mulDivFloor`, not a multiply followed by a divide**, and that is the fix
+  // for known issue 19 (D-059). `amount x weights[i]` is a discount times a line
+  // net: two figures that both scale with the invoice, so the product is
+  // quadratic in the invoice total and passes 2^53 at a few hundred million
+  // Rial. This is the only place in §4 where two amounts are multiplied
+  // together -- every other step multiplies an amount by a small factor, a
+  // milli-quantity or a basis-point rate -- which is why it is the only place
+  // that needs the exact intermediate.
+  //
+  // `exact - share * totalWeight` was the second half of the same defect: that
+  // product is the same magnitude again. The remainder now comes back from the
+  // division that produced it, so there is nothing left to recompute.
   final remainders = <_Remainder>[];
   var distributed = 0;
 
   for (var i = 0; i < weights.length; i++) {
-    final exact = checkedMultiply(amount, weights[i]);
-    final share = exact ~/ totalWeight;
-    allocations[i] = share;
-    distributed += share;
-    remainders.add(_Remainder(i, exact - share * totalWeight));
+    final split = mulDivFloor(amount, weights[i], totalWeight);
+    allocations[i] = split.quotient;
+    distributed += split.quotient;
+    remainders.add(_Remainder(i, split.remainder));
   }
 
   // Hand the leftover Rial, one each, to the largest remainders. Ties go to

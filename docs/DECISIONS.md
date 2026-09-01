@@ -2940,3 +2940,128 @@ detail screen needs precisely that for the party, and a second copy would have b
 application renders a missing field. The stacked layout came with it, along with the reason it exists:
 a Persian label and a left-to-right identifier on one row put two directions in one line and make the
 value's position depend on the label's length.
+
+---
+
+## D-059 — The invoice discount is allocated exactly, because the wide value was never a figure
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — implemented before Phase 5 increment (c), at the owner's direction
+**Fixes:** known issue 19. **Extends:** D-002 (the 2⁵³ parity guarantee), §4 step 4.
+**Found by:** D-057, one increment after D-057 was written.
+
+### What was wrong
+
+`allocateByLargestRemainder` computed each line's share as
+`checkedMultiply(amount, weights[i]) ~/ totalWeight`, and recovered the remainder as
+`exact − share × totalWeight`. Both of those products are **an invoice discount times a line's net** —
+two figures that each scale with the invoice total, so the product is **quadratic in it**.
+
+`checkedMultiply` rejects a product past 2⁵³, which put the ceiling at:
+
+| invoice-level discount | largest invoice that could be entered |
+|---|---|
+| 1% | ≈ 95,000,000 تومان |
+| 5% | ≈ 42,000,000 تومان |
+| 10% | ≈ 30,000,000 تومان |
+| 25% | ≈ 19,000,000 تومان |
+
+A 30-million-Toman invoice with a 10% discount is ordinary Iranian business, not an edge case.
+
+**This is the only place in §4 where two amounts are multiplied together.** Every other step multiplies
+an amount by a *small factor* — a milli-quantity, a basis-point rate, a rounding unit — so its product
+is linear in the invoice and stays inside 2⁵³ until the amount itself is near `kMaxAmountRial`. That is
+why one site needed changing and the rest did not, and it is the test to apply to any future step: if
+both operands scale with the invoice, the intermediate has to be exact.
+
+### The guard was working, and that matters as much as the defect
+
+`InvoiceEditorState`'s constructor runs the engine, so the throw landed on the **preview**, as the user
+typed — `InvoiceEditor.build` failed and the screen rendered `AsyncErrorView` in place of the form.
+That reads as the worst possible place, and it is in fact the right one: **the invoice was blocked, and
+no wrong total ever reached a document.** Had `checkedMultiply` not been there, the product would have
+lost its low digits on the Web and quietly produced an allocation that did not sum to the discount —
+an invoice whose lines disagree with its header, which is the failure §4 exists to prevent.
+
+So the fix removes the **intermediate**, not the guard. D-002's parity guarantee is untouched:
+`Money.rial` still refuses an amount past `kMaxAmountRial`, `checkedMultiply` still refuses a wide
+product everywhere it is still used, and `mulDivFloor` refuses any operand or result that could not
+survive a round trip through a JS number. The VM and the Web still reject identically. What changed is
+that a value nobody ever sees is no longer required to be a figure.
+
+### The fix
+
+`mulDivFloor(a, b, c)` in `core/money/rounding.dart` returns `(quotient, remainder)` for
+`a × b ÷ c` floored, computing the product in **`BigInt`**. The allocation calls it once per line and
+takes both results, which also retires the second wide product — `exact − share × totalWeight` — since
+the remainder now comes back from the division that produced it.
+
+**`BigInt` is compatible with §4, and the distinction is worth stating because a reader will stop on
+it.** §4 forbids `double` and `num` in the money path because they *lose digits*. `BigInt` is an exact
+integer type that loses none; it is `dart:core` on every target, so the VM and the Web run the same
+arithmetic; and nothing stores, returns or compares one — it exists for the width of a single
+multiply-and-divide and both results are checked back into the exactly-representable range before they
+leave. Every value that crosses the boundary of this function is an `int`, as before.
+
+Cost: one `BigInt` multiply and divide per line, on a code path that runs per keystroke in the preview.
+For any invoice a person will type this is microseconds, and correctness at every magnitude is not
+tradeable against it.
+
+### What did not change, and is pinned
+
+**The allocation is unchanged as arithmetic.** Same proportions, same floor, same largest-remainder
+distribution, same tie-break toward the earlier line — the property that makes two devices produce
+identical output for the same invoice, which is why the method was written this way and what a sync
+phase depends on. The claim that only the *range* moved is asserted rather than asserted-in-a-comment:
+`discount_allocation_test.dart` runs a **plain-`int` reference implementation of the old algorithm** on
+every input where plain `int` is still exact, and requires the new implementation to match it share for
+share. `rounding_test.dart` does the same for `mulDivFloor` itself.
+
+**The regression is pinned at the magnitudes it broke at**, over the D-057 ladder rather than over
+numbers chosen here: every rung of `kMoneyStressToman` × 1%, 5%, 10% and 25%, in the allocation, in the
+whole engine through `calculateInvoice`, and in `InvoiceEditorState` — the last of these because the
+preview is where a user actually met it. A separate test asserts the sweep **still reaches** a product
+the old code refused, so if the ladder is ever lowered below the old boundary, that is noticed rather
+than silently turning the group into decoration. And the boundary itself has its own case: 94906265 and
+94906266, the last invoice the old code could allocate and the first it could not, derived from 2⁵³
+rather than picked.
+
+**Verified to bite**, the way D-049's guard was: the old implementation was put back and the new tests
+run against it. It fails exactly four — the top rung at 5%, 10% and 25%, and the boundary case — while
+the plain-`int` equivalence tests stay green, which is the evidence that they are checking agreement
+rather than accidentally catching the bug. Restored afterwards. The device pass at the top rung, which
+had needed a special case to avoid the throw, now issues and renders that invoice with its discount.
+
+### How it was found, which is the part worth keeping
+
+**It surfaced from writing the D-057 device fixture at the ladder's top rung — one increment after
+D-057 was written.** Nothing in the codebase pointed at it; no test failed; the invoice list, the
+editor and the dashboard had run for two phases without anybody meeting it, because the demo data never
+went above a few million Toman. It appeared because a rule was written down that says the amounts must
+be named in the check rather than taken from whatever the dev database holds, and then that rule was
+followed once.
+
+That is D-057 paying for itself inside a single increment, and it is the argument for the rule that no
+amount of reasoning about the rule could have produced.
+
+### Alternatives rejected
+
+- **State the ceiling as a business limit and refuse politely**, surfacing it as data the way D-027's
+  clamps are. Refused by the owner, and the reasoning is worth keeping: the 2⁵³ bound exists to keep the
+  VM and the Web rejecting identically at `kMaxAmountRial`, which is a real bound on a real figure. This
+  was a bound on an **intermediate the user never sees**, at a magnitude far below it. Stating it as a
+  limit would be inventing a business rule out of an implementation detail — and D-027 is the wrong
+  precedent, because D-027's clamps describe *something the user actually did*.
+- **Reduce by `gcd(amount, totalWeight)` first.** Helps enormously on round numbers — a 10% discount
+  reduces to 1/10 — and not at all on coprime ones, which are exactly what a discount entered as an
+  absolute Rial amount produces. An optimisation that fixes the common case and leaves the defect in
+  place is worse than the defect, because it makes it rare enough to reach a user rather than a test.
+- **Hand-rolled 128-bit arithmetic over 26-bit limbs.** Avoids `BigInt` and stays in `int`. Rejected:
+  it is forty lines of subtle shifting in the one function in this application where a silent error
+  becomes a wrong invoice total, to save microseconds on a path that runs a handful of times per
+  keystroke. The Euclidean reduction that looks like the cheap alternative does not terminate usefully
+  here either — it bottoms out at a product of two values each below `totalWeight`, which is precisely
+  the case that overflows.
+- **Widen only the remainder and keep `checkedMultiply` for the share.** The two come from the same
+  division; splitting them would leave the second product to overflow at the same magnitude and would
+  put two answers where there is one question.

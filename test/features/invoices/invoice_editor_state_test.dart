@@ -5,6 +5,8 @@ import 'package:factorino/data/models/invoice_draft.dart';
 import 'package:factorino/features/invoices/domain/invoice_editor_state.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../support/money_magnitudes.dart';
+
 /// The invoice editor's state model, and its wiring to `core/money/`.
 ///
 /// The claim under test throughout is that **the state computes nothing**: it
@@ -308,6 +310,54 @@ void main() {
       expect(state.hasWarnings, isFalse);
       expect(state.totals.subtotal, Money.zero);
     });
+  });
+
+  group('a large invoice can be typed at all (D-059, known issue 19)', () {
+    // **This is where the defect was actually met, and why it is tested here as
+    // well as in the engine.** `InvoiceEditorState`'s constructor runs
+    // `calculateInvoice`, so step 4's overflow landed on the **preview** rather
+    // than on the save: `InvoiceEditor.build` threw as the user typed and the
+    // screen rendered `AsyncErrorView` in place of the form they were filling
+    // in. An invoice of 30,000,000 تومان with a 10% discount could not be
+    // entered.
+    //
+    // The failure mode was the right one — the guard refused rather than
+    // truncating, so no wrong total ever reached a document — which is why the
+    // fix removes the intermediate and leaves the guard alone.
+
+    for (final int toman in kMoneyStressToman) {
+      test('$toman toman with a 10% discount previews without throwing', () {
+        final int totalRial = toman * 10;
+
+        final InvoiceEditorState state = stateWith(
+          lines: <InvoiceLineEntry>[
+            line(priceRial: totalRial ~/ 3),
+            line(priceRial: totalRial - totalRial ~/ 3),
+          ],
+          discountPercentBp: 1000,
+        );
+
+        // The preview exists, which is the whole assertion: constructing the
+        // state is what used to throw.
+        expect(state.totals.lines, hasLength(2));
+        expect(state.totals.grandTotal.rial, greaterThan(0));
+
+        // And it is right, not merely present.
+        expect(
+          state.totals.grossTotal.rial -
+              state.totals.totalDiscount.rial +
+              state.totals.totalTax.rial +
+              state.totals.roundingAdjustment.rial,
+          state.totals.grandTotal.rial,
+        );
+        expect(
+          state.totals.lines
+              .map((CalculatedLine line) => line.allocatedInvoiceDiscount.rial)
+              .reduce((int a, int b) => a + b),
+          state.totals.invoiceDiscount.rial,
+        );
+      });
+    }
   });
 
   group('completeness', () {

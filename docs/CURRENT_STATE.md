@@ -36,6 +36,7 @@ money-width audit, and `/invoices/:id` itself (D-058).
 | a | **The D-047 ruling** (D-055) — decision only, no code | `COMPLETED`, **accepted** |
 | a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, **accepted** |
 | b | **`/invoices/:id`**, the detail screen; rows tappable; the money-width audit and the tier rule (D-057, D-058) | `COMPLETED` 2026-09-01, **awaiting review** |
+| — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01, **awaiting review** |
 | c | Payments: record and delete, derived status in the same transaction | `NOT_STARTED` ← **next** |
 | d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` |
 | e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` |
@@ -74,14 +75,16 @@ lives in `test/support/money_magnitudes.dart`. The audit it demanded found a sec
 site — `tablePriceWidth`, wrong by exactly the cell padding it never accounted for — and cleared the
 dashboard tiles, which scale rather than clip.
 
-**One new known issue, and it is a real one.** The money engine refuses an invoice above roughly
-30–42 million تومان that carries an invoice-level percentage discount: largest-remainder allocation
-multiplies before it divides, and the intermediate is checked against 2⁵³ for VM/Web parity. It
-surfaced only because the ladder goes to 100,000,000. Known issue 19; it needs a ruling in
-`core/money/`, not a patch in a screen.
+**And D-057 paid for itself inside one increment.** Writing the device fixture at the ladder's top
+rung surfaced known issue 19 — the money engine refused an invoice above roughly 30 million تومان
+carrying a 10% discount, because §4 step 4 was the only place multiplying **two amounts** together.
+**Fixed before (c) at the owner's direction** (D-059): `mulDivFloor` computes that one intermediate in
+`BigInt` and hands back quotient and remainder together. The guard is untouched, VM/Web parity is
+unchanged, and the arithmetic is pinned share-for-share against a plain-`int` reference of the old
+algorithm wherever that reference is still exact.
 
-**Working tree is clean and everything is committed.** `main` at **`b901c37`** "Phase 5 (b): the detail
-screen, and the layout check that would have caught its predecessor"; behind it `42bbaae`
+**Working tree is clean and everything is committed.** `main` at the D-059 commit; behind it **`b901c37`** is (b), "Phase 5 (b): the detail screen, and the
+layout check that would have caught its predecessor"; behind that `42bbaae`
 is the (a2) cold-resume note, `712c921` is (a2) itself, `d087c2a` is the first Phase 5 boundary,
 `a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2`
 is Phase 4's (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
@@ -94,12 +97,13 @@ older sections of this file:** Phase 4 and Phase 5 both have increments lettered
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (b)
-flutter test:               PASS   (794/794, was 726)                         as of (b)
+flutter analyze:            PASS   (No issues found)                          as of D-059
+flutter test:               PASS   (837/837, was 794)                         as of D-059
 Android build:              PASS   debug APK built (2026-09-01)
 Layout, all 3 tiers x 4 amounts (D-057):
   widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart
-  device - Windows desktop: PASS   0 layout errors, 1264 x 681, Vazirmatn, all four rungs (2026-09-01)
+  device - Windows desktop: PASS   0 layout errors, 1264 x 681, Vazirmatn, all four rungs,
+                                   each with an invoice-level discount (2026-09-01)
   device - Android phone:   OUTSTANDING  no device attached this session; belongs to (f)
 D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
 D-055 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
@@ -114,7 +118,84 @@ Windows run:                PASS   the app starts and renders at the desktop tie
 Web build:                  NOT_RETESTED since plugins were added
 ```
 
-**Test count is 794**, was 726 at the end of (a2).
+**Test count is 837**, was 794 at the end of (b) and 726 at the end of (a2).
+
+## What the known-issue-19 fix delivered — exact allocation (D-059)
+
+**Taken before (c), at the owner's direction, and it is a money-engine change rather than a screen
+one.** §4 step 4 was the **only place in the engine that multiplies two amounts together** — an invoice
+discount by a line's net — so the product is quadratic in the invoice total and passed 2⁵³ at:
+
+```
+ 1% invoice discount   refused above roughly  95,000,000 تومان
+ 5%                    refused above roughly  42,000,000
+10%                    refused above roughly  30,000,000
+25%                    refused above roughly  19,000,000
+```
+
+Every other §4 step multiplies an amount by a **small factor** — a milli-quantity, a basis-point rate,
+a rounding unit — so its product is linear in the invoice and stays inside 2⁵³ until the amount itself
+approaches `kMaxAmountRial`. That is the test to apply to any future step: **if both operands scale
+with the invoice, the intermediate has to be exact.**
+
+### The guard was working, and the fix leaves it alone
+
+The throw landed on the **preview**, as the user typed, because `InvoiceEditorState`'s constructor runs
+the engine — the form was replaced by an error view. That reads as the worst place for it and is in
+fact the right one: **the invoice was blocked and no wrong total ever reached a document.** Without
+`checkedMultiply` the product would have lost its low digits on the Web and produced an allocation that
+did not sum to the discount — lines disagreeing with their header, which is the failure §4 exists to
+prevent.
+
+So the **intermediate** goes, not the guard. `Money.rial` still refuses past `kMaxAmountRial`,
+`checkedMultiply` still refuses a wide product everywhere else, and `mulDivFloor` refuses any operand
+or result that could not survive a JS number. VM and Web still reject identically.
+
+```
+lib/core/money/rounding.dart              + mulDivFloor(a, b, c) -> (quotient, remainder)
+lib/core/money/discount_allocation.dart     one call replaces both wide products
+test/core/money/rounding_test.dart        + 8 tests over the primitive
+test/core/money/discount_allocation_test.dart  + the ladder sweep, the boundary, the reference check
+test/core/money/invoice_calculator_test.dart   + the ladder through the whole engine
+test/features/invoices/invoice_editor_state_test.dart + the ladder through the live preview
+integration_test/invoice_detail_device_test.dart  the top rung's discount special case removed
+```
+
+- **`BigInt` for the intermediate, and only the intermediate.** §4 forbids `double` and `num` because
+  they *lose digits*; `BigInt` is an exact integer type that loses none, it is `dart:core` on every
+  target, and nothing stores, returns or compares one. Both results are checked back into the
+  exactly-representable range before they leave, so every value crossing the function's boundary is an
+  `int`, as before.
+- **The arithmetic is unchanged, and that is asserted rather than claimed.** Same proportions, same
+  floor, same largest-remainder distribution, same tie-break toward the earlier line — the property two
+  devices depend on to agree after sync. `discount_allocation_test.dart` runs a **plain-`int` reference
+  implementation of the old algorithm** on every input where plain `int` is still exact and requires
+  share-for-share agreement; `rounding_test.dart` does the same for the primitive.
+- **Pinned at the magnitudes it broke at**, over the D-057 ladder rather than numbers chosen here:
+  every rung × 1 / 5 / 10 / 25%, in the allocation, in `calculateInvoice`, and in `InvoiceEditorState`
+  — the last because the preview is where a user actually met it. A separate test asserts the sweep
+  **still reaches** a product the old code refused, so lowering the ladder is noticed rather than
+  quietly turning the group into decoration. The boundary has its own case: **94906265 and 94906266**,
+  the last invoice the old code could allocate and the first it could not, derived from 2⁵³.
+- **Verified to bite**, as D-049's guard was. The old implementation was put back and the new tests run
+  against it: **four fail** — the top rung at 5%, 10% and 25%, plus the boundary — while the
+  plain-`int` equivalence tests stay green, which is the evidence they check agreement rather than
+  accidentally catching the bug. Restored afterwards.
+- **The device fixture's special case is gone.** `invoice_detail_device_test.dart` had to skip the
+  invoice-level discount at the top rung to run at all; every rung now carries one, and the Windows
+  pass issues and renders 100,000,000 تومان with a 5% discount, 0 layout errors.
+- **43 new tests; 837 pass** (was 794). Decision recorded: **D-059**.
+
+### How it was found, which is the part worth keeping
+
+**It surfaced from writing the D-057 device fixture at the ladder's top rung — one increment after
+D-057 was written.** Nothing in the codebase pointed at it and no test failed; the editor, the list and
+the dashboard had run for two phases without anybody meeting it, because the demo data never went above
+a few million Toman. It appeared because a rule was written down saying the amounts must be named in
+the check rather than taken from whatever the dev database holds, and then that rule was followed once.
+
+That is **D-057 paying for itself inside a single increment**, and it is the argument for the rule that
+no amount of reasoning about the rule could have produced.
 
 ## What Phase 5 increment (b) delivered — `/invoices/:id`, and the money-width audit
 
@@ -823,7 +904,7 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 18 | ~~The desktop summary panel's grand total overflows at any realistic amount~~ | **Resolved in (b)** (D-058). The grand total is `AmountSize.medium` on every tier: `large` needs 376 logical pixels and `detailPanelWidth` leaves 288. The audit that came with it found `tablePriceWidth` wrong too, and `money_layout_test.dart` now sweeps every fixed-width money site over the whole ladder. |
 | 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
-| 19 | **A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed** | Largest-remainder allocation calls `checkedMultiply(invoiceDiscount, lineNet)` before dividing, and the intermediate is checked against 2⁵³ so the VM and the Web refuse the same inputs (D-002). The ceiling is on a **product**, far below `kMaxAmountRial`: a 5% discount fails above roughly **42,000,000 تومان**, a 10% one above roughly **30,000,000**. **`InvoiceEditorState`'s constructor runs the engine**, so the throw happens on the *preview*, not at save: verified directly — `MoneyRangeError: product out of range: 100000000 x 1000000000`. `InvoiceEditor.build` therefore fails and the screen renders `AsyncErrorView` instead of the form the user was filling in. Nothing is silently wrong — the guard is doing exactly its job — but the invoice cannot be entered at all. Found in (b) at the ladder's top rung. **Needs a ruling in `core/money/`**, not a patch in a screen: allocate without the wide intermediate, or state the limit and refuse it as data rather than as an exception, the way D-027's clamps are surfaced. |
+| 19 | ~~A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed~~ | **Resolved 2026-09-01** (D-059), before (c), at the owner's direction. §4 step 4 was the only place in the engine multiplying **two amounts** together — an invoice discount by a line's net — so the product was quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount. `mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together; the guard is untouched and VM/Web parity is unchanged. Pinned over the whole D-057 ladder in the allocation, the engine and the editor preview, plus the exact old boundary, and verified to bite against the old implementation. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -1211,62 +1292,64 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 5 increment (b) — `/invoices/:id`, plus the process change and the money-width audit the
-owner's ruling on (a2) called for.**
+**Known issue 19 — exact allocation at every invoice size (D-059)**, taken before (c) at the owner's
+direction.
 
-- **D-057, a process change binding on every remaining phase.** A phase closes only after its layout
-  check has run at **all three tiers** over a **written ladder of amounts**
-  (`test/support/money_magnitudes.dart`: 100,000 / 1,000,000 / 10,000,000 / 100,000,000 تومان).
-  The project spec carries the rule.
-- **The audit found a second overflowing site.** Known issue 18 is fixed — the summary panel's grand
-  total is `AmountSize.medium` on every tier — and `tablePriceWidth` was wrong by exactly the cell
-  padding it never accounted for. Both widths are now derived from named, measured tokens, and
-  `money_layout_test.dart` sweeps them. The dashboard tiles were checked and are fine.
-- **The detail screen** (D-058): the document laid out from stored columns alone, «ثبت‌نشده» on the
-  line table as well as the panel, the party snapshot distinguished from the live record in four cases
-  one of which is silence, rows tappable, and both absence tests inverted rather than deleted.
-- **794 tests pass** (was 726), analyzer clean, Android debug APK builds, and the new device pass runs
-  clean on Windows at the desktop tier — the tier that was never checked.
-- **One new known issue, and it is a real one (19).** A large invoice with an invoice-level percentage
-  discount cannot be *entered*: the engine's 2⁵³ guard fires inside largest-remainder allocation, and
-  because `InvoiceEditorState`'s constructor runs the engine the throw lands on the preview and the
-  form is replaced by an error view. Verified directly, not inferred.
+§4 step 4 was the only place in the engine multiplying **two amounts** together, so the product was
+quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount.
+`mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together,
+which retires both wide products at once. **The guard is untouched and VM/Web parity is unchanged** —
+what went is a value nobody ever sees, not the rejection at `kMaxAmountRial`.
+
+- The arithmetic is pinned **share for share** against a plain-`int` reference implementation of the
+  old algorithm, run wherever plain `int` is still exact — so "only the range moved" is asserted, not
+  claimed.
+- Pinned over the whole D-057 ladder in three places: the allocation, `calculateInvoice`, and
+  `InvoiceEditorState` — the last because the preview is where a user met it. Plus the exact old
+  boundary (94906265 / 94906266) and a test that the sweep still reaches a product the old code
+  refused.
+- **Verified to bite**: the old implementation was restored and failed exactly four of the new tests,
+  while the equivalence tests stayed green. Restored afterwards.
+- The device fixture's special case is gone; the Windows pass now issues and renders 100,000,000
+  تومان with a 5% discount, 0 layout errors.
+- **43 new tests; 837 pass** (was 794). Analyzer clean.
+
+**Worth carrying forward:** it was found by writing the D-057 device fixture at the ladder's top rung,
+one increment after D-057 was written. No test failed and nothing in the code pointed at it — the demo
+data had simply never gone above a few million Toman. D-057 paying for itself that fast is the argument
+for the rule.
 
 ## Next action
 
-**Review (b), then build Phase 5 increment (c): recording and deleting a payment, with the derived
-status recomputed in the same transaction.**
+**Build Phase 5 increment (c): recording and deleting a payment, with the derived status recomputed in
+the same transaction.**
 
-Two things to settle before or alongside (c), in this order:
+The detail screen from (b) is where the UI goes. It already shows «پرداخت‌شده» and «مانده» from
+`InvoiceDetail.amountPaid` / `amountDue` and is deliberately read-only; (c) is what gives those figures
+a control. The overpayment notice is already there for a user who records more than the invoice asked.
 
-1. **Known issue 19 needs a ruling, and it is arguably ahead of (c).** An invoice above roughly
-   30–42 million تومان with an invoice-level percentage discount cannot be entered at all — the form
-   is replaced by an error view as the user types. The engine is behaving correctly (D-002 keeps VM
-   and Web refusing the same inputs); what is wrong is that a legitimate document is unreachable and
-   the failure arrives as an exception rather than as data. Two candidate answers, both `core/money/`
-   decisions: **allocate without the wide intermediate** (the ratio can be applied without
-   materialising `discount × lineNet`), or **surface the limit as data**, the way D-027's clamps are,
-   so the editor warns instead of collapsing. This is a money decision and it is the owner's to make.
-2. **The Android device pass for (b) is outstanding.** No device was attached this session
-   (`flutter devices` listed Windows, Chrome and Edge; the emulator was offline). Under D-057 that is
-   recorded rather than assumed, and it belongs to (f) — but `integration_test/invoice_detail_device_test.dart`
-   runs on any target and should be pointed at the Redmi when it is next connected. Free space on the
-   device first (known issue 10b).
+What it must do, from the owner's standing constraints:
 
-**What (c) itself must do, from the owner's standing constraints:**
+1. **Recording and deleting, both directions, and the derived status recomputed in the same
+   transaction** (§6). The write side partly exists from Phase 4 (d) — `PaymentRepository.record`
+   recomputes already — so **deletion is what needs building beside it**, with the same recomputation
+   and the same transaction.
+2. **`acceptsPayments` is the repository's guard, not the screen's.** Phase 4 (c) set the precedent
+   with `updateDraft`: a test must call the repository **directly**, as a deep link or a future sync
+   path would, and assert it refuses in `draft` and in `cancelled` — and that the refusal left nothing
+   behind. A guard that throws after writing half the change is worse than no guard.
+3. **A deletion needs a confirmation that says what it does**, on (d)'s precedent for issue: deleting a
+   payment can move an invoice from پرداخت شده back to پرداخت جزئی, and the copy should say so rather
+   than leaving the badge to change under the user.
+4. **Any new layout goes through D-057** — all three tiers, over the ladder in
+   `test/support/money_magnitudes.dart`. A new fixed-width money site joins
+   `test/core/widgets/money_layout_test.dart`.
 
-- **Payments recompute the derived status in the same transaction** (§6). Recording **and deleting**,
-  both directions, tested at the repository — the write side already exists from Phase 4 (d) and
-  `PaymentRepository.record` recomputes; deletion is what needs building beside it.
-- **The detail screen is where the UI goes.** It already shows «پرداخت‌شده» and «مانده» from
-  `InvoiceDetail.amountPaid` / `amountDue`, and it is deliberately read-only today: (c) is what makes
-  those figures gain a control, and the overpayment notice is already there for when a user records
-  more than the invoice asked.
-- **`acceptsPayments` is the guard**, and it is the repository's, not the screen's — the same rule
-  `updateDraft` proved in Phase 4 (c): a test must call the repository **directly** and assert it
-  refuses in `draft` and `cancelled`, and that the refusal left nothing behind.
-- **New layout goes through D-057.** Any new money figure or fixed-width site joins
-  `money_layout_test.dart`, and (c)'s screen work is checked at all three tiers over the ladder.
+**Outstanding from (b), and it must not be forgotten at the phase close: the Android phone-tier device
+pass.** No device was attached when (b) was built (`flutter devices` listed Windows, Chrome and Edge;
+the emulator was offline). `integration_test/invoice_detail_device_test.dart` runs on any target and
+should be pointed at the Redmi the next time it is connected — free space on the device first, known
+issue 10b. **The owner's instruction is explicit: do not close the phase without it.**
 
 After (c) the order is (d) cancellation, (e) filters and paging, (f) the device pass and the phase
 close.
@@ -1283,5 +1366,6 @@ close.
 - **List filters over status, customer and Jalali period, at the query level** — not in Dart over a
   loaded page.
 - **Paging `watchForCustomer`**, known issue 16.
-- **A device pass before the phase is called done** — now at **all three tiers**, over the written
-  ladder (D-057), not on one tier at whatever amounts the flow produces.
+- **A device pass before the phase is called done** — at **all three tiers**, over the written ladder
+  (D-057), not on one tier at whatever amounts the flow produces. **The phone tier from (b) is still
+  owed.**
