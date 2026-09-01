@@ -612,6 +612,11 @@ class DriftInvoiceRepository implements InvoiceRepository {
       customer: customerFromRow(customerRow),
       items: itemRows.map(invoiceItemFromRow).toList(),
       payments: paymentRows.map(paymentFromRow).toList(),
+      // Carried out of the exemption above rather than inferred later: this is
+      // the only place the row's `deleted_at` is still in hand, and the detail
+      // screen has to be able to say that the customer this document names is no
+      // longer in the customer list.
+      customerIsDeleted: customerRow.deletedAt != null,
     );
   }
 

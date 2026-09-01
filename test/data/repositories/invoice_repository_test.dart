@@ -1084,5 +1084,37 @@ void main() {
       await harness.invoices.softDeleteDraft(created.invoice.id);
       expect(await harness.invoices.findDetail(created.invoice.id), isNull);
     });
+
+    test('a soft-deleted customer still opens, and is reported as deleted', () async {
+      // Two assertions, and the first is the promise the delete dialog makes in
+      // Persian: the customer's invoices survive untouched. The read is
+      // soft-delete-exempt for exactly that reason, and filtering here once made
+      // an invoice unopenable the moment its customer was deleted.
+      //
+      // The second is what that exemption costs. `detail.customer` is a live
+      // record that may no longer be in the customer list, and nothing else on
+      // the aggregate could tell the screen so -- `Customer` carries no delete
+      // state, deliberately, because everywhere else a deleted customer simply
+      // is not returned. The detail screen needs the difference to offer «رفتن
+      // به پروندهٔ مشتری» honestly.
+      final created = await harness.invoices.create(harness.draft(customerId));
+
+      expect(
+        (await harness.invoices.findDetail(created.invoice.id))!
+            .customerIsDeleted,
+        isFalse,
+      );
+
+      await harness.customers.softDelete(customerId);
+
+      final detail = await harness.invoices.findDetail(created.invoice.id);
+      expect(detail, isNotNull);
+      expect(detail!.customer.id, customerId);
+      expect(detail.customerIsDeleted, isTrue);
+      // The invoice itself is untouched -- its lines and its totals are the
+      // ones it was written with.
+      expect(detail.items, hasLength(1));
+      expect(detail.invoice.grandTotal, created.invoice.grandTotal);
+    });
   });
 }

@@ -1,7 +1,7 @@
 # Current State
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
-> Last updated: **2026-08-27**
+> Last updated: **2026-09-01**
 
 ---
 
@@ -13,9 +13,10 @@
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
 **Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
 **accepted**, including (d).
-**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. The first boundary
-(the (d) carry-overs and the D-047 ruling) is **accepted**. **(a2), schema v4**, is delivered,
-committed, and **awaiting review** — the owner stopped the session immediately after it.
+**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. The first boundary,
+the D-047 ruling, and **(a2) schema v4** are all **accepted**. **(b), the detail screen**, is
+delivered and **awaiting review**: it carries the process change the owner asked for (D-057), the
+money-width audit, and `/invoices/:id` itself (D-058).
 
 | # | Increment | Status |
 |---|---|---|
@@ -33,9 +34,9 @@ committed, and **awaiting review** — the owner stopped the session immediately
 |---|---|---|
 | — | (d)'s carry-overs: §10 amended, the phone fold (D-054) | `COMPLETED`, **accepted** |
 | a | **The D-047 ruling** (D-055) — decision only, no code | `COMPLETED`, **accepted** |
-| a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, **awaiting review** |
-| b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` ← **next** |
-| c | Payments: record and delete, derived status in the same transaction | `NOT_STARTED` |
+| a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, **accepted** |
+| b | **`/invoices/:id`**, the detail screen; rows tappable; the money-width audit and the tier rule (D-057, D-058) | `COMPLETED` 2026-09-01, **awaiting review** |
+| c | Payments: record and delete, derived status in the same transaction | `NOT_STARTED` ← **next** |
 | d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` |
 | e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` |
 | f | The device pass, and the phase close | `NOT_STARTED` |
@@ -51,42 +52,54 @@ discount, a tax override, notes and any number of lines from the catalogue or fr
 come from `core/money/` and move as the lines do; the invoice saves as a draft or issues with a
 number and a party snapshot.
 
-**Phase 4 is complete and accepted. Phase 5 has started**, and two boundaries are delivered: the two
-carry-overs from (d) plus **the D-047 ruling** (D-055), and now **(a2), `schemaVersion = 4`** — the
-gross and the two per-line figures, with a backfill that runs the money engine over each pre-v4
-invoice and refuses to write anything it cannot reproduce to the Rial (D-056).
+**Phase 4 is complete and accepted. Phase 5 is three boundaries in**: the two carry-overs from (d)
+plus **the D-047 ruling** (D-055); **(a2), `schemaVersion = 4`** (D-056); and now **(b), the detail
+screen** — the first consumer of what (a2) stored, and the increment that turned the owner's ruling on
+known issue 18 into a process (D-057) and an audit (D-058).
 
-**Every figure an Iranian invoice prints is now stored.** A document line can be laid out as
-شرح · تعداد · مبلغ واحد · مبلغ کل · تخفیف · مبلغ پس از تخفیف · مالیات · جمع with no read site
-multiplying or rounding anything, and the header's summary starts from a stored `grossTotal`. Where a
-pre-v4 invoice could not be reconciled the columns are **null** and the panel says «ثبت‌نشده».
+**An invoice can now be read as the document it is.** `/invoices/:id` lays a line out from storage
+alone — شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع, with no
+read site multiplying or rounding anything — and the summary starts from the stored `grossTotal`. Where
+a pre-v4 figure was refused the screen says «ثبت‌نشده» on the line as well as the panel, never a zero.
+**Rows are tappable**, and the two tests asserting the route's absence were inverted rather than
+deleted.
 
-**The next increment is Phase 5 (b): `/invoices/:id`, the detail screen.** It is the first consumer
-of what (a2) stored, and it inherits one known issue from it — the desktop summary panel overflow,
-known issue 18, which is the first item in the Next Action.
+**The party a document states is finally distinguishable from the customer record.** Four cases, one of
+them silence; a renamed or soft-deleted customer is said in Persian, and `InvoiceDetail.customerIsDeleted`
+is new because the customer behind an invoice is read soft-delete-exempt and nothing else could tell.
 
-**Working tree is clean and everything is committed.** `main` at **`72f13cc`** "Record the (a2)
-commit hash in CURRENT_STATE"; the increment itself is **`712c921`** "Phase 5 (a2): schema v4, and
-the backfill that checks itself". Behind them: `d087c2a` is the first Phase 5 boundary,
-`a068d63`/`eecd96b` is (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2` is
-Phase 4's (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
+**Verification changed shape, which was the point.** A phase now closes only after its layout check has
+run at **all three tiers** over a **written ladder of amounts** (D-057, and the project spec). The ladder
+lives in `test/support/money_magnitudes.dart`. The audit it demanded found a second overflowing money
+site — `tablePriceWidth`, wrong by exactly the cell padding it never accounted for — and cleared the
+dashboard tiles, which scale rather than clip.
 
-**Nothing is half-finished.** The session ended on a clean boundary at the owner's instruction, with
-(a2) complete, committed, verified on both target platforms, and its documentation written. A fresh
-session starts at the Next Action at the bottom of this file and needs nothing re-explained.
+**One new known issue, and it is a real one.** The money engine refuses an invoice above roughly
+30–42 million تومان that carries an invoice-level percentage discount: largest-remainder allocation
+multiplies before it divides, and the intermediate is checked against 2⁵³ for VM/Web parity. It
+surfaced only because the ladder goes to 100,000,000. Known issue 19; it needs a ruling in
+`core/money/`, not a patch in a screen.
 
-**The device debt from Phase 4's (b) and (c) is paid**, and the fold was measured on the Redmi rather
-than decided in the abstract — the numbers are in the (d) carry-over section below. **Note the
-collision when reading older sections of this file:** Phase 4 and Phase 5 both have increments
-lettered (a2), (b), (c) and (d). Every reference below names its phase; where one does not, it
-belongs to the section it sits in.
+**Working tree is clean and everything is committed.** `main` at the (b) commit; behind it `42bbaae`
+is the (a2) cold-resume note, `712c921` is (a2) itself, `d087c2a` is the first Phase 5 boundary,
+`a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` is (c), `3164b8f` is (b), `0e0cd37` is (a3), `7345ca2`
+is Phase 4's (a2), `bf4c02f` is (a), `d8682ee` is Phases 2 and 3.
+
+**Nothing is half-finished.** (b) is complete, verified at every tier by widget test and on Windows at
+the desktop tier on the real device, with its documentation written. **Note the collision when reading
+older sections of this file:** Phase 4 and Phase 5 both have increments lettered (a2), (b), (c) and
+(d). Every reference below names its phase; where one does not, it belongs to the section it sits in.
 
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (a2)
-flutter test:               PASS   (726/726, was 696)                         as of (a2)
-Android build:              PASS   debug APK built and installed for the (a2) device proof
+flutter analyze:            PASS   (No issues found)                          as of (b)
+flutter test:               PASS   (794/794, was 726)                         as of (b)
+Android build:              PASS   debug APK built (2026-09-01)
+Layout, all 3 tiers x 4 amounts (D-057):
+  widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart
+  device - Windows desktop: PASS   0 layout errors, 1264 x 681, Vazirmatn, all four rungs (2026-09-01)
+  device - Android phone:   OUTSTANDING  no device attached this session; belongs to (f)
 D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
 D-055 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
 D-052 proof - Windows:      PASS   both ladders: v2 -> v3 and v1 -> v3
@@ -100,7 +113,157 @@ Windows run:                PASS   the app starts and renders at the desktop tie
 Web build:                  NOT_RETESTED since plugins were added
 ```
 
-**Test count is 726**, was 696 at the end of the first Phase 5 boundary.
+**Test count is 794**, was 726 at the end of (a2).
+
+## What Phase 5 increment (b) delivered — `/invoices/:id`, and the money-width audit
+
+**Two things, and the smaller one was the screen.** The owner's ruling on (a2) was that the desktop
+overflow mattered more than the overflow: a defect firing on essentially every realistic Iranian
+invoice passed a phase close, because the device pass ran on one tier at whatever amounts the flow
+produced. So (b) carries a **process change** (D-057), an **audit of every fixed-width money site**,
+and the detail screen itself (D-058).
+
+### The process change — D-057
+
+**A phase closes only after its layout check has run at all three tiers, over a written ladder of
+amounts.** Both halves are load-bearing, and the ladder is named once so a check cannot quietly
+exercise a friendlier one:
+
+```
+test/support/money_magnitudes.dart
+  100,000 تومان    a small invoice; the rung everything already passed
+1,000,000 تومان    where the summary panel first overflowed
+10,000,000 تومان    an ordinary workshop or contractor invoice
+100,000,000 تومان    a large project invoice, and a plausible lifetime total for one customer
+```
+
+The project spec now carries the rule; D-057 carries the reasoning and the alternatives refused. A
+**measurement is not a check** — the panel's overflow was measurable for a whole increment before
+anyone measured it — so the artifact is a widget test that renders the real composed thing and lets a
+`RenderFlex` overflow fail on its own.
+
+### The audit — two sites were wrong, not one
+
+```
+summary panel grand total   AmountSize.large needs 376; detailPanelWidth 320 leaves 288
+                            -> over by 30 px at 1,000,000, 58 at 10,000,000, 86 at 100,000,000
+tablePriceWidth = 232       a cell spends AppSpacing.md on the gap, so the amount had 220
+                            -> over by 9 px at 100,000,000 تومان
+StatTile (dashboard,        four `large` figures in 274 px tiles - checked, and FINE:
+customer totals)            FittedBox scales rather than clips. Deliberate, and now tested.
+```
+
+- **The grand total steps down to `AmountSize.medium` on every tier.** Widening the panel and wrapping
+  the unit onto a second line were both weighed and refused — the first takes width from the table
+  D-053 already fought for, the second still overflows at the top rung *and* makes the panel jump under
+  the figure the user is reading. `dense` now controls spacing only, which is what it was for.
+- **`tablePriceWidth` is derived rather than chosen**: `amountWidthSmall + AppSpacing.md`. The old
+  value carried a comment claiming a ten-digit Toman figure fit; it had never accounted for the cell's
+  own padding, and the two cannot drift apart again.
+- **New tokens `AppLayout.amountWidthSmall / Medium / Large`** — 232 / 276 / 376, the measured width
+  each size needs at the ladder's ceiling. The rule they encode: **a container that cannot give an
+  amount the width its size needs takes a smaller size, never a clipped figure.**
+
+### The screen
+
+```
+lib/features/invoices/presentation/invoice_detail_screen.dart          NEW  the screen
+lib/features/invoices/presentation/widgets/invoice_document_lines.dart NEW  the stored line, both layouts
+lib/features/invoices/domain/invoice_party_view.dart                   NEW  InvoicePartyProvenance
+lib/core/widgets/record_field.dart                                     NEW  promoted from customer detail
+lib/core/theme/app_dimensions.dart                     + amountWidth*; tablePriceWidth derived
+lib/features/invoices/presentation/widgets/invoice_totals_summary.dart grand total -> medium
+lib/features/invoices/application/invoices_providers.dart              + invoiceDetail(id)
+lib/data/models/invoice_detail.dart                    + customerIsDeleted
+lib/data/repositories/drift/drift_invoice_repository.dart              _detail sets it
+lib/core/router/{destinations,app_router}.dart         + /invoices/:id, declared after `new`
+lib/features/invoices/presentation/invoices_screen.dart                rows tappable, both tiers
+lib/features/customers/presentation/customer_detail_screen.dart        rows tappable; uses RecordField
+lib/core/localization/arb/app_fa.arb                   + 25 strings
+test/support/money_magnitudes.dart                     NEW  the ladder (D-057)
+test/core/widgets/money_layout_test.dart               NEW  the sweep
+integration_test/invoice_detail_device_test.dart       NEW  the desktop device pass
+```
+
+- **Nothing on the screen computes.** Every figure on a line is a column on the row — since v4 that
+  includes the gross and the allocated share. A read site that multiplied `unitPrice × quantity` would
+  apply *today's* rounding rule to *yesterday's* document, where `single_calculation_path_test.dart`
+  cannot see it, because it never calls the engine at all.
+- **The party is `InvoiceDetail.party`, never `detail.customer`**, and the difference is finally
+  visible. `InvoicePartyProvenance` has four cases and **one of them is silence** — the ordinary case
+  says nothing, because a panel that explained itself on every invoice would train the user to skip the
+  explanation on the one invoice where it matters. The comparison is over the **whole** snapshot, not
+  the name: a corrected کد ملی moves a document as much as a rename, and it is the field an auditor
+  reconciles against.
+- **Soft deletion stacks with a rename**, which needed a new fact on the aggregate:
+  `InvoiceDetail.customerIsDeleted`. The customer behind an invoice is read soft-delete-exempt (§6
+  promises it is never hard-deleted), so `detail.customer` is a live record that may no longer be in the
+  customer list. `Customer` still carries no delete state, deliberately.
+- **Eight document columns do not fit, and the constraint is recorded rather than the layout squeezed.**
+  Six money columns at `tablePriceWidth` is 1464 logical pixels against the 1144 a desktop content
+  column has. Five columns carry the figures that vary independently — قیمت واحد, مبلغ کل, جمع سطر —
+  and the deductions run under the description as labelled lines, the shape the editor's table and
+  every card already use. **Every stored figure is on the row**; the eight-column layout is the
+  renderer's problem (§12), on a page rather than in a viewport, and it now has everything it needs.
+- **The party card sits *below* the lines on a narrow screen**, and the phone-height test is what found
+  it: above them it pushed the first line off a 400 × 800 phone entirely. That is D-044's finding about
+  the customer record card, rediscovered on the screen whose purpose is to show the lines. Every other
+  test there uses a tall viewport so assertions are about the page rather than scroll position; **one**
+  keeps the real phone height, so the ordering cannot regress silently.
+- **Read-only, deliberately.** Payments are (c), cancellation is (d), and there is no control here
+  pretending to do either (D-021). It does show `amountPaid` and `amountDue`, with the overpayment
+  called out — `amountDue` clamps at zero because an invoice cannot owe money, so an overpayment is
+  invisible in the figure while usually being a data-entry error.
+- **The two absence tests were inverted, not deleted** — `invoices_screen_test.dart` and
+  `customer_detail_screen_test.dart`. Deleting them would have left the tap untested at exactly the
+  moment it started doing something.
+- **68 new tests; 794 pass** (was 726): the money sweep (28), the detail screen (38), the party
+  provenance rule (7), the two inverted tap assertions and the soft-deleted-customer repository test.
+  Decisions recorded: **D-057**, **D-058**.
+
+### The device pass, stated by tier
+
+`integration_test/invoice_detail_device_test.dart` runs the whole ladder against the real screen on
+whichever target it is given — on Windows that is the desktop tier and the layout that was never
+checked — with a customer **renamed after issue** so D-052's notice renders, and an invoice whose gross
+was **nulled** so «ثبت‌نشده» has to fit where the widest figure would have gone.
+
+```
+=== PHASE 5 (b) DETAIL SCREEN ON DEVICE ===
+platform: windows          logical size : 1264.0 x 681.0    16sp renders at 16.0
+100,000 تومان     rendered      1,000,000 تومان     rendered
+10,000,000 تومان  rendered    100,000,000 تومان     rendered, «ثبت‌نشده» shown
+layout errors : 0
+```
+
+**Android is outstanding: no device was attached this session** (`flutter devices` lists Windows, Chrome
+and Edge; the emulator is offline). D-057 covers this case explicitly — the widget sweep covers all
+three tiers and the device pass is recorded as outstanding rather than assumed. It belongs to (f).
+
+### A new known issue, found by writing the device fixture
+
+**The money engine refuses a large invoice that carries an invoice-level discount.** Largest-remainder
+allocation computes `checkedMultiply(invoiceDiscount, lineNet)` before dividing, and that intermediate
+is checked against 2⁵³ so the VM and the Web reject the same inputs (D-002). The ceiling is therefore
+on a **product of two figures**, far below `kMaxAmountRial`:
+
+```
+5% invoice discount   refused above roughly  42,000,000 تومان
+10% invoice discount  refused above roughly  30,000,000 تومان
+```
+
+That is inside the range a real project invoice reaches, and it surfaced only because the ladder went
+to 100,000,000.
+
+**It is worse than "cannot be issued", and the difference was checked rather than assumed.**
+`InvoiceEditorState`'s constructor runs the engine, so the throw lands on the **preview** — verified
+directly: `MoneyRangeError: product out of range: 100000000 x 1000000000`. `InvoiceEditor.build` fails,
+and the screen renders `AsyncErrorView` in place of the form the user was filling in. The guard is doing
+exactly its job and nothing is silently wrong; the invoice simply cannot be entered.
+
+It is `core/money/`'s to answer, not a screen's, and it needs a ruling rather than a patch: allocate
+without the wide intermediate, or state the limit and surface it **as data rather than as an
+exception**, the way D-027's clamps already are. See known issue 19.
 
 ## What the first Phase 5 boundary delivered
 
@@ -656,14 +819,39 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 | 13 | Release builds signed with debug keys | Phase 15. |
 | 14 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
 | 15 | Android manifest hardening not done | Phase 9. |
-| 18 | **The desktop summary panel's grand total overflows at any realistic amount** | `AmountSize.large` inside `AppLayout.detailPanelWidth` (320): **30 px over at 1,000,000 تومان, 58 px at 10,000,000**; 100,000 fits. The `dense` phone-bar variant never overflows, which is why (d)'s Redmi pass saw nothing — it exercised only the phone tier. Found in (a2) and left for **(b)**, which builds the desktop detail screen. Widget-test metrics, so the threshold is indicative; magnitude-dependent and desktop-only is not. |
+| 18 | ~~The desktop summary panel's grand total overflows at any realistic amount~~ | **Resolved in (b)** (D-058). The grand total is `AmountSize.medium` on every tier: `large` needs 376 logical pixels and `detailPanelWidth` leaves 288. The audit that came with it found `tablePriceWidth` wrong too, and `money_layout_test.dart` now sweeps every fixed-width money site over the whole ladder. |
 | 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
+| 19 | **A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed** | Largest-remainder allocation calls `checkedMultiply(invoiceDiscount, lineNet)` before dividing, and the intermediate is checked against 2⁵³ so the VM and the Web refuse the same inputs (D-002). The ceiling is on a **product**, far below `kMaxAmountRial`: a 5% discount fails above roughly **42,000,000 تومان**, a 10% one above roughly **30,000,000**. **`InvoiceEditorState`'s constructor runs the engine**, so the throw happens on the *preview*, not at save: verified directly — `MoneyRangeError: product out of range: 100000000 x 1000000000`. `InvoiceEditor.build` therefore fails and the screen renders `AsyncErrorView` instead of the form the user was filling in. Nothing is silently wrong — the guard is doing exactly its job — but the invoice cannot be entered at all. Found in (b) at the ladder's top rung. **Needs a ruling in `core/money/`**, not a patch in a screen: allocate without the wide intermediate, or state the limit and refuse it as data rather than as an exception, the way D-027's clamps are surfaced. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
 ## Important context for a future session
 
+- **A phase closes only after its layout check has run at all three tiers, over the written ladder in
+  `test/support/money_magnitudes.dart`** (D-057). Never take the amounts from whatever
+  the dev database holds: a panel that fits at 100,000 تومان and breaks at 1,000,000 hides behind small
+  test data, and that is exactly how known issue 18 survived a phase close. A **measurement is not a
+  check** — write the widget test.
+- **A money width is magnitude-dependent, and the widths are named.**
+  `AppLayout.amountWidthSmall / Medium / Large` (232 / 276 / 376) are the measured widths each
+  `AmountSize` needs at the ladder's ceiling; `tablePriceWidth` is **derived** from the small one plus
+  the cell padding `AppTableRow` spends. **A container that cannot give an amount the width its size
+  needs takes a smaller size, never a clipped figure.** `money_layout_test.dart` is where a new
+  fixed-width money site joins the sweep. The one exception is `StatTile`, which scales in a
+  `FittedBox` — a tile is a headline, not a column to align down.
+- **The party on the detail screen is `InvoiceDetail.party`, and `InvoicePartyProvenance` decides what
+  to say about it** (D-052, D-058). Four cases and **one of them is silence**: explaining on every
+  invoice would train the user to skip the explanation on the one that matters. The comparison is over
+  the whole snapshot, not the name. `InvoiceDetail.customerIsDeleted` is a separate, stacking fact,
+  set by the repository because the customer behind an invoice is read soft-delete-exempt.
+- **Nothing on a read path may compute a document figure.** The detail screen renders stored columns
+  only — not `unitPrice × quantity`, not the sum of two deductions. A read site that multiplied would
+  apply today's rounding rule to yesterday's document, somewhere `single_calculation_path_test.dart`
+  cannot see, because it never calls the engine.
+- **The eight-column document line does not fit on a screen** (D-058): six money columns at
+  `tablePriceWidth` is 1464 logical pixels against the 1144 a desktop content column has. Five columns
+  plus labelled detail lines is the shape; the eight-column layout is Phase 7's, on a page.
 - **The cipher pragmas come BEFORE `pragma key`** (D-020). Never assert encryption with
   `PRAGMA cipher_version` or `PRAGMA cipher` — assert on the file header.
 - **A drift `alterTable` migration must NOT be wrapped in a transaction.** It turns foreign keys off
@@ -765,6 +953,34 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
   `flutter gen-l10n` after touching the ARB**, then commit the regenerated files.
 
 ## Recently changed files
+
+### Phase 5 increment (b) — the newest work
+
+```
+lib/features/invoices/presentation/invoice_detail_screen.dart          NEW  the screen
+lib/features/invoices/presentation/widgets/invoice_document_lines.dart NEW  the stored line
+lib/features/invoices/domain/invoice_party_view.dart                   NEW  InvoicePartyProvenance
+lib/core/widgets/record_field.dart                                     NEW  promoted from customer detail
+lib/core/theme/app_dimensions.dart          + amountWidthSmall/Medium/Large;
+                                              tablePriceWidth = amountWidthSmall + AppSpacing.md
+lib/features/invoices/presentation/widgets/invoice_totals_summary.dart grand total -> medium
+lib/features/invoices/application/invoices_providers.dart              + invoiceDetail(id)
+lib/data/models/invoice_detail.dart                    + customerIsDeleted
+lib/data/repositories/drift/drift_invoice_repository.dart              _detail sets it
+lib/core/router/destinations.dart           + invoiceDetail, invoiceDetailFor
+lib/core/router/app_router.dart             + /invoices/:id, declared AFTER `new`
+lib/features/invoices/presentation/invoices_screen.dart      rows tappable, card and table
+lib/features/customers/presentation/customer_detail_screen.dart  rows tappable; uses RecordField
+lib/core/localization/arb/app_fa.arb        + 25 strings
+test/support/money_magnitudes.dart          NEW  the ladder (D-057)
+test/core/widgets/money_layout_test.dart    NEW  the sweep, 28 tests
+test/features/invoices/invoice_detail_screen_test.dart  NEW  38 tests
+test/features/invoices/invoice_party_view_test.dart     NEW   7 tests
+test/features/screen_harness.dart           + kTabletSize, kAllTierSizes, invoice route stubs
+test/features/invoices/fake_invoice_repository.dart     + details map for watchDetail
+integration_test/invoice_detail_device_test.dart        NEW  the desktop device pass
+The project spec                               + the three-tier layout rule (D-057)
+```
 
 ### Phase 5 increment (a2) — the newest work
 
@@ -994,52 +1210,70 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 5 increment (a2) — `schemaVersion = 4`.** Three nullable columns, and a backfill that runs
-the money engine over every pre-v4 invoice and writes only what it can reproduce to the Rial,
-leaving null where it cannot (D-056). The read path says «ثبت‌نشده» for those, never a zero. 726
-tests pass, analyzer clean, and the device proof passes **both ladders on the Redmi and on
-Windows**. One finding recorded and not fixed: the desktop summary panel's grand total overflows at
-any realistic invoice amount (known issue 18) — it belongs to (b).
+**Phase 5 increment (b) — `/invoices/:id`, plus the process change and the money-width audit the
+owner's ruling on (a2) called for.**
 
-**The owner then stopped the session**, before reviewing (a2) and before any of (b) began. There is
-no work in progress and no open question waiting on an answer: the next session starts cold at the
-Next Action below.
+- **D-057, a process change binding on every remaining phase.** A phase closes only after its layout
+  check has run at **all three tiers** over a **written ladder of amounts**
+  (`test/support/money_magnitudes.dart`: 100,000 / 1,000,000 / 10,000,000 / 100,000,000 تومان).
+  The project spec carries the rule.
+- **The audit found a second overflowing site.** Known issue 18 is fixed — the summary panel's grand
+  total is `AmountSize.medium` on every tier — and `tablePriceWidth` was wrong by exactly the cell
+  padding it never accounted for. Both widths are now derived from named, measured tokens, and
+  `money_layout_test.dart` sweeps them. The dashboard tiles were checked and are fine.
+- **The detail screen** (D-058): the document laid out from stored columns alone, «ثبت‌نشده» on the
+  line table as well as the panel, the party snapshot distinguished from the live record in four cases
+  one of which is silence, rows tappable, and both absence tests inverted rather than deleted.
+- **794 tests pass** (was 726), analyzer clean, Android debug APK builds, and the new device pass runs
+  clean on Windows at the desktop tier — the tier that was never checked.
+- **One new known issue, and it is a real one (19).** A large invoice with an invoice-level percentage
+  discount cannot be *entered*: the engine's 2⁵³ guard fires inside largest-remainder allocation, and
+  because `InvoiceEditorState`'s constructor runs the engine the throw lands on the preview and the
+  form is replaced by an error view. Verified directly, not inferred.
 
 ## Next action
 
-**Build Phase 5 increment (b): `/invoices/:id`, the detail screen, and make the list rows tappable.**
+**Review (b), then build Phase 5 increment (c): recording and deleting a payment, with the derived
+status recomputed in the same transaction.**
 
-It is the first consumer of everything (a2) stored, so the document line can now be laid out from
-storage alone: شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع,
-with no read site multiplying or rounding anything.
+Two things to settle before or alongside (c), in this order:
 
-What it must do, from the owner's standing constraints and from what (a2) leaves it:
+1. **Known issue 19 needs a ruling, and it is arguably ahead of (c).** An invoice above roughly
+   30–42 million تومان with an invoice-level percentage discount cannot be entered at all — the form
+   is replaced by an error view as the user types. The engine is behaving correctly (D-002 keeps VM
+   and Web refusing the same inputs); what is wrong is that a legitimate document is unreachable and
+   the failure arrives as an exception rather than as data. Two candidate answers, both `core/money/`
+   decisions: **allocate without the wide intermediate** (the ratio can be applied without
+   materialising `discount × lineNet`), or **surface the limit as data**, the way D-027's clamps are,
+   so the editor warns instead of collapsing. This is a money decision and it is the owner's to make.
+2. **The Android device pass for (b) is outstanding.** No device was attached this session
+   (`flutter devices` listed Windows, Chrome and Edge; the emulator was offline). Under D-057 that is
+   recorded rather than assumed, and it belongs to (f) — but `integration_test/invoice_detail_device_test.dart`
+   runs on any target and should be pointed at the Redmi when it is next connected. Free space on the
+   device first (known issue 10b).
 
-1. **Fix the desktop summary panel overflow first, or decide against it explicitly.** The grand total
-   at `AmountSize.large` overflows `AppLayout.detailPanelWidth` (320) by 30 px at 1,000,000 تومان and
-   58 px at 10,000,000 — every realistic Iranian invoice. Measured in (a2) and left alone there
-   because (a2) was a migration. This screen is where the panel next renders a stored invoice.
-2. **The party is `InvoiceDetail.party`, never `detail.customer`** (D-052), and the screen must make
-   clear **which** it is showing when the customer has since been renamed or soft-deleted.
-   `detail.customer` is the live record — contact detail, and where a "go to customer" action leads.
-3. **Render «ثبت‌نشده» where a figure was not recorded** (D-055, D-056), on the line table as well as
-   the summary. `InvoiceSummaryFigures.ofStored` is the header's source; `InvoiceItem.gross` and
-   `InvoiceItem.allocatedInvoiceDiscount` are the line's, and both are `Money?`. Never a zero, never a
-   blank cell.
-4. **Register `/invoices/:id` with the screen** (D-021) and remove the test asserting the route's
-   absence — it is in `invoices_screen_test.dart`, group "routes that do not exist yet". Rows become
-   tappable in the same change.
-5. **Test the line table at the width it is composed into**, not only at its own — the rule (d)
-   surfaced and the project spec now records.
+**What (c) itself must do, from the owner's standing constraints:**
 
-After (b) the order is (c) payments, (d) cancellation, (e) filters and paging, (f) the device pass and
-the phase close.
+- **Payments recompute the derived status in the same transaction** (§6). Recording **and deleting**,
+  both directions, tested at the repository — the write side already exists from Phase 4 (d) and
+  `PaymentRepository.record` recomputes; deletion is what needs building beside it.
+- **The detail screen is where the UI goes.** It already shows «پرداخت‌شده» and «مانده» from
+  `InvoiceDetail.amountPaid` / `amountDue`, and it is deliberately read-only today: (c) is what makes
+  those figures gain a control, and the overpayment notice is already there for when a user records
+  more than the invoice asked.
+- **`acceptsPayments` is the guard**, and it is the repository's, not the screen's — the same rule
+  `updateDraft` proved in Phase 4 (c): a test must call the repository **directly** and assert it
+  refuses in `draft` and `cancelled`, and that the refusal left nothing behind.
+- **New layout goes through D-057.** Any new money figure or fixed-width site joins
+  `money_layout_test.dart`, and (c)'s screen work is checked at all three tiers over the ladder.
+
+After (c) the order is (d) cancellation, (e) filters and paging, (f) the device pass and the phase
+close.
 
 ### Standing constraints for the rest of Phase 5, from the owner
 
 - **The detail screen shows the party snapshot for issued invoices and the live record for drafts**
-  (D-052) — and **must make clear which it is** when a customer has since been renamed or
-  soft-deleted. `InvoiceDetail.party` is the resolver; `InvoiceDetail.customer` is the live row.
+  (D-052), and **says which** — done in (b) via `InvoicePartyProvenance` (D-058).
 - **Payments recompute derived status in the same transaction** (§6). **Recording and deleting both,
   both directions**, tested at the repository.
 - **Cancellation is the correction path** for an issued invoice and must not silently edit. The
@@ -1047,8 +1281,6 @@ the phase close.
   spent* (D-013).
 - **List filters over status, customer and Jalali period, at the query level** — not in Dart over a
   loaded page.
-- **Rows become tappable and `/invoices/:id` registers with the screen.** The test asserting the
-  route's absence comes out then, deliberately — it is in
-  `invoices_screen_test.dart`, group "routes that do not exist yet".
 - **Paging `watchForCustomer`**, known issue 16.
-- **A device pass before the phase is called done**, as in (d).
+- **A device pass before the phase is called done** — now at **all three tiers**, over the written
+  ladder (D-057), not on one tier at whatever amounts the flow produces.

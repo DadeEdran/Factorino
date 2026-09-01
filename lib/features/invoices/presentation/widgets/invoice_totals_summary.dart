@@ -48,6 +48,10 @@ class InvoiceTotalsSummary extends StatelessWidget {
 
   /// Tighter spacing for the sticky bar on a phone, where the panel shares the
   /// screen with the form rather than sitting beside it.
+  ///
+  /// **Spacing only.** It used to pick the grand total's size as well —
+  /// [AmountSize.large] in the panel, one step down in the bar — and that is
+  /// what overflowed; see [_GrandTotal].
   final bool dense;
 
   @override
@@ -101,11 +105,7 @@ class InvoiceTotalsSummary extends StatelessWidget {
               color: theme.colorScheme.outlineVariant,
             ),
           ),
-          _GrandTotal(
-            totals: totals,
-            strings: strings,
-            size: dense ? AmountSize.medium : AmountSize.large,
-          ),
+          _GrandTotal(totals: totals, strings: strings),
           // Only where a figure is genuinely missing, and beneath the grand
           // total rather than beside the gross: the reassurance is about the
           // amount the user is looking at, and it would not fit in the row.
@@ -182,27 +182,38 @@ class _Row extends StatelessWidget {
 
 /// The figure the user actually agrees to.
 ///
-/// The most salient element on the panel (§10) -- `AmountSize.large` where
-/// there is room, and one step down inside a phone's bottom bar, where the bar
-/// has to leave the form visible above it.
+/// The most salient element on the panel (§10), which is a claim about this
+/// panel and not about the application: at [AmountSize.medium] it is a bold 19
+/// against the 15 of the rows above it and the 14 of their labels.
 ///
 /// **Stacked, not label-beside-figure, and that is measured rather than
 /// stylistic.** The panel is 320 logical pixels wide on desktop; a grand total
-/// in the large amount style, sharing a row with «مبلغ قابل پرداخت», overflowed
-/// it by 58 pixels — an amount clipped on the one line of a document that must
-/// never be clipped. Giving the figure the full width of the panel is what lets
-/// it stay the largest thing on it. Found by
-/// `invoice_editor_screen_test.dart`, which is the first test this screen had.
+/// sharing a row with «مبلغ قابل پرداخت» overflowed it by 58 pixels — an amount
+/// clipped on the one line of a document that must never be clipped. Giving the
+/// figure the full width of the panel is what lets it stay the largest thing on
+/// it. Found by `invoice_editor_screen_test.dart`, which is the first test this
+/// screen had.
+///
+/// **[AmountSize.medium], on every tier, and that is the second measurement.**
+/// Stacking bought the panel one magnitude and no more. Inside
+/// `AppLayout.detailPanelWidth` the card leaves 288 logical pixels, and the
+/// large style needs [AppLayout.amountWidthLarge] — 376 — at the top of the
+/// stress ladder, 344 at ten million تومان, 316 at one million. So the panel
+/// overflowed on **every invoice above a million تومان**, which is very nearly
+/// every real one. It went unseen for a whole increment because the phone
+/// variant already stepped down a size and never overflowed at any magnitude,
+/// and the phone was the tier the device pass ran on (D-057).
+///
+/// The size does not vary by tier any more. It could — the phone's bar has 336
+/// pixels and the desktop panel has 288 — but a grand total that is one size on
+/// a phone and another on a desktop is a difference nobody asked for, and the
+/// binding constraint is the narrower of the two. `dense` keeps the spacing
+/// difference, which is what it was for.
 class _GrandTotal extends StatelessWidget {
-  const _GrandTotal({
-    required this.totals,
-    required this.strings,
-    required this.size,
-  });
+  const _GrandTotal({required this.totals, required this.strings});
 
   final InvoiceSummaryFigures totals;
   final AppStrings strings;
-  final AmountSize size;
 
   @override
   Widget build(BuildContext context) {
@@ -217,7 +228,11 @@ class _GrandTotal extends StatelessWidget {
           style: theme.textTheme.titleSmall,
         ),
         const SizedBox(height: AppSpacing.xs),
-        AmountText(totals.grandTotal, unitLabel: strings.unitToman, size: size),
+        AmountText(
+          totals.grandTotal,
+          unitLabel: strings.unitToman,
+          size: AmountSize.medium,
+        ),
       ],
     );
   }

@@ -750,6 +750,110 @@ class AppStringsFa extends AppStrings {
       'برای این فاکتور در وضعیت فعلی نمی‌توان پرداخت ثبت کرد.';
 
   @override
+  String invoiceDetailTitle(String number) {
+    return 'فاکتور $number';
+  }
+
+  @override
+  String get invoiceDetailNotFoundTitle => 'این فاکتور پیدا نشد';
+
+  @override
+  String get invoiceDetailNotFoundBody =>
+      'ممکن است حذف شده باشد. به فهرست فاکتورها برگردید.';
+
+  @override
+  String get invoiceDetailBackToList => 'فهرست فاکتورها';
+
+  @override
+  String get invoiceDetailPartySection => 'طرف حساب';
+
+  @override
+  String get invoiceDetailPartyDiverged =>
+      'نام یا مشخصات این مشتری پس از صدور فاکتور تغییر کرده است. آنچه در بالا آمده همان چیزی است که روی این سند ثبت شده و تغییر نمی‌کند.';
+
+  @override
+  String invoiceDetailPartyRecordNow(String name) {
+    return 'در پروندهٔ مشتری: $name';
+  }
+
+  @override
+  String get invoiceDetailPartyDraft =>
+      'این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پروندهٔ فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.';
+
+  @override
+  String get invoiceDetailPartyNoSnapshot =>
+      'مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پروندهٔ فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.';
+
+  @override
+  String get invoiceDetailCustomerDeleted =>
+      'این مشتری از فهرست مشتریان حذف شده است. فاکتورهای او دست‌نخورده باقی می‌مانند.';
+
+  @override
+  String get invoiceDetailGoToCustomer => 'رفتن به پروندهٔ مشتری';
+
+  @override
+  String get invoiceDetailContactSection => 'تماس';
+
+  @override
+  String get invoiceDetailIssueDate => 'تاریخ صدور';
+
+  @override
+  String get invoiceDetailDueDate => 'سررسید';
+
+  @override
+  String get invoiceDetailNoDueDate => 'بدون سررسید';
+
+  @override
+  String get invoiceDetailNotesSection => 'یادداشت';
+
+  @override
+  String get invoiceDetailLinesSection => 'سطرهای فاکتور';
+
+  @override
+  String get invoiceDetailNoLines => 'این فاکتور سطری ندارد.';
+
+  @override
+  String get invoiceDetailPaidLabel => 'پرداخت‌شده';
+
+  @override
+  String get invoiceDetailDueLabel => 'مانده';
+
+  @override
+  String get invoiceDetailOverpaidNote =>
+      'مبلغ پرداختی از مبلغ فاکتور بیشتر است.';
+
+  @override
+  String get invoiceLineColumnGross => 'مبلغ کل';
+
+  @override
+  String invoiceLineLabelInvoiceDiscountShare(String amount) {
+    return 'سهم تخفیف فاکتور $amount';
+  }
+
+  @override
+  String invoiceLineLabelNet(String amount) {
+    return 'مبلغ پس از تخفیف $amount';
+  }
+
+  @override
+  String invoiceLineLabelGross(String amount) {
+    return 'مبلغ کل $amount';
+  }
+
+  @override
+  String invoiceLineLabelTaxAmount(String rate, String amount) {
+    return 'مالیات $rate: $amount';
+  }
+
+  @override
+  String get invoiceDetailInvoiceDiscountShareLabel => 'سهم تخفیف فاکتور';
+
+  @override
+  String invoiceLineLabelUnrecorded(String label) {
+    return '$label ثبت‌نشده';
+  }
+
+  @override
   String get errorGenericTitle => 'خطایی رخ داد';
 
   @override

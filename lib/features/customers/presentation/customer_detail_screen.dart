@@ -7,7 +7,6 @@ import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/widgets/amount_text.dart';
 import '../../../core/widgets/app_card.dart';
@@ -15,6 +14,7 @@ import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/async_error_view.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/page_body.dart';
+import '../../../core/widgets/record_field.dart';
 import '../../../core/widgets/skeleton.dart';
 import '../../../core/widgets/stat_tile.dart';
 import '../../../data/models/customer.dart';
@@ -44,10 +44,12 @@ import 'customer_delete_dialog.dart';
 ///   and no affirmative word anywhere near the value. A user shown "verified"
 ///   stops checking, which is exactly when a transposed digit that happens to
 ///   checksum survives onto a tax document.
-/// * **Invoice rows are not tappable.** `/invoices/:id` does not exist until
-///   Phase 5, and an affordance leading nowhere is worse than its absence
-///   (D-021, one level down). A test asserts the absence, so it reads as
-///   deliberate rather than forgotten.
+/// * **Invoice rows lead to the invoice.** They were inert until Phase 5 (b),
+///   because `/invoices/:id` was unregistered and an affordance leading nowhere
+///   is worse than its absence (D-021, one level down); the row and the route
+///   became real in the same change. `InvoiceCard` and `InvoiceTableRow` carry
+///   the navigation themselves, so this screen and the invoice list cannot come
+///   to disagree about where a row goes.
 ///
 /// **Nothing here is logged.** This is the first screen that shows a customer's
 /// whole record in one place — name, company, mobile, national ID, economic ID,
@@ -325,12 +327,12 @@ class _RecordCardState extends State<_RecordCard> {
 
   List<Widget> _rows(Customer customer, AppStrings strings) {
     return <Widget>[
-      _RecordRow(
+      RecordField(
         label: strings.customerFieldCompany,
         value: customer.companyName,
         strings: strings,
       ),
-      _RecordRow(
+      RecordField(
         label: strings.customerFieldMobile,
         // Grouped and isolated: an Iranian mobile is a run of digits inside
         // Persian text, and without the isolate it can reorder against
@@ -341,7 +343,7 @@ class _RecordCardState extends State<_RecordCard> {
         isIdentifier: true,
         strings: strings,
       ),
-      _RecordRow(
+      RecordField(
         label: strings.customerFieldNationalId,
         // D-030: the value, and nothing that calls it verified. No tick,
         // no badge, no affirmative word -- a passing checksum narrows the
@@ -352,7 +354,7 @@ class _RecordCardState extends State<_RecordCard> {
         isIdentifier: true,
         strings: strings,
       ),
-      _RecordRow(
+      RecordField(
         label: strings.customerFieldEconomicId,
         value: customer.economicId == null
             ? null
@@ -360,12 +362,12 @@ class _RecordCardState extends State<_RecordCard> {
         isIdentifier: true,
         strings: strings,
       ),
-      _RecordRow(
+      RecordField(
         label: strings.customerFieldAddress,
         value: customer.address,
         strings: strings,
       ),
-      _RecordRow(
+      RecordField(
         label: strings.customerFieldNotes,
         value: customer.notes,
         strings: strings,
@@ -418,75 +420,6 @@ class _RecordHeader extends StatelessWidget {
             ],
           ),
         ),
-      ),
-    );
-  }
-}
-
-/// One label-and-value pair.
-///
-/// Stacked rather than side by side, at every tier. A Persian label and a
-/// left-to-right identifier on one line put two directions in one row, and the
-/// value's position then depends on the label's length; stacked, every value
-/// starts at the same edge and a column of them can be scanned.
-class _RecordRow extends StatelessWidget {
-  const _RecordRow({
-    required this.label,
-    required this.value,
-    required this.strings,
-    this.isIdentifier = false,
-    this.isLast = false,
-  });
-
-  final String label;
-
-  /// Null renders as «ثبت نشده», never as blank space.
-  final String? value;
-
-  final AppStrings strings;
-
-  /// Renders in the identifier style — tabular, isolated, and not the body
-  /// face, so a number is legible as a number.
-  final bool isIdentifier;
-
-  final bool isLast;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final bool recorded = value != null && value!.isNotEmpty;
-
-    return Padding(
-      padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.lg),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Text(
-            label,
-            style: AppTypography.label.copyWith(
-              color: theme.colorScheme.onSurfaceVariant,
-              fontFamily: AppTypography.fontFamily,
-            ),
-          ),
-          const SizedBox(height: AppSpacing.xxs),
-          if (!recorded)
-            Text(
-              strings.fieldNotRecorded,
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
-              ),
-            )
-          else if (isIdentifier)
-            Text(
-              value!,
-              style: AppTypography.identifier.copyWith(
-                color: theme.colorScheme.onSurface,
-                fontFamily: AppTypography.fontFamily,
-              ),
-            )
-          else
-            Text(value!, style: theme.textTheme.bodyMedium),
-        ],
       ),
     );
   }

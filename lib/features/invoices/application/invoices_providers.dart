@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/utils/list_query.dart';
+import '../../../data/models/invoice_detail.dart';
 import '../../../data/models/invoice_list_item.dart';
 import '../../../data/providers.dart';
 
@@ -29,4 +30,24 @@ class InvoiceListQuery extends _$InvoiceListQuery {
 Stream<List<InvoiceListItem>> invoiceList(Ref ref) {
   final ListQuery query = ref.watch(invoiceListQueryProvider);
   return ref.watch(invoiceRepositoryProvider).watchList(limit: query.limit);
+}
+
+/// One invoice, with its lines, its payments and its customer, as a live query.
+///
+/// **Assembled by the repository in one read**, never by this provider and
+/// never by the screen (§3): a page that fetched the header, then the lines,
+/// then the payments would be doing data-layer work in the presentation layer
+/// and would render a half-loaded document while it did.
+///
+/// Watched rather than read, because the detail screen is where a payment is
+/// recorded (increment (c)) and the derived status is recomputed by the write —
+/// so the page has to follow the row rather than the row having to tell the
+/// page. It re-reads on any change to the invoice table, which is correct but
+/// not minimal; that is known issue 4 and belongs to Phase 13.
+///
+/// Auto-disposed with the screen, which is the whole reason it is a family
+/// rather than a single provider holding an id.
+@riverpod
+Stream<InvoiceDetail?> invoiceDetail(Ref ref, String id) {
+  return ref.watch(invoiceRepositoryProvider).watchDetail(id);
 }

@@ -170,19 +170,47 @@ abstract final class AppLayout {
   /// A table column holding a unit of measure.
   static const double tableUnitWidth = 96;
 
+  /// The width an `AmountText` needs at each size, at the top of the stress
+  /// ladder — 100,000,000 تومان, eleven glyphs with its separators, plus the
+  /// unit label beside it (D-057).
+  ///
+  /// **Measured, not estimated**, by `money_layout_test.dart`, which fails if a
+  /// figure ever outgrows the number beside it. Measured under the widget
+  /// tests' fallback font, whose glyphs are much wider than Vazirmatn's, so the
+  /// shipped layout has margin rather than sitting on the limit.
+  ///
+  /// **These are the reason a money site cannot be sized by eye.** An amount is
+  /// the one thing on a document that may not be clipped, truncated or
+  /// ellipsised, and its width depends on a magnitude the layout has no control
+  /// over — which is how a panel that fits every figure in the demo database
+  /// overflows on every real invoice. A container that cannot give an amount
+  /// the width its size needs takes a **smaller size**, not a clipped figure.
+  static const double amountWidthSmall = 232;
+
+  /// See [amountWidthSmall].
+  static const double amountWidthMedium = 276;
+
+  /// See [amountWidthSmall]. The largest size in the scale needs nearly four
+  /// hundred pixels, which is more than [detailPanelWidth] has — so it belongs
+  /// on a surface with real width, or inside a [StatTile], whose `FittedBox`
+  /// scales rather than clips.
+  static const double amountWidthLarge = 376;
+
   /// A table column holding an amount.
   ///
   /// Fixed rather than flexed, because an amount column is aligned rather than
   /// filled: the figures hug the column's leading edge so their last digits
   /// line up, and a flexed column would leave that alignment floating at a
   /// different place on every window width.
-  /// Widened from 190 when the invoice list arrived: a product's unit price
-  /// and an invoice's grand total are not the same magnitude, and the column
-  /// sized for the first overflows on the second. Sized for a ten-digit Toman
-  /// figure with its unit label beside it -- and measured under the widget
-  /// tests' fallback font, whose glyphs are wider than Vazirmatn's, so the
-  /// shipped layout has margin rather than sitting exactly on the limit.
-  static const double tablePriceWidth = 232;
+  ///
+  /// **Derived rather than chosen**, and that is the fix for how it was wrong.
+  /// It read 232 with a comment claiming a ten-digit Toman figure fit — but a
+  /// table cell spends `AppSpacing.md` of its width on the gap to the next
+  /// column, so the amount only ever had 220 of it, and 100,000,000 تومان
+  /// overflowed by 9 pixels. Sizing the column as *the amount's width plus the
+  /// gap it does not get to use* is what stops the next person having to
+  /// rediscover the difference (D-057).
+  static const double tablePriceWidth = amountWidthSmall + AppSpacing.md;
 
   /// A table column holding a Jalali date.
   ///
@@ -205,6 +233,13 @@ abstract final class AppLayout {
   /// extra width only puts the value further from its label. The main column
   /// keeps the rest, because the invoice table is the part that needs room for
   /// five columns without truncating.
+  ///
+  /// **It cannot hold an [AmountSize.large] figure**, and the invoice summary
+  /// panel found that out the expensive way: 320 leaves 288 inside the card's
+  /// padding, and [amountWidthLarge] is 376. The panel's grand total steps down
+  /// a size rather than the panel widening, because widening it takes the space
+  /// from the table beside it — which is what D-053 already measured and
+  /// refused once.
   static const double detailPanelWidth = 320;
 
   /// The measure a wrapped rail label is given inside

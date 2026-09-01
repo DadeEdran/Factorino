@@ -153,15 +153,22 @@ class FakeInvoiceRepository implements InvoiceRepository {
     return Stream<T>.value(value);
   }
 
+  /// What [watchDetail] and [findDetail] answer with, keyed by invoice id.
+  ///
+  /// Assigned rather than passed to the constructor, because most tests here
+  /// never open one invoice and the list fixtures would all have to grow a
+  /// parameter they ignore. An id with no entry answers **null**, which is the
+  /// stale-deep-link case the detail screen has to handle and would otherwise
+  /// need a second fake to reach.
+  final Map<String, InvoiceDetail> details = <String, InvoiceDetail>{};
+
+  @override
+  Future<InvoiceDetail?> findDetail(String id) async => details[id];
+
+  @override
+  Stream<InvoiceDetail?> watchDetail(String id) => _emit(details[id]);
+
   // ---- not exercised by these tests --------------------------------------
-
-  @override
-  Future<InvoiceDetail?> findDetail(String id) =>
-      throw UnimplementedError('not exercised by these tests');
-
-  @override
-  Stream<InvoiceDetail?> watchDetail(String id) =>
-      throw UnimplementedError('not exercised by these tests');
 
   /// Whether a write should fail, for the screen's «ذخیره ممکن نشد» path.
   bool failWrites = false;

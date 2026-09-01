@@ -546,12 +546,21 @@ void main() {
     });
   });
 
-  group('routes that do not exist yet', () {
-    testWidgets('a row is not tappable', (WidgetTester tester) async {
-      // `/invoices/:id` is deliberately unregistered until the detail screen
-      // exists (D-021). A row that navigated would land on nothing -- so the
-      // absence of the affordance is the feature, and it is asserted rather
-      // than assumed.
+  group('a row opens the invoice it names', () {
+    // **This group is the one it replaces, inverted.** Until Phase 5 (b) it was
+    // called "routes that do not exist yet" and asserted that a row had no
+    // `onTap` and that tapping went nowhere: `/invoices/:id` was deliberately
+    // unregistered until the screen it opens existed (D-021, one level down),
+    // so the absence of the affordance was the feature and was asserted rather
+    // than assumed.
+    //
+    // The route and the screen arrived together in (b), so the assertion turns
+    // over in the same change instead of being quietly deleted — a row still
+    // has exactly one defined destination, and it is still pinned. Deleting it
+    // would have left the tap untested at precisely the moment it started doing
+    // something.
+
+    testWidgets('on a desktop table row', (WidgetTester tester) async {
       await pumpScreen(
         tester,
         const InvoicesScreen(),
@@ -567,11 +576,33 @@ void main() {
       final AppTableRow row = tester.widget<AppTableRow>(
         find.byType(AppTableRow),
       );
-      expect(row.onTap, isNull);
+      expect(row.onTap, isNotNull);
 
       await tester.tap(find.byType(AppTableRow));
       await tester.pumpAndSettle();
-      expect(lastLocation, '/');
+      expect(lastLocation, '/invoices/a');
+    });
+
+    testWidgets('on a mobile card', (WidgetTester tester) async {
+      // Asserted on both tiers rather than one. They are different widgets with
+      // the same job, and the card is the one a phone user ever touches.
+      await pumpScreen(
+        tester,
+        const InvoicesScreen(),
+        overrides: withRepository(
+          FakeInvoiceRepository(<InvoiceListItem>[
+            item('a', liveCustomerName: 'مریم احمدی'),
+            item('b', liveCustomerName: 'رضا کاظمی', sequence: 2),
+          ]),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      // The second card, so a test that navigated to whichever row happened to
+      // be first would not pass by luck.
+      await tester.tap(find.byType(InvoiceCard).at(1));
+      await tester.pumpAndSettle();
+      expect(lastLocation, '/invoices/b');
     });
   });
 }

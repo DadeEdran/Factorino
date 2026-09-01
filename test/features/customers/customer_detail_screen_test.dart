@@ -404,11 +404,13 @@ void main() {
       expect(find.byType(FloatingActionButton), findsNothing);
     });
 
-    testWidgets('rows are not tappable until /invoices/:id exists', (
-      WidgetTester tester,
-    ) async {
-      // Asserted rather than left implicit, so the absence reads as deliberate
-      // (D-021, one level down). The invoice detail screen is Phase 5.
+    testWidgets('a row opens that invoice', (WidgetTester tester) async {
+      // The counterpart of the assertion this replaces. Until Phase 5 (b) this
+      // test asserted the row was **inert**, because `/invoices/:id` was
+      // unregistered and an affordance leading nowhere is worse than its
+      // absence (D-021, one level down). The route and the screen exist now, so
+      // the assertion turns over rather than being deleted: the row still has
+      // exactly one defined behaviour, and it is still asserted.
       await pumpDetail(
         tester,
         customers: FakeCustomerRepository(<Customer>[customer()]),
@@ -425,7 +427,7 @@ void main() {
 
       await tester.tap(find.byType(InvoiceCard));
       await tester.pumpAndSettle();
-      expect(lastLocation, '/');
+      expect(lastLocation, '/invoices/i1');
     });
 
     testWidgets('the row heading is the invoice number, not the customer', (

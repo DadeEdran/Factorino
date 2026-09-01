@@ -437,8 +437,9 @@ after use.
 - **Search and filtering on the invoice list.** Customers and products have a search field; invoices
   do not. Filtering by status, customer and date range is Phase 5 work (Invoice Management), and
   adding a half-version here would have to be replaced there.
-- **Tapping an invoice.** `/invoices/:id` is **not registered**, and rows are not tappable — asserted
-  by a test, so the absence is deliberate rather than forgotten. The detail screen is Phase 5.
+- **Tapping an invoice.** `/invoices/:id` is **not registered** at this point in the project, and rows
+  are not tappable — asserted by a test, so the absence is deliberate rather than forgotten. Both
+  arrived together in Phase 5 (b), and that test was inverted rather than deleted.
 - **Creating or editing an invoice.** Phase 4. The invoice list's empty state explains and stops
   rather than offering a button.
 - **Report period selection.** The dashboard covers the current Jalali month only; choosing a period
@@ -627,7 +628,8 @@ Persian copy that explains what survives, two distinct empty states and a Persia
     rows beneath it.
   - `InvoiceCard` / `InvoiceTableRow` reused, with `showCustomer: false` — the name would be
     identical on every row of that customer's own page (D-044).
-  - **Invoice rows stay non-tappable**, asserted by a test, until `/invoices/:id` exists in Phase 5.
+  - **Invoice rows stay non-tappable**, asserted by a test, until `/invoices/:id` exists — which it
+    does as of Phase 5 (b), where the assertion was inverted into its counterpart.
   - A designed empty state for a customer with no invoices, offering **no** create action: the
     invoice form is Phase 4.
   - Two genuinely different layouts: a sticky record panel beside a virtualized table on desktop; on
@@ -1142,14 +1144,14 @@ paths were reviewed in (c). What is new:
 
 ## Phase 5 — Invoice Management and Payments
 
-**Status:** `IN_PROGRESS` — the split is agreed and the first boundary is delivered.
+**Status:** `IN_PROGRESS` — (a2) and (b) are delivered; payments, cancellation, filters and the phase close remain.
 
 | # | Increment | Status |
 |---|---|---|
 | — | (d)'s two carry-overs: The project spec amended, the phone fold (D-054) | `COMPLETED` 2026-08-27 |
 | a | **The D-047 ruling** (D-055): store the gross, and two per-line figures | `COMPLETED` 2026-08-27 — decision only, awaiting review |
 | a2 | **`schemaVersion = 4`** — the three columns and their backfill (D-055, D-056) | `COMPLETED` 2026-08-27 |
-| b | `/invoices/:id`, the detail screen; rows become tappable | `NOT_STARTED` |
+| b | **`/invoices/:id`, the detail screen**; rows become tappable; known issue 18 fixed and every money width audited (D-057, D-058) | `COMPLETED` 2026-09-01 |
 | c | Payments: record and delete, both recomputing derived status in the same transaction (§6) | `NOT_STARTED` |
 | d | Cancellation, and the Persian copy that says what it does and does not do | `NOT_STARTED` |
 | e | List filters over status, customer and Jalali period, at the query level; paging `watchForCustomer` | `NOT_STARTED` |
@@ -1165,9 +1167,9 @@ recording with derived `partiallyPaid` / `paid` status recomputed on every payme
 both layouts, query-level paging, status badges and the derived `overdue`. The whole write side
 landed in (d): `issue`, `cancel`, `softDeleteDraft`, `PaymentRepository.record` and the derived-status
 recomputation inside the payment's own transaction all exist and are tested. What remains here is the
-**detail screen** at `/invoices/:id` (registered with the screen, per D-021 — the list's rows are
-deliberately non-tappable until it exists, asserted by a test), the **filters** over status, customer
-and date range, and the **UI** for recording a payment and for cancelling an invoice.
+**detail screen** at `/invoices/:id` — delivered in (b), registered with the screen per D-021, and
+the list's rows became tappable in the same change — the **filters** over status, customer and date
+range, and the **UI** for recording a payment and for cancelling an invoice.
 
 **Increment — (d)'s carry-overs, completed 2026-08-27**
 
@@ -1245,8 +1247,8 @@ The project's **third migration**, and the first that backfills. Three nullable 
   `invoice_preview_matches_write_test.dart`. Decisions recorded: **D-056**; D-054 gained the owner's
   ruling that the lines empty state keeps its 250 px.
 
-**Known issue found and not fixed here.** The desktop summary panel's grand total
-(`AmountSize.large` at `AppLayout.detailPanelWidth` = 320) **overflows at any amount from
+**Known issue found and not fixed here — resolved in (b).** The desktop summary panel's grand total
+(`AmountSize.large` at `AppLayout.detailPanelWidth` = 320) **overflowed at any amount from
 1,000,000 تومان upward** — 30 px at 1,000,000 and 58 px at 10,000,000, measured in a widget test.
 Every realistic Iranian invoice is above that threshold. The dense variant used by the phone bar does
 not overflow at any magnitude, which is why (d)'s Redmi pass reported no layout errors: it only
@@ -1260,6 +1262,74 @@ writes only within the user's own encrypted database and **logs nothing** — it
 `InvoiceFiguresBackfillReport` rather than printed, because §7 forbids logging monetary amounts and a
 migration is exactly where a helpful debug line would be added. No new permission or platform surface;
 the threat model is unchanged.
+
+**Increment (b) — `/invoices/:id`, the detail screen, completed 2026-09-01**
+
+The first read site for everything (a2) stored, and the first screen that has to make D-052's
+snapshot-versus-record distinction visible. **Decisions recorded: D-057 (process) and D-058.**
+
+- **Known issue 18 is fixed, and the audit behind it is what took the work.** The desktop summary
+  panel's grand total was `AmountSize.large` inside a 320-pixel panel; it needs **376** and had 288,
+  so it overflowed on every invoice above 100,000 تومان — 30 px at 1,000,000, 58 at 10,000,000, 86 at
+  100,000,000. It steps down to `AmountSize.medium` on every tier rather than the panel widening, and
+  `dense` now controls spacing only. Widening the panel and wrapping the unit were both weighed and
+  refused; the reasoning is in D-058 §1.
+- **Every fixed-width money site was checked at the same magnitudes, as instructed, and a second one
+  was wrong.** `tablePriceWidth` read 232 while a table cell spends `AppSpacing.md` of its column on
+  the gap to the next — so the amount only ever had 220, and 100,000,000 تومان overflowed by 9 px. It
+  is now **derived**: `amountWidthSmall + AppSpacing.md`. The dashboard and customer tiles were checked
+  and are fine, because `StatTile` scales its value in a `FittedBox`.
+- **`AppLayout.amountWidthSmall / Medium / Large`** are new: the measured width each size needs at the
+  ladder's ceiling. A container that cannot give an amount the width its size needs takes a smaller
+  size, never a clipped figure.
+- **The screen.** `/invoices/:id` registered with the screen it opens (D-021); party, dates, lines,
+  summary, paid and outstanding. Desktop puts the document in the main column and the party in a side
+  panel; the two narrow tiers are one column, ordered summary → lines → party → dates → notes.
+- **The party is `InvoiceDetail.party`, never `detail.customer`**, and `InvoicePartyProvenance` decides
+  which of four sentences the screen owes the user — including the important one, **silence**, when the
+  document and the record still agree. Soft deletion is orthogonal and stacks, which needed
+  `InvoiceDetail.customerIsDeleted`: the customer behind an invoice is read soft-delete-exempt, so the
+  live record may no longer be in the customer list and nothing else on the aggregate could say so.
+- **«ثبت‌نشده» on the line table as well as the summary** (D-055, D-056), never a zero and never a
+  blank cell, with the label kept attached so the user can see *which* figure is missing.
+- **Eight document columns do not fit and the constraint is recorded** rather than the layout squeezed
+  (D-058 §3): six money columns at `tablePriceWidth` is 1464 logical pixels against the 1144 a desktop
+  content column has. Five columns carry the figures that vary independently; the deductions run under
+  the description as labelled lines. Every stored figure is on the row.
+- **Rows are tappable, and the two tests asserting the absence were inverted rather than deleted** —
+  one on the invoice list, one on the customer detail screen.
+- **`RecordField` promoted** out of the customer detail screen into `core/widgets/`, since the party
+  panel needs exactly it and a second copy would be a third way of rendering a missing field.
+- **The phone-height test found a real ordering defect.** The party card was above the lines and pushed
+  the first line off a 400 × 800 phone entirely — D-044's finding about the customer record card,
+  rediscovered. One test keeps the real phone height so it cannot regress silently.
+- **68 new tests; 794 pass** (was 726): the money sweep (28), the detail screen (38), the party
+  provenance rule (7), the two inverted tap assertions and the soft-deleted-customer repository test.
+
+**Verification (D-057), stated by tier:**
+
+```
+widget sweep, all three tiers, all four rungs   PASS  money_layout_test.dart (28)
+                                                      invoice_detail_screen_test.dart (12 of 38)
+device pass - Windows, desktop tier, Vazirmatn  PASS  0 layout errors at 1264 x 681, all four rungs,
+                                                      with a renamed customer and an unrecorded gross
+device pass - Android, phone tier               OUTSTANDING - no device attached this session
+```
+
+**New known issue, found by writing the device fixture and not fixed here.** Largest-remainder
+allocation computes `checkedMultiply(invoiceDiscount, lineNet)` before dividing, and that intermediate
+is checked against 2^53 so the VM and the Web reject the same inputs (D-002). The ceiling is therefore
+on the **product of two figures**, far below `kMaxAmountRial`: a 5% invoice-level discount refuses an
+invoice above roughly **42 million تومان**, and a 10% one above roughly **30 million**. That is inside
+the range a real project invoice reaches. It belongs to `core/money/` and needs a ruling, not a patch
+in a screen — see known issue 19.
+
+**Security note (increment b).** A read-only screen over data the application already stores; no new
+data class, no new input, no new permission or platform surface. It is the first screen to show a whole
+**party** — name, company, کد ملی, کد اقتصادی, address — beside a column of amounts, which makes it the
+likeliest place for an innocuous debug line to violate §7; it makes **no log call at all**, and
+`logging_path_test.dart` scans for the accessors by name. D-030 holds: a stored کد ملی is displayed with
+no tick, no badge and no affirmative word anywhere near it. The threat model is unchanged.
 
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
 a data-integrity control: only `draft` invoices are editable or deletable.

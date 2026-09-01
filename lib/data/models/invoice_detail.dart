@@ -22,6 +22,7 @@ class InvoiceDetail {
     required this.customer,
     required this.items,
     required this.payments,
+    this.customerIsDeleted = false,
   });
 
   final Invoice invoice;
@@ -32,6 +33,23 @@ class InvoiceDetail {
   /// row a "go to customer" action navigates to. It is **not** what the
   /// document says about the party — see [party].
   final Customer customer;
+
+  /// Whether [customer] is a **soft-deleted** row.
+  ///
+  /// The customer behind an invoice is read soft-delete-exempt, because §6
+  /// guarantees a referenced customer is soft-deleted and never removed, and an
+  /// invoice that stopped opening when its customer was deleted would break the
+  /// promise the delete dialog makes in Persian. That exemption is what makes
+  /// this flag necessary: [customer] is a live record that may no longer be in
+  /// the customer list, and a screen offering «رفتن به مشتری» has to know the
+  /// difference between a record and a headstone.
+  ///
+  /// [Customer] itself carries no delete state on purpose — everywhere else in
+  /// the application a deleted customer simply is not returned, and putting the
+  /// flag on the model would invite a screen to check it where the query has
+  /// already answered. This aggregate is the one read path where the question
+  /// survives, so this is where the answer lives.
+  final bool customerIsDeleted;
 
   /// The party as the **document** states them (D-052).
   ///

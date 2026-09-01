@@ -86,9 +86,20 @@ abstract final class AppRoutes {
   /// The invoice form.
   ///
   /// `/invoices/new`, and — for the same reason `/customers/new` is declared
-  /// before `/customers/:id` — it must stay ahead of any future
-  /// `/invoices/:id`, which does not exist yet (Phase 5).
+  /// before `/customers/:id` — it stays ahead of [invoiceDetail], or a link to
+  /// the form would resolve to a detail page for an invoice whose id is the
+  /// word "new".
   static const String invoiceCreate = '/invoices/new';
+
+  /// One invoice as a document: its party, its lines and what it comes to.
+  ///
+  /// Registered in Phase 5 (b), **with the screen it opens** (D-021). Until
+  /// then the invoice list's rows were deliberately not tappable and a test
+  /// asserted the absence; that test came out in the same change that put this
+  /// here, so the affordance and the destination arrived together.
+  static const String invoiceDetail = '/invoices/:id';
+
+  static String invoiceDetailFor(String id) => '/invoices/$id';
 
   /// The new product or service form.
   static const String productCreate = '/products/new';

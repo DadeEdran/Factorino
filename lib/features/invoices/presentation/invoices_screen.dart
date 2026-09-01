@@ -35,11 +35,11 @@ import '../domain/invoice_status_view.dart';
 /// builds every row it is handed, which is invisible at fifty invoices and
 /// fatal at five thousand.
 ///
-/// **There is a create button now, and rows are still not tappable.** The
-/// invoice form arrived in Phase 4 (d), so «فاکتور جدید» leads somewhere; the
-/// invoice *detail* screen is Phase 5, and `/invoices/:id` stays unregistered
-/// until the screen it opens exists (D-021, one level down). An affordance
-/// leading nowhere is worse than its absence.
+/// **Rows are tappable as of Phase 5 (b)**, and that is the same rule read the
+/// other way: `/invoices/:id` was unregistered and the rows were inert until the
+/// screen they open existed (D-021, one level down), so the affordance and its
+/// destination arrived in one change. The test asserting the route's absence
+/// came out in that change rather than being left to rot green.
 class InvoicesScreen extends ConsumerWidget {
   const InvoicesScreen({super.key});
 
@@ -243,6 +243,7 @@ class InvoiceTableRow extends StatelessWidget {
 
     return AppTableRow(
       columns: invoiceColumns(strings, includeCustomer: showCustomer),
+      onTap: () => context.go(AppRoutes.invoiceDetailFor(item.invoice.id)),
       cells: <Widget>[
         Text(
           // The number, or the Persian copy for a draft that has none yet.
@@ -314,6 +315,7 @@ class InvoiceCard extends StatelessWidget {
     );
 
     return AppCard(
+      onTap: () => context.go(AppRoutes.invoiceDetailFor(item.invoice.id)),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[

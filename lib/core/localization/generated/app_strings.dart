@@ -1478,6 +1478,174 @@ abstract class AppStrings {
   /// **'برای این فاکتور در وضعیت فعلی نمی‌توان پرداخت ثبت کرد.'**
   String get errorPaymentNotAcceptedBody;
 
+  /// Page title for one invoice. The placeholder arrives from invoiceNumberLabel, already bidi-isolated for a real number and already the Persian «بدون شماره» for a draft, so this string never has to know which it got.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور {number}'**
+  String invoiceDetailTitle(String number);
+
+  /// A stale deep link, or the invoice was deleted while the page was opening. Said rather than rendered as an empty document, which would read as an invoice with nothing on it.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور پیدا نشد'**
+  String get invoiceDetailNotFoundTitle;
+
+  /// No description provided for @invoiceDetailNotFoundBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'ممکن است حذف شده باشد. به فهرست فاکتورها برگردید.'**
+  String get invoiceDetailNotFoundBody;
+
+  /// No description provided for @invoiceDetailBackToList.
+  ///
+  /// In fa, this message translates to:
+  /// **'فهرست فاکتورها'**
+  String get invoiceDetailBackToList;
+
+  /// Heading over the party as the DOCUMENT states them -- Invoice.party, never the live customer row (D-052). «طرف حساب» rather than «مشتری» because this is the party named on the document, which after a rename is not the same thing as the customer record.
+  ///
+  /// In fa, this message translates to:
+  /// **'طرف حساب'**
+  String get invoiceDetailPartySection;
+
+  /// The customer record has changed since the invoice was issued, so the screen is showing the snapshot and the customer list shows something else. Without this the snapshot reads as stale data rather than as the document's own statement (D-052).
+  ///
+  /// In fa, this message translates to:
+  /// **'نام یا مشخصات این مشتری پس از صدور فاکتور تغییر کرده است. آنچه در بالا آمده همان چیزی است که روی این سند ثبت شده و تغییر نمی‌کند.'**
+  String get invoiceDetailPartyDiverged;
+
+  /// The live record's current name, shown beside the diverged notice so the user can find the customer in the list. Named as the record, not as a correction -- neither one is wrong.
+  ///
+  /// In fa, this message translates to:
+  /// **'در پروندهٔ مشتری: {name}'**
+  String invoiceDetailPartyRecordNow(String name);
+
+  /// A draft has no snapshot on purpose: it is not a document yet and should pick up a correction (D-052). Says both halves -- what is true now, and what changes at issue.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پروندهٔ فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.'**
+  String get invoiceDetailPartyDraft;
+
+  /// An invoice issued before schema v3 has no party snapshot and never will (D-052 refuses to fabricate one). The same admission «ثبت‌نشده» makes for a missing figure, applied to the party -- with the reassurance that the money is unaffected, for the reason invoiceSummaryGrossUnrecordedNote carries one.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پروندهٔ فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.'**
+  String get invoiceDetailPartyNoSnapshot;
+
+  /// The customer row is soft-deleted. Restates the promise the delete dialog made, at the moment the user would otherwise wonder whether the invoice is broken.
+  ///
+  /// In fa, this message translates to:
+  /// **'این مشتری از فهرست مشتریان حذف شده است. فاکتورهای او دست‌نخورده باقی می‌مانند.'**
+  String get invoiceDetailCustomerDeleted;
+
+  /// Leads to the LIVE customer record, which is what detail.customer is for -- never to the snapshot, which is not a row and has nowhere to lead.
+  ///
+  /// In fa, this message translates to:
+  /// **'رفتن به پروندهٔ مشتری'**
+  String get invoiceDetailGoToCustomer;
+
+  /// The mobile number, which is deliberately not part of the party snapshot: contact detail, not document content, and it should resolve live so a reprint next year reaches the number the customer has now (D-052).
+  ///
+  /// In fa, this message translates to:
+  /// **'تماس'**
+  String get invoiceDetailContactSection;
+
+  /// No description provided for @invoiceDetailIssueDate.
+  ///
+  /// In fa, this message translates to:
+  /// **'تاریخ صدور'**
+  String get invoiceDetailIssueDate;
+
+  /// No description provided for @invoiceDetailDueDate.
+  ///
+  /// In fa, this message translates to:
+  /// **'سررسید'**
+  String get invoiceDetailDueDate;
+
+  /// An invoice with no due date is never overdue -- there is nothing to be late against. Said rather than left blank, on «بدون شماره»'s principle.
+  ///
+  /// In fa, this message translates to:
+  /// **'بدون سررسید'**
+  String get invoiceDetailNoDueDate;
+
+  /// No description provided for @invoiceDetailNotesSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'یادداشت'**
+  String get invoiceDetailNotesSection;
+
+  /// No description provided for @invoiceDetailLinesSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'سطرهای فاکتور'**
+  String get invoiceDetailLinesSection;
+
+  /// A saved invoice with no lines. Rare but reachable, and it is the one case where a gross of zero is a real figure rather than a missing one (D-056).
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور سطری ندارد.'**
+  String get invoiceDetailNoLines;
+
+  /// No description provided for @invoiceDetailPaidLabel.
+  ///
+  /// In fa, this message translates to:
+  /// **'پرداخت‌شده'**
+  String get invoiceDetailPaidLabel;
+
+  /// No description provided for @invoiceDetailDueLabel.
+  ///
+  /// In fa, this message translates to:
+  /// **'مانده'**
+  String get invoiceDetailDueLabel;
+
+  /// An overpayment is invisible in the remaining balance by design -- it clamps at zero, because an invoice cannot owe money. Surfaced rather than hidden: it is usually a data-entry error.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ پرداختی از مبلغ فاکتور بیشتر است.'**
+  String get invoiceDetailOverpaidNote;
+
+  /// unitPrice x quantity, before any discount (section 4 step 1) -- the column an Iranian invoice prints as مبلغ کل. Stored since schema v4 and NEVER recomputed at a read site (D-055); null on a pre-v4 row the backfill refused, where the cell says «ثبت‌نشده».
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ کل'**
+  String get invoiceLineColumnGross;
+
+  /// This line's share of the invoice-level discount, allocated by largest remainder (section 4 step 4) and stored since v4. Without it the line's net cannot be explained on the document -- it is already net of this amount and the summary deducts the same discount again.
+  ///
+  /// In fa, this message translates to:
+  /// **'سهم تخفیف فاکتور {amount}'**
+  String invoiceLineLabelInvoiceDiscountShare(String amount);
+
+  /// The line after both deductions, before tax -- مبلغ پس از تخفیف on the printed line.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ پس از تخفیف {amount}'**
+  String invoiceLineLabelNet(String amount);
+
+  /// The line's gross on a card, where there are no columns to put it in. The stored figure (D-055) -- never unitPrice x quantity worked out at the read site. Bare grouped numerals, matching the other detail lines on the same card, whose unit is carried by the amount above them.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ کل {amount}'**
+  String invoiceLineLabelGross(String amount);
+
+  /// The resolved rate AND the tax it came to, on a stored document line. The editor's invoiceLineLabelTax shows the rate alone, which is right on a form where the amount is a row away and about to change; on a document the amount is what the customer reconciles.
+  ///
+  /// In fa, this message translates to:
+  /// **'مالیات {rate}: {amount}'**
+  String invoiceLineLabelTaxAmount(String rate, String amount);
+
+  /// The bare label, for the case where the share itself was never recorded and invoiceLineLabelUnrecorded has to name which figure is missing. Kept apart from invoiceLineLabelInvoiceDiscountShare so the two cannot drift into naming the same figure differently.
+  ///
+  /// In fa, this message translates to:
+  /// **'سهم تخفیف فاکتور'**
+  String get invoiceDetailInvoiceDiscountShareLabel;
+
+  /// A line-level figure that was never recorded (D-055). Keeps the label so the user can see WHICH figure is missing, instead of a row that quietly has one fewer fact on it than its neighbours.
+  ///
+  /// In fa, this message translates to:
+  /// **'{label} ثبت‌نشده'**
+  String invoiceLineLabelUnrecorded(String label);
+
   /// Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user.
   ///
   /// In fa, this message translates to:

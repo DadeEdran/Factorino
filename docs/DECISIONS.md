@@ -2736,3 +2736,207 @@ a zero would have to write the code to do it.
 - **Making the backfill's counts a log line.** Rejected: §7 forbids logging figures, and the counts
   are the migration's own result. `InvoiceFiguresBackfillReport` returns them, and the tests assert on
   them.
+
+---
+
+## D-057 — A phase closes on a layout pass at all three tiers, with the amounts written into the check
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — a **process** change, binding on every remaining phase
+**Prompted by:** the desktop summary panel overflow found in Phase 5 (a2) (known issue 18)
+**Extends:** D-053 (a widget tested at its own width has not been tested at the width it is composed
+into), and the project spec
+
+### What went wrong, stated plainly
+
+Phase 4 closed on (d)'s device pass, which reported **zero layout errors**, and the phase was accepted
+on that report. The report was true and the conclusion drawn from it was not:
+
+- the pass ran on the Redmi, so it exercised the **phone tier only**;
+- the Windows check for that phase was *"the app starts and renders at the desktop tier"*;
+- the amounts it exercised were whatever the flow happened to produce.
+
+Under those three conditions a defect that fires on essentially **every realistic Iranian invoice** —
+a grand total above one million Toman, on desktop — passed through a phase close and was found two
+increments later, by a migration, by accident. The `dense` phone variant of the same widget never
+overflows at any magnitude, which is exactly why the phone pass was silent.
+
+**That is a gap in how a phase is verified, not a widget to fix.** The widget is fixed in (b); this
+entry fixes the verification, because the next such defect will be in a different widget and the same
+pass would miss it again.
+
+### The rule
+
+**A phase is not `COMPLETED` until its layout check has run at all three tiers — mobile, tablet and
+desktop — over a written ladder of amounts.** Both halves are load-bearing:
+
+**All three tiers.** A tier that is not exercised is not verified, and "the app starts" is not a
+layout check — it is a check that the app starts. Where a real device is available for one tier, the
+other two are covered by the widget-level tier check; where no device is available at all, the widget
+check covers all three and the device pass is recorded as outstanding rather than assumed.
+
+**The amounts are written into the check, never taken from whatever the dev database holds.** A
+summary panel that fits at 100,000 Toman and breaks at 1,000,000 is a defect that hides behind small
+test data, and the Windows dev database's twelve demo invoices are small test data. The ladder is
+named once, in `test/support/money_magnitudes.dart`, so a check cannot quietly exercise a friendlier
+one:
+
+| Toman | Rial | Why this rung |
+|---|---|---|
+| 100,000 | 1,000,000 | A small invoice; the rung everything already passed |
+| 1,000,000 | 10,000,000 | Where the summary panel first overflowed |
+| 10,000,000 | 100,000,000 | An ordinary invoice for a workshop or a contractor |
+| 100,000,000 | 1,000,000,000 | A large project invoice, and a plausible lifetime total for one customer |
+
+The ladder is a **ceiling to design against**, not a prediction. `kMaxAmountRial` is far above its top
+rung; the point is that every fixed-width money site states the magnitude it holds and is tested at
+it, so the width is a decision somebody made rather than one the demo data made for them.
+
+### What a layout check is
+
+A widget test that renders the **real** composed screen at a tier's real width with a rung's amount in
+it, and lets a `RenderFlex` overflow fail the test on its own. A measurement printed into a log is not
+a check — the previous overflow was measurable for a whole increment before anybody measured it.
+
+`test/core/widgets/money_layout_test.dart` is the first of these and is where a new fixed-width money
+site is added to the sweep. A device pass, where one runs, is *additional* to it and not a substitute:
+synthetic taps at the device's own metrics in Vazirmatn prove something the fallback test font cannot,
+and the fallback test font — whose glyphs are much wider than Vazirmatn's — proves something a single
+device cannot.
+
+### Alternatives rejected
+
+- **"Run the device pass on three devices."** There is one device. The rule would be aspirational,
+  and an aspirational gate is a gate that gets waived at the moment it would have caught something.
+- **A ladder per screen, chosen for each.** Every screen would end up with the ladder that passes.
+  One ladder, named once, is what makes an exception visible as an exception.
+- **Testing at `kMaxAmountRial`.** Sizing a column for 9×10¹⁵ Rial would give every money column the
+  width of half a table for a figure no Iranian invoice will carry. The ladder's top rung is chosen to
+  be large and real, which is the property that makes the width defensible.
+
+---
+
+## D-058 — The invoice detail screen: what fits, what is said, and where the party goes
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — implemented as Phase 5 increment (b)
+**Implements:** D-055, D-056 (the first read site for what v4 stored) and D-052 (the party
+distinction made visible). **Extends:** D-053, D-044, D-021, D-037. **Applies:** D-057.
+
+### 1. Known issue 18 is fixed by taking a size off the figure, not by widening the panel
+
+`AmountSize.large` needs **376** logical pixels at the top of the ladder. `detailPanelWidth` is 320,
+which leaves 288 inside the card. So the grand total overflowed at **1,000,000 تومان by 30 pixels**,
+at **10,000,000 by 58**, and at **100,000,000 by 86** — every invoice above the smallest rung.
+
+Three fixes were available and two were refused:
+
+- **Widen the panel to ~404.** Refused: the panel is narrow *by design* — it holds label-and-value
+  pairs read down a column, and every pixel it gains comes off the table beside it, which is the trade
+  D-053 already measured and refused once. Widening a shared token to accommodate one widget's font
+  size is the tail wagging the dog.
+- **Wrap the unit onto its own line at `large`.** Refused twice over. It still overflows at the top
+  rung (308 against 288 for the digits alone), and it makes the panel change height as the user types
+  — jumping the figure they are reading, which is the thing the stacked layout was introduced to stop.
+- **Take the grand total to `AmountSize.medium`, on every tier.** Taken. It needs 276 and fits every
+  rung with room. §10 asks the amount to be *the most salient element on its card*, which is a claim
+  about the card: bold 19 against the 15 of the rows above it and the 14 of their labels is the most
+  salient thing on this panel. `large` is for a surface with real width — the desktop sticky bar, a
+  `StatTile` — and `dense` now controls spacing only, which is what it was for.
+
+**The general rule, made checkable.** `AppLayout.amountWidthSmall / Medium / Large` are the measured
+widths each size needs at the ladder's ceiling, and `money_layout_test.dart` fails if a figure outgrows
+the number beside it. A container that cannot give an amount the width its size needs takes a **smaller
+size**, never a clipped figure.
+
+### 2. `tablePriceWidth` was wrong by exactly the padding it forgot
+
+It read `232` with a comment claiming a ten-digit Toman figure fit. `AppTableRow` spends
+`AppSpacing.md` of every column on the gap to the next one, so the amount only ever had 220 — and
+100,000,000 تومان overflowed by 9 pixels. It is now `amountWidthSmall + AppSpacing.md`, **derived
+rather than chosen**, so the column and the figure it holds cannot drift apart again. This is the
+audit the owner asked for after known issue 18: every fixed-width money site checked at the same
+magnitudes, not only the one that was found.
+
+**The dashboard and customer tiles were checked and are fine**, for a reason worth writing down:
+`StatTile` wraps its value in a `FittedBox`, so four `large` figures in 274-pixel tiles scale instead
+of clipping. That is the one money site in the application where a figure may change size, and what
+makes it acceptable is that a tile is a headline rather than a column to align down.
+
+### 3. Eight document columns do not fit, so the table carries five and the rest are lines
+
+The printed Iranian line is شرح · تعداد · مبلغ واحد · مبلغ کل · تخفیف · مبلغ پس از تخفیف · مالیات ·
+جمع — **six money columns**. At `tablePriceWidth` that is 1464 logical pixels before the description
+gets any, against the **1144** a desktop content column has at `maxContentWidth`. Eight columns do not
+fit at any window size.
+
+Same shape of answer as D-053: state the constraint rather than squeeze the layout. The three figures
+that vary independently keep columns — قیمت واحد, مبلغ کل, جمع سطر — and the deductions between them
+run under the description as labelled detail lines, which is the shape the editor's table and every
+card on the narrow tiers already use. **Every stored figure is on the row**; what changes is whether it
+is a column or a line. The eight-column layout is the renderer's problem (§12), on a page rather than
+in a viewport, and it now has every figure it needs.
+
+**Nothing on the screen computes.** Not `unitPrice × quantity`, not the sum of two deductions. A read
+site that multiplied would be applying *today's* rounding rule to *yesterday's* document, and it would
+do it where `single_calculation_path_test.dart` cannot see it, because it never calls the engine.
+
+### 4. The party notice: four cases, and one of them is silence
+
+`InvoicePartyProvenance` decides what the screen owes the user about the name it is showing:
+
+| Case | What is said |
+|---|---|
+| Snapshot still matches the record | **Nothing** |
+| Snapshot differs from the record | The document is right, and here is what the record says now |
+| Draft | It follows the record on purpose, and freezes at issue |
+| Issued before v3, no snapshot | The party was never recorded; the live record is standing in |
+
+**The silent case is the load-bearing one.** A panel that explained itself on every invoice would train
+the user to skip the explanation on the one invoice where it matters. The comparison is over the whole
+snapshot rather than the name, because D-052 chose those fields precisely as the ones a correction
+touches — a corrected کد ملی moves a document as much as a rename does, and it is the field an auditor
+reconciles against.
+
+**Soft deletion is orthogonal and stacks.** A customer can be both renamed and deleted, and the two are
+separately actionable: one is about which name is right, the other about why they are not in the list.
+That needed a new fact on the aggregate — `InvoiceDetail.customerIsDeleted` — because the customer
+behind an invoice is read **soft-delete-exempt** (§6 promises it is never hard-deleted), so
+`detail.customer` is a live record that may no longer be in the customer list. `Customer` itself
+deliberately carries no delete state: everywhere else in the application a deleted customer simply is
+not returned, and a flag on the model would invite a screen to check what the query already answered.
+
+### 5. The party goes **below** the lines on a narrow screen
+
+Written the other way round first, and the phone-height test found it: a party card has no upper bound
+on its height — five fields, up to three notices, a contact block — so above the lines it pushed the
+first line off a 400 × 800 phone entirely. That is D-044's finding about the customer record card,
+rediscovered on the one screen whose purpose is to show the lines. Order is now summary → lines →
+party → dates → notes, which is also the order the desktop tier reads in.
+
+Every other test on that screen uses a tall viewport, so content assertions are about the page rather
+than about scroll position; **one test keeps the real phone height** and asserts the first line is
+reachable without scrolling. Without it that ordering could regress silently.
+
+### 6. Read-only, deliberately
+
+Recording a payment is (c) and cancelling is (d). There is no control here that pretends to do either:
+an affordance leading nowhere is worse than its absence (D-021), and that applies to a button on a page
+as much as to an item in a nav rail. What the screen does show is `amountPaid` and `amountDue` — reads,
+not writes — with the overpayment called out, because `amountDue` clamps at zero (an invoice cannot owe
+money) and an overpayment is therefore invisible in the figure while usually being a data-entry error.
+
+### 7. `/invoices/:id` and the row, in one change
+
+D-021 read the other way: the rows were inert and the route unregistered until the screen existed, so
+the affordance and its destination arrive together. **The two tests asserting the absence were
+inverted, not deleted** — one on the invoice list, one on the customer detail screen. Deleting them
+would have left the tap untested at exactly the moment it started doing something.
+
+### 8. `RecordField` was promoted out of the customer screen
+
+Label above value, «ثبت نشده» where the value is empty, an identifier style for a کد ملی. The invoice
+detail screen needs precisely that for the party, and a second copy would have been the third way this
+application renders a missing field. The stacked layout came with it, along with the reason it exists:
+a Persian label and a left-to-right identifier on one row put two directions in one line and make the
+value's position depend on the label's length.

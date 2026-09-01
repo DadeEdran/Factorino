@@ -5,6 +5,7 @@ import '../../features/customers/presentation/customer_detail_screen.dart';
 import '../../features/customers/presentation/customer_form_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
+import '../../features/invoices/presentation/invoice_detail_screen.dart';
 import '../../features/invoices/presentation/invoice_editor_screen.dart';
 import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/products/presentation/product_form_screen.dart';
@@ -16,12 +17,12 @@ import 'destinations.dart';
 
 /// The router (D-009).
 ///
-/// **Only routes whose screens exist are registered.** The remaining routes
-/// named in the project spec — product detail and invoice detail — arrive with
-/// the screens they open, in later phases. `/invoices/new` arrived with
-/// Phase 4 (d). Registering
-/// them now would mean a typed URL or a restored deep link could land on a
-/// route that resolves to nothing, which is the same failure D-021 rejects for
+/// **Only routes whose screens exist are registered.** The one route named in
+/// the project spec that is still absent is product detail, and it arrives with
+/// the screen it opens. `/invoices/new` arrived with Phase 4 (d) and
+/// `/invoices/:id` with Phase 5 (b), each with its screen. Registering one
+/// early would mean a typed URL or a restored deep link could land on a route
+/// that resolves to nothing, which is the same failure D-021 rejects for
 /// گزارش‌ها, one level down.
 ///
 /// Customer detail arrived in Phase 2, with its screen. `/products/:id` did
@@ -78,6 +79,11 @@ GoRouter createRouter() {
                 path: 'new',
                 builder: (BuildContext context, GoRouterState state) =>
                     const InvoiceEditorScreen(),
+              ),
+              GoRoute(
+                path: ':id',
+                builder: (BuildContext context, GoRouterState state) =>
+                    InvoiceDetailScreen(invoiceId: state.pathParameters['id']!),
               ),
             ],
           ),

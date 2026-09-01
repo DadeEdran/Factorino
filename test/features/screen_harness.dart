@@ -51,6 +51,9 @@ Future<void> pumpScreen(
       // on the other side.
       for (final String path in <String>[
         '/invoices',
+        '/invoices/new',
+        // After `/invoices/new`, exactly as the real router declares it.
+        '/invoices/:id',
         '/customers',
         '/customers/new',
         '/customers/:id/edit',
@@ -112,6 +115,19 @@ const Size kDesktopSize = Size(1400, 900);
 
 /// A phone.
 const Size kMobileSize = Size(400, 800);
+
+/// A tablet: past `Breakpoints.tablet` and short of `Breakpoints.desktop`.
+///
+/// The tier nothing had a size for until D-057, which is a large part of why
+/// nothing was checked at it.
+const Size kTabletSize = Size(840, 1100);
+
+/// Every tier, named, so a sweep cannot quietly leave one out (D-057).
+const Map<String, Size> kAllTierSizes = <String, Size>{
+  'mobile': kMobileSize,
+  'tablet': kTabletSize,
+  'desktop': kDesktopSize,
+};
 
 /// Resolves the Persian strings from a pumped widget tree, so a test asserts
 /// against the ARB rather than against a Persian literal copied into the test —
