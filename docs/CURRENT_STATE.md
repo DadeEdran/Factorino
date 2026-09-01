@@ -2262,6 +2262,28 @@ baseline above still sits on a PDF-free commit.
    around it already breaks correctly. Deleting it is not the fix — that joins «پیشنویس» across a
    boundary that must not join. **The first thing Phase 7 fixes**, a correctness item under D-068.
 
+**The owner reviewed the rendered pages and found the part that matters most:** the ZWNJ box appears
+in the probe's **own section heading** — «نیم‌فاصله» printed «نیم▯فاصله». So it is in the
+application's **own ARB strings**, not only in test data or customer input: «پیش‌نویس»,
+«پرداخت‌نشده», «وب‌سایت» are all already shipped. A document with boxes through its own labels is not
+deliverable, so this is the **highest-priority item in Phase 7, ahead of layout**. The remedy must
+preserve the join break (verified on the rendered page, ش final and ن initial), must be tested over
+**every** ARB entry containing U+200C rather than over examples, and must not be mistaken for a fix to
+finding 2.
+
+**And the print contract is settled, by measurement (probe 3).** The tempting default — "LTR
+`Directionality` everywhere, no control characters" — is **wrong and destructive**. Thirteen field
+shapes were rendered bare and wrapped: the wrapper is a **no-op** on every field a document actually
+prints (invoice number, national ID, economic ID, phone in all three forms **including the spaced
+`+۹۸` one**, Jalali date, amount, percent, negative amount, parenthesised number) and it **reverses
+any Persian inside it** — «فاکتور» becomes «روتکاف», «تومان» becomes «ناموت».
+
+The contract is two structural rules with no per-field special-casing: **(1) no control characters
+reach the renderer**, stripped at the view-model boundary with a test; **(2) the label and the value
+are separate widgets, never one string.** Rule 2 is what makes the phone-scrambling finding disappear
+rather than need a remedy — probe 2 scrambled `+۹۸ ۹۱۲ ۱۲۳ ۴۵۶۷` only because the value shared one
+`Text` with «تلفن: », and alone in its own cell it is correct.
+
 ### Still owed, from before the cut
 
 **With the cable back in: re-run the three device suites on the Redmi.** They have not run on the

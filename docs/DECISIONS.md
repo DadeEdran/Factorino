@@ -4099,3 +4099,71 @@ rather than inspecting content streams, and then confirmed each cause against th
 Nothing here rests on what the library is documented to do. It ran in a throwaway package in the
 scratchpad, so **the dependency never entered `pubspec.yaml`** and the Phase 7 entry-gate baseline
 below still sits on a commit with no PDF dependency in it.
+
+### Amendment, 2026-09-01, after the owner reviewed the rendered pages
+
+**The ZWNJ box is in the application's own strings, not only in test data or customer input.** The
+owner spotted it in a place the report had read straight past: the probe's **own section heading**,
+«نیم‌فاصله», printed «نیم▯فاصله». ZWNJ is ordinary Persian and it is already in this project's ARB —
+«پیش‌نویس», «پرداخت‌نشده», «وب‌سایت» among others. **A document with boxes through its own labels is
+not deliverable**, so this is the **highest-priority item in Phase 7, ahead of layout**, and it is a
+correctness item under D-068 rather than a polish one.
+
+**Three requirements the remedy must meet** (owner):
+
+1. **It must preserve the join break.** «پیشنویس» joined across that boundary is a misspelling, not a
+   near-miss. Whatever the substitution turns out to be — a zero-width space, splitting the run at the
+   boundary, a glyph-mapping fix — the shaping either side must be **verified** the way the probe
+   verified it: ش in final form, ن in initial form, read off the rendered page.
+2. **It must be tested over the real ARB, not over examples.** Scan every ARB entry for U+200C and
+   assert each one renders through the PDF path with no missing glyph. A handful of hand-picked
+   strings is not the coverage this needs.
+3. **It must not be mistaken for the whole answer.** Stripping control characters fixes finding 1. It
+   does **not** fix finding 2, and the remedy must not read as "remove the controls and you are done".
+
+### The print contract, measured rather than reasoned — probe 3
+
+The owner asked whether the print path can simply default to **LTR `Directionality` with no control
+characters**, since three of the four cases in probe 2 rendered correctly bare. It is the right
+question and the answer is **no — that specific rule is destructive.** Probe 3 rendered thirteen field
+shapes twice, once bare in the RTL page and once wrapped in LTR `Directionality`.
+
+**Identical and correct in both columns**, so the wrapper is a **no-op** for all of these: invoice
+number `INV-1405-0001`, national ID, a fourteen-digit economic ID, the unbroken phone
+`۰۹۱۲۱۲۳۴۵۶۷`, the hyphenated phone `۰۹۱۲-۱۲۳-۴۵۶۷`, **the spaced `+۹۸ ۹۱۲ ۱۲۳ ۴۵۶۷`**, the Jalali
+date `۱۴۰۵/۰۶/۱۰`, the amount `۸۳٬۸۷۵٬۰۰۰` with U+066C, the percent `۱۰٪` with U+066A, the negative
+`−۱٬۰۰۰` with U+2212, and a parenthesised `(INV-1405-0001)`.
+
+**Different, and the wrapper destroys the Persian** wherever the value carries any:
+
+| Value | Bare, in the RTL page | Wrapped in LTR `Directionality` |
+|---|---|---|
+| `فاکتور INV-1405-0001 صادر شد` | correct | **`دش رداص INV-1405-0001 روتکاف`** |
+| `۸۳٬۸۷۵٬۰۰۰ تومان` | correct | **`۸۳٬۸۷۵٬۰۰۰ ناموت`** |
+
+The words are not merely misplaced — «فاکتور» comes out «روتکاف» and «تومان» comes out «ناموت». LTR
+wrapping reverses the visual order of any RTL run inside it. **So it cannot be the default: it does
+nothing wherever it is safe and corrupts the text wherever it is not.**
+
+**And the spaced phone resolved the apparent contradiction with probe 2.** There it scrambled to
+`۴۵۶۷ ۱۲۳ ۹۱۲ ۹۸+`; here it is correct bare. The difference is the surrounding run: in probe 2 the
+value shared one `Text` with its Persian label, `'تلفن: ' + number`. Alone in its own cell it is
+fine. **The trigger is not the `+` or the spaces by themselves — it is a value carrying internal
+bidi-neutral characters sharing a single run with RTL text.**
+
+### The contract, stated
+
+Simpler than either candidate, and structural rather than per-string:
+
+1. **No control characters reach the renderer.** No FSI, no PDI. Stripped at the view-model boundary,
+   with a test.
+2. **The label and the value are separate widgets — never concatenated into one string.** This is what
+   makes finding 2 *disappear* instead of needing a remedy: every field measured above renders
+   correctly bare once it is not sharing a run with its own label.
+3. **LTR `Directionality` is not the default.** It is a no-op on every field that already works and
+   destructive on any value containing Persian. After this measurement, **no field a document prints
+   needs it** — including the amount-with-unit, which must be composed as two widgets or left bare,
+   never wrapped.
+
+Rules 1 and 2 together are the whole contract, and rule 2 is a composition rule the renderer would
+want anyway. There is no per-field special-casing left in it.
