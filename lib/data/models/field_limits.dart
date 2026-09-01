@@ -87,6 +87,18 @@ abstract final class AmountLimits {
   static const int tomanDigits = 14;
 }
 
+/// Payment fields, matching `lib/data/database/tables/payments.dart`.
+abstract final class PaymentLimits {
+  /// The note against one payment — a cheque number, a transfer reference, a
+  /// reason for a part payment.
+  ///
+  /// Deliberately shorter than [InvoiceLimits.notes]. An invoice's note is a
+  /// clause on a document and can run to a paragraph; a payment's note is an
+  /// identifier for a transaction, and a field that invites an essay against a
+  /// single receipt is a field nobody will scan later.
+  static const int note = 500;
+}
+
 /// Product and service fields, matching
 /// `lib/data/database/tables/products.dart`.
 abstract final class ProductLimits {

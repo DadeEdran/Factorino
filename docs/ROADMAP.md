@@ -1153,7 +1153,7 @@ paths were reviewed in (c). What is new:
 | a2 | **`schemaVersion = 4`** — the three columns and their backfill (D-055, D-056) | `COMPLETED` 2026-08-27 |
 | b | **`/invoices/:id`, the detail screen**; rows become tappable; known issue 18 fixed and every money width audited (D-057, D-058) | `COMPLETED` 2026-09-01 |
 | — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01 |
-| c | Payments: record and delete, both recomputing derived status in the same transaction (§6) | `NOT_STARTED` |
+| c | **Payments: record and delete**, both recomputing derived status in the same transaction (§6) (D-060) | `COMPLETED` 2026-09-01 |
 | d | Cancellation, and the Persian copy that says what it does and does not do | `NOT_STARTED` |
 | e | List filters over status, customer and Jalali period, at the query level; paging `watchForCustomer` | `NOT_STARTED` |
 | f | The device pass, and the phase close | `NOT_STARTED` |
@@ -1367,6 +1367,46 @@ reasoning about the rule could have produced.
 
 **Security note.** No new data, input, permission or platform surface. An arithmetic change inside the
 money engine; the threat model is unchanged.
+
+**Increment (c) — payments, completed 2026-09-01**
+
+The write side already existed from Phase 4 (d) — `record` and `softDelete`, both recomputing the
+derived status inside their own transaction (§6). (c) is the way in, the guard tests that matter, and
+the copy a deletion owes the user. **Decision recorded: D-060.**
+
+- **The rule is the repository's; the screen explains it.** A draft and a cancelled invoice cannot take
+  a payment; the screen hides the control and says why in Persian rather than leaving a user to guess.
+  Hiding a control is not a guard, so the refusal tests call the **repository directly**, on Phase 4
+  (c)'s precedent, and each asserts what the refusal *left behind* — status, total and rows all
+  unmoved. Two refusals that had no coverage are covered now: deleting a payment that is not there, and
+  deleting the same one twice.
+- **Both directions are pinned**: paid → partiallyPaid → unpaid one deletion at a time; the last
+  payment returning the invoice to unpaid; and a deletion on a cancelled invoice correcting the money
+  record without resurrecting the invoice, because `cancelled` is set by hand and never derived.
+- **The deletion confirmation names the amount** and adds, **only where it is true**, that the invoice
+  leaves «پرداخت شده». A warning shown every time is one nobody reads on the occasion that matters.
+- **An overpayment is warned about as it is typed, never refused** — D-027's principle applied to an
+  input. The sheet computes nothing: `amountDue` arrives already worked out.
+- **The payments card moved below the lines, measured**: 182 logical pixels with nothing in it, which
+  pushed the first line off a 400 × 800 phone. On mobile the record action moved to the floating slot
+  and the inline button is omitted there, so each tier offers it exactly once.
+- **24 new tests; 861 pass** (was 837).
+
+**Verification (D-057), by tier:**
+
+```
+widget sweep, all three tiers                   PASS  invoice_detail_screen_test.dart
+device pass - Windows, desktop, Vazirmatn       PASS  the real sheet and dialog against the real
+                                                      encrypted database: 2,117,500 rial recorded
+                                                      (status paid), then deleted (status unpaid),
+                                                      0 layout errors
+device pass - Android, phone tier               OUTSTANDING - no device attached; carried to (f)
+```
+
+**Security note (increment c).** Payment records add amounts, dates, a method and a free-text note —
+no new identifiers and no new personal data class. The note is bounded by `PaymentLimits.note` (500),
+matching its column. No new permission or platform surface. The failure path logs through `AppLog` with
+no amount, name or identifier in the message (§7); the threat model is unchanged.
 
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
 a data-integrity control: only `draft` invoices are editable or deletable.

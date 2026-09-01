@@ -3065,3 +3065,120 @@ amount of reasoning about the rule could have produced.
 - **Widen only the remainder and keep `checkedMultiply` for the share.** The two come from the same
   division; splitting them would leave the second product to overflow at the same magnitude and would
   put two answers where there is one question.
+
+---
+
+## D-060 — Payments: where the guard lives, what the copy admits, and what moved off the phone's first screen
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — implemented as Phase 5 increment (c)
+**Extends:** §6 (derived status recomputed on every payment write), D-013, D-021, D-044, D-057, D-058
+
+### 1. The write side already existed, so (c) is a guard, a screen and a confirmation
+
+`PaymentRepository.record` and `softDelete` landed in Phase 4 (d), both recomputing the derived status
+inside their own transaction. What (c) adds is the way in, and three things worth recording.
+
+### 2. The rule is the repository's; the screen explains it and does not enforce it
+
+`Invoice.acceptsPayments` is false for a draft and for a cancelled invoice, and the repository throws
+`PaymentNotAccepted` for both. The screen **hides the control and says why in Persian** — «برای ثبت
+پرداخت، ابتدا فاکتور را صادر کنید…» and «این فاکتور باطل شده است…» — rather than merely omitting it.
+A user who arrives at a draft and finds nothing has to guess what changed.
+
+But hiding a control is not a guard. A deep link, a second window and a future sync path never pass
+through this screen, so the tests for the refusal call the **repository directly**, on the precedent
+Phase 4 (c) set for `updateDraft` — and each one asserts what the refusal *left behind*, not only that
+it threw: the status unmoved, the total paid unmoved, no stray row. **A guard that throws after writing
+half the change is worse than no guard.** The harder case is deliberately included: a cancelled invoice
+that already has a payment on it, where a write-then-check implementation would show up as a changed
+total rather than only as an orphan.
+
+Two refusals were missing entirely and are now covered: deleting a payment that does not exist, and
+deleting the same payment twice — the double-tap, and the stale second window.
+
+### 3. Deleting says what it does, including the part that is not about money
+
+Removing a payment moves the derived status back by the same rule that moved it forward, in the same
+transaction (§6). So the confirmation names the amount being removed and, **only where it is true**,
+adds that this takes the invoice out of «پرداخت شده». A warning shown on every deletion is one nobody
+reads on the occasion that matters.
+
+The screen decides whether to show that sentence from the row's own numbers, before opening the dialog.
+That is **not a second derivation of the status** — it is a claim about what the user is about to
+cause, and the status itself is still recomputed by the repository inside the delete. The badge at the
+top of the page changes because `invoiceDetailProvider` is a live query and the row changed, never
+because the payments card told it to; a display-time determination is how a badge comes to contradict
+the payments listed underneath it.
+
+### 4. An overpayment is warned about before the write, never refused
+
+The repository accepts one, and `InvoiceDetail.amountDue` clamps at zero because an invoice cannot owe
+a negative amount — so an overpayment is invisible in the balance by design. It is also usually a
+data-entry error. The sheet says so **as the amount is typed**, which is D-027's principle (surface a
+clamp, do not absorb it) applied to an input rather than to a calculation, and the detail screen keeps
+saying it afterwards.
+
+**The sheet computes nothing.** `amountDue` arrives already worked out by the aggregate and is used for
+two things: the «مانده» line under the amount field, and the button that fills it. A balance worked out
+here would be a second answer to a question the card above has already answered, and the two would
+eventually disagree in favour of whichever the user happened to be looking at.
+
+### 5. The payments card went below the lines, and the phone's action went to the floating slot
+
+**Measured, not argued.** On a 400 × 800 phone the payments card costs **182 logical pixels with
+nothing in it** — a section header, one sentence and a button — and placed between the summary and the
+lines it pushed the first line off the bottom, exactly as the party card had in (b). That is D-044's
+finding about the customer record card, met for the third time: *a card whose height has no upper bound
+does not belong above the thing the page exists to show.*
+
+So the order on the narrow tiers is **summary → lines → payments → party → dates → notes**, which is
+also the order the desktop tier reads in — the document in the main column, and who, when and what has
+been paid beside it.
+
+That leaves the record action at the bottom of a long page on a phone, so on mobile it moves to
+`PageBody.floatingAction` and **the inline button in the card is omitted there**. This is the invoice
+list's own rule, applied again: its empty state drops its button on mobile because the floating one is
+already on screen, and two controls saying the same thing is one too many. The two are never visible
+together, and each tier offers the action exactly once.
+
+**The test that caught it is the one (b) wrote for exactly this**, at the real phone height while every
+other test on that screen uses a tall viewport. It has now earned its keep twice, on two different
+cards, which is the argument for keeping a deliberately awkward test.
+
+### 6. Smaller decisions
+
+- **`paymentMethodLabel` in `domain/`**, on `invoiceStatusLabel`'s precedent: the enum is storage, the
+  label is presentation, and one mapping is what stops the sheet and the list disagreeing about what
+  `cardTransfer` is called. «کارت به کارت» is what people call it; «انتقال بانکی» is not.
+- **A `Wrap` of `ChoiceChip`s rather than a `SegmentedButton`** for the method. Five Persian labels of
+  unequal length do not fit across a phone in one row; wrapping costs a line and cannot clip.
+- **The sheet's submit says «ذخیره»**, as the invoice line sheet's does, rather than repeating the
+  sheet's own title. A button and the heading above it saying the same three words reads as two
+  controls to anyone scanning for one.
+- **`PaymentLimits.note` is 500**, matching the column and deliberately shorter than
+  `InvoiceLimits.notes`. An invoice's note is a clause on a document; a payment's note is an identifier
+  for a transaction, and a field that invites an essay against a single receipt is one nobody will scan
+  later.
+- **The controller returns `bool`, not a result.** The screen reads the invoice from the live detail
+  query, never from the write's return value, so there is nothing to thread back — and a failed write
+  becomes a Persian line rather than an exception in front of a user (§7), logged through the wrapper
+  with no amount, name or identifier in it.
+
+### 7. Verified on the target as well as at every tier
+
+The widget sweep covers all three tiers over D-057's ladder. The device pass now goes further than
+rendering: on Windows it opens the **real** sheet, fills the balance through the sheet's own control,
+picks a method, writes through the real repository into the real encrypted database, and reads the
+status back **from the database rather than from the screen** — because the screen believing it is not
+the claim. Then it deletes the payment, confirms the status warning appears exactly where it should,
+and reads the status back again.
+
+```
+payment: 2117500 rial recorded, status paid
+deletion : status unpaid
+layout errors : 0
+```
+
+**The Android phone tier is still outstanding** and is carried forward to (f), per D-057: no device was
+attached for either (b) or (c).

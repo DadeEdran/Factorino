@@ -188,7 +188,7 @@ void main() {
       <Object?>[invoices.last.id],
     );
 
-    debugPrint('=== PHASE 5 (b) DETAIL SCREEN ON DEVICE ===');
+    debugPrint('=== PHASE 5 (b)+(c) DETAIL SCREEN ON DEVICE ===');
     debugPrint('platform      : ${Platform.operatingSystem}');
 
     for (int index = 0; index < invoices.length; index++) {
@@ -284,6 +284,90 @@ void main() {
           unrecorded,
           isTrue,
           reason: 'a refused backfill must show «ثبت‌نشده», never a zero',
+        );
+      }
+
+      // ---- record a payment through the real sheet (Phase 5 (c)) ----------
+      //
+      // Only on the first invoice, and only once: what this adds over the
+      // widget tests is the **real** modal sheet, the real Jalali field, the
+      // real dialog and the real encrypted database, at the target's own
+      // metrics in Vazirmatn. Repeating it four times would add running time
+      // and no evidence.
+      if (index == 0) {
+        await tester.ensureVisible(
+          find.text(strings.invoiceDetailRecordPayment).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(strings.invoiceDetailRecordPayment).first);
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(strings.paymentFieldAmount),
+          findsOneWidget,
+          reason: 'the payment sheet must open on the device too',
+        );
+
+        // Through the sheet's own convenience, so the figure written is the
+        // balance the aggregate computed rather than one this test worked out.
+        await tester.tap(find.text(strings.paymentAmountFillRemaining));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text(strings.paymentMethodCardTransfer));
+        await tester.pumpAndSettle();
+        await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
+        await tester.pumpAndSettle();
+
+        // The write went through the repository's transaction, so the status was
+        // recomputed with it (§6) -- read back from the database rather than from
+        // the screen, because the screen believing it is not the claim.
+        final Invoice afterPayment = (await container
+            .read(invoiceRepositoryProvider)
+            .findById(invoice.id))!;
+        final int paid = await container
+            .read(paymentRepositoryProvider)
+            .totalPaidRial(invoice.id);
+
+        debugPrint(
+          'payment       : $paid rial recorded, status ${afterPayment.status.name}',
+        );
+        expect(paid, afterPayment.grandTotal.rial);
+        expect(afterPayment.status, InvoiceStatus.paid);
+
+        // And the page followed the row: the badge is the live query's, not
+        // something the payments card set.
+        await tester.pumpAndSettle();
+        expect(find.text(strings.statusPaid), findsOneWidget);
+
+        // ---- and take it back off again -------------------------------------
+        await tester.ensureVisible(
+          find.byTooltip(strings.paymentDeleteAction).first,
+        );
+        await tester.pumpAndSettle();
+        await tester.tap(find.byTooltip(strings.paymentDeleteAction).first);
+        await tester.pumpAndSettle();
+
+        // The warning is only shown where removing this payment genuinely takes
+        // the invoice out of «پرداخت شده», which is exactly this case.
+        expect(
+          find.text(strings.paymentDeleteStatusWarning),
+          findsOneWidget,
+          reason: 'removing the only payment on a paid invoice must warn',
+        );
+        await tester.tap(
+          find.widgetWithText(FilledButton, strings.paymentDeleteAction),
+        );
+        await tester.pumpAndSettle();
+
+        final Invoice afterDelete = (await container
+            .read(invoiceRepositoryProvider)
+            .findById(invoice.id))!;
+        debugPrint('deletion      : status ${afterDelete.status.name}');
+        expect(afterDelete.status, InvoiceStatus.unpaid);
+        expect(
+          await container
+              .read(paymentRepositoryProvider)
+              .totalPaidRial(invoice.id),
+          0,
         );
       }
 

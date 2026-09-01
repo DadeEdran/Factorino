@@ -1646,6 +1646,162 @@ abstract class AppStrings {
   /// **'{label} ثبت‌نشده'**
   String invoiceLineLabelUnrecorded(String label);
 
+  /// No description provided for @paymentMethodCash.
+  ///
+  /// In fa, this message translates to:
+  /// **'نقدی'**
+  String get paymentMethodCash;
+
+  /// The everyday Iranian card-to-card transfer. Named as people name it, not as a bank would.
+  ///
+  /// In fa, this message translates to:
+  /// **'کارت به کارت'**
+  String get paymentMethodCardTransfer;
+
+  /// No description provided for @paymentMethodBankTransfer.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتقال بانکی'**
+  String get paymentMethodBankTransfer;
+
+  /// No description provided for @paymentMethodCheque.
+  ///
+  /// In fa, this message translates to:
+  /// **'چک'**
+  String get paymentMethodCheque;
+
+  /// No description provided for @paymentMethodOther.
+  ///
+  /// In fa, this message translates to:
+  /// **'سایر'**
+  String get paymentMethodOther;
+
+  /// No description provided for @invoiceDetailPaymentsSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'پرداخت‌ها'**
+  String get invoiceDetailPaymentsSection;
+
+  /// The designed empty state for the payments list. States the fact rather than leaving a blank region that reads as a section that failed to load.
+  ///
+  /// In fa, this message translates to:
+  /// **'هنوز پرداختی برای این فاکتور ثبت نشده است.'**
+  String get invoiceDetailPaymentsEmpty;
+
+  /// No description provided for @invoiceDetailRecordPayment.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت پرداخت'**
+  String get invoiceDetailRecordPayment;
+
+  /// Why the record button is absent on a draft, said rather than left to be guessed. The repository refuses this too (PaymentNotAccepted) -- the screen does not enforce the rule, it explains it.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای ثبت پرداخت، ابتدا فاکتور را صادر کنید. پیش‌نویس هنوز مطالبه‌ای از کسی نیست.'**
+  String get invoiceDetailPaymentsUnavailableDraft;
+
+  /// No description provided for @invoiceDetailPaymentsUnavailableCancelled.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور باطل شده است و دیگر مطالبه‌ای از کسی نیست، بنابراین پرداخت تازه‌ای برای آن ثبت نمی‌شود.'**
+  String get invoiceDetailPaymentsUnavailableCancelled;
+
+  /// No description provided for @paymentCreateTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت پرداخت'**
+  String get paymentCreateTitle;
+
+  /// No description provided for @paymentFieldAmount.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ پرداختی'**
+  String get paymentFieldAmount;
+
+  /// No description provided for @paymentFieldDate.
+  ///
+  /// In fa, this message translates to:
+  /// **'تاریخ پرداخت'**
+  String get paymentFieldDate;
+
+  /// No description provided for @paymentFieldMethod.
+  ///
+  /// In fa, this message translates to:
+  /// **'روش پرداخت'**
+  String get paymentFieldMethod;
+
+  /// No description provided for @paymentFieldNote.
+  ///
+  /// In fa, this message translates to:
+  /// **'توضیح'**
+  String get paymentFieldNote;
+
+  /// No description provided for @paymentFieldNoteHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'شمارهٔ چک، مرجع تراکنش، یا هر یادداشت دیگر'**
+  String get paymentFieldNoteHint;
+
+  /// What is still owed, shown under the amount field so the common case -- paying off the rest -- needs no arithmetic from the user. It is InvoiceDetail.amountDue, read, never recomputed here.
+  ///
+  /// In fa, this message translates to:
+  /// **'مانده: {amount} تومان'**
+  String paymentAmountRemainingHelper(String amount);
+
+  /// Fills the amount field with the outstanding balance. A convenience over the figure above it, not a second source for it.
+  ///
+  /// In fa, this message translates to:
+  /// **'پرداخت کامل مانده'**
+  String get paymentAmountFillRemaining;
+
+  /// A warning, not a refusal. Overpayment is a real thing that happens and the repository accepts it; it is usually a data-entry error, so it is said before the write rather than discovered on the invoice afterwards.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ واردشده از مانده بیشتر است و به عنوان اضافه‌پرداخت ثبت می‌شود.'**
+  String get paymentAmountExceedsDue;
+
+  /// The repository refuses a zero or negative payment (PaymentNotAccepted). Caught at the field so the user is told where the problem is instead of meeting a failed save.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ باید بزرگ‌تر از صفر باشد.'**
+  String get validationAmountPositive;
+
+  /// No description provided for @paymentDeleteTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'این پرداخت حذف شود؟'**
+  String get paymentDeleteTitle;
+
+  /// Names the amount being removed and its direct consequence. The status change is stated separately, because it only applies to some invoices.
+  ///
+  /// In fa, this message translates to:
+  /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.'**
+  String paymentDeleteBody(String amount);
+
+  /// Shown only when removing this payment actually moves the invoice out of paid. Deleting a payment recomputes the derived status in the same transaction (section 6), and a badge that changed without warning would look like a fault.
+  ///
+  /// In fa, this message translates to:
+  /// **'با این کار وضعیت فاکتور از «پرداخت شده» خارج می‌شود.'**
+  String get paymentDeleteStatusWarning;
+
+  /// No description provided for @paymentDeleteAction.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف پرداخت'**
+  String get paymentDeleteAction;
+
+  /// No description provided for @paymentDeleteFailed.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف این پرداخت ممکن نشد.'**
+  String get paymentDeleteFailed;
+
+  /// No description provided for @paymentSaveFailed.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت این پرداخت ممکن نشد.'**
+  String get paymentSaveFailed;
+
   /// Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user.
   ///
   /// In fa, this message translates to:

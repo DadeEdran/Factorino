@@ -15,8 +15,8 @@
 **accepted**, including (d).
 **Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. The first boundary,
 the D-047 ruling, and **(a2) schema v4** are all **accepted**. **(b), the detail screen**, is
-delivered and **awaiting review**: it carries the process change the owner asked for (D-057), the
-money-width audit, and `/invoices/:id` itself (D-058).
+delivered and accepted in substance, **known issue 19** is fixed (D-059), and **(c), payments**, is
+delivered and **awaiting review** (D-060). Cancellation, filters and the phase close remain.
 
 | # | Increment | Status |
 |---|---|---|
@@ -37,8 +37,8 @@ money-width audit, and `/invoices/:id` itself (D-058).
 | a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, **accepted** |
 | b | **`/invoices/:id`**, the detail screen; rows tappable; the money-width audit and the tier rule (D-057, D-058) | `COMPLETED` 2026-09-01, **awaiting review** |
 | — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01, **awaiting review** |
-| c | Payments: record and delete, derived status in the same transaction | `NOT_STARTED` ← **next** |
-| d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` |
+| c | **Payments: record and delete**, derived status in the same transaction (D-060) | `COMPLETED` 2026-09-01, **awaiting review** |
+| d | Cancellation, and the copy that says what it does not do | `NOT_STARTED` ← **next** |
 | e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` |
 | f | The device pass, and the phase close | `NOT_STARTED` |
 
@@ -75,6 +75,12 @@ lives in `test/support/money_magnitudes.dart`. The audit it demanded found a sec
 site — `tablePriceWidth`, wrong by exactly the cell padding it never accounted for — and cleared the
 dashboard tiles, which scale rather than clip.
 
+**An invoice can now be paid off, and unpaid again.** (c) adds the way in to a write side that already
+existed: a sheet that offers the outstanding balance and fills it, a payments list with a deletion that
+says what it does — including, only where it is true, that it takes the invoice out of «پرداخت شده» —
+and the refusal tests that matter, called against the **repository** rather than through the screen,
+each asserting what the refusal left behind.
+
 **And D-057 paid for itself inside one increment.** Writing the device fixture at the ladder's top
 rung surfaced known issue 19 — the money engine refused an invoice above roughly 30 million تومان
 carrying a 10% discount, because §4 step 4 was the only place multiplying **two amounts** together.
@@ -98,14 +104,16 @@ older sections of this file:** Phase 4 and Phase 5 both have increments lettered
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of D-059
-flutter test:               PASS   (837/837, was 794)                         as of D-059
+flutter analyze:            PASS   (No issues found)                          as of (c)
+flutter test:               PASS   (861/861, was 837)                         as of (c)
 Android build:              PASS   debug APK built (2026-09-01)
 Layout, all 3 tiers x 4 amounts (D-057):
   widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart
-  device - Windows desktop: PASS   0 layout errors, 1264 x 681, Vazirmatn, all four rungs,
-                                   each with an invoice-level discount (2026-09-01)
-  device - Android phone:   OUTSTANDING  no device attached this session; belongs to (f)
+  device - Windows desktop: PASS   0 layout errors, 1264 x 681, Vazirmatn, all four rungs each with
+                                   an invoice-level discount; and a payment recorded and deleted
+                                   through the real sheet against the real database (2026-09-01)
+  device - Android phone:   OUTSTANDING  no device attached this session, for (b) or (c);
+                                   carried to (f) -- do not close the phase without it
 D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
 D-055 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
 D-052 proof - Windows:      PASS   both ladders: v2 -> v3 and v1 -> v3
@@ -119,7 +127,78 @@ Windows run:                PASS   the app starts and renders at the desktop tie
 Web build:                  NOT_RETESTED since plugins were added
 ```
 
-**Test count is 837**, was 794 at the end of (b) and 726 at the end of (a2).
+**Test count is 861**, was 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What Phase 5 increment (c) delivered — payments, recorded and taken back
+
+**The write side already existed.** `PaymentRepository.record` and `softDelete` landed in Phase 4 (d),
+both recomputing the derived status inside their own transaction (§6). (c) adds the way in, the guard
+tests that matter, and the copy that says what a deletion does.
+
+```
+lib/features/invoices/presentation/widgets/payment_editor_sheet.dart      NEW  the sheet
+lib/features/invoices/presentation/widgets/invoice_payments_section.dart  NEW  the list + both actions
+lib/features/invoices/application/invoice_payments.dart                   NEW  record / delete
+lib/features/invoices/domain/payment_method_label.dart                    NEW  the one Persian mapping
+lib/data/models/field_limits.dart                        + PaymentLimits.note (500)
+lib/features/invoices/presentation/invoice_detail_screen.dart  payments card; mobile FAB; reorder
+lib/core/localization/arb/app_fa.arb                     + 24 strings
+test/data/repositories/payment_repository_test.dart      + the refusal aftermath, both directions
+test/features/invoices/invoice_detail_screen_test.dart   + 14 payment tests and a payment fake
+integration_test/invoice_detail_device_test.dart         + record and delete on the real target
+```
+
+- **The rule is the repository's; the screen explains it.** A draft and a cancelled invoice cannot take
+  a payment (`Invoice.acceptsPayments`, `PaymentNotAccepted`). The screen hides the control **and says
+  why in Persian** rather than leaving a user to guess what changed — but hiding a control is not a
+  guard, so the tests call the **repository directly**, on Phase 4 (c)'s precedent, and each asserts
+  what the refusal *left behind*: status unmoved, total unmoved, no stray row. The hard case is in
+  there deliberately — a cancelled invoice that already carries a payment, where a write-then-check
+  implementation shows up as a changed total rather than only as an orphan.
+- **Two refusals were missing entirely** and are covered now: deleting a payment that is not there, and
+  deleting the same one twice — the double-tap and the stale second window.
+- **The status moves in both directions, and both are pinned**: paid → partiallyPaid → unpaid, one
+  deletion at a time; removing the only payment returns the invoice to unpaid; and deleting a payment
+  on a **cancelled** invoice corrects the money record without resurrecting the invoice, because
+  `cancelled` is set by hand and never derived (§6).
+- **Deleting says what it does.** The confirmation names the amount, and **only where it is true** adds
+  that this takes the invoice out of «پرداخت شده» — a warning shown every time is one nobody reads on
+  the occasion that matters. That sentence is a claim about what the user is about to cause, not a
+  second derivation of the status: the badge changes because `invoiceDetailProvider` is a live query
+  and the row changed.
+- **An overpayment is warned about as it is typed, never refused.** The repository accepts one and
+  `amountDue` clamps at zero, so an overpayment is invisible in the balance by design — D-027's
+  principle applied to an input. **The sheet computes nothing**: `amountDue` arrives already worked out
+  and is used for the «مانده» line and the button that fills it.
+- **The payments card went below the lines, measured rather than argued.** On a 400 × 800 phone it
+  costs **182 logical pixels with nothing in it**, and between the summary and the lines it pushed the
+  first line off the bottom — D-044's finding met for the third time. Narrow-tier order is now
+  **summary → lines → payments → party → dates → notes**, the same order the desktop tier reads in.
+- **On mobile the record action moved to the floating slot and the inline button is omitted there** —
+  the invoice list's own rule, applied again: two controls saying the same thing is one too many. Each
+  tier offers the action exactly once.
+- **The phone-height test from (b) caught it**, which is the second time that deliberately awkward test
+  has earned its keep, on a different card each time.
+- **24 new tests; 861 pass** (was 837). Decision recorded: **D-060**.
+
+### The device pass now writes, not just renders
+
+On Windows, at the desktop tier in Vazirmatn: the **real** sheet opens, the balance is filled through
+the sheet's own control, a method is picked, the write goes through the real repository into the real
+encrypted database — and the status is read back **from the database rather than from the screen**,
+because the screen believing it is not the claim. Then the payment is deleted, the status warning is
+asserted to appear exactly where it should, and the status is read back again.
+
+```
+=== PHASE 5 (b)+(c) DETAIL SCREEN ON DEVICE ===
+platform : windows    logical size : 1264.0 x 681.0    16sp renders at 16.0
+payment: 2117500 rial recorded, status paid
+deletion : status unpaid
+layout errors : 0
+```
+
+**Android is still outstanding**, for (b) and now (c) both: no device has been attached in this
+session. Carried to (f), per D-057.
 
 ## What the known-issue-19 fix delivered — exact allocation (D-059)
 
@@ -911,6 +990,20 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
 
 ## Important context for a future session
 
+- **A payment's rules are the repository's, and the screen only explains them.** `acceptsPayments` is
+  false for a draft and a cancelled invoice and `PaymentNotAccepted` is what enforces it; the detail
+  screen hides the control and says why. Any test of a refusal calls the **repository directly** and
+  asserts what the refusal *left behind* — a guard that throws after writing half the change is worse
+  than no guard (D-060, on Phase 4 (c)'s precedent).
+- **Recording and deleting a payment both recompute the derived status in the same transaction** (§6),
+  and the detail screen's badge follows the row through `invoiceDetailProvider`. **Nothing on a screen
+  may derive a status at display time** — that is how a badge comes to contradict the payments listed
+  under it. The deletion warning is a claim about what the user is about to cause, not a second
+  derivation.
+- **A card whose height has no upper bound does not belong above the thing the page exists to show.**
+  D-044 found it on the customer record card, (b) on the party card, (c) on the payments card — which
+  costs 182 logical pixels empty. On a phone the primary action moves to `PageBody.floatingAction` and
+  the inline one is omitted, so each tier offers it exactly once.
 - **A phase closes only after its layout check has run at all three tiers, over the written ladder in
   `test/support/money_magnitudes.dart`** (D-057). Never take the amounts from whatever
   the dev database holds: a panel that fits at 100,000 تومان and breaks at 1,000,000 hides behind small
@@ -1036,6 +1129,31 @@ via `RepaintBoundary.toImage()`, which is how Phase 2 was looked at; delete it a
   `flutter gen-l10n` after touching the ARB**, then commit the regenerated files.
 
 ## Recently changed files
+
+### Phase 5 increment (c) — the newest work
+
+```
+lib/features/invoices/presentation/widgets/payment_editor_sheet.dart      NEW  the sheet
+lib/features/invoices/presentation/widgets/invoice_payments_section.dart  NEW  list + both actions
+lib/features/invoices/application/invoice_payments.dart                   NEW  record / delete
+lib/features/invoices/domain/payment_method_label.dart                    NEW  the Persian mapping
+lib/data/models/field_limits.dart              + PaymentLimits.note (500)
+lib/features/invoices/presentation/invoice_detail_screen.dart
+                                               payments card; mobile FAB; narrow-tier reorder
+lib/core/localization/arb/app_fa.arb           + 24 strings
+test/data/repositories/payment_repository_test.dart      + refusal aftermath, both directions
+test/features/invoices/invoice_detail_screen_test.dart   + 14 payment tests, _FakePaymentRepository
+integration_test/invoice_detail_device_test.dart         + record and delete on the real target
+```
+
+### Known issue 19 — the fix before (c)
+
+```
+lib/core/money/rounding.dart                 + mulDivFloor -> (quotient, remainder)
+lib/core/money/discount_allocation.dart        one call replaces both wide products
+test/core/money/{rounding,discount_allocation,invoice_calculator}_test.dart  the ladder + boundary
+test/features/invoices/invoice_editor_state_test.dart    the ladder through the live preview
+```
 
 ### Phase 5 increment (b) — the newest work
 
@@ -1293,74 +1411,69 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Known issue 19 — exact allocation at every invoice size (D-059)**, taken before (c) at the owner's
-direction.
+**Phase 5 increment (c) — payments, recorded and taken back (D-060).**
 
-§4 step 4 was the only place in the engine multiplying **two amounts** together, so the product was
-quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount.
-`mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together,
-which retires both wide products at once. **The guard is untouched and VM/Web parity is unchanged** —
-what went is a value nobody ever sees, not the rejection at `kMaxAmountRial`.
+The write side already existed from Phase 4 (d), both halves recomputing the derived status inside
+their own transaction (§6). (c) added the way in and the guard tests that matter:
 
-- The arithmetic is pinned **share for share** against a plain-`int` reference implementation of the
-  old algorithm, run wherever plain `int` is still exact — so "only the range moved" is asserted, not
-  claimed.
-- Pinned over the whole D-057 ladder in three places: the allocation, `calculateInvoice`, and
-  `InvoiceEditorState` — the last because the preview is where a user met it. Plus the exact old
-  boundary (94906265 / 94906266) and a test that the sweep still reaches a product the old code
-  refused.
-- **Verified to bite**: the old implementation was restored and failed exactly four of the new tests,
-  while the equivalence tests stayed green. Restored afterwards.
-- The device fixture's special case is gone; the Windows pass now issues and renders 100,000,000
-  تومان with a 5% discount, 0 layout errors.
-- **43 new tests; 837 pass** (was 794). Analyzer clean.
+- **The refusal tests call the repository directly**, not through the screen, and each asserts what the
+  refusal *left behind* — status unmoved, total unmoved, no stray row. Two refusals that were missing
+  entirely are covered now: deleting a payment that is not there, and deleting the same one twice.
+- **Both directions are pinned**: paid → partiallyPaid → unpaid one deletion at a time, the last
+  payment returning an invoice to unpaid, and a deletion on a **cancelled** invoice correcting the
+  money record without resurrecting the invoice.
+- **The deletion confirmation names the amount** and, only where it is true, says the invoice leaves
+  «پرداخت شده». **The overpayment warning fires as the amount is typed**, never as a refusal.
+- **The payments card cost 182 pixels empty and pushed the first line off a phone**, so it moved below
+  the lines and the mobile action moved to the floating slot — the phone-height test from (b) catching
+  it for the second time, on a different card.
+- **24 new tests; 861 pass.** Analyzer clean, Android debug APK builds.
 
-**Worth carrying forward:** it was found by writing the D-057 device fixture at the ladder's top rung,
-one increment after D-057 was written. No test failed and nothing in the code pointed at it — the demo
-data had simply never gone above a few million Toman. D-057 paying for itself that fast is the argument
-for the rule.
+**The device pass now writes rather than only rendering.** On Windows: the real sheet, the real
+repository, the real encrypted database, and the status read back **from the database** — 2,117,500
+rial recorded (status `paid`), then deleted (status `unpaid`), 0 layout errors.
 
 ## Next action
 
-**Build Phase 5 increment (c): recording and deleting a payment, with the derived status recomputed in
-the same transaction.**
+**Build Phase 5 increment (d): cancellation, and the Persian copy that says what it does and does not
+do.**
 
-The detail screen from (b) is where the UI goes. It already shows «پرداخت‌شده» and «مانده» from
-`InvoiceDetail.amountPaid` / `amountDue` and is deliberately read-only; (c) is what gives those figures
-a control. The overpayment notice is already there for a user who records more than the invoice asked.
+The detail screen is where it goes, beside the payments section (c) added. From the owner's standing
+constraints and what is already in place:
 
-What it must do, from the owner's standing constraints:
-
-1. **Recording and deleting, both directions, and the derived status recomputed in the same
-   transaction** (§6). The write side partly exists from Phase 4 (d) — `PaymentRepository.record`
-   recomputes already — so **deletion is what needs building beside it**, with the same recomputation
-   and the same transaction.
-2. **`acceptsPayments` is the repository's guard, not the screen's.** Phase 4 (c) set the precedent
-   with `updateDraft`: a test must call the repository **directly**, as a deep link or a future sync
-   path would, and assert it refuses in `draft` and in `cancelled` — and that the refusal left nothing
-   behind. A guard that throws after writing half the change is worse than no guard.
-3. **A deletion needs a confirmation that says what it does**, on (d)'s precedent for issue: deleting a
-   payment can move an invoice from پرداخت شده back to پرداخت جزئی, and the copy should say so rather
-   than leaving the badge to change under the user.
-4. **Any new layout goes through D-057** — all three tiers, over the ladder in
-   `test/support/money_magnitudes.dart`. A new fixed-width money site joins
+1. **Cancellation is the correction path for an issued invoice and must not silently edit.**
+   `InvoiceRepository.cancel` already exists and is tested; (d) is the way in, the confirmation, and
+   the copy.
+2. **The copy must say what cancelling does *and does not* do, including that the number stays spent**
+   (D-013). A cancelled invoice keeps its number: a numbering sequence with holes in it is what an
+   auditor asks about, and re-using one is worse. This is the sentence (d) exists for.
+3. **Only an issued invoice can be cancelled**, and — as with payments — the rule is the repository's.
+   Test it by calling the repository directly, in every status, and assert the refusal left nothing
+   behind. A draft is deleted rather than cancelled (`softDeleteDraft`), and the screen should not
+   offer both for the same invoice.
+4. **What cancelling does to payments already recorded needs an explicit answer**, and the copy has to
+   carry it: today `_recomputeStatus` leaves a cancelled invoice alone, so its payments stay on record
+   and its total paid stays whatever it was. That is defensible — the money did change hands — but it
+   is currently implicit, and a user cancelling a part-paid invoice deserves to be told.
+5. **Any new layout goes through D-057** — all three tiers over the ladder in
+   `test/support/money_magnitudes.dart`, and a new fixed-width money site joins
    `test/core/widgets/money_layout_test.dart`.
 
-**Outstanding from (b), and it must not be forgotten at the phase close: the Android phone-tier device
-pass.** No device was attached when (b) was built (`flutter devices` listed Windows, Chrome and Edge;
-the emulator was offline). `integration_test/invoice_detail_device_test.dart` runs on any target and
-should be pointed at the Redmi the next time it is connected — free space on the device first, known
-issue 10b. **The owner's instruction is explicit: do not close the phase without it.**
+**Still outstanding, and the owner's instruction is explicit: the Android phone-tier device pass, for
+(b) and (c) both.** No device has been attached in this session (`flutter devices` lists Windows,
+Chrome and Edge; the emulator is offline). `integration_test/invoice_detail_device_test.dart` runs on
+any target and now exercises the payment flow as well as the layout — point it at the Redmi the next
+time it is connected, freeing space on the device first (known issue 10b). **Do not close the phase
+without it.**
 
-After (c) the order is (d) cancellation, (e) filters and paging, (f) the device pass and the phase
-close.
+After (d) the order is (e) filters and paging, then (f) the device pass and the phase close.
 
 ### Standing constraints for the rest of Phase 5, from the owner
 
 - **The detail screen shows the party snapshot for issued invoices and the live record for drafts**
   (D-052), and **says which** — done in (b) via `InvoicePartyProvenance` (D-058).
 - **Payments recompute derived status in the same transaction** (§6). **Recording and deleting both,
-  both directions**, tested at the repository.
+  both directions**, tested at the repository — done in (c) (D-060).
 - **Cancellation is the correction path** for an issued invoice and must not silently edit. The
   Persian copy states what cancelling does **and does not** do, *including that the number stays
   spent* (D-013).
@@ -1368,5 +1481,5 @@ close.
   loaded page.
 - **Paging `watchForCustomer`**, known issue 16.
 - **A device pass before the phase is called done** — at **all three tiers**, over the written ladder
-  (D-057), not on one tier at whatever amounts the flow produces. **The phone tier from (b) is still
-  owed.**
+  (D-057), not on one tier at whatever amounts the flow produces. **The phone tier is owed for both
+  (b) and (c).**

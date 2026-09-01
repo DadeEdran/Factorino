@@ -17,6 +17,7 @@ import 'package:factorino/data/models/invoice_status.dart';
 import 'package:factorino/data/models/payment.dart';
 import 'package:factorino/data/models/payment_method.dart';
 import 'package:factorino/data/providers.dart';
+import 'package:factorino/data/repositories/payment_repository.dart';
 import 'package:factorino/features/invoices/presentation/invoice_detail_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart';
@@ -125,12 +126,18 @@ void main() {
     customerIsDeleted: customerIsDeleted,
   );
 
-  Payment payment(int rial) => Payment(
-    id: 'p1',
+  Payment payment(
+    int rial, {
+    String id = 'p1',
+    PaymentMethod method = PaymentMethod.cash,
+    String? note,
+  }) => Payment(
+    id: id,
     invoiceId: 'i1',
     amount: Money.rial(rial),
     paidAt: issued,
-    method: PaymentMethod.values.first,
+    method: method,
+    note: note,
     createdAt: issued,
     updatedAt: issued,
   );
@@ -501,6 +508,333 @@ void main() {
     });
   });
 
+  group('payments (c)', () {
+    /// A repository that records what it was asked to do and answers from a
+    /// list, so a test can assert **what the screen sent** rather than what a
+    /// database made of it. The real write is pinned at the repository, in
+    /// `payment_repository_test.dart`, against a real database.
+    late _FakePaymentRepository payments;
+
+    setUp(() => payments = _FakePaymentRepository());
+
+    Future<AppStrings> pumpWithPayments(
+      WidgetTester tester, {
+      required InvoiceDetail view,
+      Size size = tallPhone,
+    }) async {
+      final FakeInvoiceRepository repo = FakeInvoiceRepository(
+        const <InvoiceListItem>[],
+      );
+      repo.details[view.invoice.id] = view;
+      payments.invoice = view.invoice;
+
+      await pumpScreen(
+        tester,
+        const InvoiceDetailScreen(invoiceId: 'i1'),
+        overrides: <Override>[
+          invoiceRepositoryProvider.overrideWithValue(repo),
+          paymentRepositoryProvider.overrideWithValue(payments),
+          nowProvider.overrideWithValue(now),
+        ],
+        size: size,
+      );
+      await tester.pumpAndSettle();
+      return stringsOf(tester, InvoiceDetailScreen);
+    }
+
+    testWidgets('an invoice with no payments says so', (
+      WidgetTester tester,
+    ) async {
+      // A designed empty state rather than a blank region, which would read as
+      // a section that failed to load (§10).
+      final AppStrings strings = await pumpWithPayments(tester, view: detail());
+
+      expect(find.text(strings.invoiceDetailPaymentsEmpty), findsOneWidget);
+    });
+
+    testWidgets('each payment shows its date, method, amount and note', (
+      WidgetTester tester,
+    ) async {
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(
+          payments: <Payment>[
+            payment(5000000, method: PaymentMethod.cheque, note: 'چک ۱۲۳۴۵۶'),
+          ],
+        ),
+      );
+
+      expect(find.text(strings.paymentMethodCheque), findsOneWidget);
+      expect(find.text('چک ۱۲۳۴۵۶'), findsOneWidget);
+      expect(find.text(formatJalaliDate(issued)), findsWidgets);
+      expect(find.textContaining(formatGroupedPersian(500000)), findsWidgets);
+    });
+
+    testWidgets('a draft says why it cannot take a payment', (
+      WidgetTester tester,
+    ) async {
+      // The rule is the repository's — `PaymentNotAccepted` — and the screen
+      // explains it rather than merely hiding the control. A user who arrives
+      // at a draft and finds nothing has to guess.
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+
+      expect(
+        find.text(strings.invoiceDetailPaymentsUnavailableDraft),
+        findsOneWidget,
+      );
+      expect(find.text(strings.invoiceDetailRecordPayment), findsNothing);
+    });
+
+    testWidgets('a cancelled invoice says why too, in its own words', (
+      WidgetTester tester,
+    ) async {
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(status: InvoiceStatus.cancelled),
+      );
+
+      expect(
+        find.text(strings.invoiceDetailPaymentsUnavailableCancelled),
+        findsOneWidget,
+      );
+      expect(find.text(strings.invoiceDetailRecordPayment), findsNothing);
+    });
+
+    testWidgets('the phone offers the action once, in the floating slot', (
+      WidgetTester tester,
+    ) async {
+      // Two controls saying the same thing is one too many (§10), and the
+      // invoice list already settled this: on mobile the floating button is on
+      // screen, so the inline one is omitted.
+      await pumpWithPayments(tester, view: detail(), size: kMobileSize);
+
+      expect(find.byType(FloatingActionButton), findsOneWidget);
+      expect(find.byType(FilledButton), findsNothing);
+    });
+
+    testWidgets('the wider tiers offer it once, inline', (
+      WidgetTester tester,
+    ) async {
+      await pumpWithPayments(tester, view: detail(), size: kDesktopSize);
+
+      expect(find.byType(FloatingActionButton), findsNothing);
+      expect(find.byType(FilledButton), findsOneWidget);
+    });
+
+    testWidgets('recording sends the repository what the sheet built', (
+      WidgetTester tester,
+    ) async {
+      // The whole path: the inline button, the real sheet, the real controller,
+      // and the draft that reached the repository. What the screen *sent* is
+      // the assertion -- a screen that records a different payment from the one
+      // typed is the defect.
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.text(strings.invoiceDetailRecordPayment));
+      await tester.pumpAndSettle();
+
+      // The sheet's own field, not its title: the title deliberately repeats
+      // the button that opened it, so it is not what tells the two apart.
+      expect(find.text(strings.paymentFieldAmount), findsOneWidget);
+      await tester.enterText(find.byType(TextField).first, '۷۵۰۰۰۰');
+      await tester.tap(find.text(strings.paymentMethodBankTransfer));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
+      await tester.pumpAndSettle();
+
+      expect(payments.recorded, hasLength(1));
+      final (String id, PaymentDraft draft) = payments.recorded.single;
+      expect(id, 'i1');
+      // Typed in Persian digits and stored in Rial: 750,000 تومان.
+      expect(draft.amount, Money.rial(7500000));
+      expect(draft.method, PaymentMethod.bankTransfer);
+    });
+
+    testWidgets('the sheet offers the outstanding balance, and fills it', (
+      WidgetTester tester,
+    ) async {
+      // `amountDue` is the aggregate's, passed in. The sheet computes nothing —
+      // a second answer to "what is still owed" would eventually disagree with
+      // the one on the card above it.
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.text(strings.invoiceDetailRecordPayment));
+      await tester.pumpAndSettle();
+
+      // 20,000,000 rial invoice less 5,000,000 paid = 1,500,000 تومان due.
+      expect(
+        find.text(
+          strings.paymentAmountRemainingHelper(formatGroupedPersian(1500000)),
+        ),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text(strings.paymentAmountFillRemaining));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
+      await tester.pumpAndSettle();
+
+      expect(payments.recorded.single.$2.amount, Money.rial(15000000));
+    });
+
+    testWidgets('paying over the balance warns, and still goes through', (
+      WidgetTester tester,
+    ) async {
+      // A warning, not a refusal (D-027's principle applied to an input): the
+      // repository accepts an overpayment because they happen, and it is
+      // usually a data-entry error, so it is said before the write rather than
+      // discovered on the invoice afterwards.
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.text(strings.invoiceDetailRecordPayment));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '۹۰۰۰۰۰۰');
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.paymentAmountExceedsDue), findsOneWidget);
+
+      await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
+      await tester.pumpAndSettle();
+      expect(payments.recorded, hasLength(1));
+    });
+
+    testWidgets('a zero payment is refused at the field, not at the write', (
+      WidgetTester tester,
+    ) async {
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.text(strings.invoiceDetailRecordPayment));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.byType(TextField).first, '۰');
+      await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.validationAmountPositive), findsOneWidget);
+      expect(payments.recorded, isEmpty);
+    });
+
+    testWidgets('deleting asks first, and declining writes nothing', (
+      WidgetTester tester,
+    ) async {
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.byTooltip(strings.paymentDeleteAction));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.paymentDeleteTitle), findsOneWidget);
+      // The amount being removed is named, so the confirmation is about this
+      // payment rather than about payments in general.
+      expect(
+        find.text(strings.paymentDeleteBody(formatGroupedPersian(500000))),
+        findsOneWidget,
+      );
+
+      await tester.tap(find.text(strings.actionCancel));
+      await tester.pumpAndSettle();
+      expect(payments.deleted, isEmpty);
+    });
+
+    testWidgets('confirming deletes that payment', (WidgetTester tester) async {
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.byTooltip(strings.paymentDeleteAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.paymentDeleteAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(payments.deleted, <String>['p1']);
+    });
+
+    testWidgets('it warns when the deletion takes the invoice out of paid', (
+      WidgetTester tester,
+    ) async {
+      // The derived status is recomputed by the repository inside the delete's
+      // own transaction (§6). This copy is a claim about what the user is about
+      // to cause, not a second derivation of it — and it appears only where it
+      // is true, because a warning shown every time is one nobody reads on the
+      // occasion that matters.
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(
+          status: InvoiceStatus.paid,
+          payments: <Payment>[payment(20000000)],
+        ),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.byTooltip(strings.paymentDeleteAction));
+      await tester.pumpAndSettle();
+      expect(find.text(strings.paymentDeleteStatusWarning), findsOneWidget);
+    });
+
+    testWidgets('and stays quiet when the invoice was never paid off', (
+      WidgetTester tester,
+    ) async {
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(
+          status: InvoiceStatus.partiallyPaid,
+          payments: <Payment>[payment(5000000)],
+        ),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.byTooltip(strings.paymentDeleteAction));
+      await tester.pumpAndSettle();
+      expect(find.text(strings.paymentDeleteStatusWarning), findsNothing);
+    });
+
+    testWidgets('a failed write is a Persian line, never an exception', (
+      WidgetTester tester,
+    ) async {
+      // §7: no stack trace, no SQL, no raw exception string in front of a user.
+      payments.failWrites = true;
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+        size: kDesktopSize,
+      );
+
+      await tester.tap(find.byTooltip(strings.paymentDeleteAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.paymentDeleteAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.paymentDeleteFailed), findsOneWidget);
+    });
+  });
+
   group('the fold on a real phone', () {
     testWidgets('the first line is reachable without scrolling', (
       WidgetTester tester,
@@ -512,6 +846,12 @@ void main() {
       // screen whose purpose is to show the lines. A party card has no upper
       // bound on its height: five fields, up to three notices and a contact
       // block.
+      //
+      // The payments card did the same thing again when it arrived in (c) —
+      // 182 logical pixels of height with nothing in it, between the summary
+      // and the lines — which is how this test earned its keep a second time.
+      // Both now sit below the lines, and on a phone the record action moves to
+      // the floating slot so it stays reachable.
       //
       // Every other test on this screen uses a tall viewport so that content
       // assertions are about the page rather than about scroll position. This
@@ -589,4 +929,69 @@ void main() {
       }
     }
   });
+}
+
+/// A [PaymentRepository] that records what it was asked to do.
+///
+/// Implements the interface rather than mocking it, so this stops compiling if
+/// the contract moves — which is the notification a test should get, instead of
+/// a green run against a signature nobody has any more.
+///
+/// **[invoice] is the invoice under test, handed in rather than invented.** The
+/// real repository returns the row *as it stands after the write*, with the
+/// derived status already recomputed inside the same transaction (§6) — and
+/// that recomputation is the repository's own claim, pinned against a real
+/// database in `payment_repository_test.dart`. A fake that made one up would be
+/// asserting a second answer to it. The screen does not read this value at all:
+/// it takes the invoice from the live detail query, which is why handing back
+/// the unchanged row is enough here.
+class _FakePaymentRepository implements PaymentRepository {
+  /// Set by the harness from the fixture, so nothing here is fabricated.
+  late Invoice invoice;
+
+  /// Every `(invoiceId, draft)` handed to [record], in order.
+  final List<(String, PaymentDraft)> recorded = <(String, PaymentDraft)>[];
+
+  /// The payment ids passed to [softDelete], in order.
+  final List<String> deleted = <String>[];
+
+  /// Turns both writes into failures, for the «ممکن نشد» path (§7).
+  bool failWrites = false;
+
+  @override
+  Future<PaymentResult> record(String invoiceId, PaymentDraft draft) async {
+    if (failWrites) throw StateError('write refused by the fake');
+    recorded.add((invoiceId, draft));
+    return PaymentResult(
+      invoice: invoice,
+      payment: Payment(
+        id: 'written',
+        invoiceId: invoiceId,
+        amount: draft.amount,
+        paidAt: draft.paidAt,
+        method: draft.method,
+        note: draft.note,
+        createdAt: draft.paidAt,
+        updatedAt: draft.paidAt,
+      ),
+    );
+  }
+
+  @override
+  Future<PaymentResult> softDelete(String paymentId) async {
+    if (failWrites) throw StateError('write refused by the fake');
+    deleted.add(paymentId);
+    return PaymentResult(invoice: invoice, payment: null);
+  }
+
+  @override
+  Stream<List<Payment>> watchForInvoice(String invoiceId) =>
+      Stream<List<Payment>>.value(const <Payment>[]);
+
+  @override
+  Future<List<Payment>> findForInvoice(String invoiceId) async =>
+      const <Payment>[];
+
+  @override
+  Future<int> totalPaidRial(String invoiceId) async => 0;
 }

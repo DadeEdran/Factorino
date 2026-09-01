@@ -761,6 +761,82 @@
     "placeholders": { "label": { "type": "String" } }
   },
 
+  "paymentMethodCash": "نقدی",
+  "@paymentMethodCash": {},
+  "paymentMethodCardTransfer": "کارت به کارت",
+  "@paymentMethodCardTransfer": {
+    "description": "The everyday Iranian card-to-card transfer. Named as people name it, not as a bank would."
+  },
+  "paymentMethodBankTransfer": "انتقال بانکی",
+  "@paymentMethodBankTransfer": {},
+  "paymentMethodCheque": "چک",
+  "@paymentMethodCheque": {},
+  "paymentMethodOther": "سایر",
+  "@paymentMethodOther": {},
+
+  "invoiceDetailPaymentsSection": "پرداخت‌ها",
+  "@invoiceDetailPaymentsSection": {},
+  "invoiceDetailPaymentsEmpty": "هنوز پرداختی برای این فاکتور ثبت نشده است.",
+  "@invoiceDetailPaymentsEmpty": {
+    "description": "The designed empty state for the payments list. States the fact rather than leaving a blank region that reads as a section that failed to load."
+  },
+  "invoiceDetailRecordPayment": "ثبت پرداخت",
+  "@invoiceDetailRecordPayment": {},
+  "invoiceDetailPaymentsUnavailableDraft": "برای ثبت پرداخت، ابتدا فاکتور را صادر کنید. پیش‌نویس هنوز مطالبه‌ای از کسی نیست.",
+  "@invoiceDetailPaymentsUnavailableDraft": {
+    "description": "Why the record button is absent on a draft, said rather than left to be guessed. The repository refuses this too (PaymentNotAccepted) -- the screen does not enforce the rule, it explains it."
+  },
+  "invoiceDetailPaymentsUnavailableCancelled": "این فاکتور باطل شده است و دیگر مطالبه‌ای از کسی نیست، بنابراین پرداخت تازه‌ای برای آن ثبت نمی‌شود.",
+  "@invoiceDetailPaymentsUnavailableCancelled": {},
+
+  "paymentCreateTitle": "ثبت پرداخت",
+  "@paymentCreateTitle": {},
+  "paymentFieldAmount": "مبلغ پرداختی",
+  "@paymentFieldAmount": {},
+  "paymentFieldDate": "تاریخ پرداخت",
+  "@paymentFieldDate": {},
+  "paymentFieldMethod": "روش پرداخت",
+  "@paymentFieldMethod": {},
+  "paymentFieldNote": "توضیح",
+  "@paymentFieldNote": {},
+  "paymentFieldNoteHint": "شمارهٔ چک، مرجع تراکنش، یا هر یادداشت دیگر",
+  "@paymentFieldNoteHint": {},
+  "paymentAmountRemainingHelper": "مانده: {amount} تومان",
+  "@paymentAmountRemainingHelper": {
+    "description": "What is still owed, shown under the amount field so the common case -- paying off the rest -- needs no arithmetic from the user. It is InvoiceDetail.amountDue, read, never recomputed here.",
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "paymentAmountFillRemaining": "پرداخت کامل مانده",
+  "@paymentAmountFillRemaining": {
+    "description": "Fills the amount field with the outstanding balance. A convenience over the figure above it, not a second source for it."
+  },
+  "paymentAmountExceedsDue": "مبلغ واردشده از مانده بیشتر است و به عنوان اضافه‌پرداخت ثبت می‌شود.",
+  "@paymentAmountExceedsDue": {
+    "description": "A warning, not a refusal. Overpayment is a real thing that happens and the repository accepts it; it is usually a data-entry error, so it is said before the write rather than discovered on the invoice afterwards."
+  },
+  "validationAmountPositive": "مبلغ باید بزرگ‌تر از صفر باشد.",
+  "@validationAmountPositive": {
+    "description": "The repository refuses a zero or negative payment (PaymentNotAccepted). Caught at the field so the user is told where the problem is instead of meeting a failed save."
+  },
+
+  "paymentDeleteTitle": "این پرداخت حذف شود؟",
+  "@paymentDeleteTitle": {},
+  "paymentDeleteBody": "{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.",
+  "@paymentDeleteBody": {
+    "description": "Names the amount being removed and its direct consequence. The status change is stated separately, because it only applies to some invoices.",
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "paymentDeleteStatusWarning": "با این کار وضعیت فاکتور از «پرداخت شده» خارج می‌شود.",
+  "@paymentDeleteStatusWarning": {
+    "description": "Shown only when removing this payment actually moves the invoice out of paid. Deleting a payment recomputes the derived status in the same transaction (section 6), and a badge that changed without warning would look like a fault."
+  },
+  "paymentDeleteAction": "حذف پرداخت",
+  "@paymentDeleteAction": {},
+  "paymentDeleteFailed": "حذف این پرداخت ممکن نشد.",
+  "@paymentDeleteFailed": {},
+  "paymentSaveFailed": "ثبت این پرداخت ممکن نشد.",
+  "@paymentSaveFailed": {},
+
   "errorGenericTitle": "خطایی رخ داد",
   "@errorGenericTitle": {
     "description": "Friendly Persian error title. A stack trace, SQL statement, file path or raw exception string must never reach the user."

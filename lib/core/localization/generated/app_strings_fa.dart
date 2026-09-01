@@ -854,6 +854,94 @@ class AppStringsFa extends AppStrings {
   }
 
   @override
+  String get paymentMethodCash => 'نقدی';
+
+  @override
+  String get paymentMethodCardTransfer => 'کارت به کارت';
+
+  @override
+  String get paymentMethodBankTransfer => 'انتقال بانکی';
+
+  @override
+  String get paymentMethodCheque => 'چک';
+
+  @override
+  String get paymentMethodOther => 'سایر';
+
+  @override
+  String get invoiceDetailPaymentsSection => 'پرداخت‌ها';
+
+  @override
+  String get invoiceDetailPaymentsEmpty =>
+      'هنوز پرداختی برای این فاکتور ثبت نشده است.';
+
+  @override
+  String get invoiceDetailRecordPayment => 'ثبت پرداخت';
+
+  @override
+  String get invoiceDetailPaymentsUnavailableDraft =>
+      'برای ثبت پرداخت، ابتدا فاکتور را صادر کنید. پیش‌نویس هنوز مطالبه‌ای از کسی نیست.';
+
+  @override
+  String get invoiceDetailPaymentsUnavailableCancelled =>
+      'این فاکتور باطل شده است و دیگر مطالبه‌ای از کسی نیست، بنابراین پرداخت تازه‌ای برای آن ثبت نمی‌شود.';
+
+  @override
+  String get paymentCreateTitle => 'ثبت پرداخت';
+
+  @override
+  String get paymentFieldAmount => 'مبلغ پرداختی';
+
+  @override
+  String get paymentFieldDate => 'تاریخ پرداخت';
+
+  @override
+  String get paymentFieldMethod => 'روش پرداخت';
+
+  @override
+  String get paymentFieldNote => 'توضیح';
+
+  @override
+  String get paymentFieldNoteHint =>
+      'شمارهٔ چک، مرجع تراکنش، یا هر یادداشت دیگر';
+
+  @override
+  String paymentAmountRemainingHelper(String amount) {
+    return 'مانده: $amount تومان';
+  }
+
+  @override
+  String get paymentAmountFillRemaining => 'پرداخت کامل مانده';
+
+  @override
+  String get paymentAmountExceedsDue =>
+      'مبلغ واردشده از مانده بیشتر است و به عنوان اضافه‌پرداخت ثبت می‌شود.';
+
+  @override
+  String get validationAmountPositive => 'مبلغ باید بزرگ‌تر از صفر باشد.';
+
+  @override
+  String get paymentDeleteTitle => 'این پرداخت حذف شود؟';
+
+  @override
+  String paymentDeleteBody(String amount) {
+    return '$amount تومان از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.';
+  }
+
+  @override
+  String get paymentDeleteStatusWarning =>
+      'با این کار وضعیت فاکتور از «پرداخت شده» خارج می‌شود.';
+
+  @override
+  String get paymentDeleteAction => 'حذف پرداخت';
+
+  @override
+  String get paymentDeleteFailed => 'حذف این پرداخت ممکن نشد.';
+
+  @override
+  String get paymentSaveFailed => 'ثبت این پرداخت ممکن نشد.';
+
+  @override
   String get errorGenericTitle => 'خطایی رخ داد';
 
   @override

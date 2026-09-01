@@ -26,6 +26,7 @@ import '../domain/invoice_party_view.dart';
 import '../domain/invoice_status_view.dart';
 import '../domain/invoice_summary_figures.dart';
 import 'widgets/invoice_document_lines.dart';
+import 'widgets/invoice_payments_section.dart';
 import 'widgets/invoice_totals_summary.dart';
 
 /// One invoice as the document it is.
@@ -119,6 +120,16 @@ class InvoiceDetailScreen extends ConsumerWidget {
           ),
           onBack: back,
           backTooltip: strings.invoiceBackTooltip,
+          // The primary action, in the slot a phone puts one (§10). The
+          // payments card carries the same action on the wider tiers and omits
+          // it here, so the two are never on screen together.
+          floatingAction: context.tier.isMobile && view.invoice.acceptsPayments
+              ? FloatingActionButton.extended(
+                  onPressed: () => recordPayment(context, ref, view, strings),
+                  icon: const Icon(Icons.add),
+                  label: Text(strings.invoiceDetailRecordPayment),
+                )
+              : null,
           actions: <Widget>[
             _StatusChip(
               detail: view,
@@ -183,6 +194,10 @@ class _DetailBody extends StatelessWidget {
     final Widget dates = _DatesCard(detail: detail, strings: strings);
     final Widget summary = _Summary(detail: detail, strings: strings);
     final Widget notes = _NotesCard(detail: detail, strings: strings);
+    final Widget payments = InvoicePaymentsSection(
+      detail: detail,
+      strings: strings,
+    );
 
     final Widget lines = detail.items.isEmpty
         ? _NoLines(strings: strings)
@@ -214,6 +229,11 @@ class _DetailBody extends StatelessWidget {
               children: <Widget>[
                 summary,
                 const SizedBox(height: AppSpacing.lg),
+                // Directly under the figures they move. A payment recorded here
+                // changes «مانده» one card up, and putting the two a scroll
+                // apart would make that look like the page had not updated.
+                payments,
+                const SizedBox(height: AppSpacing.lg),
                 party,
                 const SizedBox(height: AppSpacing.lg),
                 dates,
@@ -232,14 +252,20 @@ class _DetailBody extends StatelessWidget {
     // putting anything above it means scrolling past the document to reach its
     // answer on every visit.
     //
-    // The party sits **below** the lines, which is the reverse of a printed
-    // invoice and the same conclusion D-044 reached about the customer record
-    // card: a party card's height has no upper bound the layout can be designed
-    // around — five fields, up to three notices and a contact block — so above
-    // the lines it pushes them arbitrarily far down the one screen whose purpose
-    // is to show them. On a 400 x 800 phone it put the first line off the bottom
-    // entirely. The order here is the same one the desktop tier reads in: the
-    // document in the main column, who and when beside it.
+    // The party and the payments sit **below** the lines, which is the reverse
+    // of a printed invoice and the same conclusion D-044 reached about the
+    // customer record card. Neither has an upper bound on its height — a party
+    // card is five fields, up to three notices and a contact block; a payments
+    // card is one row per payment — so above the lines they push them
+    // arbitrarily far down the one screen whose purpose is to show them.
+    // **Measured on a 400 x 800 phone rather than argued**: with the party above
+    // them the first line was off the bottom entirely, and the payments card
+    // costs 182 pixels even with nothing in it. The order here is the one the
+    // desktop tier reads in: the document in the main column, who and when and
+    // what has been paid beside it.
+    //
+    // On a phone the record action moves to the floating slot instead, so it
+    // stays reachable without scrolling past the lines to find it.
     return ListView(
       children: <Widget>[
         summary,
@@ -247,6 +273,8 @@ class _DetailBody extends StatelessWidget {
         SectionHeader(title: strings.invoiceDetailLinesSection),
         lines,
         const SizedBox(height: AppSpacing.xxl),
+        payments,
+        const SizedBox(height: AppSpacing.lg),
         party,
         const SizedBox(height: AppSpacing.lg),
         dates,
