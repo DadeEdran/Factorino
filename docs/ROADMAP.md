@@ -1654,10 +1654,19 @@ a test binary, never an amount, a name or an identifier. The threat model is unc
 
 ## Phase 6 — Backup and Restore
 
-**Status:** `NOT_STARTED` — required in the MVP, and **one of the two phases still in the plan**
-(D-068). Runs at the reduced standards recorded there: phone-tier device pass with one large
-realistic amount, tests covering correctness of the data — a backup round-trips to the Rial — rather
-than exhaustive layout coverage. Encryption and key handling are **not** reduced.
+**Status:** `COMPLETED` 2026-09-01 — all four increments delivered, at the reduced standards D-068
+records: phone-tier device pass with one large realistic amount, tests covering correctness of the
+data rather than exhaustive layout coverage. Encryption and key handling were **not** reduced, and
+neither was the keyboard rule.
+
+**Nothing in this phase is unfinished or deferred.** Everything §8 requires is built: encrypted
+export, transactional import, a format version, an integrity check, the last-backup reminder, and the
+Persian warning that losing the password loses the backup. What §8 defers — scheduled backups, CSV
+export, cloud backup — was never in scope and is not started.
+
+**The whole chain is proved on both targets.** Container (5/5 Android and Windows), export round-trip
+to the Rial, import with seven refusals each asserting what it left behind, the save dialog's intent
+read out of `dumpsys`, and a **confirmed save verified byte-for-byte** on Android and Windows.
 
 **Goal.** Encrypted export to a user-chosen location (Android SAF, Windows native dialog, Web
 download), transactional import with version compatibility checking, and a last-backup reminder in
@@ -1679,7 +1688,7 @@ ladder: an older backup migrates itself on open, a newer one is refused.
 | a | **The container proved, and the file gateway chosen** — no UI, no product paths | `COMPLETED` on Windows (D-071); **Android proof owed with the cable** |
 | b | **Export in the data layer**, with the round-trip test to the Rial | `COMPLETED` |
 | c | **Import, transactional, with the refusals** | `COMPLETED` |
-| d | **The screen — both flows, and settings becomes editable**; phone device pass; close | `IN_PROGRESS` — built and tested; **phone-tier device pass owed** (the Redmi disconnected mid-increment) |
+| d | **The screen — both flows, and settings becomes editable**; phone device pass; close | `COMPLETED` |
 
 **(a) The container proved, and the file gateway chosen.** An `integration_test/` proof on both
 targets in the D-020 style: write a password-keyed container, close it, reopen with the right

@@ -30,7 +30,9 @@ detail screen (D-057, D-058), the known-issue-19 fix (D-059), (c) payments (D-06
 and the keyboard rule (D-062, known issue 21), and (e) filters and paging (D-063) — and (f) closed
 the phase. **Nothing is awaiting review.**
 
-**Phase 6 — Backup and Restore · `NOT_STARTED`** ← next, at D-068's reduced standards.
+**Phase 6 — Backup and Restore · `COMPLETED`** (2026-09-01) — all four increments delivered at
+D-068's reduced standards. **Nothing unfinished, nothing deferred out of it.**
+**Phase 7 — PDF Generation · `NOT_STARTED`** ← next, and the last phase in the plan.
 **Phase 7 — PDF Generation · `NOT_STARTED`** — the last phase in the plan.
 **Phases 8–15 · `DEFERRED_INDEFINITELY`** (D-068). Not next, not later, not scheduled. Two items
 inside them are called out in `ROADMAP.md` as minutes of work that gate distribution rather than
@@ -227,7 +229,10 @@ Layout, all 3 tiers x 4 amounts (D-057) -- the phase-close check:
                                    rungs on screen at once -- new in (f)),
                                    invoice_detail_screen_test.dart, invoices_screen_test.dart
   device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, ratio 2.75
-                                   list, detail and form suites. 0 layout errors on all three.
+                                   list, detail, form AND settings suites (2026-09-01, Phase 6
+                                   close). 0 layout errors on all four. The settings suite raises
+                                   the real keyboard on both new sheets and reads the written
+                                   settings back out of the real encrypted database.
                                    **RE-RUN after the D-065/D-066 fixes (2026-09-01)** and still
                                    0 errors. As predicted: the phone tier renders line cards
                                    rather than the table D-065 fixed, so neither defect could
@@ -2231,11 +2236,51 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 6 (d) is built, tested and analysed clean. One thing is owed: the phone-tier device pass.**
-The Redmi disconnected part-way through the increment — Windows enumerates no `VID_2717` device and
-no ADB interface at all, so it is **not** known issue 22's stale-daemon symptom and a daemon restart
-does not help. **The single next action: reconnect the phone and run
-`flutter test integration_test/settings_device_test.dart -d <redmi>`.** Then Phase 6 closes.
+**Phase 6 is CLOSED.** Nothing is owed and nothing is awaiting review.
+
+**The single specific next action: start Phase 7 — PDF Generation, beginning with the ZWNJ remedy**,
+which D-070 names as the first thing that phase fixes. U+200C renders as a missing-glyph box, it is in
+the application's own ARB strings, and a document with boxes through its own labels is not
+deliverable. It is **not** the font — U+200C is in Vazirmatn's `cmap` at glyph 322 and the join around
+it already breaks correctly — so the remedy is at the glyph-mapping layer. Three requirements from the
+owner: it must preserve the join break (verified on a rendered page, ش final and ن initial), it must
+be tested over **every** ARB entry containing U+200C rather than over examples, and it must not be
+mistaken for a fix to the bidi finding.
+
+**The Phase 7 entry gate is already satisfied**: the baseline sits on `60b5cd5` (arm64 APK
+21,520,524 bytes; Windows bundle 32,876,606 bytes; cold start **1,401 ms** median of runs 2–5, run 1
+kept separate at 3,440 ms as first-launch work), and the viability probe is done (D-070). The print
+contract is settled and measured: **no control characters reach the renderer**, and **the label and
+the value are separate widgets, never one string**.
+
+**After Phase 7, and scheduled**: release signing and the two manifest lines (~1 hour, `ROADMAP.md`).
+
+### The Phase 6 close, 2026-09-01
+
+**All four device suites pass on the Redmi**, after (d):
+
+| Suite | Result |
+|---|---|
+| `settings_device_test` (new) | **PASS** — 0 layout errors, real keyboard up, write reaching the real encrypted database |
+| `invoice_form_device_test` | **PASS** — 0 layout errors |
+| `invoice_list_device_test` | **PASS** — 0 layout errors |
+| `invoice_detail_device_test` | **PASS** — 0 layout errors |
+
+Re-run because (d) changed `AppTextField`, which every form in the application uses.
+
+**And the close found two things in its own guard — D-072.**
+
+1. **A password field raises a bigger keyboard than an ordinary one**: **284.0** logical pixels
+   against 254.9, a different IME layout. The widget guard had been checking that sheet against the
+   friendlier number. It passes either way — action at 503.6 against a limit of 519.6, **16 pixels of
+   margin** — and that margin is the number to watch if the §8 warning copy ever grows.
+2. **The inset was never what made the check bite.** Raising it does not fail the assertions: the
+   backup password sheet passed against an invented 560-pixel keyboard, because `EditorSheet` puts
+   the `viewInsets` padding inside its own height cap and lands the action on top of whatever
+   keyboard exists **by construction**. So the file was measuring a property it could not fail, and
+   every assertion in it would have gone on passing if `EditorSheet` itself regressed. It now carries
+   a **negative control** — a sheet built the way the defect was, asserted to put its action below the
+   fold — the same both-directions design as `gateway_boundary_test.dart`.
 
 **Why that run is not optional here.** D-068 reduced this phase's device pass to the phone tier at one
 large amount, and reduced nothing else — the **keyboard rule is explicitly not among the reductions**,

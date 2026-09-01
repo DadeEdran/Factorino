@@ -41,6 +41,17 @@ void main() {
   const Size phone = Size(400, 800);
   const double keyboard = 255;
 
+  /// **A password field raises a bigger keyboard, and it was measured rather
+  /// than assumed.** On the Redmi the ordinary text keyboard takes 254.9
+  /// logical pixels; the one the *password* field raises takes **284.0** — a
+  /// different IME layout, 29 pixels taller. Found by the Phase 6 (d) device
+  /// pass, after this file had already passed the same sheet at 255.
+  ///
+  /// So the guard for that sheet uses the number that sheet actually meets. A
+  /// cheap check calibrated to a friendlier keyboard than the user's is the
+  /// small-test-data mistake D-057 was written about, in a different unit.
+  const double passwordKeyboard = 284;
+
   /// Opens [sheet] from a host screen, with the keyboard already up.
   ///
   /// The inset goes through the harness's own `MediaQuery`, which is where the
@@ -48,8 +59,9 @@ void main() {
   /// cannot tell this apart from a keyboard the platform raised.
   Future<AppStrings> openSheet(
     WidgetTester tester,
-    Future<void> Function(BuildContext context) sheet,
-  ) async {
+    Future<void> Function(BuildContext context) sheet, {
+    double inset = keyboard,
+  }) async {
     late BuildContext hostContext;
 
     await pumpScreen(
@@ -65,7 +77,7 @@ void main() {
       // fresh `MediaQueryData`, so every screen test in this project has
       // rendered with no keyboard — which is precisely why 892 of them could
       // not see known issue 21.
-      viewInsets: const EdgeInsets.only(bottom: keyboard),
+      viewInsets: EdgeInsets.only(bottom: inset),
     );
 
     final AppStrings strings = AppStrings.of(hostContext);
@@ -75,11 +87,15 @@ void main() {
   }
 
   /// The whole assertion: the action is inside the region the keyboard leaves.
-  void expectActionAboveKeyboard(WidgetTester tester, Finder action) {
+  void expectActionAboveKeyboard(
+    WidgetTester tester,
+    Finder action, {
+    double inset = keyboard,
+  }) {
     expect(action, findsOneWidget, reason: 'the sheet must offer its action');
 
     final Rect rect = tester.getRect(action);
-    const double visibleBottom = 800 - keyboard;
+    final double visibleBottom = 800 - inset;
 
     expect(
       rect.bottom,
@@ -145,11 +161,13 @@ void main() {
       tester,
       (BuildContext context) =>
           showBackupPasswordSheet(context, confirming: true),
+      inset: passwordKeyboard,
     );
 
     expectActionAboveKeyboard(
       tester,
       find.widgetWithText(FilledButton, strings.actionSave),
+      inset: passwordKeyboard,
     );
   });
 
@@ -257,6 +275,61 @@ void main() {
     );
   });
 
+  testWidgets('the check fails on a sheet built the way the defect was', (
+    WidgetTester tester,
+  ) async {
+    // **The negative control, and this file needed one.**
+    //
+    // Raising the inset does not make these assertions fail: `EditorSheet`
+    // puts the `viewInsets` padding inside its own height cap, so the action
+    // lands on top of whatever keyboard there is *by construction*. That is the
+    // primitive working — and it means the inset number documents reality
+    // rather than being the thing that bites. Checked directly during the Phase
+    // 6 (d) close: the password sheet still passed at an invented 560-pixel
+    // keyboard.
+    //
+    // So what the file actually guards is **a sheet that does not use the
+    // primitive's action slot** — which is exactly the shape the payment sheet
+    // shipped in as known issue 21. Without this test, a change to `EditorSheet`
+    // itself could make every assertion above vacuous and nothing would say so.
+    await pumpScreen(
+      tester,
+      Builder(
+        builder: (BuildContext context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () => showModalBottomSheet<void>(
+                context: context,
+                isScrollControlled: true,
+                useSafeArea: true,
+                builder: (BuildContext context) => const _SheetBuiltTheOldWay(),
+              ),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+      size: phone,
+      viewInsets: const EdgeInsets.only(bottom: keyboard),
+    );
+
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    final Finder action = find.byKey(const ValueKey<String>('bad-action'));
+    expect(action, findsOneWidget);
+
+    const double visibleBottom = 800 - keyboard;
+    expect(
+      tester.getRect(action).bottom,
+      greaterThan(visibleBottom),
+      reason:
+          'the deliberately-wrong sheet put its action ABOVE the keyboard, so '
+          'this file is no longer able to tell the two shapes apart and every '
+          'assertion in it has gone quiet',
+    );
+  });
+
   testWidgets('the fields are what gives, and they stay scrollable', (
     WidgetTester tester,
   ) async {
@@ -295,3 +368,31 @@ void main() {
 /// Fires and forgets the sheet's future: the sheet is dismissed by the test
 /// ending, and awaiting it here would deadlock the pump.
 void unawaited(Future<void> future) {}
+
+/// The pre-D-062 shape, kept only so the guard above has something to catch:
+/// fields and the commit action together in one scroll view, which is how the
+/// payment sheet shipped in Phase 5 (c).
+class _SheetBuiltTheOldWay extends StatelessWidget {
+  const _SheetBuiltTheOldWay();
+
+  @override
+  Widget build(BuildContext context) {
+    return Padding(
+      padding: EdgeInsets.only(bottom: MediaQuery.viewInsetsOf(context).bottom),
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            for (int i = 0; i < 8; i++)
+              const SizedBox(height: 80, child: Placeholder()),
+            FilledButton(
+              key: const ValueKey<String>('bad-action'),
+              onPressed: () {},
+              child: const Text('ذخیره'),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}

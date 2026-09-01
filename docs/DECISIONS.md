@@ -4337,3 +4337,49 @@ The device key is neither read nor handled by the import path. It is already app
 connection before drift issues anything (D-020); import only writes rows through that connection.
 **Restoring onto a new device therefore needs no key export, and there is deliberately no mechanism
 to move a device key anywhere** — adding one would turn the strongest part of D-010 into a file.
+
+---
+
+## D-072 — A guard that cannot fail is not a guard: the keyboard rule gets a negative control
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED
+**Closes:** Phase 6 (d)
+**Extends:** D-062 (a check must reproduce the conditions the user is in)
+
+**Two findings from the Phase 6 (d) phone-tier pass, one small and one that matters.**
+
+### 1. A password field raises a bigger keyboard, and it was measured
+
+On the Redmi the ordinary text keyboard takes **254.9** logical pixels. The one a **password** field
+raises takes **284.0** — a different IME layout, 29 pixels taller. `sheet_keyboard_test.dart` had been
+checking the backup password sheet against 255, which is a friendlier keyboard than that sheet ever
+actually meets. It now uses the measured number for that sheet.
+
+The sheet passes either way, with the action at 503.6 against a limit of 519.6 — **16 pixels of
+margin**, on the tightest sheet in the application, whose §8 warning is the tallest thing anything
+puts above a pinned action. Recorded because that margin is the number worth watching if the copy
+ever grows.
+
+### 2. The inset was never what made the check bite
+
+Raising the inset **does not fail these assertions**, and that was discovered by trying it: the backup
+password sheet passed against an invented **560**-pixel keyboard. The reason is `EditorSheet` working
+exactly as designed — it puts the `viewInsets` padding inside its own height cap, so the action lands
+on top of whatever keyboard exists, by construction.
+
+**Which means the file was measuring a property it could not fail.** Every assertion in it would have
+gone on passing if `EditorSheet` itself regressed, and nothing would have said so. The claim in
+`CURRENT_STATE.md` that the guard was "verified to bite" was true of the moment it was written —
+against the pre-fix payment sheet — and had no standing proof afterwards.
+
+**The fix is a negative control**: a sheet built the way the defect was, fields and commit action
+together in one scroll view, asserted to put its action **below** the fold. It is the same
+both-directions design as `gateway_boundary_test.dart` — that one fails if the forbidden import
+appears *and* if the sanctioned one disappears, so a rename cannot quietly retire it.
+
+**The general rule, which is the part to keep.** *Verified to bite* is a claim with a shelf life
+unless something in the suite keeps proving it. A guard whose subject has since been made correct **by
+construction** is the most dangerous kind: it passes, it looks like coverage, and the thing it was
+watching moved out from under it. Where a check protects a shape rather than a value, the suite needs
+an example of the wrong shape, permanently.
