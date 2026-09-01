@@ -1773,12 +1773,31 @@ for it (owner, 2026-08-24).
 user-accessible storage. Temporary files must be cleaned up, and any share/print intent on Android is
 a new outbound data surface.
 
-**The shaping probe runs before Phase 6 (b), not at the start of Phase 7** (owner, 2026-09-01). Forty
-minutes against the candidate library: Persian text shaped and joined, an invoice number
-**bidi-isolated inside RTL** so it does not visually scramble, and **Jalali digits**. It is the only
-finding left that could change the whole Phase 7 plan, and finding it on the last day ends the phase
-rather than changing it. The dependency is reverted afterwards, so the entry-gate baseline above still
-sits on the commit before the real `pubspec.yaml` entry.
+**The shaping probe is DONE, and the phase is viable — D-070** (2026-09-01, before Phase 6 (b) at the
+owner's direction). `pdf` 3.13.0 with `bidi` 2.0.13 over bundled Vazirmatn shapes and joins Persian,
+lays out RTL, renders Persian digits and the Arabic thousands separator, and places a Latin invoice
+number correctly inside an RTL sentence with no help at all. It ran in a throwaway package, so the
+dependency never entered `pubspec.yaml` and the baseline below still sits on a PDF-free commit.
+
+**Three things it found, which this phase must build to:**
+
+1. **U+2068/U+2069 must never reach the renderer.** They are absent from Vazirmatn's `cmap` and the
+   shaper **eats the last character of the isolated run**: a national ID printed nine of its ten
+   digits, silently. The application already wraps invoice numbers, phones and national IDs in those
+   controls for the Flutter UI, so the view-model boundary must strip them — with a test.
+2. **A number containing spaces or a `+` scrambles** and needs an explicit LTR `Directionality`. An
+   unbroken digit run needs nothing.
+3. **ZWNJ draws a box**, and it is not the font — U+200C is in the `cmap` and the join around it is
+   already broken correctly. **The first thing this phase fixes**, as a correctness item under D-068,
+   not a polish one.
+
+**Entry-gate baseline, taken on `60b5cd5`** (the commit before any PDF dependency):
+
+| Measurement | Value |
+|---|---|
+| Android APK, arm64-v8a, release | **21,520,524 bytes** (also: armeabi-v7a 19,096,744; x86_64 23,138,664) |
+| Windows release bundle, total | **32,876,606 bytes** over 17 files |
+| Android cold start, 5 runs | **OWED** — needs the cable; taken with the owed Redmi device run |
 
 ---
 

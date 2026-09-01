@@ -2231,20 +2231,36 @@ The split, the container format (D-069) and the 6 → 7 ordering were all **appr
 
 No UI, no repository wiring, no product code path in (a).
 
-### Running alongside (a): the Phase 7 entry gate and the shaping probe
+### DONE before (a): the Phase 7 entry gate and the shaping probe
 
-Both were approved to happen **now** rather than at the start of Phase 7.
+Both were approved to happen ahead of Phase 6 and **both have run**.
 
-- **The size/startup baseline** must sit on the commit **before** the PDF dependency lands, and that
-  commit is this one. Release APK (`--split-per-abi`, arm64 byte size), Windows release bundle total
-  size, and five cold starts via `adb shell am start -W` after `am force-stop` each time — the cold
-  starts need the cable, so they join the owed phone run below.
-- **The Persian shaping probe**, forty minutes: Persian text shaped and joined, an invoice number
-  **bidi-isolated inside RTL**, and **Jalali digits**. The dependency is reverted afterwards so the
-  baseline stays on a pre-dependency commit.
+**The baseline, on `60b5cd5`** — the commit before any PDF dependency:
 
-**Report the probe result before (b), not at the end of Phase 6** (owner). If it fails, Phase 7 is
-replanned immediately rather than discovered on the last day.
+| Measurement | Value |
+|---|---|
+| Android APK, arm64-v8a, release | **21,520,524 bytes** (armeabi-v7a 19,096,744; x86_64 23,138,664) |
+| Windows release bundle, total | **32,876,606 bytes** over 17 files |
+| Android cold start, 5 runs | **OWED** — needs the cable; take it with the owed Redmi run below |
+
+**The shaping probe: Phase 7 is viable — D-070.** `pdf` 3.13.0 with `bidi` 2.0.13 over bundled
+Vazirmatn shapes and joins Persian, lays out RTL, renders Persian digits and U+066C, and places a
+Latin invoice number correctly inside an RTL sentence **with no isolation marks at all**. It ran in a
+throwaway package in the scratchpad, so the dependency **never entered `pubspec.yaml`** and the
+baseline above still sits on a PDF-free commit.
+
+**Three findings, and the first one reaches back into code that already exists:**
+
+1. **U+2068/U+2069 must never reach the renderer.** Absent from Vazirmatn's `cmap` (checked, not
+   assumed), and the shaper **eats the last character of the isolated run** — a national ID printed
+   nine of ten digits, silently, and plausibly. **This application already wraps invoice numbers,
+   phones and national IDs in those controls for the Flutter UI**, where they are correct and
+   required by §9. The PDF view-model boundary must strip them, with a test.
+2. **A number containing spaces or a `+` scrambles** — `+98 912 123 4567` rendered as
+   `۴۵۶۷ ۱۲۳ ۹۱۲ ۹۸+`. Needs an explicit LTR `Directionality`. An unbroken digit run needs nothing.
+3. **ZWNJ draws a box**, and it is **not** the font: U+200C is in the `cmap` at glyph 322 and the join
+   around it already breaks correctly. Deleting it is not the fix — that joins «پیشنویس» across a
+   boundary that must not join. **The first thing Phase 7 fixes**, a correctness item under D-068.
 
 ### Still owed, from before the cut
 

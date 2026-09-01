@@ -4023,3 +4023,79 @@ there is no recovery path and no one who can help.
    backup was taken, and has no reason to expect it — the word "restore" implies addition to most
    people. This is a copy requirement with the weight of a data-loss guard, because that is what it
    is.
+
+---
+
+## D-070 — The Phase 7 shaping probe: `pdf` renders Persian, and two characters must never reach it
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED
+**Gate for:** Phase 7. Run before Phase 6 (b) at the owner's direction, because a failure here would
+have replanned the phase rather than been discovered on the last day.
+
+**Result: Phase 7 is viable.** `pdf` 3.13.0 with `bidi` 2.0.13, rendering bundled Vazirmatn, shapes
+and joins Persian correctly, lays RTL out correctly, renders Persian digits (U+06F0–U+06F9) and the
+Arabic thousands separator (U+066C), and puts a Latin invoice number in the right place inside an RTL
+sentence **with no isolation marks at all** — «فاکتور INV-1405-0001 صادر شد» comes out in that order.
+The probe drew a realistic invoice: header, party block, a four-column table with two money columns,
+tax line and grand total. No new information changes the plan.
+
+**Two findings that do change the renderer's contract.**
+
+### 1. U+2068 / U+2069 must never reach the PDF — they eat the last character of the run
+
+The probe put `INV-1405-0001` between FSI and PDI, as the project spec requires **on screen**. It came
+out as `▯INV-1405-000▯` — two missing-glyph boxes, **and the trailing `1` gone**. A national ID
+`0069543210` came out with nine digits. `ABCDEFGHIJ` came out as `ABCDEFGHI`. The loss is silent and
+the result is plausible, which is the worst possible shape for a defect on a document a customer
+reconciles by hand.
+
+**Cause, checked rather than guessed.** Vazirmatn's `cmap` was parsed directly: **U+2068 and U+2069
+map to glyph 0**, while U+200C, U+200E, U+066C and U+06F0 all map to real glyphs. So the boxes are
+genuinely absent glyphs, and the swallowed character is an index fault in the shaper when a run
+contains an unmapped control.
+
+**The rule.** The PDF view model carries **no isolation controls**. This is not theoretical: the
+application already wraps invoice numbers, phone numbers and national IDs in FSI/PDI for the Flutter
+UI, where they are correct and necessary. **If a formatted string is passed from the screen layer to
+the renderer verbatim, invoice numbers and national IDs print with a character missing.** Stripping
+them is a step at the view-model boundary, and it needs a test, not a comment.
+
+**What to use instead**, all three verified working: nothing at all (the bidi algorithm handles a
+Latin or Persian-digit run inside RTL on its own), U+200E LRM (in the font, glyph 319, renders
+invisibly), or an explicit `pw.Directionality(textDirection: ltr)` around the run.
+
+### 2. A number containing spaces or a `+` still scrambles, and that is the real isolation case
+
+`+98 912 123 4567` rendered, left to right, as `۴۵۶۷ ۱۲۳ ۹۱۲ ۹۸+` — the groups reversed. Space and
+`+` are bidi-neutral, so the number breaks into runs that take the paragraph direction. The unbroken
+form `09121234567` renders correctly with no help at all.
+
+**The rule.** Any number that is not a single unbroken run of digits is wrapped in an explicit LTR
+`Directionality` in the renderer. Formatting that introduces spaces into a phone number is a decision
+the view model makes and the renderer must then protect.
+
+### 3. Open, and owned by Phase 7: ZWNJ draws a box
+
+U+200C renders as a missing-glyph box: «پیش‌نویس» prints as «پیش▯نویس». This matters — ZWNJ is
+ordinary Persian, it is in this application's own status labels, and it is in customer-entered product
+descriptions.
+
+**It is not the font.** U+200C **is** in Vazirmatn's `cmap`, at glyph 322. And the shaping around it
+is already right: the join is correctly broken, with ش in final form and ن in initial form. Only the
+control's own glyph is wrong. Deleting the ZWNJ is **not** the fix — that yields «پیشنویس», joined
+across a boundary that must not join.
+
+Left open deliberately: it is a Phase 7 implementation question with a working shape already visible
+(the substitution happens inside the package's shaper, so the remedy is at the glyph-mapping layer,
+not in our strings), and the probe's job was to decide whether the phase is viable. It is. **This is
+the first thing Phase 7 fixes**, and it is a correctness item under D-068's "Persian correctness is
+not negotiable", not a polish item.
+
+### Method note
+
+The probe rendered actual pages and read the pixels — `pdf.js` to a canvas, screenshotted, zoomed —
+rather than inspecting content streams, and then confirmed each cause against the font's `cmap`.
+Nothing here rests on what the library is documented to do. It ran in a throwaway package in the
+scratchpad, so **the dependency never entered `pubspec.yaml`** and the Phase 7 entry-gate baseline
+below still sits on a commit with no PDF dependency in it.
