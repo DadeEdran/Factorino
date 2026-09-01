@@ -516,6 +516,17 @@ gains a presentation boundary:
 - Note for (f): the screens that will show national IDs, phone numbers and amounts are the first
   place §7's logging rule becomes load-bearing. The logging wrapper does not exist yet.
 
+**The phone-tier device pass, 2026-09-01 — D-062.** Three sessions of debt for (b), (c) and (d)
+cleared in one run on the Redmi Note 8 Pro, with the D-020 and startup proofs that known issue 10b had
+blocked. **The product had no defects on the phone tier**; the device test failed twice and both were
+the test's own fault — it had only ever run on Windows and assumed the desktop layout (the party card
+is the fourth block on a narrow tier, and a `ListView` child past its cache extent is not in the tree),
+and it tapped the payment sheet's save button where a machine with no soft keyboard puts it. A `reach`
+helper fixes both. **Known issue 21 raised for the owner**: the sheet's «ذخیره» starts ~70 logical
+pixels below the fold on a phone, because `autofocus` raises a keyboard taking 254.9 of 803.6 pixels.
+Not a defect and not an overflow — the sheet scrolls — but the fix is D-053's split-by-purpose applied
+to a sheet, which is a design call. Known issue 10 did not recur; the APK installed first try.
+
 **Security note (increment d).** The first code that **writes** third-party personal identifiers,
 so the threat model gains a write path:
 
@@ -1144,7 +1155,8 @@ paths were reviewed in (c). What is new:
 
 ## Phase 5 — Invoice Management and Payments
 
-**Status:** `IN_PROGRESS` — (a2), (b), (c) and (d) are delivered; filters and the phase close remain.
+**Status:** `IN_PROGRESS` — (a2), (b), (c) and (d) are delivered and their device debt is cleared;
+filters and the phase close remain.
 
 | # | Increment | Status |
 |---|---|---|
@@ -1314,7 +1326,8 @@ widget sweep, all three tiers, all four rungs   PASS  money_layout_test.dart (28
                                                       invoice_detail_screen_test.dart (12 of 38)
 device pass - Windows, desktop tier, Vazirmatn  PASS  0 layout errors at 1264 x 681, all four rungs,
                                                       with a renamed customer and an unrecorded gross
-device pass - Android, phone tier               OUTSTANDING - no device attached this session
+device pass - Android, phone tier               PASS  Redmi Note 8 Pro, 392.7 x 803.6, 0 layout
+                                                      errors, all four rungs (2026-09-01)
 ```
 
 **New known issue, found by writing the device fixture and not fixed here.** Largest-remainder
@@ -1400,7 +1413,8 @@ device pass - Windows, desktop, Vazirmatn       PASS  the real sheet and dialog 
                                                       encrypted database: 2,117,500 rial recorded
                                                       (status paid), then deleted (status unpaid),
                                                       0 layout errors
-device pass - Android, phone tier               OUTSTANDING - no device attached; carried to (f)
+device pass - Android, phone tier               PASS  the payment recorded and deleted through the
+                                                      real sheet on the Redmi (2026-09-01)
 ```
 
 **Security note (increment c).** Payment records add amounts, dates, a method and a free-text note —
@@ -1452,8 +1466,10 @@ device pass - Windows, desktop, Vazirmatn       PASS  the real menu and confirma
                                                       still on record, number kept, then a payment
                                                       deleted off it leaving it cancelled;
                                                       0 layout errors
-device pass - Android, phone tier               OUTSTANDING - no device attached; carried to (f),
-                                                      now owed for (b), (c) and (d)
+device pass - Android, phone tier               PASS  the cancellation through the real menu on
+                                                      the Redmi, 705,833 rial still on record
+                                                      afterwards, then a payment deleted off it
+                                                      leaving it cancelled (2026-09-01)
 ```
 
 **Security note (increment d).** No new data class, no new stored field and no new input beyond a

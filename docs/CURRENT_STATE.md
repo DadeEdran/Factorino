@@ -110,10 +110,11 @@ itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 
 committed, with no work in progress and no question waiting on an answer. A fresh session starts at
 the Next Action at the bottom of this file and needs nothing re-explained.
 
-**One thing is genuinely owed and is not a boundary: the Android phone-tier device pass**, now for
-(b), (c) and (d). No device has been attached in any of the three sessions. See the Next Action; the
-owner's instruction is that the phase does not close without it, and that if no device appears the
-owner is told rather than the requirement quietly sliding.
+**The device debt is cleared.** The Android phone-tier pass ran for (b), (c) and (d) together on the
+Redmi Note 8 Pro, and the two proofs that known issue 10b blocked in the (a2) session — D-020 and
+startup — were re-run with it. **The product had no defects on the phone tier**; what failed, twice,
+was the device test itself, which had only ever run on Windows and had encoded the desktop layout as
+if it were the layout. See D-062 and known issue 21.
 
 **Note the collision when reading older sections of this file:** Phase 4 and Phase 5 both have
 increments lettered (a2), (b), (c) and (d). Every reference below names its phase; where one does not,
@@ -133,15 +134,18 @@ Layout, all 3 tiers x 4 amounts (D-057):
                                    the real sheet; and a cancellation through the real menu and
                                    confirmation, with 705,833 rial still on record afterwards
                                    (2026-09-01)
-  device - Android phone:   OUTSTANDING  no device attached this session, for (b), (c) or (d);
-                                   carried to (f) -- do not close the phase without it
+  device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, pixel ratio 2.75 (2026-09-01)
+                                   0 layout errors, all four rungs; a payment recorded and deleted
+                                   through the real sheet; a cancellation through the real menu with
+                                   705,833 rial still on record; correction leaving it cancelled.
+                                   Clears the debt for (b), (c) and (d) together.
+D-020 proof - Android:      PASS   re-run on the Redmi (2026-09-01), unblocked by 10b clearing
+Startup proof - Android:    PASS   re-run on the Redmi (2026-09-01)
 D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
 D-055 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
 D-052 proof - Windows:      PASS   both ladders: v2 -> v3 and v1 -> v3
 D-052 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
 D-048 proof - Android:      PASS   re-run on the Redmi (2026-08-27)
-D-020 proof - Android:      PASS   re-run on the Redmi (2026-08-27)
-Startup proof - Android:    PASS   re-run on the Redmi (2026-08-27)
 D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
 Form on the Redmi:          PASS   the whole flow through the real sheets, 0 layout errors (d)
 Windows run:                PASS   the app starts and renders at the desktop tier (d)
@@ -152,6 +156,47 @@ Web build:                  NOT_RETESTED since plugins were added
 ```
 
 **Test count is 892**, was 861 at the end of (c), 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What the phone-tier device pass found (2026-09-01) — D-062
+
+**Three sessions of debt cleared in one sitting**, for (b), (c) and (d) together, plus the two proofs
+known issue 10b had blocked. **The product had no defects on the phone tier.** What failed — twice —
+was the check.
+
+```
+device: Redmi Note 8 Pro, android
+logical size: 392.7 x 803.6, pixel ratio 2.75, 16sp renders at 16.0
+all four rungs: rendered; «ثبت‌نشده» shown on the invoice whose backfill was refused
+payment: 2117500 rial recorded, status paid
+deletion: status unpaid
+cancellation: status cancelled, 705833 rial still on record, number INV-1405-0001
+correction: status cancelled          (payment deleted off the cancelled invoice)
+layout errors : 0
+D-020 proof: PASS      startup proof : PASS
+```
+
+**Finding 1 — from (b): the device test asserted on the party where only a desktop puts it.** On the
+narrow tiers the party card is the *fourth* block — summary → lines → payments → party — which is §10's
+unbounded-card rule doing its job. A `ListView` child past its cache extent is **not in the tree**, so
+the finder reported absence rather than invisibility, and `ensureVisible` could not have rescued it:
+that needs an element that already exists. Fixed with a `reach` helper that scrolls until the finder
+matches and rewinds each list it searched.
+
+**Finding 2 — from (c): the payment sheet's save button is below the fold on a phone, and the tap
+missed it.** `autofocus: true` on the amount field raises the soft keyboard the moment the sheet opens.
+Measured on the device: the keyboard takes **254.9 of 803.6** logical pixels, and «ذخیره» sits at 618.6
+against a visible area ending at 548.7. The sheet scrolls, so it is reachable and it is not an
+overflow — but a desktop-written tap lands on the sheet's Material. Fixed in the test with
+`ensureVisible`; **the UX half is recorded as known issue 21 and left for the owner**, because the fix
+is a design decision with a precedent (D-053's split by purpose) rather than a correction to smuggle
+into a device pass.
+
+**Both findings are the D-057 lesson one level up.** D-057 exists because a check run at one tier is
+evidence about one tier. The device test *is* that check — and it was itself single-tier. That is now
+a rule: **an integration test reaches what it asserts; it does not assume where it is** (D-062).
+
+**What did not recur:** known issue 10, MIUI blocking the install on a fresh install — the APK
+installed first try, three times.
 
 ## What Phase 5 increment (d) delivered — cancellation, and what it does not do
 
@@ -1095,8 +1140,8 @@ repositories and driving the real sheets.
 | 6 | Settings is read-only, and its last-backup row would render an epoch number | `formatJalaliDateLong` exists; wire it when settings becomes editable. Currently unreachable — `lastBackupAt` is always null. **When the screen becomes editable, `payment_term_days` needs a bound**: a negative term produces an invoice due before it was issued, and `AppSettings` deliberately does not clamp it (D-052). |
 | 8 | `nowProvider` does not tick | Deliberate (D-041). A Jalali month boundary or a due date crossing midnight while the app sits open does not update until relaunch. |
 | 9 | The Windows debug exe shows no window when launched **directly** | Under `flutter run -d windows` it is fine. Worth a look in Phase 12. |
-| 10b | **The Redmi ran out of internal storage** | Seen 2026-08-27 after three integration runs: `Requested internal only, but not enough space`, and the follow-up uninstall failed `DELETE_FAILED_INTERNAL_ERROR`. The D-020 and startup proofs could not be re-run because of it. Free space on the device before the next device session. |
-| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
+| 10b | ~~The Redmi ran out of internal storage~~ | Seen 2026-08-27 after three integration runs: `Requested internal only, but not enough space`, and the follow-up uninstall failed `DELETE_FAILED_INTERNAL_ERROR`. The D-020 and startup proofs could not be re-run because of it. **Cleared 2026-09-01** — 4.9 GB free, three installs and both blocked proofs ran. Kept as history: it is currently absent rather than fixed. |
+| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install (**did not recur 2026-09-01**) | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
 | 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last** — every `pub get` rewrites all 123 `url:` entries to the Tsinghua mirror, and they must be put back to `https://pub.dev` before committing. (a2) also picked up a transitive `dart_style` 3.1.12 → 3.1.13 bump that way; it is committed deliberately, because pinning the lockfile to a version that is not installed would make it lie, and `dart format` output is unchanged under it. |
 | 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
 | 13 | Release builds signed with debug keys | Phase 15. |
@@ -1107,6 +1152,7 @@ repositories and driving the real sheets.
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
 | 19 | ~~A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed~~ | **Resolved 2026-09-01** (D-059), before (c), at the owner's direction. §4 step 4 was the only place in the engine multiplying **two amounts** together — an invoice discount by a line's net — so the product was quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount. `mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together; the guard is untouched and VM/Web parity is unchanged. Pinned over the whole D-057 ladder in the allocation, the engine and the editor preview, plus the exact old boundary, and verified to bite against the old implementation. |
 | 20 | ~~Cancelling an invoice leaves its recorded payments untouched, and nothing says so~~ | **Resolved in (d)** (D-061), by a ruling rather than a code change. A cancelled invoice **keeps** its payments: the money changed hands, and a cancellation is a statement about the claim rather than about the cash. What changed is that it is now said — in the confirmation before the commitment, on the page afterwards (both the payments card and «مانده»), and at the early return in `_recomputeStatus` that decides it. Recording against a cancelled invoice stays refused and the copy names the replacement invoice as the way forward; deleting stays allowed, with its own wording, because a mis-entered receipt must be correctable on a void document too. |
+| 21 | **The payment sheet's «ذخیره» starts below the fold on a phone** | Found by the 2026-09-01 phone pass (D-062), and **not a defect**: the sheet is a `SingleChildScrollView` under `isScrollControlled` with `viewInsets` padding, and the run reported 0 layout errors. But the amount field's `autofocus: true` raises the soft keyboard on open, which takes **254.9 of 803.6 logical pixels**, and the button's centre sits at 618.6 against a visible area ending at 548.7 — about **70 px down**. A user must scroll a sheet to save. The precedent for a fix is D-053: split by purpose, let the fields scroll and pin the action. **Needs the owner's ruling, not a quiet correction inside a device pass.** |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -1264,7 +1310,14 @@ repositories and driving the real sheets.
 
 ## Recently changed files
 
-### Phase 5 increment (d) — the newest work
+### The phone-tier device pass — the newest work
+
+```
+integration_test/invoice_detail_device_test.dart   + reach(); tier-blind assertions fixed;
+                                                     the keyboard measured and printed
+```
+
+### Phase 5 increment (d) — the boundary before it
 
 ```
 lib/features/invoices/presentation/widgets/invoice_cancel_action.dart  NEW  menu + confirmation
@@ -1565,7 +1618,17 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 5 increment (d) — cancellation, and what it does not do (D-061).**
+**The Android phone-tier device pass, for (b), (c) and (d) together (D-062).**
+
+Ran on the Redmi Note 8 Pro at 392.7 × 803.6, clearing three sessions of debt, plus the D-020 and
+startup proofs that known issue 10b had blocked. **The product had no defects on the phone tier** —
+0 layout errors at all four rungs, and every (b), (c) and (d) behaviour correct with the statuses read
+back from the encrypted database. **The device test failed twice and both were the test's fault**: it
+had only ever run on Windows and assumed the desktop layout, and it tapped the payment sheet's save
+button where a machine with no soft keyboard puts it. Known issue 21 raised for the owner: the sheet's
+primary action starts ~70 px below the fold on a phone.
+
+**The boundary before it — Phase 5 increment (d), cancellation (D-061).**
 
 `InvoiceRepository.cancel` existed since Phase 4 (d); (d) added the way in, the guard, the copy, and
 the ruling that resolves known issue 20:
@@ -1640,16 +1703,16 @@ From the owner's standing constraints and what is already in place:
 5. **The filter controls are new UI on the invoice list**, which has both a card layout and a table
    layout. A filter bar is exactly the kind of unbounded-height block §10 now rules on.
 
-**Still outstanding, and the owner's instruction is explicit: the Android phone-tier device pass, now
-for (b), (c) and (d).** No device has been attached in any of the three sessions — `flutter devices`
-lists Windows, Chrome and Edge, and the emulator is offline.
-`integration_test/invoice_detail_device_test.dart` runs on any target and now exercises the payment
-flow **and** the cancellation as well as the layout; point it at the Redmi the next time it is
-connected, freeing space on the device first (known issue 10b). **Do not close the phase without it —
-and if no device appears by the time (e) is done, say so and let the owner decide rather than letting
-it slide.**
+**The device debt is cleared** — (b), (c) and (d) all passed on the Redmi on 2026-09-01, along with
+the D-020 and startup proofs (D-062). (f) still owns the phase close, but it no longer carries a
+backlog: what it needs is a pass over whatever (e) adds.
 
-After (e) the order is (f), the device pass and the phase close.
+**One thing is waiting on the owner: known issue 21.** The payment sheet's «ذخیره» starts about 70
+logical pixels below the fold on a phone, because the amount field's `autofocus` raises a keyboard that
+takes 254.9 of 803.6 pixels. Not a defect and not an overflow — the sheet scrolls — but the fix, if
+there is to be one, is D-053's split-by-purpose applied to the sheet, and that is a design call.
+
+After (e) the order is (f), a device pass over the new filter UI, and the phase close.
 
 ### Standing constraints for the rest of Phase 5, from the owner
 
@@ -1665,5 +1728,7 @@ After (e) the order is (f), the device pass and the phase close.
   loaded page.
 - **Paging `watchForCustomer`**, known issue 16.
 - **A device pass before the phase is called done** — at **all three tiers**, over the written ladder
-  (D-057), not on one tier at whatever amounts the flow produces. **The phone tier is owed for (b),
-  (c) and (d).**
+  (D-057), not on one tier at whatever amounts the flow produces. **Done for (b), (c) and (d)** on the
+  Redmi, 2026-09-01. **And the device test must `reach` what it asserts rather than assume where it
+  is** (D-062): the tiers order pages differently, so a position that holds on one is a coincidence on
+  the others.

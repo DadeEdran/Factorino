@@ -3322,3 +3322,74 @@ layout errors : 0
 **The Android phone tier is still outstanding** for (b), (c) and now (d): no device has been attached
 in any of the three sessions. Carried to (f), per D-057 and the owner's standing instruction that the
 phase does not close without it.
+
+---
+
+## D-062 — A device test written at one tier is a device test for one tier
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — arising from the Phase 5 phone-tier pass for (b), (c) and (d)
+**Extends:** D-057, D-044, §10's unbounded-card rule
+
+### 1. What the phone pass actually found
+
+Three sessions of device debt were cleared in one run, and **the product had no defects on the phone
+tier**: 0 layout errors at all four rungs of the ladder, every (b), (c) and (d) behaviour correct,
+statuses read back from the encrypted database. What failed twice was **the check**.
+
+`integration_test/invoice_detail_device_test.dart` had only ever run on Windows, and it had quietly
+encoded the desktop layout as if it were *the* layout:
+
+- **It asserted on the party card immediately after pumping.** On the desktop tier the party sits in
+  a side panel visible in the first frame. On the narrow tiers it is the **fourth** block —
+  summary → lines → payments → party — because a card whose height has no upper bound does not go
+  above the thing the page exists to show (§10, D-044). A `ListView` child past its cache extent is
+  **not laid out and not in the tree**, so the finder reported absence, not invisibility, and
+  `ensureVisible` could not have helped: it needs an element that already exists.
+- **It tapped «ذخیره» in the payment sheet where a desktop puts it.** On a real phone the amount
+  field's `autofocus: true` raises the soft keyboard before the user does anything, and the tap
+  landed on the sheet's Material instead of the button.
+
+Both are the D-057 lesson **one level up**. D-057 says a phase closes on a layout check run at all
+three tiers, because a check run at one tier is evidence about one tier. The device test is that
+check — and it was itself single-tier, which is exactly the shape of defect it exists to catch.
+
+### 2. The rule
+
+**An integration test reaches what it asserts; it does not assume where it is.** The three tiers are
+genuinely different layouts (§10), not one layout at three widths, so a position that holds on one is
+a coincidence on the others. `reach(tester, finder)` scrolls the page until the finder matches,
+rewinding each list it searched so one assertion does not silently decide where the next one starts.
+
+This is not the same as `ensureVisible`, and the difference is the point: `ensureVisible` scrolls to an
+element **already in the tree** and throws when there is none. Off-screen content in a lazy list is not
+in the tree at all.
+
+### 3. The keyboard is a tier difference too, and it is now measured
+
+Nothing in the widget sweep has a soft keyboard. On the Redmi, measured rather than estimated:
+
+```
+logical size: 392.7 x 803.6
+keyboard: 254.9        (32% of the viewport)
+«ذخیره» centre: 618.6        visible area ends at 548.7
+after scroll: 500.7
+```
+
+So the payment sheet's primary action sits about **70 logical pixels below the fold** the moment the
+sheet opens. It is *reachable* — the sheet is a `SingleChildScrollView` under `isScrollControlled` with
+`viewInsets` padding, which is what those are for — and it is **not** an overflow: the run reported 0
+layout errors. But a user has to scroll a sheet to save, and nothing on the desktop tier would ever
+show that.
+
+Recorded as **known issue 21** rather than fixed here. The fix is a design decision with a precedent
+already in this project — D-053 split the invoice summary by purpose, letting the breakdown scroll and
+pinning the total with its actions — and applying it to the sheet is the owner's call, not a
+correction to smuggle into a device pass.
+
+### 4. What did not recur
+
+Known issue 10 (MIUI blocking `flutter test`'s install on a fresh install) **did not happen**: the APK
+installed first try, three times. Known issue 10b (the device out of internal storage) is cleared —
+4.9 GB free, and the D-020 and startup proofs that it blocked in the (a2) session both pass now. Both
+entries stay in the table as history, since neither is fixed so much as currently absent.

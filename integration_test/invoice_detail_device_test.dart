@@ -52,7 +52,57 @@ import 'package:integration_test/integration_test.dart';
 /// and D-052's notice has to render; and an invoice whose **gross was never
 /// recorded**, so «ثبت‌نشده» has to fit where a figure would have gone.
 ///
+/// **It reads the page by scrolling to what it asserts, not by assuming where
+/// things are.** The narrow tiers order the page summary → lines → payments →
+/// party → dates → notes, and the desktop tier puts the party and the summary
+/// in a side panel — genuinely different layouts (§10), not one squeezed. The
+/// first phone-tier run of this file failed on the party assertion for exactly
+/// that reason, with the product behaving correctly; [reach] is the fix.
+///
 /// Uses a probe database, so running it never touches the real one.
+/// Brings [finder] into the tree, scrolling the page if it is not there yet.
+///
+/// **Written because the phone-tier pass failed on the first content assertion
+/// and the product was fine.** On the narrow tiers the party card is the
+/// *fourth* block on the page — summary, lines, payments, then party — because
+/// a card whose height has no upper bound does not go above the thing the page
+/// exists to show (D-044). On the desktop tier it sits in a
+/// side panel that is visible in the first frame. This file only ever ran on
+/// Windows, so it asserted on the party immediately after pumping and encoded
+/// the desktop order as if it were *the* order.
+///
+/// A `ListView` child past its cache extent is **not laid out and not in the
+/// tree**, so a finder reports absence rather than invisibility, and no amount
+/// of `ensureVisible` helps: `ensureVisible` needs an element that already
+/// exists. Hence scrolling until it does.
+///
+/// Returns to the top of each list it searched, so one assertion does not
+/// silently decide where the next one starts from.
+Future<void> reach(WidgetTester tester, Finder finder) async {
+  if (finder.evaluate().isNotEmpty) return;
+
+  for (final Element element in find.byType(ListView).evaluate().toList()) {
+    final Finder list = find.byWidget(element.widget);
+    if (list.evaluate().isEmpty) continue;
+
+    bool found = false;
+    for (int step = 0; step < 24 && !found; step++) {
+      await tester.drag(list, const Offset(0, -240));
+      await tester.pumpAndSettle();
+      found = finder.evaluate().isNotEmpty;
+    }
+    if (found) return;
+
+    // Nothing here: rewind this list before trying the next one, or the
+    // desktop tier's second column would be searched from wherever the first
+    // one happened to stop.
+    for (int step = 0; step < 30; step++) {
+      await tester.drag(list, const Offset(0, 240));
+      await tester.pumpAndSettle();
+    }
+  }
+}
+
 void main() {
   IntegrationTestWidgetsFlutterBinding.ensureInitialized();
 
@@ -102,8 +152,8 @@ void main() {
     addTearDown(container.dispose);
 
     final Customer customer = await container
-        .read(customerRepositoryProvider)
-        .create(
+.read(customerRepositoryProvider)
+.create(
           const CustomerDraft(
             fullName: 'مریم احمدی',
             companyName: 'کارگاه نمونهٔ تهران',
@@ -131,8 +181,8 @@ void main() {
       // back. If this ever needs a special case again, the fix has regressed.
 
       final created = await container
-          .read(invoiceRepositoryProvider)
-          .create(
+.read(invoiceRepositoryProvider)
+.create(
             InvoiceDraft(
               customerId: customer.id,
               issueDate: DateTime.now().toUtc(),
@@ -170,8 +220,8 @@ void main() {
     //    which is where a three-line Persian sentence in a 320-pixel panel would
     //    go wrong if it were going to.
     await container
-        .read(customerRepositoryProvider)
-        .update(
+.read(customerRepositoryProvider)
+.update(
           customer.id,
           const CustomerDraft(
             fullName: 'مریم احمدی‌نژاد',
@@ -198,7 +248,7 @@ void main() {
     );
 
     debugPrint('=== PHASE 5 (b)+(c)+(d) DETAIL SCREEN ON DEVICE ===');
-    debugPrint('platform      : ${Platform.operatingSystem}');
+    debugPrint('platform: ${Platform.operatingSystem}');
 
     for (int index = 0; index < invoices.length; index++) {
       final Invoice invoice = invoices[index];
@@ -258,21 +308,27 @@ void main() {
       final Size size = MediaQuery.sizeOf(screen);
 
       if (index == 0) {
-        debugPrint('logical size  : ${size.width} x ${size.height}');
-        debugPrint('pixel ratio   : ${tester.view.devicePixelRatio}');
+        debugPrint('logical size: ${size.width} x ${size.height}');
+        debugPrint('pixel ratio: ${tester.view.devicePixelRatio}');
         debugPrint(
-          '16sp renders  : ${MediaQuery.textScalerOf(screen).scale(16)}',
+          '16sp renders: ${MediaQuery.textScalerOf(screen).scale(16)}',
         );
       }
 
       // The party the **document** states, not the record -- the whole of
       // D-052 rendered. The customer was renamed above, so finding the old name
       // here is the assertion, and finding the new one would be the defect.
+      //
+      // Scrolled to rather than asserted where it happens to be: on a phone the
+      // party card is below the lines and the payments (§10, D-044), so it is
+      // not in the tree at all until the page is moved. See [reach].
+      await reach(tester, find.text('مریم احمدی'));
       expect(
         find.text('مریم احمدی'),
         findsOneWidget,
         reason: 'the document must keep the party it was issued to',
       );
+      await reach(tester, find.text(strings.invoiceDetailPartyDiverged));
       expect(
         find.text(strings.invoiceDetailPartyDiverged),
         findsOneWidget,
@@ -281,10 +337,11 @@ void main() {
 
       // Whether the figure that was never recorded is admitted rather than
       // zeroed, on the widest invoice of the four.
+      await reach(tester, find.text(strings.invoiceFigureUnrecorded));
       final bool unrecorded = find
-          .text(strings.invoiceFigureUnrecorded)
-          .evaluate()
-          .isNotEmpty;
+.text(strings.invoiceFigureUnrecorded)
+.evaluate()
+.isNotEmpty;
       debugPrint(
         '$toman تومان : rendered, unrecorded figures shown = $unrecorded',
       );
@@ -304,6 +361,11 @@ void main() {
       // metrics in Vazirmatn. Repeating it four times would add running time
       // and no evidence.
       if (index == 0) {
+        // On a phone this is the floating action, which is not in the list at
+        // all; on the wider tiers it is the inline button inside the payments
+        // card, which is (D-060). One finder reaches both because each tier
+        // offers the action exactly once, under the same Persian label.
+        await reach(tester, find.text(strings.invoiceDetailRecordPayment));
         await tester.ensureVisible(
           find.text(strings.invoiceDetailRecordPayment).first,
         );
@@ -323,21 +385,48 @@ void main() {
         await tester.pumpAndSettle();
         await tester.tap(find.text(strings.paymentMethodCardTransfer));
         await tester.pumpAndSettle();
-        await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
+
+        // **The amount field carries `autofocus: true`, so on a real phone the
+        // soft keyboard is up from the moment the sheet opens** and takes the
+        // bottom of the viewport with it. The sheet is a `SingleChildScrollView`
+        // under `isScrollControlled` with `viewInsets` padding, so «ذخیره» is
+        // reachable -- but it is below the fold, and a test written on a desktop
+        // (where there is no keyboard and the sheet fits) taps thin air. The
+        // figures are printed rather than assumed: this is the phone tier's
+        // honest cost, not a defect, and it is worth knowing what it is.
+        final Finder save = find.widgetWithText(
+          FilledButton,
+          strings.actionSave,
+        );
+        final double keyboard = MediaQuery.viewInsetsOf(tester.element(save))
+.bottom;
+        debugPrint(
+          'payment sheet : keyboard takes $keyboard of '
+          '${size.height.toStringAsFixed(1)}; «ذخیره» centre at '
+          '${tester.getCenter(save).dy.toStringAsFixed(1)}',
+        );
+
+        await tester.ensureVisible(save);
+        await tester.pumpAndSettle();
+        debugPrint(
+          'after scroll: «ذخیره» centre at '
+          '${tester.getCenter(save).dy.toStringAsFixed(1)}',
+        );
+        await tester.tap(save);
         await tester.pumpAndSettle();
 
         // The write went through the repository's transaction, so the status was
         // recomputed with it (§6) -- read back from the database rather than from
         // the screen, because the screen believing it is not the claim.
         final Invoice afterPayment = (await container
-            .read(invoiceRepositoryProvider)
-            .findById(invoice.id))!;
+.read(invoiceRepositoryProvider)
+.findById(invoice.id))!;
         final int paid = await container
-            .read(paymentRepositoryProvider)
-            .totalPaidRial(invoice.id);
+.read(paymentRepositoryProvider)
+.totalPaidRial(invoice.id);
 
         debugPrint(
-          'payment       : $paid rial recorded, status ${afterPayment.status.name}',
+          'payment: $paid rial recorded, status ${afterPayment.status.name}',
         );
         expect(paid, afterPayment.grandTotal.rial);
         expect(afterPayment.status, InvoiceStatus.paid);
@@ -348,6 +437,7 @@ void main() {
         expect(find.text(strings.statusPaid), findsOneWidget);
 
         // ---- and take it back off again -------------------------------------
+        await reach(tester, find.byTooltip(strings.paymentDeleteAction));
         await tester.ensureVisible(
           find.byTooltip(strings.paymentDeleteAction).first,
         );
@@ -368,14 +458,14 @@ void main() {
         await tester.pumpAndSettle();
 
         final Invoice afterDelete = (await container
-            .read(invoiceRepositoryProvider)
-            .findById(invoice.id))!;
-        debugPrint('deletion      : status ${afterDelete.status.name}');
+.read(invoiceRepositoryProvider)
+.findById(invoice.id))!;
+        debugPrint('deletion: status ${afterDelete.status.name}');
         expect(afterDelete.status, InvoiceStatus.unpaid);
         expect(
           await container
-              .read(paymentRepositoryProvider)
-              .totalPaidRial(invoice.id),
+.read(paymentRepositoryProvider)
+.totalPaidRial(invoice.id),
           0,
         );
 
@@ -387,8 +477,8 @@ void main() {
         // sentences a cancelled invoice owes afterwards** — on the real target,
         // in Vazirmatn, with a real amount sitting on the document.
         await container
-            .read(paymentRepositoryProvider)
-            .record(
+.read(paymentRepositoryProvider)
+.record(
               invoice.id,
               PaymentDraft(
                 amount: Money.rial(invoice.grandTotal.rial ~/ 3),
@@ -426,13 +516,13 @@ void main() {
         // stayed, and the status did not derive its way back out of
         // `cancelled` (§6, D-061).
         final Invoice afterCancel = (await container
-            .read(invoiceRepositoryProvider)
-            .findById(invoice.id))!;
+.read(invoiceRepositoryProvider)
+.findById(invoice.id))!;
         final int paidAfterCancel = await container
-            .read(paymentRepositoryProvider)
-            .totalPaidRial(invoice.id);
+.read(paymentRepositoryProvider)
+.totalPaidRial(invoice.id);
         debugPrint(
-          'cancellation  : status ${afterCancel.status.name}, '
+          'cancellation: status ${afterCancel.status.name}, '
           '$paidAfterCancel rial still on record, '
           'number ${afterCancel.number}',
         );
@@ -447,24 +537,20 @@ void main() {
         // And the page says both of the things a void document carrying money
         // has to say, rather than leaving a paid figure to be read as a fault.
         //
-        // Scrolled back to the top first: the `ensureVisible` calls above moved
-        // the panel, and a `ListView` child scrolled past its cache extent is
-        // disposed rather than merely off screen -- so a finder would report it
-        // absent when it is only elsewhere.
-        for (final Element element
-            in find.byType(ListView).evaluate().toList()) {
-          for (int step = 0; step < 12; step++) {
-            await tester.drag(
-              find.byWidget(element.widget),
-              const Offset(0, 300),
-            );
-            await tester.pumpAndSettle();
-          }
-        }
+        // The two sentences live in **different cards** — the payments card and
+        // the paid/due card — which on a phone are separated by the whole line
+        // table, so they are never on screen together and each has to be
+        // reached in turn.
+        await tester.pumpAndSettle();
+        await reach(
+          tester,
+          find.text(strings.invoiceDetailCancelledPaymentsNote),
+        );
         expect(
           find.text(strings.invoiceDetailCancelledPaymentsNote),
           findsOneWidget,
         );
+        await reach(tester, find.text(strings.invoiceDetailCancelledDueNote));
         expect(
           find.text(strings.invoiceDetailCancelledDueNote),
           findsOneWidget,
@@ -472,6 +558,7 @@ void main() {
 
         // Correcting the money record is still possible, and it does not
         // resurrect the invoice.
+        await reach(tester, find.byTooltip(strings.paymentDeleteAction));
         await tester.ensureVisible(
           find.byTooltip(strings.paymentDeleteAction).first,
         );
@@ -491,9 +578,9 @@ void main() {
         await tester.pumpAndSettle();
 
         final Invoice afterCorrection = (await container
-            .read(invoiceRepositoryProvider)
-            .findById(invoice.id))!;
-        debugPrint('correction    : status ${afterCorrection.status.name}');
+.read(invoiceRepositoryProvider)
+.findById(invoice.id))!;
+        debugPrint('correction: status ${afterCorrection.status.name}');
         expect(afterCorrection.status, InvoiceStatus.cancelled);
       }
 
