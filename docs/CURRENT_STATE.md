@@ -1467,6 +1467,7 @@ repositories and driving the real sheets.
 | 20 | ~~Cancelling an invoice leaves its recorded payments untouched, and nothing says so~~ | **Resolved in (d)** (D-061), by a ruling rather than a code change. A cancelled invoice **keeps** its payments: the money changed hands, and a cancellation is a statement about the claim rather than about the cash. What changed is that it is now said — in the confirmation before the commitment, on the page afterwards (both the payments card and «مانده»), and at the early return in `_recomputeStatus` that decides it. Recording against a cancelled invoice stays refused and the copy names the replacement invoice as the way forward; deleting stays allowed, with its own wording, because a mis-entered receipt must be correctable on a void document too. |
 | 21 | ~~The payment sheet's «ذخیره» starts below the fold on a phone~~ | **Resolved 2026-09-01** at the owner's direction (D-062). The shape is now a primitive, `core/widgets/editor_sheet.dart`: fields scroll, the primary action is pinned above the keyboard — D-053's split-by-purpose applied to sheets. The line editor moved onto it unchanged; the **picker** sheets are deliberately outside it, since they commit by tapping a row. On the Redmi the action now sits at **532.7 against a limit of 548.7**, was 618.6. Guarded at both levels: `sheet_keyboard_test.dart` at the measured 255-pixel inset (verified to bite), and the device pass, which now raises the real keyboard and refuses a vacuous assertion on Android. |
 
+| 23 | **Drift warns "you've created the database class AppDatabase multiple times" during an export** | Debug builds only. An export legitimately holds two `AppDatabase` instances — the live one and the container — and drift's warning is about two instances sharing **one `QueryExecutor`**, which these do not: they are two different encrypted files. Harmless, and deliberately not silenced with `dontWarnAboutMultipleDatabases`, because that flag is global and would hide a real instance of the problem elsewhere. |
 | 22 | **`adb devices` can come up empty while the phone is plainly enumerated** | Seen 2026-09-01 at the start of (f). Windows had **both** interfaces present — `USB\VID_2717&PID_FF48&MI_00` (WPD) and `&MI_01` (**ADB Interface**) — and `adb devices` still listed nothing. `adb kill-server && adb start-server` fixed it in one go. **Do not read this as the MTP-only symptom** the Next Action section describes: that one shows a *single* WPD entry and no ADB interface, and no restart helps it. Check `Get-PnpDevice` for the `MI_01` ADB interface first; if it is there, restart the daemon rather than touching the phone. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
@@ -2210,8 +2211,55 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 6 (a) is done on Windows.** Next is **(b): export in the data layer**, with the round-trip
-test to the Rial. See "What (a) delivered" below for what it proved and what it left owed.
+**Phase 6 (a) and (b) are done.** Next is **(c): import, transactional, with the refusals.**
+
+### What (b) delivered — export in the data layer
+
+`lib/data/backup/backup_service.dart`. **1050 tests, was 1015** (+35); analyze clean.
+
+**The verification reopen is in the service, not in a test** (owner, 2026-09-01). `exportTo` writes
+the container, closes it, **reopens it cold with the password the user typed**, and compares the
+`backup_table_counts` rows against both what was written *and* a fresh `count(*)` over each table —
+so a stale count row cannot agree with itself into a pass. Only then does it return a `BackupSummary`.
+Any failure deletes the file: **a partial backup is worse than none, because it looks like a backup.**
+
+**A backup carries tombstones.** `_copy` is marked `soft-delete-exempt` with the reason: a backup that
+filtered `deleted_at is null` would resurrect every deleted customer and invoice on restore, and would
+hand the future sync layer a device whose deletions never happened. Tested directly.
+
+**The container is the app's own schema.** It is opened as an `AppDatabase`, so `onCreate` builds the
+tables at `schemaVersion` and the migration ladder is available to it — which is what makes an older
+backup migrate itself on open in (c). The seeded settings row is **cleared before the copy**, or a
+restore would quietly reset the user's VAT rate to the default.
+
+**Passphrase characters, end to end** —
+`test/data/backup/backup_passphrase_characters_test.dart`, 24 tests. Every one writes a real container
+and reopens it: apostrophe (one, several, and alone), double quote, backslash, backslash-before-quote,
+Persian digits, Arabic-Indic digits, ZWNJ, Persian script with spaces, leading/trailing/both-end
+spaces, `'; drop table customers; --`, `%` and `_`, emoji, and a 200-character passphrase. Plus six
+**must-not-open** cases pinning that a trailing space, a leading space, a ZWNJ, Persian-vs-Latin digits
+and Arabic-vs-Persian digits are **not** folded together — §9's digit normalization is mandatory for
+numeric input and would be a **defect** applied to a password.
+
+### Two guard tests fired, and both were right
+
+- **`soft_delete_usage_test`** caught four raw reads. All four are legitimate — the container's own
+  `backup_meta` and `backup_table_counts`, which have no `deleted_at`, plus a `select 1` that forces
+  decryption — and each now carries its reason. The count query's reason matters: it **must** include
+  tombstones, or verification would disagree with what was written and fail every export from a
+  database that has ever had a row deleted.
+- **`single_open_path_test`** flagged `backup_service.dart` for the key pragma's literal name, which
+  appeared only in a **doc comment**. The comment was reworded rather than the scanner loosened, and
+  the file says why: the guard is worth more strict than that sentence was worth verbatim.
+
+### Deferred out of (b), deliberately
+
+- **The Riverpod provider** for `BackupService` lands in (d) with the screen that needs it. Adding it
+  here would have meant a `build_runner` pass for a provider nothing yet watches.
+- **The gateway packages** likewise (D-071): they are chosen and they resolve, and nothing needs
+  delivering until there is a screen.
+
+See "What (a) delivered" below for the container proof and what it left owed.
 
 ### What (a) delivered
 
