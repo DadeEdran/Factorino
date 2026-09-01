@@ -98,8 +98,8 @@ hands, and the three places that were silent about it now say so. Only an issued
 cancelled, and that rule moved into the repository where a deep link cannot get round it.
 
 **Working tree is clean and everything is committed.** `main`'s tip is this continuity update; the
-increment it describes is **`2747b2d`** "Phase 5 (c): payments, recorded and taken back", with
-`241f446` recording its hash. Behind them: `ca1bc53`/**`6675456`**
+increment it describes is **`2c20f7c`** "Phase 5 (d): cancellation, and what it does not do". Behind
+it: `bf5c78b`/`241f446`/**`2747b2d`** is (c), "payments, recorded and taken back"; `ca1bc53`/**`6675456`**
 is the known-issue-19 fix; `435f8cb`/**`b901c37`** is (b), "the detail screen, and the layout check
 that would have caught its predecessor"; `42bbaae` is the (a2) cold-resume note and `712c921` is (a2)
 itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` its
