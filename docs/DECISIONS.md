@@ -3518,6 +3518,15 @@ ever wanted, the honest way to build it is to make the SQL predicate and `invoic
 by test over a fixture that straddles the boundary — the shape D-056's backfill and D-059's reference
 implementation both use — not to write the predicate and hope.
 
+**Ruled by the owner, 2026-09-01, at the Phase 5 review, and recorded here so it is not reopened as
+an oversight.** The described approach *is* the accepted one: «سررسید گذشته» stays out of the filter
+set. In the owner's words, a SQL predicate would be "a second implementation of a rule
+`invoiceStatusViewOf` owns, and their disagreement would surface as a badge the filter doesn't
+return — the same class of defect as two normalizer call sites drifting apart." A future session that
+sees five chips where six statuses appear on badges is looking at a decision, not a gap. The only
+sanctioned way to add it is the one the paragraph above names, and adding it without that is a
+regression even if it compiles.
+
 ### 4. What the UI had to say, and where it had to not add height
 
 - **The control is in the title row on every tier**, which costs no vertical space — §10's rule about
@@ -3585,3 +3594,68 @@ before, so nothing else changes.
 **This is D-062 paying for itself inside one increment**, the same way D-057 paid for itself by
 surfacing known issue 19. The rule was written for sheets with commit actions; the first thing it
 caught was an empty state in a sheet that has neither.
+
+---
+
+## D-064 — A device suite runs at every tier it can be given, and the phase close is what runs it there
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — arising from Phase 5 increment (f), the phase close
+**Extends:** D-062 (a check must reproduce the conditions the user is in), D-057 (all three tiers,
+over the written ladder)
+
+### 1. What the close found, which is D-062 one level up again
+
+(f) had one job beyond paperwork: cover the invoice **list**, which had no `integration_test/`
+coverage at all. Writing that suite was uneventful — it passed on the Redmi first try, 0 layout
+errors, and on Windows the same. What was **not** uneventful was running the *existing* suites
+somewhere they had never been run.
+
+- **`invoice_form_device_test.dart` had never run at the desktop tier**, in two phases of existing.
+  Pointed at Windows it failed on its **first measurement**: `find.text(invoiceLineAddFromCatalogue)`
+  matched nothing. Not a product defect — `_DesktopLayout` is a single `ListView` whose second child
+  is the entire lines section, and at a 1264 × 681 window that child sits past the cache extent and
+  is therefore **not in the tree**. Absence, not invisibility, exactly as D-062 §2 describes it.
+- **It also carried a fold measurement that only means something on a phone.** D-054 ruled that the
+  invoice-level fields fold on the narrow tier and that *the wider tiers do not fold*. The suite
+  measured the fold unconditionally, so at any other tier it was about to report a number for a
+  layout that has no fold.
+- **And a tap aimed at a label rather than a control.** `tap(find.text(invoiceFieldIssueDate))`
+  warned that the derived offset "would not hit test on the specified widget" and opened the date
+  picker **anyway**: once the field has a value its label floats up inside the decoration, and the
+  tap landed on the `InputDecorator` under it, which happens to sit in the same `InkWell`. It worked
+  by geometry. A warning is not a failure, so this had been passing, in green, for two phases.
+
+So D-062 was written after the detail suite proved to be single-tier, and the fix was applied to the
+detail suite. The **form** suite was the same defect, sitting one file away, and it survived because
+nothing made anyone point it at a second tier.
+
+### 2. The rule
+
+**Every device suite runs on every target the project has, and a phase closes only after it has.**
+Not "the suite is tier-aware" — that is a property nobody can check by reading — but the run itself,
+on both targets, with its output in `CURRENT_STATE.md`. The Windows run is the desktop tier and the
+Redmi is the phone tier; a suite that has only ever seen one of them is evidence about one of them,
+which is D-057's sentence with "tier" replaced by "target".
+
+**Where a measurement belongs to one tier, the suite says so and skips it elsewhere rather than
+printing it anyway.** A device report carrying a fold measurement for a layout with no fold is a
+report about a screen that does not exist — D-062's mistake in its reporting form, and worse than
+silence because it reads as evidence.
+
+**A tap names the control, never its label.** `JalaliDateField` carries the `onTap`; the label is
+decoration that happens to sit over it. A tap that lands on the right thing by accident stops doing
+so the moment the decoration is restyled, and it stops silently, because a hit-test warning does not
+fail a run.
+
+### 3. What it cost, and what it did not find
+
+Three edits to one file, one new helper (`_rewind`, because `_scrollTo` only ever searched
+downwards and the desktop tier parks the page below the fields after a line is added), and the suite
+now passes on **both** targets with identical D-054 numbers on the phone — 586 / 670 / fits, and 245
+after unfolding, the same figures it reported before the change.
+
+**No product defect was found by any of it.** Both new tiers, all four rungs, both new suites: 0
+layout errors. That is the outcome to expect from a close and it is not an argument against running
+it — known issue 18 shipped through a phase that reported the same thing about one tier.
+

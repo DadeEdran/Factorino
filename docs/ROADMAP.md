@@ -1209,20 +1209,22 @@ paths were reviewed in (c). What is new:
 
 ## Phase 5 — Invoice Management and Payments
 
-**Status:** `IN_PROGRESS` — (a2), (b), (c), (d) and (e) are delivered and the device debt is
-cleared; the phase close remains.
+**Status:** `COMPLETED` 2026-09-01 — every increment delivered, reviewed and **accepted**, and the
+close ran the layout check at all three tiers over the written ladder (D-057) and the keyboard rule
+on the phone (D-062). Nothing from this phase is deferred into a later one beyond what was scoped
+elsewhere from the start.
 
 | # | Increment | Status |
 |---|---|---|
 | — | (d)'s two carry-overs: The project spec amended, the phone fold (D-054) | `COMPLETED` 2026-08-27 |
-| a | **The D-047 ruling** (D-055): store the gross, and two per-line figures | `COMPLETED` 2026-08-27 — decision only, awaiting review |
+| a | **The D-047 ruling** (D-055): store the gross, and two per-line figures | `COMPLETED` 2026-08-27 — decision only, **accepted** |
 | a2 | **`schemaVersion = 4`** — the three columns and their backfill (D-055, D-056) | `COMPLETED` 2026-08-27 |
 | b | **`/invoices/:id`, the detail screen**; rows become tappable; known issue 18 fixed and every money width audited (D-057, D-058) | `COMPLETED` 2026-09-01 |
 | — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01 |
 | c | **Payments: record and delete**, both recomputing derived status in the same transaction (§6) (D-060) | `COMPLETED` 2026-09-01 |
 | d | **Cancellation**, the copy that says what it does and does not do, and the ruling on payments it keeps (D-061) | `COMPLETED` 2026-09-01 |
 | e | **List filters** over status, customer and Jalali period, at the query level; paging `watchForCustomer` (D-063) | `COMPLETED` 2026-09-01 |
-| f | The device pass, and the phase close | `NOT_STARTED` |
+| f | **The phase close**: the invoice list's first device coverage, both targets, and the tier fault it found in the form suite (D-064) | `COMPLETED` 2026-09-01 |
 
 (a2) is a migration and therefore its own reviewable step, on (a2)-of-Phase-4's and (c2)'s precedent.
 It comes before the detail screen because the detail screen is the first consumer of what it stores.
@@ -1535,6 +1537,70 @@ model is unchanged.
 **Security note.** Payment records add amounts and dates but no new identifiers. Editing rules become
 a data-integrity control: only `draft` invoices are editable or deletable, and only an issued invoice
 may be cancelled.
+
+**Increment (f) — the phase close, completed 2026-09-01**
+
+The verification pass and the paperwork. **No feature was added**: a phase close that grows a feature
+is a phase that has not closed.
+
+- **The invoice list has device coverage for the first time.**
+  `integration_test/invoice_list_device_test.dart` is new and closes the gap (e) named rather than
+  covered: both existing suites were the form and the detail screen, so everything (e) built — the
+  filter control and its count, the sheet and its chips, the filtered empty state, and the customer
+  picker reached *from inside* the sheet — had been checked at three tiers in widget tests and had
+  never rendered in Vazirmatn on a phone. It seeds through the real repositories into the real
+  encrypted database, so every assertion about what a filter returned is an assertion about what came
+  back from a `WHERE` clause.
+- **It carries the keyboard rule into a sheet opened from a sheet** (D-062). The picker is a modal
+  route over a modal route; `raiseKeyboard` raises the **real** keyboard and the search field is
+  asserted to stay inside what it leaves. On the Redmi: keyboard 254.9 of 803.6, field bottom
+  **265.0**, limit 548.7.
+- **The invoice list joins the ladder sweep at all three tiers.** `money_layout_test.dart` gains the
+  whole screen composed at each tier's real width with **every rung on it at once** — the list
+  previously had a tier sweep that rendered no money and money assertions at a single magnitude,
+  which is two half-checks and precisely the shape known issue 18 hid in.
+- **Running the existing suites at a new tier found a fault in the check** (D-064).
+  `invoice_form_device_test.dart` had never run on Windows in two phases of existing, and failed
+  there on its first measurement: the desktop layout is one lazy `ListView` whose lines section sits
+  past the cache extent, so the finder reported **absence, not invisibility** — D-062 §2 exactly, in
+  the file next door to the one D-062 was written about. It also measured D-054's phone fold at every
+  tier, and aimed a tap at a floating label that opened the picker by geometry rather than by hitting
+  the control. All three corrected; the suite now passes on **both** targets with the phone's D-054
+  numbers unchanged (586 / 670 / fits, 245 unfolded).
+- **No product defect was found by any of it.** Two new tiers, two new suites, all four rungs: 0
+  layout errors everywhere.
+- **3 new tests; 938 pass** (was 935). Decision recorded: **D-064**; **D-063 amended** with the
+  owner's ruling that «سررسید گذشته» stays out of the filter set.
+
+**Verification (D-057 and D-062), the close:**
+
+```
+flutter analyze                                 PASS  No issues found
+flutter test                                    PASS  938/938
+Android debug APK                               PASS  built 2026-09-01
+widget sweep, all three tiers, all four rungs   PASS  money_layout_test.dart, now including the
+                                                      invoice list composed at each tier's width
+                                                      with every rung on screen at once
+keyboard sweep, every sheet with a field        PASS  sheet_keyboard_test.dart at the measured
+                                                      255 px inset, verified to bite
+device - Android phone (Redmi Note 8 Pro)       PASS  392.7 x 803.6, ratio 2.75. list, detail and
+                                                      form suites; D-020 and startup proofs.
+                                                      0 layout errors on all three
+device - Windows desktop                        PASS  1264 x 681. list, detail and form suites;
+                                                      D-020 and startup proofs. 0 layout errors.
+                                                      The form suite's first desktop run ever
+keyboard rule on the phone                      PASS  picker from the filter sheet: field bottom
+                                                      265.0, limit 548.7; payment and line sheets:
+                                                      action bottom 532.7, limit 548.7
+tablet tier                                     widget sweep only -- there is no tablet device;
+                                                      stated rather than implied (D-057)
+```
+
+**Security note (increment f).** **No new data class, no new stored field, no new input and no new
+platform surface** — (f) is tests and documentation. The new device suite writes only to a probe
+database (`list_probe.db`) created through the production bootstrap and deleted in its teardown, so
+it never touches the user's database; it logs counts and layout measurements through `debugPrint` in
+a test binary, never an amount, a name or an identifier. The threat model is unchanged.
 
 ---
 

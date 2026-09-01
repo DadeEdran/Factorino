@@ -1,8 +1,8 @@
 # Current State
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
-> Last updated: **2026-09-01** — end of the session that delivered (d), the device pass, known issue
-> 21 and (e). Stopped by the owner before (f).
+> Last updated: **2026-09-01** — end of the session that closed **Phase 5**. The owner accepted the
+> five outstanding boundaries and directed (f); (f) ran, and the phase is `COMPLETED`.
 
 ---
 
@@ -14,12 +14,13 @@
 **Phase 3 — Products and Services · `COMPLETED`** (2026-08-25)
 **Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
 **accepted**, including (d).
-**Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. Everything up to and
-including **(a2), schema v4** is **accepted**, and **(d) has been accepted since**. Awaiting review:
-**(b)** the detail screen with the tier rule and the money-width audit (D-057, D-058), **the
-known-issue-19 fix** (D-059), **(c)** payments (D-060), **the device pass and the keyboard rule**
-(D-062, known issue 21), and **(e)** filters and paging (D-063). **Only the phase close, (f),
-remains.**
+**Phase 5 — Invoice Management and Payments · `COMPLETED`** (2026-09-01) — **every increment
+delivered, reviewed and accepted.** The owner accepted the five outstanding boundaries — (b) the
+detail screen (D-057, D-058), the known-issue-19 fix (D-059), (c) payments (D-060), the device pass
+and the keyboard rule (D-062, known issue 21), and (e) filters and paging (D-063) — and (f) closed
+the phase. **Nothing is awaiting review.**
+
+**Phase 6 — Backup and Restore · `NOT_STARTED`** ← next.
 
 | # | Increment | Status |
 |---|---|---|
@@ -38,13 +39,13 @@ remains.**
 | — | (d)'s carry-overs: §10 amended, the phone fold (D-054) | `COMPLETED`, **accepted** |
 | a | **The D-047 ruling** (D-055) — decision only, no code | `COMPLETED`, **accepted** |
 | a2 | **`schemaVersion = 4`** — three columns and their backfill (D-056) | `COMPLETED` 2026-08-27, **accepted** |
-| b | **`/invoices/:id`**, the detail screen; rows tappable; the money-width audit and the tier rule (D-057, D-058) | `COMPLETED` 2026-09-01, **awaiting review** |
-| — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01, **awaiting review** |
-| c | **Payments: record and delete**, derived status in the same transaction (D-060) | `COMPLETED` 2026-09-01, **awaiting review** |
+| b | **`/invoices/:id`**, the detail screen; rows tappable; the money-width audit and the tier rule (D-057, D-058) | `COMPLETED` 2026-09-01, **accepted** |
+| — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01, **accepted** |
+| c | **Payments: record and delete**, derived status in the same transaction (D-060) | `COMPLETED` 2026-09-01, **accepted** |
 | d | **Cancellation**, the copy that says what it does not do, and the ruling on the payments it keeps (D-061) | `COMPLETED` 2026-09-01, **accepted** |
-| — | **The phone-tier device pass**, the keyboard rule and known issue 21 (D-062) | `COMPLETED` 2026-09-01, **awaiting review** |
-| e | **List filters** (status, customer, Jalali period) at the query level; paging `watchForCustomer` (D-063) | `COMPLETED` 2026-09-01, **awaiting review** |
-| f | The phase close, with a device pass over (e) under the keyboard rule | `NOT_STARTED` ← **next** |
+| — | **The phone-tier device pass**, the keyboard rule and known issue 21 (D-062) | `COMPLETED` 2026-09-01, **accepted** |
+| e | **List filters** (status, customer, Jalali period) at the query level; paging `watchForCustomer` (D-063) | `COMPLETED` 2026-09-01, **accepted** |
+| f | **The phase close** (D-064): the invoice list's first device coverage, both targets, and the tier fault it found in the form suite | `COMPLETED` 2026-09-01, **accepted** |
 
 
 ## Where the project stands, in one paragraph
@@ -56,14 +57,11 @@ SQLite database at **schema v4**. «فاکتور جدید» opens `/invoices/new
 `/invoices/:id`; and from there a payment can be recorded and taken back off again, with the derived
 status recomputed by the repository in the same transaction.
 
-**Phase 4 is complete and accepted. Phase 5 is eight boundaries in**, with only the phase close left.
-
-**Accepted:** the two carry-overs from Phase 4 (d) plus **the D-047 ruling** (D-055); **(a2),
-`schemaVersion = 4`** (D-056); and **(d), cancellation** (D-061).
-
-**Awaiting review, five of them:** **(b), the detail screen** (D-057, D-058); **the known-issue-19
-fix** (D-059); **(c), payments** (D-060); **the device pass, the keyboard rule and known issue 21**
-(D-062); and **(e), filters and paging** (D-063).
+**Phases 4 and 5 are both complete and accepted.** Every Phase 5 boundary — the carry-overs, the
+D-047 ruling (D-055), (a2) schema v4 (D-056), (b) the detail screen (D-057, D-058), the
+known-issue-19 fix (D-059), (c) payments (D-060), (d) cancellation (D-061), the device pass and the
+keyboard rule (D-062), (e) filters and paging (D-063), and (f) the close (D-064) — is delivered,
+reviewed and **accepted**. **Nothing is awaiting review and nothing is owed.**
 
 **An invoice can now be read as the document it is.** `/invoices/:id` lays a line out from storage
 alone — شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع, with no
@@ -120,8 +118,20 @@ wrong set and report "no results" for data behind the first page. **Known issue 
 of the page. «سررسید گذشته» is deliberately **not** a filter (D-063): it is derived at display time,
 and a SQL predicate would be a second implementation of a rule `invoiceStatusViewOf` owns.
 
+**Phase 5 closed on evidence at two targets and three tiers.** (f) added the invoice list's first
+`integration_test/` coverage — the filter control, the sheet, the chips, the filtered empty state and
+the customer picker reached from inside the sheet, under the keyboard rule — and put the list into
+the ladder sweep at all three tiers. **The interesting part was not the new suite**, which passed
+first try on both targets: it was pointing the **existing** form suite at Windows, where it had never
+run in two phases of existing, and watching it fail on its first measurement. Not a product defect —
+the desktop layout is one lazy `ListView` whose lines section sits past the cache extent, so the
+finder reported **absence, not invisibility**, which is D-062 §2 in the file next door to the one
+D-062 was written about. **D-064** is the rule that follows: every device suite runs on every target,
+and the phase close is what runs it there. No product defect was found anywhere in the close: 0
+layout errors, two targets, four rungs.
+
 **Working tree is clean and everything is committed.** `main`'s tip is this continuity update; the
-increment it describes is **`4d604da`** "Phase 5 (e): invoice filters in SQL, and a paged customer
+increment it describes is **(f)**, the phase close. Behind it: **`4d604da`** "Phase 5 (e): invoice filters in SQL, and a paged customer
 list". Behind it: **`7775e0b`** is the known-issue-21 fix and the keyboard rule; **`099a437`** is the
 phone-tier device pass; `b90f642`/**`2c20f7c`** is (d), "cancellation, and what it does not do";
 `bf5c78b`/`241f446`/**`2747b2d`** is (c), "payments, recorded and taken back"; `ca1bc53`/**`6675456`**
@@ -131,11 +141,12 @@ itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 
 (c), `3164b8f` its (b), `0e0cd37` its (a3), `7345ca2` its (a2), `bf4c02f` its (a); `d8682ee` is Phases
 2 and 3.
 
-**Nothing is half-finished.** All five unreviewed boundaries are complete, tested, documented and
-committed. **The session ended here at the owner's instruction** — "stopping here", given after (e)
-was reported and with an explicit "do not start (f)". There is no work in progress, nothing
-uncommitted and no question waiting on an answer. A fresh session starts at the Next Action at the
-bottom of this file and needs nothing re-explained.
+**Nothing is half-finished and nothing is deferred out of Phase 5.** Everything the phase scoped —
+the detail screen, payments both ways, cancellation, filters at the query level, paging — is built,
+tested at two targets and accepted. What Phase 5 does **not** contain was never in it: PDF is Phase 7
+(the `InvoiceDocumentGenerator` boundary is defined and fails loudly, per §12), reports are Phase 8
+and stay off the navigation per D-021, and editable settings are Phase 6's neighbourhood. There is no
+work in progress, nothing uncommitted and no question waiting on an answer.
 
 **The device debt is cleared.** The Android phone-tier pass ran for (b), (c) and (d) together on the
 Redmi Note 8 Pro, and the two proofs that known issue 10b blocked in the (a2) session — D-020 and
@@ -143,12 +154,9 @@ startup — were re-run with it. **The product had no defects on the phone tier*
 was the device test itself, which had only ever run on Windows and had encoded the desktop layout as
 if it were the layout. See D-062 and known issue 21.
 
-**One gap is known and named, and it is (f)'s to close: `integration_test/` has no coverage of the
-invoice *list*.** Both device suites are the invoice form and the invoice detail screen. Everything
-(e) built — the filter control, the filter sheet and its chips, the filtered empty state — has been
-checked at three tiers in widget tests and has never run on the target in Vazirmatn. That is the
-device pass (f) owes, and it must run under the keyboard rule, because the filter sheet opens the
-customer picker and the picker raises a real keyboard.
+**That gap is closed.** `integration_test/invoice_list_device_test.dart` covers the list on both
+targets, and the picker it opens from inside the filter sheet is asserted under the keyboard rule
+with the real keyboard up.
 
 **Note the collision when reading older sections of this file:** Phase 4 and Phase 5 both have
 increments lettered (a2), (b), (c) and (d). Every reference below names its phase; where one does not,
@@ -157,45 +165,109 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (e)
-flutter test:               PASS   (935/935, was 895)                         as of (e)
-Android build:              PASS   debug APK built (2026-09-01, re-run for (e))
-Layout, all 3 tiers x 4 amounts (D-057):
-  widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart,
-                                   including the cancellation confirmation at every rung
-  device - Windows desktop: PASS   0 layout errors, 1264 x 681, Vazirmatn, all four rungs each with
-                                   an invoice-level discount; a payment recorded and deleted through
-                                   the real sheet; and a cancellation through the real menu and
-                                   confirmation, with 705,833 rial still on record afterwards
-                                   (2026-09-01)
-  device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, pixel ratio 2.75 (2026-09-01)
-                                   0 layout errors, all four rungs; a payment recorded and deleted
-                                   through the real sheet; a cancellation through the real menu with
-                                   705,833 rial still on record; correction leaving it cancelled.
-                                   Clears the debt for (b), (c) and (d) together.
+flutter analyze:            PASS   (No issues found)                          as of (f)
+flutter test:               PASS   (938/938, was 935)                         as of (f)
+Android build:              PASS   debug APK built (2026-09-01, re-run for (f))
+
+Layout, all 3 tiers x 4 amounts (D-057) -- the phase-close check:
+  widget sweep:             PASS   money_layout_test.dart (every fixed-width money site, plus the
+                                   invoice list composed at each tier's real width with all four
+                                   rungs on screen at once -- new in (f)),
+                                   invoice_detail_screen_test.dart, invoices_screen_test.dart
+  device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, ratio 2.75 (2026-09-01)
+                                   list, detail and form suites. 0 layout errors on all three
+  device - Windows desktop: PASS   1264 x 681 (2026-09-01)
+                                   list, detail and form suites. 0 layout errors on all three.
+                                   The FORM suite's first desktop run ever -- see D-064
+  tablet tier:              widget sweep only. There is no tablet device; stated rather than
+                                   implied, because a pass on one tier is a pass on one tier
+
 Keyboard rule (D-062):
   widget sweep:             PASS   sheet_keyboard_test.dart, 255 px inset, verified to bite
-  widget sweep, pickers:    PASS   the customer picker's search field stays above the keyboard --
-                                   the check that found the EmptyState overflow (D-063 §7)
-  device - Android phone:   PASS   both editor sheets: keyboard 254.9 of 803.6, action bottom 532.7,
-                                   limit 548.7 (2026-09-01, re-run after (e)). Was 618.6 before.
-D-020 proof - Android:      PASS   re-run on the Redmi (2026-09-01), unblocked by 10b clearing
+  device - Android phone:   PASS   payment sheet and line editor: keyboard 254.9 of 803.6,
+                                   action bottom 532.7, limit 548.7
+                                   customer picker opened FROM the filter sheet (new in (f)):
+                                   field bottom 265.0, limit 548.7 -- a modal route over a modal
+                                   route, with the real keyboard up
+  device - Windows desktop: degrades to "the action is on screen", by design. Not accepted in
+                                   place of the phone run
+
+D-020 proof - Android:      PASS   re-run on the Redmi (2026-09-01)
+D-020 proof - Windows:      PASS   re-run 2026-09-01 (was 2026-08-23)
 Startup proof - Android:    PASS   re-run on the Redmi (2026-09-01)
-D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
-D-055 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
-D-052 proof - Windows:      PASS   both ladders: v2 -> v3 and v1 -> v3
-D-052 proof - Android:      PASS   both ladders, on the Redmi (2026-08-27)
-D-048 proof - Android:      PASS   re-run on the Redmi (2026-08-27)
-D-020 proof - Windows:      PASS   5/5 (2026-08-23, not re-run)
-Form on the Redmi:          PASS   the whole flow through the real sheets, 0 layout errors (d)
-Windows run:                PASS   the app starts and renders at the desktop tier (d)
-                                   -- kept for the record, and NOT a layout check: this is the
-                                   line D-057 exists because of. Superseded by the device pass
-                                   above.
-Web build:                  NOT_RETESTED since plugins were added
+Startup proof - Windows:    PASS   re-run 2026-09-01
+D-055 proof - Win/Android:  PASS   both ladders, v3 -> v4 and v1 -> v4 (2026-08-27)
+D-052 proof - Win/Android:  PASS   both ladders, v2 -> v3 and v1 -> v3 (2026-08-27)
+D-048 proof - Android:      PASS   (2026-08-27)
+Web build:                  NOT_RETESTED since plugins were added -- Phase 12, known issue 14
 ```
 
-**Test count is 895**, was 892 after (d) and the device pass, 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
+**Test count is 938**, was 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
+D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What Phase 5 increment (f) delivered — the phase close, and the fault it found in an old check
+
+**No feature.** (f) is the verification pass and the paperwork; a phase close that grows a feature is
+a phase that has not closed. **D-064.**
+
+```
+integration_test/invoice_list_device_test.dart   NEW  the list, its filters, and the picker they open
+integration_test/invoice_form_device_test.dart   made tier-aware; the tap aims at the control
+test/core/widgets/money_layout_test.dart         + the invoice list at three tiers, every rung
+docs/                                            ROADMAP, DECISIONS (D-064, D-063 amended),
+                                                 ARCHITECTURE, CURRENT_STATE
+```
+
+### The gap (e) named, closed
+
+`integration_test/` had two suites — the invoice form and the invoice detail screen — and the
+**list** had neither. Everything (e) built had been checked at three tiers in widget tests and had
+never rendered in Vazirmatn on a phone. The new suite seeds through the real repositories into the
+real encrypted database, so every assertion about what a filter returned is an assertion about what
+came back from a `WHERE` clause:
+
+- **The customer filter**, chosen through the real picker, narrows the list to one invoice and the
+  other customer's five are **gone**, not further down the page.
+- **The period filter** excludes an invoice issued a Jalali year earlier under «این ماه».
+- **A narrowing that matches nothing** shows the filtered empty state, offering «پاک کردن همه» — and
+  «هنوز فاکتوری ثبت نشده» is asserted **absent**, because it would be a lie told to a user with six
+  invoices in the database.
+- **The count on the control** is asserted through `formatGroupedPersian`, not as a written-out
+  «۱ فیلتر فعال», so it keeps meaning something if the formatting changes.
+- **The keyboard rule, in a sheet opened from a sheet.** The picker is a modal route over a modal
+  route; `raiseKeyboard` raises the real keyboard and the search field is asserted inside what it
+  leaves. Redmi: keyboard 254.9 of 803.6, field bottom **265.0**, limit 548.7.
+
+It passed on the Redmi first try, and on Windows, with 0 layout errors on both.
+
+### And the invoice list joined the ladder sweep
+
+The list had a tier sweep that rendered **no money** ("what varies across tiers is where the control
+sits") and money assertions at a **single** magnitude. Two half-checks: a card that fits at 1,200,000
+تومان and breaks at 100,000,000 passes both. `money_layout_test.dart` now composes the whole screen at
+each tier's real width with **every rung on it at once**, and asserts each rung was actually laid out
+rather than merely handed to the repository.
+
+### The part worth keeping: the old suite failed at a tier it had never seen
+
+`invoice_form_device_test.dart` had run on the Redmi for two phases and **never on Windows**. Pointed
+at the desktop tier it failed on its **first measurement**, and none of it was a product defect:
+
+1. **`find.text(invoiceLineAddFromCatalogue)` matched nothing.** `_DesktopLayout` is a single
+   `ListView` whose second child is the entire lines section; at a 1264 × 681 window that child sits
+   past the cache extent and is **not in the tree**. Absence, not invisibility — D-062 §2 exactly, one
+   file away from the suite D-062 was written about.
+2. **It measured D-054's phone fold at every tier.** The wider tiers fold nothing, so it was about to
+   print a fold measurement for a layout that has no fold — a device report about a screen that does
+   not exist.
+3. **A tap aimed at a floating label, not at the control.** `tap(find.text(invoiceFieldIssueDate))`
+   warned "would not hit test on the specified widget" and opened the picker **anyway**, because the
+   label sits inside the same `InkWell` as the `InputDecorator` under it. It worked by geometry, in
+   green, for two phases — a hit-test warning does not fail a run.
+
+All three corrected, plus a `_rewind` helper, because `_scrollTo` only ever searched **downwards** and
+the desktop tier parks the page below the fields once a line is added. The suite passes on both
+targets now, with the phone's D-054 numbers unchanged: 586 / 670 / fits, 245 unfolded.
 
 ## What Phase 5 increment (e) delivered — filters in SQL, and a paged customer list
 
@@ -1220,14 +1292,20 @@ flutter test integration_test/d020_encryption_proof_test.dart -d windows
 # on Windows that is the desktop tier and there is no soft keyboard, so the
 # keyboard assertions degrade to "the action is on screen". The phone run is
 # the one that proves them.
+# Every one of these runs on BOTH targets, and a phase closes only after it has (D-064).
+flutter test integration_test/invoice_list_device_test.dart   -d dmbyayb6rombo7ci
 flutter test integration_test/invoice_detail_device_test.dart -d dmbyayb6rombo7ci
 flutter test integration_test/invoice_form_device_test.dart   -d dmbyayb6rombo7ci
 flutter test integration_test/d020_encryption_proof_test.dart -d dmbyayb6rombo7ci
 flutter test integration_test/startup_test.dart               -d dmbyayb6rombo7ci
+# ... and the same five with `-d windows`, which is the desktop tier.
 
 # adb is NOT on PATH, and Git Bash mangles device-side paths without the prefix.
 ADB=%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe
 "$ADB" devices -l
+# Empty list, but Get-PnpDevice shows an "ADB Interface" (MI_01)? Stale daemon,
+# not the phone. Known issue 22:
+"$ADB" kill-server; "$ADB" start-server; "$ADB" devices -l
 MSYS_NO_PATHCONV=1 "$ADB" -s dmbyayb6rombo7ci shell "df -h /data"
 
 # Known issue 10, when `flutter test -d` is refused with
@@ -1277,10 +1355,37 @@ repositories and driving the real sheets.
 | 20 | ~~Cancelling an invoice leaves its recorded payments untouched, and nothing says so~~ | **Resolved in (d)** (D-061), by a ruling rather than a code change. A cancelled invoice **keeps** its payments: the money changed hands, and a cancellation is a statement about the claim rather than about the cash. What changed is that it is now said — in the confirmation before the commitment, on the page afterwards (both the payments card and «مانده»), and at the early return in `_recomputeStatus` that decides it. Recording against a cancelled invoice stays refused and the copy names the replacement invoice as the way forward; deleting stays allowed, with its own wording, because a mis-entered receipt must be correctable on a void document too. |
 | 21 | ~~The payment sheet's «ذخیره» starts below the fold on a phone~~ | **Resolved 2026-09-01** at the owner's direction (D-062). The shape is now a primitive, `core/widgets/editor_sheet.dart`: fields scroll, the primary action is pinned above the keyboard — D-053's split-by-purpose applied to sheets. The line editor moved onto it unchanged; the **picker** sheets are deliberately outside it, since they commit by tapping a row. On the Redmi the action now sits at **532.7 against a limit of 548.7**, was 618.6. Guarded at both levels: `sheet_keyboard_test.dart` at the measured 255-pixel inset (verified to bite), and the device pass, which now raises the real keyboard and refuses a vacuous assertion on Android. |
 
+| 22 | **`adb devices` can come up empty while the phone is plainly enumerated** | Seen 2026-09-01 at the start of (f). Windows had **both** interfaces present — `USB\VID_2717&PID_FF48&MI_00` (WPD) and `&MI_01` (**ADB Interface**) — and `adb devices` still listed nothing. `adb kill-server && adb start-server` fixed it in one go. **Do not read this as the MTP-only symptom** the Next Action section describes: that one shows a *single* WPD entry and no ADB interface, and no restart helps it. Check `Get-PnpDevice` for the `MI_01` ADB interface first; if it is there, restart the daemon rather than touching the phone. |
+
 (5 and 7 were resolved in (f2) and have been dropped.)
+
+**Nothing in the table above is open in a way a user would notice.** Every entry is either resolved
+(1, 10b, 16, 17, 18, 19, 20, 21), a deliberate design ruling (3, 8), a development-environment
+condition invisible in a shipped build (10, 11, 12, 22), or scheduled work on a surface the phase
+plan already owns (2 and 4 → Phase 13; 6 → when settings becomes editable; 9 → Phase 12; 13 → Phase
+15; 14 → Phase 12; 15 → Phase 9). **The one a user could meet is 6**, and only after settings becomes
+editable — it is unreachable today because `lastBackupAt` is always null.
 
 ## Important context for a future session
 
+- **Every device suite runs on every target, and the phase close is what runs it there** (D-064).
+  `invoice_form_device_test.dart` ran on the Redmi for two phases and had never been pointed at
+  Windows; the first time it was, it failed on its first measurement, because the desktop layout is
+  one lazy `ListView` whose lines section is past the cache extent and therefore **not in the tree**.
+  A suite that has only seen one target is evidence about one target — D-057's sentence with "tier"
+  replaced by "target". Both targets, every suite, output in this file.
+- **Where a measurement belongs to one tier, say so and skip it elsewhere.** D-054's fold is a phone
+  ruling; printing a fold measurement for a layout with no fold is a device report about a screen
+  that does not exist, and it reads as evidence.
+- **A tap names the control, never its label.** `tap(find.text(invoiceFieldIssueDate))` opened the
+  date picker by geometry — the floating label sits inside the same `InkWell` as the decoration — and
+  warned "would not hit test on the specified widget" without failing anything. `JalaliDateField`
+  carries the `onTap`, so it is what gets tapped. A hit-test warning is not a failure, so this kind
+  of thing stays green until the decoration is restyled.
+- **`_scrollTo` and `reach` only search downwards.** Anything needing a widget *above* where the last
+  step left the page has to rewind first — on the desktop tier a field scrolled past is not merely off
+  screen, past the cache extent it is out of the tree, and searching further down would never end
+  anywhere useful.
 - **A payment's rules are the repository's, and the screen only explains them.** `acceptsPayments` is
   false for a draft and a cancelled invoice and `PaymentNotAccepted` is what enforces it; the detail
   screen hides the control and says why. Any test of a refusal calls the **repository directly** and
@@ -1453,7 +1558,20 @@ repositories and driving the real sheets.
 
 ## Recently changed files
 
-### Phase 5 increment (e) — the newest work
+### Phase 5 increment (f) — the phase close, the newest work
+
+```
+integration_test/invoice_list_device_test.dart   NEW  the list, its filters, and the picker they
+                                                      open under the keyboard rule
+integration_test/invoice_form_device_test.dart   tier-aware; the tap aims at the control; + _rewind
+test/core/widgets/money_layout_test.dart         + the invoice list at three tiers, every rung
+docs/ROADMAP.md                                  Phase 5 COMPLETED; the (f) entry and its numbers
+docs/DECISIONS.md                                + D-064; D-063 amended with the owner's ruling
+docs/ARCHITECTURE.md                             the integration_test listing, which was stale
+docs/CURRENT_STATE.md                            this file
+```
+
+### Phase 5 increment (e) — the boundary before it
 
 ```
 lib/data/models/invoice_filter.dart                      NEW  the value handed to the query
@@ -1797,7 +1915,26 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Phase 5 increment (e) — filters in SQL, and a paged customer list (D-063).**
+**Phase 5 increment (f) — the phase close (D-064). Phase 5 is `COMPLETED`.**
+
+- **The owner accepted all five outstanding boundaries** — (b), the known-issue-19 fix, (c), the
+  device pass and keyboard rule (D-062), and (e) — so nothing is awaiting review.
+- **The invoice list has device coverage for the first time**, on both targets, including the
+  customer picker opened from inside the filter sheet with the real keyboard up (field bottom 265.0
+  against a limit of 548.7 on the Redmi).
+- **The list joined the ladder sweep at all three tiers**, composed at each tier's real width with
+  every rung on screen at once — it previously had a tier sweep with no money in it and money
+  assertions at one magnitude.
+- **The form suite failed at the desktop tier, which it had never been run at**, on three counts,
+  none of them a product defect: a finder reporting absence rather than invisibility past a lazy
+  list's cache extent, a phone-only fold measurement taken at every tier, and a tap that hit its
+  target by geometry. All three corrected; both targets green, phone numbers unchanged.
+- **D-064 recorded**: every device suite runs on every target, and the phase close is what runs it
+  there. **D-063 amended** with the owner's ruling that «سررسید گذشته» stays out of the filter set.
+- **3 new tests; 938 pass.** Analyzer clean, Android debug APK builds, 0 layout errors on every
+  device run at both tiers.
+
+**The boundary before it — Phase 5 increment (e), filters in SQL and a paged customer list (D-063).**
 
 - **Status, customer and Jalali period reach the query** as `WHERE` clauses on the statement that
   already carries the ordering and the `LIMIT`. Nothing narrows a loaded list; the test that says why
@@ -1817,7 +1954,7 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 - **40 new tests; 935 pass.** Analyzer clean, Android debug APK builds, both device suites re-run
   green on the Redmi with 0 layout errors.
 
-**The boundary before it — known issue 21 and the keyboard rule (D-062).**
+**And the one before that — known issue 21 and the keyboard rule (D-062).**
 
 `EditorSheet` is the D-053 shape as a primitive: fields scroll, the commit action is pinned above the
 keyboard. The survey behind it is the useful part — `FormScaffold` and the invoice line sheet were
@@ -1885,58 +2022,77 @@ their own transaction (§6). (c) added the way in and the guard tests that matte
 repository, the real encrypted database, and the status read back **from the database** — 2,117,500
 rial recorded (status `paid`), then deleted (status `unpaid`), 0 layout errors.
 
-**Four boundaries are now awaiting review together** — (b), the known-issue-19 fix, (c) and (d) — and
-none of them has been through the owner's own pass. There is no work in progress, nothing uncommitted
-and no open question: the next session starts cold at the Next Action below.
+**All of the above has since been reviewed and accepted by the owner** (2026-09-01), and (f) closed
+the phase over it. There is no work in progress, nothing uncommitted and no open question: the next
+session starts cold at the Next Action below.
 
 ## Next action
 
-**First, note what is awaiting the owner's review** — (b), the known-issue-19 fix, (c), the device
-pass and keyboard rule (D-062), and (e) (D-063). (d) has been accepted. If the session opens with
-review feedback, that comes first; otherwise proceed.
+**Phase 5 is closed and accepted. Start Phase 6 — Backup and Restore.**
 
-**Then do Phase 5 increment (f): the phase close.**
+The project spec makes this an **MVP requirement, not a later nicety**: the users keep their business
+records only in this app, so an offline-only financial application with no backup path means a lost
+phone is a lost business. It is also the mitigation the encryption story depends on — §7 says losing
+the key means losing the data, and backup is what stands behind that sentence.
 
-Everything the phase set out to build is built. (f) is the verification pass and the paperwork, and
-the owner's instruction is explicit that it includes **a device pass over what (e) added, run under
-the keyboard rule** (D-062).
+**The single specific next action:** *read `docs/ROADMAP.md` Phase 6, then propose the increment split
+for backup and restore and get it agreed before writing code* — on the precedent of every phase since
+Phase 4, and because §8 has three parts that are separately reviewable (the encrypted container
+format, export, import) and one of them, import, is transactional over the user's whole database.
 
-1. **The device pass over (e)'s new surface.** `integration_test/` has no coverage of the invoice
-   **list** at all — both device suites are the form and the detail screen. The filter control, the
-   filter sheet and its chips, and the filtered empty state have been checked at three tiers in widget
-   tests but never on the target in Vazirmatn. The picker opens from the filter sheet and raises a real
-   keyboard, so `raiseKeyboard` + `expectActionAboveKeyboard` apply.
-2. **Re-run the whole device set** on the Redmi: the detail suite, the form suite, the D-020 proof and
-   the startup proof. Known issue 10 recurs intermittently — build the debug APK and `adb install -r`
-   by hand once if `flutter test -d` is refused.
-3. **The close itself**: mark Phase 5 `COMPLETED` in `ROADMAP.md` only after the layout check has run
-   at all three tiers over the ladder (D-057) *and* the keyboard rule has run on the phone (D-062).
-4. **Do not add scope.** Everything (f) needs already exists; a phase close that grows a feature is a
-   phase that has not closed.
+What Phase 6 has to deliver, from §8, so the split is not re-derived:
 
-**Nothing is blocked and nothing is owed.** The device debt that carried through three sessions is
-cleared, and known issues 16, 20 and 21 are all closed.
+1. **Export** — a full backup file to a user-chosen location: SAF picker on Android, native dialog on
+   Windows, download on Web.
+2. **Encrypted with a user-supplied password**, key derived through a KDF and never used raw. The UI
+   must say in Persian that losing the password loses the backup.
+3. **A format version and an integrity check** (HMAC), so a corrupted or tampered file is rejected on
+   import rather than partially applied.
+4. **Import is transactional**: it either fully succeeds or leaves the existing data untouched, with a
+   Persian confirmation step before overwriting.
+5. **A last-backup date in settings.** Note known issue 6: the row would render an epoch number
+   today, `formatJalaliDateLong` exists, and this is where it gets wired. The same screen becoming
+   editable is where `payment_term_days` needs a bound — a negative term produces an invoice due
+   before it was issued, and `AppSettings` deliberately does not clamp it (D-052).
 
-**Getting the Redmi back, because this cost real time on 2026-09-01 and the symptom is misleading.**
-`flutter devices` listing only Windows/Chrome/Edge does **not** mean the cable is bad. Check what
-Windows actually enumerated:
+**Deferred by §8 and not to be built now:** scheduled/automatic backups, CSV export, cloud backup.
+
+**Two constraints that will apply from the first increment:**
+
+- **The close-out rules hold for Phase 6 too.** It closes on a layout check at all three tiers over
+  the ladder (D-057), the keyboard rule wherever a text field exists (D-062) — and a backup password
+  field is exactly that — and every device suite run on **both** targets (D-064).
+- **A backup file is a sensitive artifact** (§7). The security note for each increment has to say what
+  leaves the encrypted database and in what form, and nothing about a backup may be logged.
+
+**Nothing is blocked and nothing is owed.** Known issues 16, 19, 20 and 21 are closed; no known issue
+is open that a user of the shipped app would notice.
+
+**Getting the Redmi back, because this cost real time twice and the two symptoms look identical.**
+First check what Windows enumerated:
 
 ```
 Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match 'VID_2717' }
 ```
 
-A single **WPD** entry (`USB\VID_2717&PID_FF40`) means the phone is present but exposing MTP only —
-USB debugging is off, and there is no second, composite ADB interface. Nothing on this machine can fix
-that; it is four toggles on the device: Developer options → **USB debugging**, plus MIUI's **Install
-via USB** and **USB debugging (Security settings)**, and the USB mode set to **File transfer**, not
-charge-only. Then accept the "Allow USB debugging?" prompt on the phone.
+- **Two entries — a WPD one (`&MI_00`) and an "ADB Interface" (`&MI_01`) — but `adb devices` is
+  empty:** the phone is fine and the daemon is stale. `adb kill-server; adb start-server`, then list
+  again. This is known issue 22, and it is what happened at the start of (f).
+- **A single WPD entry (`USB\VID_2717&PID_FF40`) and no ADB interface:** the phone is exposing MTP
+  only, USB debugging is off, and nothing on this machine can fix it. It is four toggles on the
+  device: Developer options → **USB debugging**, plus MIUI's **Install via USB** and **USB debugging
+  (Security settings)**, and the USB mode set to **File transfer**, not charge-only. Then accept the
+  "Allow USB debugging?" prompt on the phone.
 
 `adb` is **not on PATH**. It lives at
 `%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`, and under Git Bash any device-side
 path needs `MSYS_NO_PATHCONV=1` or it is mangled into a Windows path
 (`adb shell "df -h /data"` becomes `df 'C:/Program Files/Git/data'`).
 
-### Standing constraints for the rest of Phase 5, from the owner
+### Standing constraints carried out of Phase 5, from the owner
+
+All of these were met inside Phase 5; they are kept because they are the rules the next phase
+inherits, not a checklist still to work through.
 
 - **The detail screen shows the party snapshot for issued invoices and the live record for drafts**
   (D-052), and **says which** — done in (b) via `InvoicePartyProvenance` (D-058).
@@ -1950,7 +2106,8 @@ path needs `MSYS_NO_PATHCONV=1` or it is mangled into a Windows path
   loaded page. Done in (e) (D-063).
 - **Paging `watchForCustomer`**, known issue 16 — done in (e).
 - **A device pass before the phase is called done** — at **all three tiers**, over the written ladder
-  (D-057), not on one tier at whatever amounts the flow produces. **Done for (b), (c) and (d)** on the
-  Redmi, 2026-09-01. **And the device test must `reach` what it asserts rather than assume where it
-  is** (D-062): the tiers order pages differently, so a position that holds on one is a coincidence on
-  the others.
+  (D-057), not on one tier at whatever amounts the flow produces. **And the device test must `reach`
+  what it asserts rather than assume where it is** (D-062): the tiers order pages differently, so a
+  position that holds on one is a coincidence on the others. Done for the whole phase in (f), on
+  **both** targets — which is D-064, the rule (f) added: a suite that has only ever run on one target
+  is evidence about one target, and the close is what runs it elsewhere.

@@ -3,6 +3,8 @@ import 'dart:io';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/core/theme/app_theme.dart';
+import 'package:factorino/core/responsive/breakpoints.dart';
+import 'package:factorino/core/widgets/jalali_date_picker.dart';
 import 'package:factorino/data/database/app_database.dart';
 import 'package:factorino/data/database/database_bootstrap.dart';
 import 'package:factorino/data/database/encrypted_database.dart';
@@ -156,37 +158,69 @@ void main() {
     debugPrint('pixel ratio   : ${tester.view.devicePixelRatio}');
     debugPrint('16sp renders  : $textScale');
 
+    // **Which layout this target actually gets** (D-062). The form has three
+    // (D-053) and they are genuinely different, so everything below either
+    // reaches what it asserts or says which tier it is asserting about. This
+    // file ran on a phone for two phases and quietly encoded the phone layout:
+    // at the desktop tier it failed on the very first measurement, because
+    // `_DesktopLayout` is one `ListView` whose second child — the whole lines
+    // section — sits past the cache extent at a 681-pixel window and is
+    // therefore **not in the tree**. Absence, not invisibility; the same shape
+    // of fault the detail suite had, found the same way, by running it
+    // somewhere new.
+    final LayoutTier tier = Breakpoints.tierFor(size.width);
+    debugPrint('tier          : ${tier.name}');
+
     // ---- how far down is the first thing a user wants to touch? ------------
     //
-    // The measurement that decided the fold (D-054), taken both ways on the
-    // real device rather than reasoned about.
-    final double addLineFolded = _distanceDown(
-      tester,
-      find.text(strings.invoiceLineAddFromCatalogue),
+    // **The fold is a phone ruling** (D-054): the two wider tiers have room for
+    // the fields and the lines at once and fold nothing, so these numbers mean
+    // something on one tier only. Measured there, and **skipped rather than
+    // faked** elsewhere — printing a fold measurement for a layout that has no
+    // fold is a device report about a screen that does not exist, which is
+    // D-062's mistake in its reporting form.
+    final Finder addFromCatalogue = find.text(
+      strings.invoiceLineAddFromCatalogue,
     );
-    final Rect addLineBox = tester.getRect(
-      find.text(strings.invoiceLineAddFromCatalogue),
-    );
-    // Where the scrolling region actually ends: the top of the pinned bar.
-    final double barTop = tester
-        .getTopLeft(find.text(strings.invoiceActionIssue))
-        .dy;
-    debugPrint(
-      'add-line folded: ${addLineFolded.toStringAsFixed(0)} px, '
-      'bottom ${addLineBox.bottom.toStringAsFixed(0)}',
-    );
-    debugPrint('pinned bar top : ${barTop.toStringAsFixed(0)} px');
-    debugPrint('fits unscrolled: ${addLineBox.bottom < barTop}');
 
-    await tester.tap(find.text(strings.invoiceDetailsTitle));
-    await tester.pumpAndSettle();
-    final double datesShown = _distanceDown(
-      tester,
-      find.text(strings.invoiceFieldIssueDate),
-    );
-    debugPrint('dates unfolded : ${datesShown.toStringAsFixed(0)} px');
+    if (tier.isMobile) {
+      final double addLineFolded = _distanceDown(tester, addFromCatalogue);
+      final Rect addLineBox = tester.getRect(addFromCatalogue);
+      // Where the scrolling region actually ends: the top of the pinned bar.
+      final double barTop = tester
+          .getTopLeft(find.text(strings.invoiceActionIssue))
+          .dy;
+      debugPrint(
+        'add-line folded: ${addLineFolded.toStringAsFixed(0)} px, '
+        'bottom ${addLineBox.bottom.toStringAsFixed(0)}',
+      );
+      debugPrint('pinned bar top : ${barTop.toStringAsFixed(0)} px');
+      debugPrint('fits unscrolled: ${addLineBox.bottom < barTop}');
+
+      // The fold toggle, which only this tier has.
+      await tester.tap(find.text(strings.invoiceDetailsTitle));
+      await tester.pumpAndSettle();
+      final double datesShown = _distanceDown(
+        tester,
+        find.text(strings.invoiceFieldIssueDate),
+      );
+      debugPrint('dates unfolded : ${datesShown.toStringAsFixed(0)} px');
+    } else {
+      // Nothing is folded here, so the dates are on screen from the first
+      // frame — and the add-line buttons are reached rather than assumed.
+      debugPrint(
+        'fold          : not applicable at ${tier.name} (D-054), '
+        'dates at ${_distanceDown(tester, find.text(strings.invoiceFieldIssueDate)).toStringAsFixed(0)} px',
+      );
+      final double reached = await _scrollTo(tester, addFromCatalogue);
+      debugPrint(
+        'add-line       : reached after ${reached.toStringAsFixed(0)} px',
+      );
+      await _rewind(tester);
+    }
 
     // ---- the customer picker ----------------------------------------------
+    await _scrollTo(tester, find.text(strings.invoiceFieldCustomerEmpty));
     await tester.tap(find.text(strings.invoiceFieldCustomerEmpty));
     await tester.pumpAndSettle();
     expect(
@@ -206,13 +240,10 @@ void main() {
     //
     // With the section open the add-line buttons are below the fold again,
     // which is the measurement the fold exists to answer -- reported above.
-    final double scrolled = await _scrollTo(
-      tester,
-      find.text(strings.invoiceLineAddFromCatalogue),
-    );
+    final double scrolled = await _scrollTo(tester, addFromCatalogue);
     debugPrint('add-line open  : scrolled ${scrolled.toStringAsFixed(0)} px');
 
-    await tester.tap(find.text(strings.invoiceLineAddFromCatalogue));
+    await tester.tap(addFromCatalogue);
     await tester.pumpAndSettle();
     debugPrint('on screen     : ${_visibleTexts(tester).take(12).join(" | ")}');
     await tester.tap(find.text(product.name));
@@ -272,8 +303,28 @@ void main() {
     }
 
     // ---- the calendar grid --------------------------------------------------
-    await _scrollTo(tester, find.text(strings.invoiceFieldIssueDate));
-    await tester.tap(find.text(strings.invoiceFieldIssueDate));
+    //
+    // **The field, not its label** (D-062, found by the Phase 5 (f) close).
+    // Tapping `find.text(invoiceFieldIssueDate)` warned that the derived offset
+    // "would not hit test on the specified widget" and opened the picker
+    // anyway: once the field has a value its label floats to the top of the
+    // decoration, and the tap landed on the `InputDecorator` underneath, which
+    // happens to sit inside the same `InkWell`. It worked by geometry rather
+    // than by aiming at the control, and a tap that lands on the right thing by
+    // accident stops doing so the moment the decoration is restyled — silently,
+    // since the warning is not a failure. `JalaliDateField` is what carries the
+    // `onTap`, so it is what a user presses and what this presses.
+    final Finder issueDateField = find.ancestor(
+      of: find.text(strings.invoiceFieldIssueDate),
+      matching: find.byType(JalaliDateField),
+    );
+    // **Rewound first.** `_scrollTo` only ever scrolls *down*, and after the
+    // line was added the desktop tier is parked below the fields — where the
+    // date field is neither on screen nor, past the cache extent, in the tree
+    // at all. Scrolling further down from there would never reach it.
+    await _rewind(tester);
+    await _scrollTo(tester, issueDateField);
+    await tester.tap(issueDateField);
     await tester.pumpAndSettle();
     // Saturday is the first column (D-051's finding); the grid renders day
     // numbers, so tapping one is the whole interaction.
@@ -331,6 +382,21 @@ void main() {
 /// Returns the distance in logical pixels, because "how far down is the first
 /// thing a user wants to touch" is the question a phone layout has to answer
 /// and the only place to answer it is on a phone.
+/// Puts the page back at the top.
+///
+/// `_scrollTo` only searches downwards, which is fine for a form read once from
+/// the top and wrong the moment a step needs something *above* where the last
+/// one left off. On the desktop tier the whole form is a single `ListView`, so
+/// a field scrolled past is not merely off screen — past the cache extent it is
+/// out of the tree, and searching further down for it would never end anywhere
+/// useful (D-062).
+Future<void> _rewind(WidgetTester tester) async {
+  for (int step = 0; step < 30; step++) {
+    await tester.drag(find.byType(ListView).first, const Offset(0, 240));
+    await tester.pumpAndSettle();
+  }
+}
+
 Future<double> _scrollTo(WidgetTester tester, Finder target) async {
   double scrolled = 0;
   while (target.evaluate().isEmpty && scrolled < 4000) {

@@ -4,11 +4,19 @@ import 'package:factorino/core/theme/app_dimensions.dart';
 import 'package:factorino/core/widgets/amount_text.dart';
 import 'package:factorino/core/widgets/app_table.dart';
 import 'package:factorino/core/widgets/stat_tile.dart';
+import 'package:factorino/data/models/invoice.dart';
+import 'package:factorino/data/models/invoice_list_item.dart';
+import 'package:factorino/data/models/invoice_status.dart';
+import 'package:factorino/data/providers.dart';
+import 'package:factorino/core/utils/clock.dart';
 import 'package:factorino/features/invoices/domain/invoice_summary_figures.dart';
+import 'package:factorino/features/invoices/presentation/invoices_screen.dart';
 import 'package:factorino/features/invoices/presentation/widgets/invoice_totals_summary.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../features/invoices/fake_invoice_repository.dart';
 import '../../features/screen_harness.dart';
 import '../../support/money_magnitudes.dart';
 
@@ -179,6 +187,87 @@ void main() {
           size: kDesktopSize,
         );
         await tester.pumpAndSettle();
+      });
+    }
+  });
+
+  group('the invoice list, at every tier, over the whole ladder', () {
+    // **The surface Phase 5 (e) changed, swept the way D-057 asks for.**
+    //
+    // The list already had a tier sweep and an amount somewhere in the middle
+    // of the ladder, which is two half-checks: the tier sweep renders no money
+    // ("what varies across tiers is where the control sits"), and the money
+    // assertions render one magnitude. A card that fits at 1,200,000 تومان and
+    // breaks at 100,000,000 would pass both, and that is precisely the shape of
+    // known issue 18 — measured on a widget that had a page to itself, at
+    // whatever amount the fixture happened to hold.
+    //
+    // Here the whole screen is composed at each tier's real width with every
+    // rung of the ladder on it at once, so the mobile card, the tablet card and
+    // the desktop table row are each checked at the width they are actually
+    // given (§10: a widget tested only at its own full width has not been
+    // tested at the width it is composed into). A `RenderFlex` overflow fails
+    // the test on its own; there is nothing else to assert.
+    final DateTime now = DateTime.utc(2026, 8, 24, 6);
+
+    InvoiceListItem row(int index, int rialValue) {
+      final DateTime issued = DateTime.utc(2026, 8, 20, 6);
+      return InvoiceListItem(
+        // A long Persian name and a company, because the amount is not the only
+        // thing competing for a row's width.
+        liveCustomerName: 'شرکت مهندسی و بازرگانی نمونهٔ ایرانیان',
+        invoice: Invoice(
+          id: 'i$index',
+          number: 'INV-1405-${(index + 1).toString().padLeft(4, '0')}',
+          numberYear: 1405,
+          numberSequence: index + 1,
+          customerId: 'c1',
+          issueDate: issued,
+          dueDate: issued.add(const Duration(days: 30)),
+          status: InvoiceStatus.unpaid,
+          discount: Money.zero,
+          grossTotal: Money.rial(rialValue),
+          subtotal: Money.rial(rialValue),
+          totalDiscount: Money.zero,
+          totalTax: Money.zero,
+          roundingAdjustment: Money.zero,
+          grandTotal: Money.rial(rialValue),
+          createdAt: issued,
+          updatedAt: issued,
+        ),
+      );
+    }
+
+    for (final MapEntry<String, Size> tier in kAllTierSizes.entries) {
+      testWidgets('every rung at once, at ${tier.key}', (
+        WidgetTester tester,
+      ) async {
+        await pumpScreen(
+          tester,
+          const InvoicesScreen(),
+          overrides: <Override>[
+            invoiceRepositoryProvider.overrideWithValue(
+              FakeInvoiceRepository(<InvoiceListItem>[
+                for (int i = 0; i < kMoneyStressRial.length; i++)
+                  row(i, kMoneyStressRial[i]),
+              ]),
+            ),
+            nowProvider.overrideWithValue(now),
+          ],
+          size: tier.value,
+        );
+        await tester.pumpAndSettle();
+
+        // Every rung is on screen rather than merely in the repository: a lazy
+        // list that never built the widest row would report no overflow about
+        // a row it never laid out.
+        expect(
+          find.byType(AmountText),
+          findsNWidgets(kMoneyStressRial.length),
+          reason:
+              'each rung must actually be laid out, or the sweep is checking '
+              'rows that were never built',
+        );
       });
     }
   });

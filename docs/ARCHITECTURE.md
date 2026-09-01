@@ -150,8 +150,16 @@ Factorino/
       customer_repository_test.dart  invoice_repository_test.dart
       payment_repository_test.dart   product_and_settings_test.dart
   integration_test/
+    device_assertions.dart                          # reach / raiseKeyboard / above-the-keyboard
     d020_encryption_proof_test.dart                 # the end-to-end proof, per platform
     startup_test.dart                               # the real startup path, per platform
+    invoice_form_device_test.dart                   # the form, both tiers it is given (D-062)
+    invoice_detail_device_test.dart                 # the document, over the whole ladder (D-057)
+    invoice_list_device_test.dart                   # the list, its filters, and the picker they
+                                                    #   open under the keyboard rule (Phase 5 (f))
+    invoice_number_migration_proof_test.dart        # v1 -> v2, on the real target
+    customer_snapshot_migration_proof_test.dart     # v2 -> v3 and v1 -> v3
+    invoice_figures_migration_proof_test.dart       # v3 -> v4 and v1 -> v4
   android/  web/  windows/
   docs/
 ```
