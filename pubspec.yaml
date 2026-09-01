@@ -92,6 +92,8 @@ dependencies:
   # does not change, and `core/date/` wraps it behind our own types -- so a
   # replacement is a single-file swap, checked by the existing boundary tests.
   shamsi_date: 1.1.1
+  file_selector: 1.1.0
+  flutter_file_dialog: 3.3.2
 
 dev_dependencies:
   flutter_test:

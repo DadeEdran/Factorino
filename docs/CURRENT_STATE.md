@@ -188,9 +188,28 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of D-065/D-066
-flutter test:               PASS   (1004/1004, was 938)                       as of D-065/D-066
-Android build:              PASS   debug APK built (2026-09-01, for (f))
+flutter analyze:            PASS   (No issues found)                          as of Phase 6 (b)
+flutter test:               PASS   (1050/1050, was 1015 after (a), 1004)      as of Phase 6 (b)
+Android build:              PASS   debug AND release APKs built (2026-09-01), release installed
+                                   and cold-started on the Redmi
+
+Backup container proof:     PASS   5/5 on BOTH targets (D-069) -- encrypted on disk with the
+                                   sentinel absent from the raw bytes, right passphrase reopens,
+                                   wrong passphrase fails at open leaving the file intact, a
+                                   flipped byte fails authentication, empty passphrase refused
+                                   before a file exists
+Backup export round trip:   PASS   every stored figure equal to the Rial, tombstones carried,
+                                   the live settings row and not the seeded default (Phase 6 b)
+Backup passphrase chars:    PASS   24 tests, each writing and reopening a real container:
+                                   apostrophes, quote, backslash, Persian and Arabic-Indic digits,
+                                   ZWNJ, spaces at both ends, injection-shaped, emoji, 200 chars.
+                                   Plus 6 must-NOT-open cases pinning that spaces, ZWNJ and the
+                                   two digit sets are never folded together
+Android save dialog:        PASS   opens ACTION_CREATE_DOCUMENT on the Redmi, verified in
+                                   `dumpsys`; cancelling returns false. **The completed save is
+                                   NOT tested** -- it needs a human tap (D-071)
+Phase 7 cold-start baseline: TAKEN 1,401 ms median of runs 2-5 (1,330-1,465); run 1 was 3,440 ms
+                                   and is kept separate as first-launch work. On `60b5cd5`
 
 Persian content sweep:      PASS   11 screens x 3 tiers, strings at the length real data reaches,
                                    over the real repositories -- no crushed text anywhere (D-065)
@@ -204,15 +223,13 @@ Layout, all 3 tiers x 4 amounts (D-057) -- the phase-close check:
                                    invoice list composed at each tier's real width with all four
                                    rungs on screen at once -- new in (f)),
                                    invoice_detail_screen_test.dart, invoices_screen_test.dart
-  device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, ratio 2.75 (2026-09-01)
+  device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, ratio 2.75
                                    list, detail and form suites. 0 layout errors on all three.
-                                   **NOT re-run after the D-065/D-066 fixes** -- the phone was
-                                   physically disconnected before they were finished, and nothing
-                                   on this machine can reconnect it. Both defects were reported on
-                                   and verified on the desktop tier; the phone tier renders the
-                                   line cards rather than the table, so D-065 does not change it,
-                                   but the run is owed and is the first thing to do with the cable
-                                   back in.
+                                   **RE-RUN after the D-065/D-066 fixes (2026-09-01)** and still
+                                   0 errors. As predicted: the phone tier renders line cards
+                                   rather than the table D-065 fixed, so neither defect could
+                                   appear there -- but predicted is not measured, and now it is
+                                   measured (D-064).
   device - Windows desktop: PASS   1264 x 681 (2026-09-01)
                                    list, detail and form suites. 0 layout errors on all three,
                                    and no crushed text -- the detector runs there too now (D-065).
@@ -2212,6 +2229,74 @@ session starts cold at the Next Action below.
 ## Next action
 
 **Phase 6 (a) and (b) are done.** Next is **(c): import, transactional, with the refusals.**
+
+### The device session, 2026-09-01 — all five owed items cleared
+
+The Redmi Note 8 Pro was connected and **every owed device item ran**. Nothing is owed on hardware
+any more except the one thing no automated run can do, named at the end.
+
+| # | Owed item | Result |
+|---|---|---|
+| 1 | `invoice_list` device suite, post-D-065/D-066 | **PASS**, 0 layout errors |
+| 2 | `invoice_detail` device suite | **PASS**, 0 layout errors |
+| 3 | `invoice_form` device suite | **PASS**, 0 layout errors |
+| 4 | Backup container proof on Android (D-069) | **PASS 5/5**, sqlite3 3.53.4, same as Windows |
+| 5 | Phase 7 cold-start baseline | **taken** — see below |
+
+**The D-065/D-066 fixes changed nothing on the phone tier**, as predicted and now measured: the phone
+renders invoice lines as cards rather than as the table D-065 fixed. The detail suite's ladder still
+reports `100000000 تومان : unrecorded figures shown = true` at the top rung, which is the pre-v4
+«ثبت‌نشده» path behaving correctly, not a regression.
+
+**Known issue 10 recurred once**, on the second suite of the run: `INSTALL_FAILED_USER_RESTRICTED`
+followed by `DELETE_FAILED_INTERNAL_ERROR` on the cleanup. Its documented remedy worked first time —
+`adb install -r` by hand, then retry.
+
+**Phase 7 cold-start baseline**, release build (`app-arm64-v8a-release.apk`, 21,520,524 bytes),
+`am force-stop` before each, on commit `60b5cd5` — **before any PDF dependency**:
+
+| Run | TotalTime |
+|---|---|
+| 1 | **3,440 ms** — first launch after install: dex optimization, encryption-key generation and database creation all land here |
+| 2–5 | 1,401 · 1,465 · 1,363 · **1,330 ms** |
+
+**Take 1,401 ms as the baseline** (median of the steady-state runs) and keep run 1 separate rather
+than averaging it in, or the figure Phase 7 is compared against would be mostly first-run work that
+never happens again.
+
+### The Android save dialog — the link the owner most wanted tested
+
+**It opens, and it is the right intent.** Proved on hardware by reading it out of `dumpsys` while the
+picker was in the foreground:
+
+```
+act=android.intent.action.CREATE_DOCUMENT cat=[android.intent.category.OPENABLE]
+cmp=com.google.android.documentsui/com.android.documentsui.picker.PickActivity
+```
+
+SAF create-document, **not** a share intent — the exact property D-071 chose the package for,
+demonstrated rather than argued. Cancelling returns `false`, so a cancellation reads as the ordinary
+outcome it is rather than as a failed backup. `lib/data/backup/backup_file_gateway.dart` is the real
+gateway, not a probe, so (d) inherits tested code.
+
+**Two findings from doing it:**
+
+1. **`adb shell input keyevent` is refused on this device** — *"Injecting to another application
+   requires INJECT_EVENTS permission"*, because MIUI gates simulated input behind its **USB debugging
+   (Security settings)** toggle. `am force-stop com.google.android.documentsui` cancels the picker
+   just as well and changes no device setting.
+2. **`flutter_file_dialog` has a stated expiry.** The build warns that it applies the Kotlin Gradle
+   Plugin and that *"future versions of Flutter will fail to build"* apps using such plugins. It
+   builds today. It is a **dated dependency**, which raises the value of the fallback D-071 already
+   specified — app-external storage via `path_provider`, no dependency and no permission — and the
+   gateway interface is what makes that a one-file change if it comes to it.
+
+**One thing is still untested and is stated rather than implied:** the **completed** save. Choosing a
+location and confirming needs a human tap that no automated run can supply while MIUI refuses input
+injection. Proved: the dialog opens, resolves the right intent, and cancels cleanly. Unproved: that
+confirming writes the file. **One tap on the device closes it**, and it is worth doing before (d)
+builds a screen on top. The Windows save dialog is unexercised too — lower risk, `file_selector_windows`
+being flutter.dev's own, but unexercised is unexercised (D-064).
 
 ### What (b) delivered — export in the data layer
 

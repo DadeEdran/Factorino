@@ -4235,3 +4235,44 @@ matters most:
 been raised on real hardware**, because the phone has been disconnected since before D-065. That run
 is owed alongside the Android container proof and the Phase 7 cold-start baseline — all three want
 the same cable, and D-064 is explicit that a target with no run is a target with no evidence.
+
+
+### Amendment, 2026-09-01 — the gateway is proved on hardware, and it has a stated expiry
+
+**The Android save dialog opens.** `integration_test/backup_gateway_probe_test.dart`, run on the
+Redmi Note 8 Pro (Android 11, MIUI). The evidence is the intent itself, read out of
+`dumpsys activity activities` while the picker was in the foreground:
+
+```
+Intent { act=android.intent.action.CREATE_DOCUMENT cat=[android.intent.category.OPENABLE]
+         typ=*/* cmp=com.google.android.documentsui/com.android.documentsui.picker.PickActivity }
+```
+
+That is SAF's create-document flow and **not** a share intent — the property D-071 chose this package
+for, now demonstrated rather than argued. Cancelling returns `false`, so a cancellation is reported
+as the ordinary outcome it is instead of surfacing as a failed backup.
+
+**Driving it needed a workaround worth recording.** `adb shell input keyevent` is refused on this
+device — *"Injecting to another application requires INJECT_EVENTS permission"* — because MIUI gates
+simulated input behind its **USB debugging (Security settings)** toggle. `am force-stop
+com.google.android.documentsui` cancels the picker just as well and needs no device setting changed.
+
+**`flutter_file_dialog` has an expiry date, and it is now known rather than assumed.** The build
+warns:
+
+> *Your app uses the following plugins that apply Kotlin Gradle Plugin (KGP): `flutter_file_dialog`.
+> Future versions of Flutter will fail to build if your app uses plugins that apply KGP.*
+
+It builds today and it is not a failure today. It is a **dated dependency**: unless the author
+migrates to Built-in Kotlin, a future Flutter upgrade stops building this application. That does not
+change the choice — the alternative was a share intent handing the entire customer database to
+another app — but it raises the value of the escape route D-071 already specified, and the escape
+route is the reason this is a note rather than a reversal. **If the plugin expires, the fallback is
+app-external storage via `path_provider`: no dependency, no permission on any API level, and a path
+the user can reach with a file manager.** The gateway interface is what makes that a one-file change.
+
+**Still untested, and stated rather than implied:** the **completed** save. Choosing a location and
+confirming needs a human tap, which no automated run on this device can supply while MIUI refuses
+input injection. What is proved is that the dialog opens, resolves the right intent, and that
+cancelling is handled. The Windows save dialog is likewise unexercised — lower risk, since
+`file_selector_windows` is flutter.dev's own, but unexercised is unexercised (D-064).
