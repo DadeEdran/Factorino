@@ -3881,3 +3881,145 @@ direction of the caveat predicts: narrower glyphs mean more room, so every asser
 the wider font still holds. What changes is that a width assertion now means what it says, and the
 project no longer has a standing reason to discount its own layout measurements.
 
+
+---
+
+## D-068 — The plan is cut to Phase 6 and Phase 7, at standards reduced on purpose
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED (project owner)
+**Supersedes, in scope only:** the phase ladder in the project spec and `ROADMAP.md`
+**Reduces, for these two phases only:** D-057 (three tiers × four rungs), D-064 (every device suite at
+every target)
+
+**Decision.** The owner's development window for this project ends 2026-09-04. From this point the project targets
+**usable and shippable, not complete**. Only two phases remain in the plan:
+
+- **Phase 6 — Backup and Restore**
+- **Phase 7 — PDF Generation**
+
+**Phases 8 through 15 are deferred indefinitely** — not "next", not "later in the MVP", not scheduled.
+`ROADMAP.md` states this in each of their entries rather than leaving them reading as if they are
+coming. Deferring them is a scope decision, not a judgement that the work is unnecessary: Phase 9's
+release signing and manifest hardening in particular remain the difference between an APK that can be
+distributed and one that cannot, and the roadmap says so where it defers them.
+
+**The reduced standards, stated so they do not read as sloppiness later.** Each of these is a
+deliberate trade with a named cost, in force for Phases 6 and 7 only:
+
+| Standard | Full form (D-057, D-064, §15) | In force for 6 and 7 | Cost accepted |
+|---|---|---|---|
+| Device pass | 3 tiers × 4 rungs of `money_magnitudes.dart`, every suite at every target | **Phone tier, one large realistic amount** | A desktop-only or tablet-only layout fault ships unseen. This is exactly the fault class D-057 was written after — accepted knowingly, because a document renderer's hard cases are Persian shaping and page breaks rather than tier widths |
+| Tests | Exhaustive layout coverage plus correctness | **Correctness of the data only** — a backup round-trips to the Rial, PDF figures equal stored figures | Layout regressions in the new surfaces are caught by eye, not by suite |
+| PDF | Templates, logo, customisation | **One template.** No choice, no logo upload, no customisation | Every user gets the same document. Branding is a Phase 7+ idea that no longer exists |
+| Backup | Export, import, scheduling, cloud, CSV | **Export and import, encrypted, with the integrity check** | No automatic backups: the user must remember. The settings reminder is the whole mitigation |
+
+**What is not reduced, because these are why the figures on a document can be trusted.** These four
+hold at full strength and a shortcut against any of them is a defect, not a trade:
+
+1. **`core/money/` stays the only calculator.** No read site, no renderer, no export path multiplies,
+   divides or rounds anything (D-046, D-047).
+2. **The renderer receives a fully computed, already formatted view model and computes nothing**
+. A PDF that recalculates is a second implementation of §4.
+3. **Encryption and key handling stay exactly as they are** (D-010, D-012, D-020). The backup format
+   may reuse them; it may not weaken them, and no path may put the database key or a user password in
+   a log, an error string or a temporary file.
+4. **Persian correctness is not negotiable in a document handed to a customer** — digits, Jalali
+   dates, RTL, and bidi isolation on invoice numbers, phone numbers and national IDs.
+
+**Reason.** Three days is not enough for eight more phases, and pretending otherwise produces eight
+half-phases instead of two finished ones. Cutting the scope explicitly, and writing down which
+standards were lowered and which were not, is what keeps a later reader from mistaking a deliberate
+trade for a lapse — and keeps the four load-bearing invariants from being traded away in the same
+breath as the layout sweep.
+
+**Alternatives considered.** Keeping the full ladder for Phases 6 and 7 (rejected: the sweep is
+roughly a third of an increment's time and its highest-value target, money widths at three tiers, is
+already covered by the existing suite for every screen these phases touch). Cutting to one phase
+(rejected: an invoice app that cannot produce a document and an invoice app that cannot be backed up
+are both unshippable, for different reasons — §8 says the first outright). Deferring the standards
+question and deciding per-increment (rejected: a standard lowered silently at the moment it is
+inconvenient is indistinguishable from one nobody held).
+
+---
+
+## D-069 — The backup is an encrypted SQLite database keyed by the user's password
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED (project owner, with the split for Phase 6)
+**Builds on:** D-010 (sqlite3mc is the encryption provider), D-020 (`PRAGMA key` is the first
+statement on every connection), D-068 (the reduced scope these two phases run at)
+
+**Decision.** A Factorino backup file **is an SQLite database** — written by the same
+SQLite3 Multiple Ciphers library the live database already uses, under the same SQLCipher-compatible
+configuration (`PRAGMA cipher = 'sqlcipher'; PRAGMA legacy = 4;`), but keyed by a **password the user
+supplies** rather than by the device key in `flutter_secure_storage`.
+
+It carries a `backup_meta` table: the backup format version, the application schema version, the
+creation instant in UTC epoch milliseconds, and a **row count per table**.
+
+### Why the container is the format, rather than an encrypted serialization
+
+The alternative was a JSON or binary serialization encrypted with AES-GCM, keyed through a PBKDF2 or
+Argon2 derivation. It was rejected, and the reason is not convenience.
+
+**Every cryptographic primitive §8 asks for is already shipping in this application, tested, and on
+the correctness path of the live database.** SQLCipher-compatible mode at `legacy = 4` derives the key
+from the passphrase with **PBKDF2-HMAC-SHA512 at 256,000 iterations** and authenticates **every page
+with HMAC-SHA512**. Choosing the serialization route means writing a key derivation and an
+authenticated-encryption path by hand, against a dependency this project does not yet have, in the one
+phase of the project where a subtle mistake **fails silently** — a backup that encrypts wrongly, or
+authenticates nothing, looks exactly like a backup that works, right up to the day someone needs it.
+
+**Using the library already shipping is the security-correct answer here, not the expedient one.**
+The expedient answer and the correct one coincide, which is worth stating plainly because the reverse
+inference — that reusing what is present must be a shortcut — is the one a later reader is likely to
+draw. It also adds **no new cryptographic dependency**: the local pub cache holds `crypto` and
+`archive` and nothing else usable, so the serialization route would have meant taking a fresh
+dependency for the primitives as well as writing the code around them.
+
+Two further properties fall out of the container that the serialization route would have had to build:
+
+- **Version compatibility is the migration ladder.** The backup file is a Drift-openable database, so
+  an **older** backup migrates itself up the existing, tested ladder when it is opened. A **newer**
+  one is refused, because this build has no step to run.
+- **A wrong password fails at the first page read**, loudly and before any data is touched — not
+  after a decrypt that produced plausible-looking garbage.
+
+### Integrity: the per-page HMAC and the row counts, and deliberately nothing else
+
+§8 requires "a format version and an integrity check (e.g. HMAC)". Both are present:
+
+| Requirement | Met by |
+|---|---|
+| Format version | `backup_meta.format_version`, plus the application schema version beside it |
+| Cryptographic integrity | The container's **per-page HMAC-SHA512** — tampering fails authentication at the page that was touched |
+| Logical completeness | **Row counts per table** in `backup_meta`, compared on import |
+
+**No whole-file HMAC is added on top, and its absence is a decision rather than an omission**
+(project owner, 2026-09-01). A second integrity check over the same bytes can **disagree** with the
+first, and then the import path has to decide which one it believes — a question with no good answer
+that only exists because the second check was added. One authenticated container, plus a logical
+check that answers a different question (*is this backup complete?* rather than *has this backup been
+altered?*), is the whole of it.
+
+### What the backup is not keyed by
+
+**The backup password is not the database key, and the database key never leaves the device.** A
+backup keyed by the device key would be unreadable on the replacement device — which is the only
+device that will ever need to read it. The user-supplied password is what makes the file portable,
+and it is also why §8 requires the UI to say in Persian that losing the password loses the backup:
+there is no recovery path and no one who can help.
+
+### The three constraints this carries into every increment
+
+1. **Nothing about a backup is logged** — not the password, not the destination path, not a row count
+   that implies how much business the user does (§7).
+2. **The container is built in app-private storage and deleted on every exit path**, including the
+   failing ones. Delivery to a user-chosen location is a separate step over the finished bytes, which
+   is also what keeps `sqlite3` on a real filesystem path and the service testable without plugins.
+3. **The import confirmation states in Persian that existing data is replaced, not merged** (project
+   owner). A user who expects a merge and receives a replacement loses everything entered since the
+   backup was taken, and has no reason to expect it — the word "restore" implies addition to most
+   people. This is a copy requirement with the weight of a data-loss guard, because that is what it
+   is.

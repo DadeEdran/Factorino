@@ -1,11 +1,32 @@
 # Roadmap
 
-> Status values: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `COMPLETED`
+> Status values: `NOT_STARTED` · `IN_PROGRESS` · `BLOCKED` · `COMPLETED` ·
+> `DEFERRED_INDEFINITELY`
 > Every phase carries a **security note**: what new data is stored, what new inputs
 > are accepted, what new permissions or platform surfaces are touched, and whether the threat model
 > changes.
 >
 > A phase is only `COMPLETED` when `flutter analyze` is clean and `flutter test` passes.
+
+---
+
+## The plan, as of 2026-09-01 — read this before reading any phase below
+
+**The remaining plan is two phases: 6 (Backup and Restore) and 7 (PDF Generation).** Development
+access ends 2026-09-04, and the target from here is **usable and shippable, not complete** (D-068).
+
+**Phases 8 through 15 are `DEFERRED_INDEFINITELY`.** They are not scheduled, not next, and not "later
+in the MVP". Nobody should read them as work that is coming. They are kept in this file because the
+requirement each one names is still real — deferring the phase does not retire the requirement — and
+each entry below now says what a user actually loses by its absence.
+
+Phases 6 and 7 run at **deliberately reduced standards**, recorded in full in **D-068**: phone tier
+only with one large realistic amount instead of the D-057 three-tier four-rung sweep, tests covering
+correctness of the data rather than exhaustive layout, one PDF template with no customisation, and
+export/import only with no scheduling, cloud or CSV. Four things are **not** reduced: `core/money/`
+stays the only calculator, the renderer computes nothing, encryption and key handling are untouched,
+and Persian correctness — digits, dates, RTL, bidi isolation — holds at full strength in any document
+handed to a customer.
 
 ---
 
@@ -1633,13 +1654,73 @@ a test binary, never an amount, a name or an identifier. The threat model is unc
 
 ## Phase 6 — Backup and Restore
 
-**Status:** `NOT_STARTED` — required in the MVP.
+**Status:** `NOT_STARTED` — required in the MVP, and **one of the two phases still in the plan**
+(D-068). Runs at the reduced standards recorded there: phone-tier device pass with one large
+realistic amount, tests covering correctness of the data — a backup round-trips to the Rial — rather
+than exhaustive layout coverage. Encryption and key handling are **not** reduced.
 
 **Goal.** Encrypted export to a user-chosen location (Android SAF, Windows native dialog, Web
 download), transactional import with version compatibility checking, and a last-backup reminder in
 settings.
 
 Deferred to later: scheduled backups, CSV export, cloud backup.
+
+**The container format is settled — D-069.** A backup **is** an SQLite database, written by the
+sqlite3mc library already shipping, under the same SQLCipher-compatible configuration as the live
+database but keyed by a **user-supplied password** rather than the device key. That brings
+PBKDF2-HMAC-SHA512 at 256,000 iterations and per-page HMAC-SHA512 with no new cryptographic
+dependency and no hand-rolled primitives, and it makes version compatibility the existing migration
+ladder: an older backup migrates itself on open, a newer one is refused.
+
+### Increments (agreed with the owner, 2026-09-01)
+
+| # | Increment | Status |
+|---|---|---|
+| a | **The container proved, and the file gateway chosen** — no UI, no product paths | `NOT_STARTED` |
+| b | **Export in the data layer**, with the round-trip test to the Rial | `NOT_STARTED` |
+| c | **Import, transactional, with the refusals** | `NOT_STARTED` |
+| d | **The screen — both flows, and settings becomes editable**; phone device pass; close | `NOT_STARTED` |
+
+**(a) The container proved, and the file gateway chosen.** An `integration_test/` proof on both
+targets in the D-020 style: write a password-keyed container, close it, reopen with the right
+password, with the **wrong** password (fails cleanly rather than crashing), and with a tampered byte
+(fails authentication). Alongside it, the gateway probe, which is the real unknown: Windows has
+`getSaveLocation`, and **`file_selector_android` does not implement it** — verified in its source, not
+assumed. The Android answer is one of `flutter_file_dialog`'s SAF create-document, `share_plus`, or
+app-external storage as the zero-dependency floor, in that order of preference: the first keeps the
+file on the device, the second is a new outbound data surface that the security note would have to
+account for.
+
+**(b) Export in the data layer.** `BackupService.export()` writes every table **including
+soft-deleted rows** — they are the sync tombstones, and a backup that drops them resurrects deleted
+records on restore — from a consistent snapshot. The service produces a path in **app-private
+storage**; delivering it to the user's chosen location is a separate thin gateway. That split keeps
+`sqlite3` on a real filesystem path, makes the service testable on the Dart VM with no plugins, and is
+the piece Phase 7 inherits rather than rebuilds. Round-trip test to the Rial: every stored figure —
+`grossTotal`, subtotal, the totals, the per-line figures — equal after export and re-import.
+
+**(c) Import, transactional, with the refusals.** Verify, then replace-all inside one transaction, so
+a failure leaves the existing data untouched. Refusals tested against the **service** rather than
+through the screen, each asserting what the refusal left behind — the pattern Phase 5 (c) established
+for payments.
+
+**(d) The screen, and settings becomes editable.** Both flows: password entry twice, the Persian
+warning that losing the password loses the backup, the destination, the result, `markBackedUp`. The
+import confirmation **states in Persian that existing data is replaced and not merged** (D-069) —
+a copy requirement carrying the weight of a data-loss guard. The last-backup row goes through
+`formatJalaliDateLong`, closing the first half of known issue 6.
+
+**And the settings screen becomes editable here, which is a defect fix rather than a feature.**
+The project spec requires the VAT rate to be configurable and never hardcoded, and it is currently
+hardcoded at the seeded default with no way to change it: a business on a different rate hits it on
+its first invoice with no recourse. The invoice number prefix and the payment term come with it, the
+latter **bounded** — a negative term produces an invoice due before it was issued, and `AppSettings`
+deliberately does not clamp it (D-052, known issue 6). This work belonged to no phase at all, which is
+exactly how the D-068 cut would have made it permanent.
+
+Closes with a **phone-tier device pass at one large realistic amount** (D-068's reduction), under the
+**keyboard rule** (D-062) — which is *not* reduced, and a backup password field in a sheet is what
+that rule was written for.
 
 **Security note.** The highest-risk phase in the MVP. A backup file is the entire customer and
 invoice database in one portable artifact. It must be encrypted with a user-supplied password via a
@@ -1652,7 +1733,12 @@ Exported files must be covered by `.gitignore`.
 
 ## Phase 7 — PDF Generation
 
-**Status:** `NOT_STARTED` — interface only in Phase 1.
+**Status:** `NOT_STARTED` — interface only in Phase 1, and **the last phase in the plan** (D-068).
+Reduced to **one template**: no template choice, no logo upload, no customisation — a clean Persian
+invoice that prints correctly. Phone-tier device pass, one large realistic amount. **Not** reduced:
+the renderer receives a fully computed, already formatted view model and computes nothing, and
+Persian correctness — digits, Jalali dates, RTL, bidi isolation — holds at full strength, because
+this is the one artifact a customer holds in their hand.
 
 **Goal.** Implement `InvoiceDocumentGenerator` with Persian shaping, RTL layout, Jalali dates,
 Toman/Rial and a professional invoice layout. The renderer receives a fully computed, already
@@ -1687,65 +1773,143 @@ for it (owner, 2026-08-24).
 user-accessible storage. Temporary files must be cleaned up, and any share/print intent on Android is
 a new outbound data surface.
 
+**The shaping probe runs before Phase 6 (b), not at the start of Phase 7** (owner, 2026-09-01). Forty
+minutes against the candidate library: Persian text shaped and joined, an invoice number
+**bidi-isolated inside RTL** so it does not visually scramble, and **Jalali digits**. It is the only
+finding left that could change the whole Phase 7 plan, and finding it on the last day ends the phase
+rather than changing it. The dependency is reverted afterwards, so the entry-gate baseline above still
+sits on the commit before the real `pubspec.yaml` entry.
+
+---
+
+## After Phase 7 — distribution, one hour, not optional
+
+**Status:** `NOT_STARTED` — scheduled, unlike Phases 8–15 below (owner, 2026-09-01).
+
+Two items lifted out of the deferred phases because they are minutes of work that decide whether the
+application can be handed to anyone at all:
+
+1. **Release signing from a gitignored properties file** (known issue 13, nominally Phase 15). A
+   debug-signed APK cannot be distributed, and cannot later be re-signed with a real key without
+   uninstalling every install of it.
+2. **`android:allowBackup="false"` and `android:usesCleartextTraffic="false"`** (known issue 15,
+   nominally Phase 9). While `allowBackup` defaults true, the encrypted database and its metadata can
+   be pulled off some configurations by ADB backup — one of the two attacks the project spec's threat
+   model claims to cover.
+
+**If time runs short, something else gets cut instead of this** (owner). It is an hour that turns an
+undistributable build into a distributable one and closes a hole the security model already claims is
+closed.
+
 ---
 
 ## Phase 8 — Dashboard and Reports
 
-**Status:** `NOT_STARTED`
+**Status:** `DEFERRED_INDEFINITELY` (D-068)
 
-**Goal.** Real aggregates over Jalali periods, computed in SQL rather than Dart loops.
+**What a user loses.** Nothing they can see. Per D-021 «گزارش‌ها» is omitted from navigation entirely
+until this phase — no disabled item, no coming-soon placeholder, no registered route — so its absence
+is invisible rather than broken. The dashboard already landed in Phase 1 (f2): four live SQL
+aggregates over Jalali month boundaries plus a recent-invoices list. What is missing is **period
+selection** (the dashboard covers the current Jalali month only) and **per-entity breakdowns** —
+sales by customer, and sales by product, which is where the product-usage question moved when Phase 3
+was re-scoped (D-042). Registering `/products/:id` belongs here too.
 
-**Partly delivered already.** The **dashboard** landed in Phase 1 (f2): four live SQL aggregates over
-Jalali month boundaries, composed into one `DashboardSummary`, plus a recent-invoices list. This
-phase is now about **گزارش‌ها** — the reports destination — rather than the dashboard, and the two
-things it must add that the dashboard deliberately does not have are **period selection** (the
-dashboard covers the current Jalali month only) and **per-entity breakdowns**: sales by customer, and
-**sales by product**, which is where the product-usage question moved when Phase 3 was re-scoped
-(D-042). Registering `/products/:id` belongs here too, if that breakdown wants a per-product page.
-
-**This is where "گزارش‌ها" enters the product.** Per D-021 it is omitted from navigation entirely
-until this phase — no disabled item, no coming-soon placeholder, and no registered route. Adding the
-destination here also means adding it to the navigation shell and the router for the first time.
-
-**Security note.** No new data. Aggregation queries must remain parameterized (D-018) and must not
-leak amounts into logs.
+**Security note if it is ever taken up.** No new data. Aggregation queries stay parameterized (D-018)
+and must not leak amounts into logs.
 
 ---
 
 ## Phase 9 — Security Hardening and Audit
 
-**Status:** `NOT_STARTED`
+**Status:** `DEFERRED_INDEFINITELY` (D-068) — **but see the carve-out below.**
 
-**Goal.** App lock (PIN + biometric via `local_auth`), idle auto-lock and lock on resume, PIN stored
-only as a salted KDF hash, `FLAG_SECURE` on financial screens, R8 and resource shrinking, release
-signing from a gitignored properties file, and a full pass over the §7 checklist.
+**Goal, unbuilt.** App lock (PIN + biometric via `local_auth`), idle auto-lock and lock on resume,
+PIN stored only as a salted KDF hash, `FLAG_SECURE` on financial screens, R8 and resource shrinking,
+release signing from a gitignored properties file, and a full pass over the §7 checklist.
 
-**Security note.** Adds the biometric permission and a new authentication surface. Revisit the Web
-in-memory-key question deferred in D-012.
+**What a user loses, and it is not all equal.** Deferring the app lock is a real but bounded gap: the
+database is encrypted at rest with a key in the Android Keystore / Windows DPAPI, so a powered-off
+lost device is covered by D-010 and the device's own lock screen carries the rest. **Two items in
+this phase are not like that**, and both are minutes of work rather than an increment:
+
+- **`android:allowBackup="false"` and `android:usesCleartextTraffic="false"` in the manifest**
+  (known issue 15). While `allowBackup` defaults true, the encrypted database and its metadata can be
+  pulled off some configurations by ADB backup — which is one of the two attacks §7's threat model
+  claims to cover.
+- **Release signing from a gitignored properties file** (known issue 13, nominally Phase 15). A
+  debug-signed APK cannot be distributed, and cannot later be re-signed with a real key without
+  uninstalling every install of it. This is the difference between an app that ships and one that
+  does not.
+
+Both are listed here so that deferring the phase does not quietly defer them too.
 
 ---
 
 ## Phase 10 — Authentication · Phase 11 — Supabase Cloud Sync
 
-**Status:** `NOT_STARTED`
+**Status:** `DEFERRED_INDEFINITELY` (D-068)
 
-Sync is where D-013 (invoice-number collisions across devices) must finally be solved, and where the
-`sync_status` columns shipped in Phase 1 come into use.
+**What a user loses.** Their data lives on one device and stays there. This is the product as
+designed — offline-first, cloud sync always a *future* phase — so nothing is broken
+by its absence; **Phase 6's backup file is the whole answer to "what if I lose the device"**, which is
+why Phase 6 stayed in the plan and this did not.
 
-**Security note.** The first outbound network surface in the product. Only the anon key ships in the
-client; Row Level Security is enabled on every table from the first migration. The threat model gains
-a server and a transport.
+**What stays paid for.** The `sync_status`, `last_synced_at`, `deleted_at` and UUID columns shipped in
+Phase 1 are still there and still correct. Sync is where D-013 (invoice-number collisions across
+devices) would finally have to be solved.
 
 ---
 
-## Phase 12 — Web and Windows Optimization · Phase 13 — Performance · Phase 14 — Testing · Phase 15 — Release
+## Phase 12 — Web and Windows Optimization
 
-**Status:** `NOT_STARTED`
+**Status:** `DEFERRED_INDEFINITELY` (D-068)
 
-Phase 12 includes the Drift-on-Web setup (`sqlite3.wasm` + worker in `web/`) and the Persian font
-preload/subset work. Phase 13 covers query indexing and startup time against realistic data volumes.
-Phase 14 broadens coverage to repository and widget tests. Phase 15 covers store metadata, signing,
-and the release checklist.
+**What a user loses.** **Web does not ship.** It has not been retested since plugins were added (known
+issue 14) and it has no encryption at rest by design (D-012). Treat Android and Windows as the
+targets; Web is not a build anyone should hand out in this state. Known issue 9 — the Windows debug
+exe showing no window when launched directly — lived here too and affects development only, not a
+release build.
 
-**Security note.** Phase 15 is the last point at which the §7 checklist can be verified end to end
-before real user financial data exists on real devices.
+Also parked here: the Drift-on-Web setup (`sqlite3.wasm` + worker in `web/`) and the Persian font
+preload/subset work.
+
+---
+
+## Phase 13 — Performance
+
+**Status:** `DEFERRED_INDEFINITELY` (D-068)
+
+**What a user loses.** Little at realistic volumes. The lists that would have hurt are already paged
+at the query level (D-038, D-063), aggregates are SQL rather than Dart loops, and the invoice list's
+filters are `WHERE` clauses. What remains parked is query indexing against realistic data volumes,
+startup time, known issue 2 (the database opens on the main isolate) and known issue 4
+(`watchDetail` re-reads on any invoice-table change — correct, not minimal).
+
+---
+
+## Phase 14 — Testing
+
+**Status:** `DEFERRED_INDEFINITELY` (D-068)
+
+**What a user loses.** Nothing directly. The suite stands at 1004 tests covering the money engine,
+the Jalali boundaries, normalization, the migrations and every layout site that carries a figure.
+What this phase would have broadened is repository and widget coverage of paths that currently rest
+on the device suites.
+
+---
+
+## Phase 15 — Release
+
+**Status:** `DEFERRED_INDEFINITELY` (D-068) — **except the signing config, see Phase 9 above.**
+
+**What a user loses.** Store metadata and the release checklist, which matter only at the moment of
+distribution. **The signing configuration is the exception** and is called out under Phase 9: a
+debug-signed build is not distributable and cannot be upgraded to a properly signed one in place.
+
+**Security note.** This was the last point at which the §7 checklist would have been verified end to
+end before real user financial data existed on real devices. Deferring the phase means that
+verification does not happen; the §7 properties that are already implemented — encryption at rest,
+the key in platform storage, parameterized queries, the logging wrapper, no secrets in the repository
+— remain implemented and tested, and the ones that are not (app lock, manifest hardening, R8) remain
+unbuilt and are listed under Phase 9.

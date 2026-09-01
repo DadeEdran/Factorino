@@ -4,6 +4,15 @@
 > Last updated: **2026-09-01** — Phase 5 is `COMPLETED` and accepted. Since the close, two visual
 > defects reported off the Windows build have been fixed (D-065, D-066) with the checks that would
 > have caught them, and widget tests now render in the real font (D-067).
+>
+> **THE PLAN HAS BEEN CUT (D-068).** Development access ends 2026-09-04. The remaining plan is
+> **Phase 6 (Backup and Restore)** and **Phase 7 (PDF)**, and nothing else: Phases 8–15 are
+> `DEFERRED_INDEFINITELY`. Both remaining phases run at **deliberately reduced standards** —
+> phone tier only, one large realistic amount, data-correctness tests rather than exhaustive layout,
+> one PDF template, export/import only. **Four things are not reduced**: `core/money/` is the only
+> calculator, the renderer computes nothing, encryption and key handling are untouched, and Persian
+> correctness in a customer-facing document is absolute. Read D-068 before reading any older section
+> of this file that assumes the full ladder.
 
 ---
 
@@ -21,7 +30,12 @@ detail screen (D-057, D-058), the known-issue-19 fix (D-059), (c) payments (D-06
 and the keyboard rule (D-062, known issue 21), and (e) filters and paging (D-063) — and (f) closed
 the phase. **Nothing is awaiting review.**
 
-**Phase 6 — Backup and Restore · `NOT_STARTED`** ← next.
+**Phase 6 — Backup and Restore · `NOT_STARTED`** ← next, at D-068's reduced standards.
+**Phase 7 — PDF Generation · `NOT_STARTED`** — the last phase in the plan.
+**Phases 8–15 · `DEFERRED_INDEFINITELY`** (D-068). Not next, not later, not scheduled. Two items
+inside them are called out in `ROADMAP.md` as minutes of work that gate distribution rather than
+phase-sized work: the Android manifest's `allowBackup="false"` (known issue 15) and release
+signing from a gitignored properties file (known issue 13).
 
 **After the close, before Phase 6:** two visual defects reported off the Windows build, both fixed —
 the invoice document table's crushed description column (**D-065**) and chip labels painted with no
@@ -2196,73 +2210,94 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**First, with the cable back in: re-run the three device suites on the Redmi.** They have not run on
-the phone since the D-065/D-066 fixes. Neither defect is expected to appear there — the phone tier
-renders invoice lines as cards rather than as a table, and the chip fix is tier-independent — but
-"not expected" is not a run, and D-064 is explicit that a suite which has only run on one target is
-evidence about one target. `adb devices` empty with an ADB interface present means a stale daemon
-(known issue 22), not a bad cable.
+**Phase 6 — Backup and Restore, increment (a): the container proved, and the file gateway chosen.**
+The split, the container format (D-069) and the 6 → 7 ordering were all **approved by the owner**
+(2026-09-01). Nothing is awaiting a decision.
 
-**Then start Phase 6 — Backup and Restore.**
+### What (a) delivers, and nothing more
 
-The project spec makes this an **MVP requirement, not a later nicety**: the users keep their business
-records only in this app, so an offline-only financial application with no backup path means a lost
-phone is a lost business. It is also the mitigation the encryption story depends on — §7 says losing
-the key means losing the data, and backup is what stands behind that sentence.
+1. **The container proof**, `integration_test/`, on **both** targets, in the D-020 style: write a
+   password-keyed sqlite3mc container, close it, then reopen it (i) with the right password —
+   succeeds; (ii) with the **wrong** password — fails cleanly, not a crash, and before any data is
+   touched; (iii) with **a byte flipped** — fails page authentication.
+2. **The file gateway probe**, which is the real unknown. Windows has `getSaveLocation`.
+   **`file_selector_android` does not implement it** — verified in its source at
+   `flutter/packages`, where the Android class implements only `openFile`, `openFiles` and
+   `getDirectoryPath`. The Android answer is one of, in this order of preference:
+   `flutter_file_dialog`'s SAF create-document (keeps the file on the device), `share_plus` (a new
+   outbound data surface the security note must then account for), or app-external storage via
+   `path_provider` as the zero-dependency floor.
+3. **A decision entry** recording which gateway won and why.
 
-**The single specific next action:** *read `docs/ROADMAP.md` Phase 6, then propose the increment split
-for backup and restore and get it agreed before writing code* — on the precedent of every phase since
-Phase 4, and because §8 has three parts that are separately reviewable (the encrypted container
-format, export, import) and one of them, import, is transactional over the user's whole database.
+No UI, no repository wiring, no product code path in (a).
 
-What Phase 6 has to deliver, from §8, so the split is not re-derived:
+### Running alongside (a): the Phase 7 entry gate and the shaping probe
 
-1. **Export** — a full backup file to a user-chosen location: SAF picker on Android, native dialog on
-   Windows, download on Web.
-2. **Encrypted with a user-supplied password**, key derived through a KDF and never used raw. The UI
-   must say in Persian that losing the password loses the backup.
-3. **A format version and an integrity check** (HMAC), so a corrupted or tampered file is rejected on
-   import rather than partially applied.
-4. **Import is transactional**: it either fully succeeds or leaves the existing data untouched, with a
-   Persian confirmation step before overwriting.
-5. **A last-backup date in settings.** Note known issue 6: the row would render an epoch number
-   today, `formatJalaliDateLong` exists, and this is where it gets wired. The same screen becoming
-   editable is where `payment_term_days` needs a bound — a negative term produces an invoice due
-   before it was issued, and `AppSettings` deliberately does not clamp it (D-052).
+Both were approved to happen **now** rather than at the start of Phase 7.
 
-**Deferred by §8 and not to be built now:** scheduled/automatic backups, CSV export, cloud backup.
+- **The size/startup baseline** must sit on the commit **before** the PDF dependency lands, and that
+  commit is this one. Release APK (`--split-per-abi`, arm64 byte size), Windows release bundle total
+  size, and five cold starts via `adb shell am start -W` after `am force-stop` each time — the cold
+  starts need the cable, so they join the owed phone run below.
+- **The Persian shaping probe**, forty minutes: Persian text shaped and joined, an invoice number
+  **bidi-isolated inside RTL**, and **Jalali digits**. The dependency is reverted afterwards so the
+  baseline stays on a pre-dependency commit.
 
-**Two constraints that will apply from the first increment:**
+**Report the probe result before (b), not at the end of Phase 6** (owner). If it fails, Phase 7 is
+replanned immediately rather than discovered on the last day.
 
-- **The close-out rules hold for Phase 6 too.** It closes on a layout check at all three tiers over
-  the ladder (D-057), the keyboard rule wherever a text field exists (D-062) — and a backup password
-  field is exactly that — and every device suite run on **both** targets (D-064).
-- **A backup file is a sensitive artifact** (§7). The security note for each increment has to say what
-  leaves the encrypted database and in what form, and nothing about a backup may be logged.
+### Still owed, from before the cut
 
-**Nothing is blocked and nothing is owed.** Known issues 16, 19, 20 and 21 are closed; no known issue
-is open that a user of the shipped app would notice.
+**With the cable back in: re-run the three device suites on the Redmi.** They have not run on the
+phone since the D-065/D-066 fixes. Neither defect is expected there — the phone tier renders invoice
+lines as cards rather than as a table, and the chip fix is tier-independent — but "not expected" is
+not a run (D-064). The five cold starts for the Phase 7 baseline can be taken in the same session.
+`adb devices` empty with an ADB interface present means a stale daemon (known issue 22), not a bad
+cable.
 
-**Getting the Redmi back, because this cost real time twice and the two symptoms look identical.**
-First check what Windows enumerated:
+### What Phase 6 has to deliver, from §8, so the split is not re-derived
 
-```
-Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match 'VID_2717' }
-```
+1. **Export** — a full backup file to a user-chosen location.
+2. **Encrypted with a user-supplied password**, key derived through a KDF and never used raw. Met by
+   the container's SQLCipher-compatible PBKDF2-HMAC-SHA512 at 256,000 iterations (D-069). The UI must
+   say in Persian that losing the password loses the backup.
+3. **A format version and an integrity check.** `backup_meta.format_version` plus the container's
+   per-page HMAC-SHA512, with **row counts per table** as a separate logical completeness check.
+   **No whole-file HMAC is added on top, and that is a decision, not an omission** — a second check
+   over the same bytes can disagree with the first, and then import has to decide which to believe
+   (D-069).
+4. **Import is transactional**: it either fully succeeds or leaves the existing data untouched.
+5. **A last-backup date in settings**, through `formatJalaliDateLong` (known issue 6).
+6. **And settings becomes editable in (d)** — a defect fix, not a feature. §4 requires the VAT rate to
+   be configurable and never hardcoded; it is hardcoded at the seeded default today, and a business on
+   a different rate hits it on its first invoice with no recourse. Prefix and payment term come with
+   it, the term **bounded** (D-052).
 
-- **Two entries — a WPD one (`&MI_00`) and an "ADB Interface" (`&MI_01`) — but `adb devices` is
-  empty:** the phone is fine and the daemon is stale. `adb kill-server; adb start-server`, then list
-  again. This is known issue 22, and it is what happened at the start of (f).
-- **A single WPD entry (`USB\VID_2717&PID_FF40`) and no ADB interface:** the phone is exposing MTP
-  only, USB debugging is off, and nothing on this machine can fix it. It is four toggles on the
-  device: Developer options → **USB debugging**, plus MIUI's **Install via USB** and **USB debugging
-  (Security settings)**, and the USB mode set to **File transfer**, not charge-only. Then accept the
-  "Allow USB debugging?" prompt on the phone.
+**Deferred by §8 and not to be built now:** scheduled backups, CSV export, cloud backup.
 
-`adb` is **not on PATH**. It lives at
-`%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`, and under Git Bash any device-side
-path needs `MSYS_NO_PATHCONV=1` or it is mangled into a Windows path
-(`adb shell "df -h /data"` becomes `df 'C:/Program Files/Git/data'`).
+### The three constraints that apply from the first line of code (D-069)
+
+- **Nothing about a backup is logged** — not the password, not the destination path, not a row count
+  that implies how much business the user does.
+- **The container is built in app-private storage and deleted on every exit path**, including the
+  failing ones.
+- **The import confirmation states in Persian that existing data is replaced, not merged.** A user
+  who expects a merge and receives a replacement loses everything entered since the backup, and has
+  no reason to expect it — "restore" implies addition to most people. Copy with the weight of a
+  data-loss guard.
+
+### The close-out standard for this phase, reduced on purpose
+
+Phone tier, one large realistic amount (D-068) — **not** the D-057 three-tier four-rung sweep, and
+**not** D-064's every-suite-every-target. Two things are not reduced: the **keyboard rule** (D-062),
+and the **correctness tests**, which is where the budget went instead: a backup round-trips to the
+Rial.
+
+### After Phase 7, and scheduled unlike Phases 8–15
+
+Release signing from a gitignored properties file (known issue 13) and the two manifest lines,
+`allowBackup="false"` and `usesCleartextTraffic="false"` (known issue 15). About an hour. **If time
+runs short, something else is cut instead** (owner).
 
 ### Standing constraints carried out of Phase 5, from the owner
 
