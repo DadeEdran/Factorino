@@ -2210,9 +2210,62 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 6 — Backup and Restore, increment (a): the container proved, and the file gateway chosen.**
-The split, the container format (D-069) and the 6 → 7 ordering were all **approved by the owner**
-(2026-09-01). Nothing is awaiting a decision.
+**Phase 6 (a) is done on Windows.** Next is **(b): export in the data layer**, with the round-trip
+test to the Rial. See "What (a) delivered" below for what it proved and what it left owed.
+
+### What (a) delivered
+
+**The container works, and it is proved rather than asserted.**
+`integration_test/backup_container_proof_test.dart`, **5/5 passing on Windows** (sqlite3 3.53.4):
+
+| Question | Result |
+|---|---|
+| Is the file encrypted on disk? | **Yes** — 8,192 bytes, no plaintext SQLite header, and the sentinel national-ID stand-in is **absent from the raw bytes** |
+| Does the right passphrase reopen it and return the data? | **Yes** |
+| Does a passphrase differing by one character fail? | **Yes** — `SqliteException` **at open**, and the file is left byte-for-byte intact |
+| Does a tampered byte fail authentication? | **Yes** — `SqliteException`, so the per-page HMAC D-069 relies on is doing what D-069 assumes |
+| Is an empty passphrase refused before a file exists? | **Yes** (after a fix — see below) |
+
+Plus `test/data/database/backup_container_setup_test.dart`, 11 unit tests over the statement list and
+the quote escaping. **Test count is 1015**, was 1004.
+
+**The passphrase-keyed opener lives in `encrypted_database.dart`, the same file as the live one.**
+Exactly one file in `lib/` may open a database (`single_open_path_test.dart`), and putting the second
+opener anywhere else would have meant loosening the check that makes D-020 structural rather than
+remembered. It differs from the live opener in one way only: the key is a **passphrase**, so
+sqlite3mc runs its SQLCipher KDF, where the live database passes `x'..'` raw because its key comes
+from the platform keystore and must not be stretched.
+
+**The proof caught a real defect on its first run, which is why it exists.** `NativeDatabase`'s
+`setup` closure is **lazy** — it runs on first use of the connection, not at construction — so the
+empty-passphrase guard, living inside `setup`, did not fire when the executor was built. A caller
+could hold an apparently-valid executor for an empty passphrase, and the file would be created before
+anything refused. An empty key produces an **unencrypted** database under SQLCipher semantics, so
+this was the one outcome a backup may never have. The validation is now eager, before the executor is
+constructed.
+
+**`pragma key` cannot take a bound variable** — pragmas are not parameterizable in SQLite — so the
+passphrase reaches SQL through `escapeSqlStringLiteral`, and that is the reviewed exception D-018
+allows for. Getting it wrong would not be a syntax error but a **data-loss bug**: the file would be
+keyed with a string other than the one the user typed and would refuse that password on restore. The
+proof's passphrase carries an apostrophe deliberately. The standing mitigation, for (b): **an export
+is not reported successful until the finished file has been reopened with the same passphrase.**
+
+**The gateway is chosen — D-071.** Windows uses `file_selector` for both directions; Android uses
+`file_selector` to open and **`flutter_file_dialog`** to save, because `file_selector_android`
+implements only `openFile`, `openFiles` and `getDirectoryPath` — read from its source, not assumed.
+`share_plus` was rejected for the save: a share intent is a new outbound data surface for the most
+sensitive artifact the app produces. Both packages resolve here (`pub add --dry-run` against
+`https://pub.dev` directly, since the mirror is flaky again — known issue 11). **The packages are not
+yet added to `pubspec.yaml`**; that lands in (b), where something actually needs delivering.
+
+### What (a) leaves owed
+
+- **The Android container proof.** The suite has run on Windows only. D-064: a target with no run is
+  a target with no evidence.
+- **The Android save dialog**, never raised on real hardware.
+- Both want the same cable as the three device suites owed since D-065/D-066 and the Phase 7
+  cold-start baseline. **One session with the phone connected clears all five.**
 
 ### What (a) delivers, and nothing more
 

@@ -4167,3 +4167,71 @@ Simpler than either candidate, and structural rather than per-string:
 
 Rules 1 and 2 together are the whole contract, and rule 2 is a composition rule the renderer would
 want anyway. There is no per-field special-casing left in it.
+
+---
+
+## D-071 — The backup file gateway: two packages, split by the one thing Android cannot do
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED
+**Part of:** Phase 6 (a). **Implements** the delivery half of D-069.
+
+**Decision.** Getting a backup file out to, and back from, a location the user chose is a **separate
+thin gateway**, not part of `BackupService`. The service produces and consumes a path in app-private
+storage; the gateway moves the finished bytes.
+
+| Target | Export (save) | Import (open) |
+|---|---|---|
+| Windows | `file_selector` — `getSaveLocation` | `file_selector` — `openFile` |
+| Android | **`flutter_file_dialog`** — SAF create-document | `file_selector` — `openFile` |
+
+**Why the split, checked in the source rather than assumed.** `file_selector_android` implements
+**only** `openFile`, `openFiles` and `getDirectoryPath` — read directly from
+`flutter/packages/…/file_selector_android/lib/src/file_selector_android.dart`. There is no
+`getSaveLocation` on Android. `file_selector_windows` does implement it. So one package covers three
+of the four cells and cannot cover the fourth, and the fourth is the one that writes the user's only
+copy of their business records.
+
+**Why `flutter_file_dialog` for that cell, over the alternatives.**
+
+- **vs. `share_plus`:** a share intent hands the file to a third-party application of the user's
+  choosing. That is a **new outbound data surface for the most sensitive artifact this application
+  produces** (§7) — the entire customer and invoice database in one file. `flutter_file_dialog`'s
+  `saveFileToDirectory` uses SAF `ACTION_CREATE_DOCUMENT`: the file goes where the user picked, on
+  the device, without passing through another app. The container is encrypted either way; the point
+  is that the encrypted-file-in-someone-else's-app surface does not need to exist at all.
+- **vs. `getDirectoryPath` + `dart:io`:** SAF returns a tree URI, not a filesystem path that
+  `dart:io` can write to.
+- **vs. app-external storage** (`path_provider`, no dependency at all): works and needs no permission
+  on any API level, but there is no dialog — the user must go hunting in a file manager for a path
+  like `Android/data/<package>/files`. Kept as the **documented floor** if the dependency has to be
+  dropped, precisely because it costs nothing to fall back to.
+
+**Dependency justification (§2).** `flutter_file_dialog` 3.3.2, published 2026-07-24, Android and iOS
+only, and **zero transitive dependencies beyond `flutter`** — it is a thin platform-channel wrapper
+over one Android intent. `file_selector` 1.1.0 (flutter.dev, published 2025-11-21) brings its
+federated implementations. Both resolve on this machine; verified with `pub add --dry-run` against
+`https://pub.dev` directly, since the configured mirror has been intermittently unreachable (known
+issue 11).
+
+**If either becomes unmaintained.** Both sit behind our own `BackupFileGateway`, whose whole surface
+is "put these bytes somewhere the user chose" and "give me back bytes from a file the user chose".
+`flutter_file_dialog` is one intent behind that interface; the app-external-storage floor above is
+dependency-free and already specified. This is a small, well-bounded surface deliberately.
+
+**Why the gateway is separate from the service at all.** Three reasons, and the third is the one that
+matters most:
+
+1. `sqlite3` needs a **real filesystem path**. A SAF content URI or an `XFile`'s bytes cannot be
+   opened as a database, so import must land the bytes in app-private storage before opening them
+   regardless.
+2. `BackupService` stays testable on the Dart VM with **no plugins** — which is where the
+   round-trip-to-the-Rial test lives.
+3. **Phase 7 inherits it.** A PDF has the same problem — bytes that must reach a place the user
+   chose — and D-068's ordering was decided on exactly this: the phase that cannot avoid the gateway
+   builds it, and the phase that could dodge it gets it for free.
+
+**Not yet exercised on a device.** The packages are chosen and resolve; **no Android save dialog has
+been raised on real hardware**, because the phone has been disconnected since before D-065. That run
+is owed alongside the Android container proof and the Phase 7 cold-start baseline — all three want
+the same cable, and D-064 is explicit that a target with no run is a target with no evidence.

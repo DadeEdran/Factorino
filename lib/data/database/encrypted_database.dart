@@ -216,6 +216,122 @@ QueryExecutor openEncryptedDatabase({
   );
 }
 
+/// Raised when a backup passphrase cannot be used as a key.
+///
+/// Separate from [DatabaseEncryptionFailure] because this one is reachable from
+/// user input, so (c) maps it to a Persian message. It carries no passphrase and
+/// no path: nothing about a backup is logged (D-069).
+class BackupPassphraseRejected implements Exception {
+  const BackupPassphraseRejected(this.reason);
+
+  /// Machine-readable, never user-facing. The Persian copy is the UI's job.
+  final BackupPassphraseProblem reason;
+
+  @override
+  String toString() => 'BackupPassphraseRejected: ${reason.name}';
+}
+
+enum BackupPassphraseProblem {
+  /// The empty string. Under SQLCipher semantics an empty key produces an
+  /// **unencrypted** database -- the one outcome a backup may never have.
+  empty,
+
+  /// Contains a NUL, which terminates the key early inside the C API: the file
+  /// would be keyed by a prefix of what the user typed, and would then refuse
+  /// the full password on restore.
+  containsNul,
+}
+
+/// Escapes a string for a single-quoted SQL literal by doubling quotes.
+///
+/// `pragma key` cannot take a bound variable -- pragmas are not parameterizable
+/// in SQLite -- so D-018's "bound variables always" is not implementable here
+/// and this is the reviewed exception it allows for. The escaping is the whole
+/// of the exception: nothing else about the statement is built from input.
+///
+/// Getting this wrong is not a syntax error, it is a **data-loss** bug: the file
+/// would be keyed with a string other than the one the user typed and would
+/// refuse that password on restore. The mitigation is not this function alone --
+/// an export is not reported successful until the finished file has been
+/// **reopened with the same passphrase** (D-069).
+String escapeSqlStringLiteral(String value) => value.replaceAll("'", "''");
+
+/// The setup sequence for the **backup container** (D-069).
+///
+/// Identical in shape to [connectionSetupStatements] and different in exactly
+/// one way: the key is a **passphrase**, not raw bytes, so sqlite3mc runs its
+/// SQLCipher-compatible KDF -- PBKDF2-HMAC-SHA512 at 256,000 iterations -- and
+/// the file is portable to the replacement device that will have to read it.
+/// The live database goes the other way, `x'..'` raw, because its key comes from
+/// the platform keystore and must not be run through a KDF at all.
+List<String> backupConnectionSetupStatements(String passphrase) {
+  if (passphrase.isEmpty) {
+    throw const BackupPassphraseRejected(BackupPassphraseProblem.empty);
+  }
+  if (passphrase.codeUnits.contains(0)) {
+    throw const BackupPassphraseRejected(BackupPassphraseProblem.containsNul);
+  }
+  return <String>[
+    "pragma cipher = 'sqlcipher';",
+    'pragma legacy = 4;',
+    "pragma key = '${escapeSqlStringLiteral(passphrase)}';",
+    'pragma foreign_keys = on;',
+  ];
+}
+
+/// Opens the backup container at [file], keyed by [passphrase].
+///
+/// The second sanctioned opener, and deliberately in this same file: exactly one
+/// file in `lib/` may open a database (`single_open_path_test.dart`), and adding
+/// a second one would have meant loosening the check that makes D-020
+/// structural rather than remembered.
+///
+/// On a **wrong passphrase** the `sqlite_master` read below throws rather than
+/// returning empty -- page 1 fails authentication. That is the intended
+/// behaviour and the reason the read is here: the failure lands at open time,
+/// before anything has been read or written, instead of at an arbitrary later
+/// query.
+QueryExecutor openPassphraseKeyedDatabase({
+  required File file,
+  required String passphrase,
+  bool logStatements = false,
+}) {
+  final existing = inspectDatabaseFile(file);
+  if (existing == DatabaseFileState.plaintextSqlite) {
+    throw const DatabaseEncryptionFailure(
+      'refusing to open an "SQLite format 3" (unencrypted) file as a backup '
+      'container. A plaintext backup is the whole customer and invoice '
+      'database in the clear. See DECISIONS.md D-069.',
+    );
+  }
+
+  // Built and checked HERE, eagerly, not inside `setup`. `NativeDatabase`'s
+  // setup closure is lazy -- it runs on first use of the connection, not at
+  // construction -- so a guard living only in there would let a caller hold an
+  // apparently-valid executor for an empty passphrase, and would create the
+  // file before refusing. Found by the proof test on Windows, which is what it
+  // was written for.
+  final statements = backupConnectionSetupStatements(passphrase);
+  assertKeyPrecedesDatabaseAccess(statements);
+
+  file.parent.createSync(recursive: true);
+
+  return NativeDatabase(
+    file,
+    logStatements: logStatements,
+    setup: (CommonDatabase database) {
+      for (final statement in statements) {
+        database.execute(statement);
+      }
+
+      // Forces page 1 to be decrypted and authenticated now -- see above.
+      // soft-delete-exempt: sqlite3's own API on schema metadata, not a drift
+      // query over user rows.
+      database.select('select count(*) from sqlite_master;');
+    },
+  );
+}
+
 /// Where the database lives: `%APPDATA%` on Windows, app-private storage on
 /// Android -- never beside the executable.
 Future<File> defaultDatabaseFile({String name = 'factorino.db'}) async {
