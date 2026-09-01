@@ -2060,7 +2060,7 @@ abstract class AppStrings {
   /// **'تکرار گذرواژه'**
   String get backupPasswordRepeatField;
 
-  /// the project spec requires this to be stated plainly in Persian. There is no recovery path and nobody who can help, so the copy says so rather than softening it.
+  /// the project spec requires this to be stated plainly in Persian. There is no recovery path and nobody who can help, so the copy says so rather than softening it. BEFORE MAKING THIS LONGER, READ THE NEXT SENTENCE: this text sits above the fields in a sheet whose save button is pinned above the keyboard, and a password field raises a TALLER keyboard than an ordinary one -- 284.0 logical pixels on a Redmi Note 8 Pro, against 254.9. Measured on the device at the Phase 6 close, the button lands at 503.6 against a limit of 519.6, so there are about 16 logical pixels of slack. Two more lines of Persian here will push the save button under the keyboard and the user will not be able to take a backup at all. sheet_keyboard_test.dart checks it at 284; run it, and the phone-tier device pass, after changing this string (D-072).
   ///
   /// In fa, this message translates to:
   /// **'این گذرواژه در هیچ کجا ذخیره نمی‌شود. اگر آن را فراموش کنید، هیچ راهی برای باز کردن فایل پشتیبان وجود ندارد و اطلاعات آن برای همیشه از دست می‌رود.'**

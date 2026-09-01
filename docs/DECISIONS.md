@@ -4383,3 +4383,43 @@ unless something in the suite keeps proving it. A guard whose subject has since 
 construction** is the most dangerous kind: it passes, it looks like coverage, and the thing it was
 watching moved out from under it. Where a check protects a shape rather than a value, the suite needs
 an example of the wrong shape, permanently.
+
+### Amendment, 2026-09-01 — the guard audit D-072 prompted
+
+Every guard in the suite was re-read with this lens: *could this pass while the thing it protects has
+regressed?*
+
+**Already falsifiable, no change needed.** All eleven source-scanning guards —
+`single_normalizer_path`, `no_hardcoded_strings`, `no_flutter_imports`, `single_calculation_path`,
+`logging_path`, `theme_tokens_only`, `field_limit_path`, `domain_boundary`, `single_open_path`,
+`soft_delete_usage`, `gateway_boundary` — already carry **two** self-tests each: a matcher control
+("the scan would catch a real violation") and an existence control ("the subject is where this test
+expects it"). That pairing is the same both-directions design as D-071's gateway guard, and it was
+already the house style. `app_table_test` asserts **one pixel either side** of its threshold.
+`money_layout_test` compares a measured width against a token, so a wrong token fails it.
+
+**The contrast probe was suspected and cleared, by experiment rather than by reading.** A
+deliberately pale label (#9E9E9E on white, independently computed at 2.68:1) was handed to the real
+`contrastOfLabel`: it reported **2.68:1 and failed**. The instrument is accurate. It now carries that
+case as a **standing control**, so a probe that later drifted onto a border or a shadow — reporting a
+healthier ratio than the glyph has — would be caught rather than believed.
+
+**A correction worth recording, because it is the same mistake in miniature.** A first attempt at that
+control **reimplemented** the measurement instead of calling the real one, and reported 5.66:1 for the
+same label. The reimplementation sampled the whole repaint boundary rather than the label's rect, so
+it found a darker pixel elsewhere in the tree. Had it shipped, the suite would have contained a
+"control" that certified a number the real probe never produces. **A control that does not exercise
+the real instrument is not a control** — it is a second instrument, with its own faults, asserting
+about nothing.
+
+**`expectNoCrushedText` was the one guard with nothing proving it could fire**, and every device suite
+calls it. Its precondition — `softWrap && !truncatesOnPurpose` — is exactly the kind of thing a future
+change to how this application sets `maxLines` could make permanently false, at which point it would
+report clean everywhere. `guard_controls_test.dart` now asserts each of its three conditions
+individually against a deliberately crushed paragraph.
+
+**And the 16 pixels are now written where the risk lives.** The measurement that matters — a password
+field raises a **284.0**-pixel keyboard against an ordinary field's 254.9, leaving the pinned save
+button about **16 logical pixels** of slack — is recorded in the **ARB description of
+`backupPasswordWarning` itself**, not only here. The person who lengthens that warning is editing a
+`.arb` file and has no reason to be reading a decision log.

@@ -211,6 +211,44 @@ void main() {
       });
     }
   }
+
+  // ---------------------------------------------------------------------
+  testWidgets('the probe reports a pale label as pale', (
+    WidgetTester tester,
+  ) async {
+    // **The negative control this file needed** (D-072). Every subject above
+    // passes, and a suite in which nothing ever fails cannot tell "every
+    // component is readable" apart from "the probe stopped reading the glyph".
+    //
+    // The failure mode is specific: this measures the darkest pixel **inside
+    // the label's rect**, so a probe that drifted onto a border, a shadow or
+    // the background would report a healthier ratio than the text has — and
+    // D-066's defect, a selected chip at 3.75:1, would sail through exactly as
+    // it did before this file existed.
+    //
+    // #9E9E9E on white is 2.68:1 by the WCAG formula, computed independently.
+    // If this starts failing because the number came back *higher*, the
+    // instrument has drifted, not the theme.
+    final double ratio = await contrastOfLabel(
+      tester,
+      AppTheme.light,
+      const Chip(
+        backgroundColor: Color(0xFFFFFFFF),
+        label: Text('کنترل', style: TextStyle(color: Color(0xFF9E9E9E))),
+      ),
+      'کنترل',
+    );
+
+    expect(
+      ratio,
+      closeTo(2.68, 0.05),
+      reason:
+          'the probe measured ${ratio.toStringAsFixed(2)}:1 for a label whose '
+          'true ratio is 2.68:1, so it is no longer sampling the glyph and '
+          'every ratio in this file is read off the wrong pixel (D-072)',
+    );
+    expect(ratio, lessThan(4.5));
+  });
 }
 
 /// WCAG relative luminance of a packed 24-bit RGB value.
