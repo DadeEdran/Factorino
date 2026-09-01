@@ -1,7 +1,8 @@
 # Current State
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
-> Last updated: **2026-09-01**
+> Last updated: **2026-09-01** — end of the session that delivered (d), the device pass, known issue
+> 21 and (e). Stopped by the owner before (f).
 
 ---
 
@@ -55,11 +56,14 @@ SQLite database at **schema v4**. «فاکتور جدید» opens `/invoices/new
 `/invoices/:id`; and from there a payment can be recorded and taken back off again, with the derived
 status recomputed by the repository in the same transaction.
 
-**Phase 4 is complete and accepted. Phase 5 is eight boundaries in**, with only the phase close
-left. (d) is accepted; awaiting review: the two carry-overs from (d) plus **the D-047 ruling** (D-055); **(a2), `schemaVersion = 4`**
-(D-056); **(b), the detail screen** (D-057, D-058); **the known-issue-19 fix** (D-059); **(c),
-payments** (D-060); **the device pass and the keyboard rule** (D-062); and **(e), filters and
-paging** (D-063).
+**Phase 4 is complete and accepted. Phase 5 is eight boundaries in**, with only the phase close left.
+
+**Accepted:** the two carry-overs from Phase 4 (d) plus **the D-047 ruling** (D-055); **(a2),
+`schemaVersion = 4`** (D-056); and **(d), cancellation** (D-061).
+
+**Awaiting review, five of them:** **(b), the detail screen** (D-057, D-058); **the known-issue-19
+fix** (D-059); **(c), payments** (D-060); **the device pass, the keyboard rule and known issue 21**
+(D-062); and **(e), filters and paging** (D-063).
 
 **An invoice can now be read as the document it is.** `/invoices/:id` lays a line out from storage
 alone — شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع, with no
@@ -100,6 +104,14 @@ than by a code change (D-061): a cancelled invoice keeps its payments, because t
 hands, and the three places that were silent about it now say so. Only an issued invoice may be
 cancelled, and that rule moved into the repository where a deep link cannot get round it.
 
+**Every editing sheet now pins its commit action above the keyboard.** `EditorSheet` is D-053's
+split-by-purpose made a primitive (D-062, known issue 21): fields scroll, the action does not. The
+survey behind it is the part worth remembering — `FormScaffold` and the invoice line sheet were
+**already** correct, the payment sheet was the one defect, and the two **picker** sheets take the
+shape not at all because they commit by tapping a row. A rule stated in one file was not a rule.
+**And no widget test could have caught it**: `pumpScreen` installs its own `MediaQueryData`, so every
+screen test this project has run had no keyboard at all. The harness takes `viewInsets` now.
+
 **The invoice list can be narrowed, and the narrowing happens in SQL.** (e) adds status, customer
 and Jalali-period filters applied as `WHERE` clauses on the statement that already carries the
 ordering and the `LIMIT` — never a `.where` over a loaded page, which would apply the limit to the
@@ -119,15 +131,24 @@ itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 
 (c), `3164b8f` its (b), `0e0cd37` its (a3), `7345ca2` its (a2), `bf4c02f` its (a); `d8682ee` is Phases
 2 and 3.
 
-**Nothing is half-finished.** All four unreviewed boundaries are complete, tested, documented and
-committed, with no work in progress and no question waiting on an answer. A fresh session starts at
-the Next Action at the bottom of this file and needs nothing re-explained.
+**Nothing is half-finished.** All five unreviewed boundaries are complete, tested, documented and
+committed. **The session ended here at the owner's instruction** — "stopping here", given after (e)
+was reported and with an explicit "do not start (f)". There is no work in progress, nothing
+uncommitted and no question waiting on an answer. A fresh session starts at the Next Action at the
+bottom of this file and needs nothing re-explained.
 
 **The device debt is cleared.** The Android phone-tier pass ran for (b), (c) and (d) together on the
 Redmi Note 8 Pro, and the two proofs that known issue 10b blocked in the (a2) session — D-020 and
 startup — were re-run with it. **The product had no defects on the phone tier**; what failed, twice,
 was the device test itself, which had only ever run on Windows and had encoded the desktop layout as
 if it were the layout. See D-062 and known issue 21.
+
+**One gap is known and named, and it is (f)'s to close: `integration_test/` has no coverage of the
+invoice *list*.** Both device suites are the invoice form and the invoice detail screen. Everything
+(e) built — the filter control, the filter sheet and its chips, the filtered empty state — has been
+checked at three tiers in widget tests and has never run on the target in Vazirmatn. That is the
+device pass (f) owes, and it must run under the keyboard rule, because the filter sheet opens the
+customer picker and the picker raises a real keyboard.
 
 **Note the collision when reading older sections of this file:** Phase 4 and Phase 5 both have
 increments lettered (a2), (b), (c) and (d). Every reference below names its phase; where one does not,
@@ -1195,9 +1216,25 @@ flutter run -d windows --debug
 # The encryption proof, on the real target.
 flutter test integration_test/d020_encryption_proof_test.dart -d windows
 
-# The layout + payment device pass (D-057). Runs on whichever target it is
-# given; on Windows that is the desktop tier. The Android phone tier is owed.
-flutter test integration_test/invoice_detail_device_test.dart -d windows
+# The device passes (D-057, D-062). They run on whichever target they are given;
+# on Windows that is the desktop tier and there is no soft keyboard, so the
+# keyboard assertions degrade to "the action is on screen". The phone run is
+# the one that proves them.
+flutter test integration_test/invoice_detail_device_test.dart -d dmbyayb6rombo7ci
+flutter test integration_test/invoice_form_device_test.dart   -d dmbyayb6rombo7ci
+flutter test integration_test/d020_encryption_proof_test.dart -d dmbyayb6rombo7ci
+flutter test integration_test/startup_test.dart               -d dmbyayb6rombo7ci
+
+# adb is NOT on PATH, and Git Bash mangles device-side paths without the prefix.
+ADB=%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe
+"$ADB" devices -l
+MSYS_NO_PATHCONV=1 "$ADB" -s dmbyayb6rombo7ci shell "df -h /data"
+
+# Known issue 10, when `flutter test -d` is refused with
+# INSTALL_FAILED_USER_RESTRICTED. It recurs intermittently -- twice on
+# 2026-09-01, after three clean installs. Do this once, then retry the test.
+flutter build apk --debug
+MSYS_NO_PATHCONV=1 "$ADB" -s dmbyayb6rombo7ci install -r build/app/outputs/flutter-apk/app-debug.apk
 ```
 
 **Run `dart run build_runner build` from PowerShell, not from a POSIX shell wrapper.** Learned in
@@ -1227,7 +1264,7 @@ repositories and driving the real sheets.
 | 8 | `nowProvider` does not tick | Deliberate (D-041). A Jalali month boundary or a due date crossing midnight while the app sits open does not update until relaunch. |
 | 9 | The Windows debug exe shows no window when launched **directly** | Under `flutter run -d windows` it is fine. Worth a look in Phase 12. |
 | 10b | ~~The Redmi ran out of internal storage~~ | Seen 2026-08-27 after three integration runs: `Requested internal only, but not enough space`, and the follow-up uninstall failed `DELETE_FAILED_INTERNAL_ERROR`. The D-020 and startup proofs could not be re-run because of it. **Cleared 2026-09-01** — 4.9 GB free, three installs and both blocked proofs ran. Kept as history: it is currently absent rather than fixed. |
-| 10 | MIUI re-blocks `flutter test`'s install on a *fresh* install (**recurred 2026-09-01**, on the fourth install of the session; the documented remedy worked unchanged) | Seen again 2026-08-26 as `INSTALL_FAILED_USER_RESTRICTED`. Fix that worked: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once — after that `flutter test -d <id>` installs on its own. It may then report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure. |
+| 10 | MIUI re-blocks `flutter test`'s install with `INSTALL_FAILED_USER_RESTRICTED` | **Intermittent, not deterministic** — on 2026-09-01 it recurred **twice** after three clean installs in the same session, on an app already installed, so it is not only a *fresh*-install problem as previously recorded. Remedy: `flutter build apk --debug`, then `adb -s <id> install -r <apk>` **by hand** once, then retry. The second time even the manual install was refused and `flutter test -d <id>` went through on the next attempt — so **retrying is part of the remedy**, not a sign it has failed. It may also report `INSTALL_FAILED_INSUFFICIENT_STORAGE` and recover itself by uninstalling first; that is not a failure either. |
 | 11 | **The pub mirror can go unreachable mid-session** | `dart pub get --offline` resolves from the local cache. Sanitize the lockfile **last** — every `pub get` rewrites all 123 `url:` entries to the Tsinghua mirror, and they must be put back to `https://pub.dev` before committing. (a2) also picked up a transitive `dart_style` 3.1.12 → 3.1.13 bump that way; it is committed deliberately, because pinning the lockfile to a version that is not installed would make it lie, and `dart format` output is unchanged under it. |
 | 12 | `flutter doctor` "Android license status unknown" | Stale check, not a failure. See `ENVIRONMENT.md`. |
 | 13 | Release builds signed with debug keys | Phase 15. |
@@ -1878,7 +1915,26 @@ the keyboard rule** (D-062).
    phase that has not closed.
 
 **Nothing is blocked and nothing is owed.** The device debt that carried through three sessions is
-cleared, known issues 16 and 21 are both closed, and the Redmi is connected.
+cleared, and known issues 16, 20 and 21 are all closed.
+
+**Getting the Redmi back, because this cost real time on 2026-09-01 and the symptom is misleading.**
+`flutter devices` listing only Windows/Chrome/Edge does **not** mean the cable is bad. Check what
+Windows actually enumerated:
+
+```
+Get-PnpDevice -PresentOnly | Where-Object { $_.InstanceId -match 'VID_2717' }
+```
+
+A single **WPD** entry (`USB\VID_2717&PID_FF40`) means the phone is present but exposing MTP only —
+USB debugging is off, and there is no second, composite ADB interface. Nothing on this machine can fix
+that; it is four toggles on the device: Developer options → **USB debugging**, plus MIUI's **Install
+via USB** and **USB debugging (Security settings)**, and the USB mode set to **File transfer**, not
+charge-only. Then accept the "Allow USB debugging?" prompt on the phone.
+
+`adb` is **not on PATH**. It lives at
+`%LOCALAPPDATA%/Android/Sdk/platform-tools/adb.exe`, and under Git Bash any device-side
+path needs `MSYS_NO_PATHCONV=1` or it is mangled into a Windows path
+(`adb shell "df -h /data"` becomes `df 'C:/Program Files/Git/data'`).
 
 ### Standing constraints for the rest of Phase 5, from the owner
 
