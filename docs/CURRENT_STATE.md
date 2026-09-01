@@ -205,9 +205,12 @@ Backup passphrase chars:    PASS   24 tests, each writing and reopening a real c
                                    ZWNJ, spaces at both ends, injection-shaped, emoji, 200 chars.
                                    Plus 6 must-NOT-open cases pinning that spaces, ZWNJ and the
                                    two digit sets are never folded together
-Android save dialog:        PASS   opens ACTION_CREATE_DOCUMENT on the Redmi, verified in
-                                   `dumpsys`; cancelling returns false. **The completed save is
-                                   NOT tested** -- it needs a human tap (D-071)
+Backup gateway - Android:   PASS   opens ACTION_CREATE_DOCUMENT on the Redmi, verified in
+                                   `dumpsys`; cancelling returns false; and a CONFIRMED save
+                                   writes 4,096 bytes byte-identical to the source (D-071)
+Backup gateway - Windows:   PASS   confirmed save through file_selector_windows, 4,096 bytes
+                                   byte-identical. Interactive test, run deliberately, not in
+                                   any suite -- MIUI refuses adb input injection
 Phase 7 cold-start baseline: TAKEN 1,401 ms median of runs 2-5 (1,330-1,465); run 1 was 3,440 ms
                                    and is kept separate as first-launch work. On `60b5cd5`
 
@@ -2291,12 +2294,25 @@ gateway, not a probe, so (d) inherits tested code.
    specified — app-external storage via `path_provider`, no dependency and no permission — and the
    gateway interface is what makes that a one-file change if it comes to it.
 
-**One thing is still untested and is stated rather than implied:** the **completed** save. Choosing a
-location and confirming needs a human tap that no automated run can supply while MIUI refuses input
-injection. Proved: the dialog opens, resolves the right intent, and cancels cleanly. Unproved: that
-confirming writes the file. **One tap on the device closes it**, and it is worth doing before (d)
-builds a screen on top. The Windows save dialog is unexercised too — lower risk, `file_selector_windows`
-being flutter.dev's own, but unexercised is unexercised (D-064).
+**The completed save is now proved too, on both targets** (2026-09-01, owner tapped through it).
+`integration_test/backup_gateway_save_test.dart` is **interactive on purpose** and is not part of any
+suite — MIUI refuses `adb` input injection, so no automated run can supply the tap.
+
+| Target | Result |
+|---|---|
+| Android, Redmi | Saved to Downloads, pulled back: **4,096 bytes, byte-identical** |
+| Windows | Saved via `file_selector_windows`: **4,096 bytes, byte-identical** |
+
+Compared against a generated pattern (`(i * 7 + 13) % 256`), not zeroes, so a truncated or empty
+write could not pass by looking plausible. **Nothing in the chain a user walks is now unexercised.**
+
+**And the dated dependency has a review trigger and a guard**, not just a caveat (owner). The
+trigger: **the first Flutter upgrade that warns more loudly or fails.** At that point, check whether
+the author migrated to Built-in Kotlin; if not, take the fallback — app-external storage via
+`path_provider`, no dependency, no permission, the user finding the file rather than choosing where
+it lands. What makes that a one-file change is `test/data/backup/gateway_boundary_test.dart`, which
+fails if anything in `lib/` outside the gateway imports `flutter_file_dialog` or `file_selector` —
+and *also* fails if the gateway stops importing them, so it cannot pass vacuously after a rename.
 
 ### What (b) delivered — export in the data layer
 

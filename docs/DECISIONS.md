@@ -4276,3 +4276,36 @@ confirming needs a human tap, which no automated run on this device can supply w
 input injection. What is proved is that the dialog opens, resolves the right intent, and that
 cancelling is handled. The Windows save dialog is likewise unexercised — lower risk, since
 `file_selector_windows` is flutter.dev's own, but unexercised is unexercised (D-064).
+
+
+### Amendment, 2026-09-01 (second) — the completed save is proved, and the dependency gets a review trigger
+
+**Both targets now write the file, verified byte for byte.**
+`integration_test/backup_gateway_save_test.dart` is **interactive on purpose** — it opens the dialog
+and waits for a human, because MIUI refuses `adb` input injection and no automated run can supply the
+tap. It is not part of any suite; it is run deliberately.
+
+| Target | Result |
+|---|---|
+| Android (Redmi Note 8 Pro, MIUI, API 30) | Saved to Downloads. **4,096 bytes, byte-identical** to the source, pulled back and compared against the generating pattern |
+| Windows | Saved through `file_selector_windows`. **4,096 bytes, byte-identical** |
+
+The comparison is against a generated pattern (`(i * 7 + 13) % 256`) rather than zeroes, so a
+truncated or empty write could not pass by looking plausible.
+
+**`flutter_file_dialog` is a dated dependency with a review trigger, not merely a caveat**
+(project owner, 2026-09-01).
+
+- **The fact.** It applies the Kotlin Gradle Plugin. Flutter has announced that future versions will
+  **fail to build** applications using plugins that do.
+- **The trigger.** The **first Flutter upgrade that warns about it more loudly or fails outright.**
+  At that point: check whether the author has migrated to Built-in Kotlin; if yes, upgrade; if no,
+  take the fallback below. Do not wait for the build to break in a release window.
+- **The fallback, already specified and unchanged.** App-external storage via `path_provider`:
+  no dependency, no permission on any API level, and a path reachable with a file manager. The cost
+  is the dialog — the user must go and find the file rather than choose where it lands.
+- **What makes the fallback a one-file change**, and the reason this is survivable rather than
+  merely noted: `test/data/backup/gateway_boundary_test.dart` fails if anything in `lib/` outside
+  `backup_file_gateway.dart` imports `flutter_file_dialog` or `file_selector`. It also fails if the
+  gateway *stops* importing them, so it cannot pass vacuously after a rename or a well-meaning
+  tidy-up. A note in this log would not have made that true; the guard does.
