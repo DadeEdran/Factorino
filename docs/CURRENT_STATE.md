@@ -109,8 +109,10 @@ of the page. «سررسید گذشته» is deliberately **not** a filter (D-063
 and a SQL predicate would be a second implementation of a rule `invoiceStatusViewOf` owns.
 
 **Working tree is clean and everything is committed.** `main`'s tip is this continuity update; the
-increment it describes is **`2c20f7c`** "Phase 5 (d): cancellation, and what it does not do". Behind
-it: `bf5c78b`/`241f446`/**`2747b2d`** is (c), "payments, recorded and taken back"; `ca1bc53`/**`6675456`**
+increment it describes is **`4d604da`** "Phase 5 (e): invoice filters in SQL, and a paged customer
+list". Behind it: **`7775e0b`** is the known-issue-21 fix and the keyboard rule; **`099a437`** is the
+phone-tier device pass; `b90f642`/**`2c20f7c`** is (d), "cancellation, and what it does not do";
+`bf5c78b`/`241f446`/**`2747b2d`** is (c), "payments, recorded and taken back"; `ca1bc53`/**`6675456`**
 is the known-issue-19 fix; `435f8cb`/**`b901c37`** is (b), "the detail screen, and the layout check
 that would have caught its predecessor"; `42bbaae` is the (a2) cold-resume note and `712c921` is (a2)
 itself; `d087c2a` is the first Phase 5 boundary; `a068d63`/`eecd96b` is Phase 4 (c2), `ea4858c` its
