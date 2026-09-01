@@ -7,6 +7,7 @@ import 'package:factorino/data/models/customer_totals.dart';
 import 'package:factorino/data/models/invoice.dart';
 import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
+import 'package:factorino/data/models/invoice_filter.dart';
 import 'package:factorino/data/models/invoice_list_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
 import 'package:factorino/data/repositories/invoice_repository.dart';
@@ -75,9 +76,23 @@ class FakeInvoiceRepository implements InvoiceRepository {
   /// customer's page asks about *that* customer rather than about the business.
   String? lastCustomerTotalsId;
 
+  /// The filter the last list query was asked for.
+  ///
+  /// **Recorded, never applied.** This fake does not narrow its own list, and
+  /// that is the point: whether a filter reaches SQL is the *repository's*
+  /// claim, pinned against a real database in `invoice_repository_test.dart`. A
+  /// fake that filtered in Dart would let a screen pass this test while sending
+  /// the database nothing — which is the exact defect (e) exists to avoid.
+  InvoiceFilter? lastFilter;
+
   @override
-  Stream<List<InvoiceListItem>> watchList({int limit = 100, int offset = 0}) {
+  Stream<List<InvoiceListItem>> watchList({
+    InvoiceFilter filter = InvoiceFilter.none,
+    int limit = 100,
+    int offset = 0,
+  }) {
     lastLimit = limit;
+    lastFilter = filter;
     return _emit(_items.skip(offset).take(limit).toList());
   }
 
@@ -96,8 +111,19 @@ class FakeInvoiceRepository implements InvoiceRepository {
     return _emit(_invoices.take(limit).toList());
   }
 
+  /// The page size the customer detail screen last asked for -- known issue
+  /// 16's assertion, that its paging reaches the database too.
+  int? lastCustomerLimit;
+
   @override
-  Stream<List<Invoice>> watchForCustomer(String customerId) => _emit(_invoices);
+  Stream<List<Invoice>> watchForCustomer(
+    String customerId, {
+    int limit = 100,
+    int offset = 0,
+  }) {
+    lastCustomerLimit = limit;
+    return _emit(_invoices.skip(offset).take(limit).toList());
+  }
 
   @override
   Stream<int> watchCount() => _emit(_items.length);

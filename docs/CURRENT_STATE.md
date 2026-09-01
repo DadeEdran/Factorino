@@ -14,10 +14,11 @@
 **Phase 4 — Invoice Creation · `COMPLETED`** (2026-08-27) — every increment delivered and
 **accepted**, including (d).
 **Phase 5 — Invoice Management and Payments · `IN_PROGRESS`** — split agreed. Everything up to and
-including **(a2), schema v4** is **accepted**. Four boundaries are delivered, committed and
-**awaiting review**: **(b)** the detail screen with the tier rule and the money-width audit (D-057,
-D-058), **the known-issue-19 fix** (D-059), **(c)** payments (D-060), and **(d)** cancellation
-(D-061). List filters and the phase close remain.
+including **(a2), schema v4** is **accepted**, and **(d) has been accepted since**. Awaiting review:
+**(b)** the detail screen with the tier rule and the money-width audit (D-057, D-058), **the
+known-issue-19 fix** (D-059), **(c)** payments (D-060), **the device pass and the keyboard rule**
+(D-062, known issue 21), and **(e)** filters and paging (D-063). **Only the phase close, (f),
+remains.**
 
 | # | Increment | Status |
 |---|---|---|
@@ -39,9 +40,10 @@ D-058), **the known-issue-19 fix** (D-059), **(c)** payments (D-060), and **(d)*
 | b | **`/invoices/:id`**, the detail screen; rows tappable; the money-width audit and the tier rule (D-057, D-058) | `COMPLETED` 2026-09-01, **awaiting review** |
 | — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01, **awaiting review** |
 | c | **Payments: record and delete**, derived status in the same transaction (D-060) | `COMPLETED` 2026-09-01, **awaiting review** |
-| d | **Cancellation**, the copy that says what it does not do, and the ruling on the payments it keeps (D-061) | `COMPLETED` 2026-09-01, **awaiting review** |
-| e | List filters (status, customer, Jalali period) at the query level; paging `watchForCustomer` | `NOT_STARTED` ← **next** |
-| f | The device pass, and the phase close | `NOT_STARTED` |
+| d | **Cancellation**, the copy that says what it does not do, and the ruling on the payments it keeps (D-061) | `COMPLETED` 2026-09-01, **accepted** |
+| — | **The phone-tier device pass**, the keyboard rule and known issue 21 (D-062) | `COMPLETED` 2026-09-01, **awaiting review** |
+| e | **List filters** (status, customer, Jalali period) at the query level; paging `watchForCustomer` (D-063) | `COMPLETED` 2026-09-01, **awaiting review** |
+| f | The phase close, with a device pass over (e) under the keyboard rule | `NOT_STARTED` ← **next** |
 
 
 ## Where the project stands, in one paragraph
@@ -53,10 +55,11 @@ SQLite database at **schema v4**. «فاکتور جدید» opens `/invoices/new
 `/invoices/:id`; and from there a payment can be recorded and taken back off again, with the derived
 status recomputed by the repository in the same transaction.
 
-**Phase 4 is complete and accepted. Phase 5 is six boundaries in**, the last four of them awaiting
-review: the two carry-overs from (d) plus **the D-047 ruling** (D-055); **(a2), `schemaVersion = 4`**
+**Phase 4 is complete and accepted. Phase 5 is eight boundaries in**, with only the phase close
+left. (d) is accepted; awaiting review: the two carry-overs from (d) plus **the D-047 ruling** (D-055); **(a2), `schemaVersion = 4`**
 (D-056); **(b), the detail screen** (D-057, D-058); **the known-issue-19 fix** (D-059); **(c),
-payments** (D-060); and **(d), cancellation** (D-061).
+payments** (D-060); **the device pass and the keyboard rule** (D-062); and **(e), filters and
+paging** (D-063).
 
 **An invoice can now be read as the document it is.** `/invoices/:id` lays a line out from storage
 alone — شرح · تعداد · مبلغ واحد · **مبلغ کل** · تخفیف · **مبلغ پس از تخفیف** · مالیات · جمع, with no
@@ -97,6 +100,14 @@ than by a code change (D-061): a cancelled invoice keeps its payments, because t
 hands, and the three places that were silent about it now say so. Only an issued invoice may be
 cancelled, and that rule moved into the repository where a deep link cannot get round it.
 
+**The invoice list can be narrowed, and the narrowing happens in SQL.** (e) adds status, customer
+and Jalali-period filters applied as `WHERE` clauses on the statement that already carries the
+ordering and the `LIMIT` — never a `.where` over a loaded page, which would apply the limit to the
+wrong set and report "no results" for data behind the first page. **Known issue 16 is closed**:
+`watchForCustomer` is paged, safe because the totals beside it are one SQL aggregate rather than a sum
+of the page. «سررسید گذشته» is deliberately **not** a filter (D-063): it is derived at display time,
+and a SQL predicate would be a second implementation of a rule `invoiceStatusViewOf` owns.
+
 **Working tree is clean and everything is committed.** `main`'s tip is this continuity update; the
 increment it describes is **`2c20f7c`** "Phase 5 (d): cancellation, and what it does not do". Behind
 it: `bf5c78b`/`241f446`/**`2747b2d`** is (c), "payments, recorded and taken back"; `ca1bc53`/**`6675456`**
@@ -123,9 +134,9 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of (d)
-flutter test:               PASS   (895/895, was 892)                         as of KI-21
-Android build:              PASS   debug APK built (2026-09-01, re-run for (d))
+flutter analyze:            PASS   (No issues found)                          as of (e)
+flutter test:               PASS   (935/935, was 895)                         as of (e)
+Android build:              PASS   debug APK built (2026-09-01, re-run for (e))
 Layout, all 3 tiers x 4 amounts (D-057):
   widget sweep:             PASS   money_layout_test.dart + invoice_detail_screen_test.dart,
                                    including the cancellation confirmation at every rung
@@ -141,8 +152,10 @@ Layout, all 3 tiers x 4 amounts (D-057):
                                    Clears the debt for (b), (c) and (d) together.
 Keyboard rule (D-062):
   widget sweep:             PASS   sheet_keyboard_test.dart, 255 px inset, verified to bite
+  widget sweep, pickers:    PASS   the customer picker's search field stays above the keyboard --
+                                   the check that found the EmptyState overflow (D-063 §7)
   device - Android phone:   PASS   both editor sheets: keyboard 254.9 of 803.6, action bottom 532.7,
-                                   limit 548.7 (2026-09-01). Was 618.6 before the fix.
+                                   limit 548.7 (2026-09-01, re-run after (e)). Was 618.6 before.
 D-020 proof - Android:      PASS   re-run on the Redmi (2026-09-01), unblocked by 10b clearing
 Startup proof - Android:    PASS   re-run on the Redmi (2026-09-01)
 D-055 proof - Windows:      PASS   both ladders: v3 -> v4 and v1 -> v4 (2026-08-27)
@@ -160,6 +173,73 @@ Web build:                  NOT_RETESTED since plugins were added
 ```
 
 **Test count is 895**, was 892 after (d) and the device pass, 837 after D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What Phase 5 increment (e) delivered — filters in SQL, and a paged customer list
+
+**Status, customer and Jalali period, applied by the repository as `WHERE` clauses** — and known issue
+16 closed. **D-063.**
+
+```
+lib/data/models/invoice_filter.dart                      NEW  the value handed to the query
+lib/features/invoices/domain/invoice_query.dart          NEW  window + filter, as one value
+lib/features/invoices/presentation/widgets/invoice_filter_sheet.dart  NEW  the sheet
+lib/core/date/jalali_period.dart                         + jalaliMonthShifted
+lib/core/widgets/empty_state.dart                        scrolls instead of overflowing
+lib/data/repositories/invoice_repository.dart            watchList(filter:), watchForCustomer paged
+lib/data/repositories/drift/drift_invoice_repository.dart  _applyFilter; the page reaches SQL
+lib/features/invoices/application/invoices_providers.dart  InvoiceQuery; filter() / clearFilter()
+lib/features/invoices/domain/invoice_status_view.dart    + invoiceStatusViewOfStored
+lib/features/invoices/presentation/invoices_screen.dart  the control, the count, the filtered empty
+lib/features/customers/application/customers_providers.dart  CustomerInvoicesQuery family
+lib/features/customers/domain/customer_detail_view.dart  + hasMoreInvoices
+lib/features/customers/presentation/customer_detail_screen.dart  load-more, both tiers
+lib/core/localization/arb/app_fa.arb                     + 16 strings
+test/data/database/soft_delete_usage_test.dart           the scanner narrowed, with its own test
+```
+
+- **The filter reaches SQL, and one test says exactly why that matters**: twelve invoices, a page of
+  five, the single match sorting last. Filtering in Dart would apply the limit before the predicate and
+  return nothing — reporting "no results" about data that is right there.
+- **The window and the filter are one value.** Narrowing resets to the first page; widening keeps the
+  predicate. Both pinned, because both are the kind of rule that quietly stops holding.
+- **«سررسید گذشته» is deliberately absent from the filters.** Derived at display time from one clock
+  instant (D-041); a SQL predicate would be its second implementation, and the visible form of their
+  disagreement is a badge the filter does not return. An overdue invoice is still reachable under its
+  stored status.
+- **The control is in the title row on every tier**, costing no height — §10's unbounded-card rule for
+  the second time since it was written — **and it shows a count**, because a control that looks
+  identical filtered and unfiltered is how a user concludes the app lost their invoices.
+- **A filtered empty list is its own state**, offering «پاک کردن همه» rather than "make an invoice".
+- **`jalaliMonthShifted` is new**, because «ماه گذشته» may not be a subtraction: from the last day of
+  a 31-day Jalali month, thirty days back is the same month. The helper shifts the month **number**;
+  a test stands on that exact day and shows the naive form failing.
+- **Known issue 16 closed**, and the property that makes it safe is now asserted: the totals are one
+  SQL aggregate over every invoice, not a sum of the page.
+- **40 new tests; 935 pass** (was 895).
+
+### Two scanners fired, and only one of them was right
+
+- **The token scanner was right.** `const Duration(milliseconds: 1)` in the filter sheet was calendar
+  arithmetic that had leaked out of `core/date/`. Fixed by `jalaliMonthShifted`, not by an exemption.
+- **The soft-delete scanner was wrong.** It flagged Riverpod's `provider.select((q) => q.filter)` as a
+  raw database read — and it is the narrowing §13 asks for by name. It could not be excluded by the
+  lookbehind, because drift's `_db.select(table)` is also preceded by a dot; what separates them is
+  that a provider selector is handed a *function literal*. The scanner now excludes that one form and
+  has a test pinning it in both directions. An `soft-delete-exempt:` comment was refused: it would
+  have claimed a deliberate database read where there is no database read.
+
+### And the keyboard rule found a real defect on its first outing
+
+Adding the **picker** sheets to the keyboard sweep — exempt from `EditorSheet` by design, but the rule
+still applies to them in its own form — failed immediately. The customer picker's empty state
+**overflowed by 24 logical pixels** with the keyboard up: 238 pixels of room against the 262 it needs,
+on a 400 × 800 phone, at exactly the moment a user is typing a search that matches nothing.
+
+`EmptyState` scrolls now. Clipping was refused — the part cut off would be the sentence explaining the
+state, and an empty state without its explanation is the blank screen the widget exists to prevent.
+
+**That is D-062 paying for itself inside one increment**, the way D-057 did by surfacing known issue
+19. The rule was written for sheets with commit actions; the first thing it caught had neither.
 
 ## What the phone-tier device pass found (2026-09-01) — D-062
 
@@ -1152,7 +1232,7 @@ repositories and driving the real sheets.
 | 14 | Web not retested; Web gets **no** encryption at rest (D-012) | Phase 12. |
 | 15 | Android manifest hardening not done | Phase 9. |
 | 18 | ~~The desktop summary panel's grand total overflows at any realistic amount~~ | **Resolved in (b)** (D-058). The grand total is `AmountSize.medium` on every tier: `large` needs 376 logical pixels and `detailPanelWidth` leaves 288. The audit that came with it found `tablePriceWidth` wrong too, and `money_layout_test.dart` now sweeps every fixed-width money site over the whole ladder. |
-| 16 | The customer detail screen loads every one of a customer's invoices | `watchForCustomer` caps at 1000 and does not page. The rendering is virtualized, so this is a query cost rather than a layout one, and it is invisible below a few hundred. Give it a `ListQuery` when the invoice list gets its filters in Phase 5. |
+| 16 | ~~The customer detail screen loads every one of a customer's invoices~~ | **Resolved in (e)** (D-063). `watchForCustomer` takes a page like every sibling, driven by a per-customer `ListQuery` family so a second customer's page does not inherit the first's scroll; `CustomerDetailView` carries `hasMoreInvoices` in the same value as the rows. Paging it is only safe because the totals above are one SQL aggregate over **every** invoice rather than a sum of the page (D-044) — which now has a test of its own. |
 | 17 | ~~Creating a draft allocates an invoice number~~ | **Resolved in (a2)** per D-048. A draft carries no number; `issue()` allocates. Covered by the regression test `an abandoned draft does not consume a number`. |
 | 19 | ~~A large invoice with an invoice-level percentage discount breaks the invoice form as it is typed~~ | **Resolved 2026-09-01** (D-059), before (c), at the owner's direction. §4 step 4 was the only place in the engine multiplying **two amounts** together — an invoice discount by a line's net — so the product was quadratic in the invoice total and passed 2⁵³ at roughly 30 million تومان with a 10% discount. `mulDivFloor` computes that one intermediate in `BigInt` and returns quotient and remainder together; the guard is untouched and VM/Web parity is unchanged. Pinned over the whole D-057 ladder in the allocation, the engine and the editor preview, plus the exact old boundary, and verified to bite against the old implementation. |
 | 20 | ~~Cancelling an invoice leaves its recorded payments untouched, and nothing says so~~ | **Resolved in (d)** (D-061), by a ruling rather than a code change. A cancelled invoice **keeps** its payments: the money changed hands, and a cancellation is a statement about the claim rather than about the cash. What changed is that it is now said — in the confirmation before the commitment, on the page afterwards (both the payments card and «مانده»), and at the early return in `_recomputeStatus` that decides it. Recording against a cancelled invoice stays refused and the copy names the replacement invoice as the way forward; deleting stays allowed, with its own wording, because a mis-entered receipt must be correctable on a void document too. |
@@ -1184,6 +1264,26 @@ repositories and driving the real sheets.
   `cancelled` is that ruling, not an oversight. **Recording** against a cancelled invoice is refused
   and the copy points at the replacement invoice; **deleting** stays allowed with its own wording,
   because a mis-entered receipt must be correctable whether or not the document still stands.
+- **A list filter is a value the repository turns into SQL** (D-063). `InvoiceFilter` goes to
+  `watchList`; nothing on the path may narrow a loaded list, because the `LIMIT` is applied first and
+  the page would then be of the wrong set. The window and the filter are **one value**
+  (`InvoiceQuery`), so narrowing resets the page and widening keeps the predicate.
+- **«سررسید گذشته» is not a filter and must not become one** without making the SQL predicate and
+  `invoiceStatusViewOf` agree by test. It is derived at display time from one clock instant (D-041);
+  two implementations of it end with a badge the filter does not return. Overdue invoices are
+  reachable under «پرداخت نشده» and «پرداخت جزئی».
+- **Calendar arithmetic never happens at a call site.** `jalaliMonthShifted` is why «ماه گذشته» is
+  right in every month: stepping back thirty days from the last day of a 31-day Jalali month lands in
+  the same month. If a period helper is missing, add it to `core/date/` rather than doing it inline —
+  the token scanner will catch the `Duration` literal, but only by accident.
+- **Every editing sheet goes through `EditorSheet`** (D-062, known issue 21): fields scroll, the
+  commit action is pinned above the keyboard. The **picker** sheets are exempt by design — they commit
+  by tapping a row — but the rule still applies to them in its own form, and their search field is
+  asserted to stay above the keyboard. `EmptyState` scrolls rather than overflowing, because the
+  picker's did, by 24 pixels, with a keyboard up.
+- **The widget-test harness erases the keyboard by default.** `pumpScreen` installs its own
+  `MediaQueryData`; pass `viewInsets` to test a sheet in the state a phone opens it in. Every test in
+  this project ran without a keyboard until (e)'s sweep.
 - **Only an issued invoice may be cancelled** — `InvoiceNotCancellable`, checked in the same
   transaction as the write. A draft is withdrawn with `softDeleteDraft`; an invoice already cancelled
   has nothing left to cancel. The screen offers the menu only where `Invoice.isCancellable`, and never
@@ -1314,7 +1414,27 @@ repositories and driving the real sheets.
 
 ## Recently changed files
 
-### Known issue 21 and the keyboard rule — the newest work
+### Phase 5 increment (e) — the newest work
+
+```
+lib/data/models/invoice_filter.dart                      NEW  the value handed to the query
+lib/features/invoices/domain/invoice_query.dart          NEW  window + filter, one value
+lib/features/invoices/presentation/widgets/invoice_filter_sheet.dart  NEW  the sheet
+lib/core/date/jalali_period.dart                         + jalaliMonthShifted
+lib/core/widgets/empty_state.dart                        scrolls instead of overflowing
+lib/data/repositories/... (interface + drift)            watchList(filter:), watchForCustomer paged
+lib/features/invoices/... (providers, screen, status)    InvoiceQuery, the control, the count
+lib/features/customers/... (providers, view, screen)     per-customer paging + load-more
+lib/core/localization/arb/app_fa.arb                     + 16 strings
+test/data/database/soft_delete_usage_test.dart           scanner narrowed, with its own test
+test/core/date/jalali_period_test.dart                   + 5 for jalaliMonthShifted
+test/data/repositories/invoice_repository_test.dart      + 10 for filters and paging
+test/features/invoices/invoices_screen_test.dart         + 18, incl. the per-tier sweep
+test/features/customers/customer_detail_screen_test.dart + 4 for paging
+test/core/widgets/sheet_keyboard_test.dart               + 2: the picker and the filter sheet
+```
+
+### Known issue 21 and the keyboard rule — the boundary before it
 
 ```
 lib/core/widgets/editor_sheet.dart                 NEW  fields scroll, the action is pinned
@@ -1638,7 +1758,27 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
-**Known issue 21 fixed, and the keyboard folded into the check (D-062).**
+**Phase 5 increment (e) — filters in SQL, and a paged customer list (D-063).**
+
+- **Status, customer and Jalali period reach the query** as `WHERE` clauses on the statement that
+  already carries the ordering and the `LIMIT`. Nothing narrows a loaded list; the test that says why
+  builds twelve invoices, asks for five, and requires the one match that sorts last.
+- **The window and the filter are one value**, so narrowing resets the page and widening keeps the
+  predicate.
+- **«سررسید گذشته» is deliberately not a filter** — derived at display time, and a SQL predicate would
+  be its second implementation.
+- **Known issue 16 closed**: `watchForCustomer` is paged, and the totals beside it are an aggregate
+  rather than a sum of the page.
+- **`jalaliMonthShifted`** is new in `core/date/`, because «ماه گذشته» may not be a subtraction.
+- **Two scanners fired**: the token scanner rightly (a `Duration` doing calendar arithmetic), the
+  soft-delete scanner wrongly (Riverpod's `.select`), and the second was narrowed with a test rather
+  than silenced.
+- **The keyboard sweep found the customer picker's empty state overflowing by 24 pixels**;
+  `EmptyState` scrolls now.
+- **40 new tests; 935 pass.** Analyzer clean, Android debug APK builds, both device suites re-run
+  green on the Redmi with 0 layout errors.
+
+**The boundary before it — known issue 21 and the keyboard rule (D-062).**
 
 `EditorSheet` is the D-053 shape as a primitive: fields scroll, the commit action is pinned above the
 keyboard. The survey behind it is the useful part — `FormScaffold` and the invoice line sheet were
@@ -1712,41 +1852,31 @@ and no open question: the next session starts cold at the Next Action below.
 
 ## Next action
 
-**First, note that four boundaries are awaiting the owner's review** — (b), the known-issue-19 fix,
-(c) and (d). None has had the owner's own pass. If the session opens with review feedback, that comes
-first; otherwise proceed.
+**First, note what is awaiting the owner's review** — (b), the known-issue-19 fix, (c), the device
+pass and keyboard rule (D-062), and (e) (D-063). (d) has been accepted. If the session opens with
+review feedback, that comes first; otherwise proceed.
 
-**Then build Phase 5 increment (e): list filters at the query level, and paging
-`watchForCustomer`.**
+**Then do Phase 5 increment (f): the phase close.**
 
-From the owner's standing constraints and what is already in place:
+Everything the phase set out to build is built. (f) is the verification pass and the paperwork, and
+the owner's instruction is explicit that it includes **a device pass over what (e) added, run under
+the keyboard rule** (D-062).
 
-1. **The filters run in SQL, never in Dart over a loaded page.** Status, customer and **Jalali**
-   period. `InvoiceListQuery` already exists and already carries an unused search term (D-038); the
-   window is the shape to extend, and the limit must keep reaching the database.
-2. **A Jalali period is resolved to UTC instants and queried on those** (§5, D-006). `jalaliMonth` and
-   `InstantRange` exist and `totalIssuedRial` already takes one — a Gregorian boundary here is a bug,
-   not a simplification.
-3. **Paging `watchForCustomer`** is known issue 16: it caps at 1000 and does not page, so the customer
-   detail screen loads every one of a customer's invoices. Give it a `ListQuery` like the other lists.
-4. **Any new layout goes through D-057** — all three tiers over the ladder in
-   `test/support/money_magnitudes.dart` — and **any card added to a detail screen goes through the new
-   §10 rule**: if its height depends on data and it sits above the thing the page exists to show, it
-   goes below it, or somewhere that costs no height at all.
-5. **The filter controls are new UI on the invoice list**, which has both a card layout and a table
-   layout. A filter bar is exactly the kind of unbounded-height block §10 now rules on.
+1. **The device pass over (e)'s new surface.** `integration_test/` has no coverage of the invoice
+   **list** at all — both device suites are the form and the detail screen. The filter control, the
+   filter sheet and its chips, and the filtered empty state have been checked at three tiers in widget
+   tests but never on the target in Vazirmatn. The picker opens from the filter sheet and raises a real
+   keyboard, so `raiseKeyboard` + `expectActionAboveKeyboard` apply.
+2. **Re-run the whole device set** on the Redmi: the detail suite, the form suite, the D-020 proof and
+   the startup proof. Known issue 10 recurs intermittently — build the debug APK and `adb install -r`
+   by hand once if `flutter test -d` is refused.
+3. **The close itself**: mark Phase 5 `COMPLETED` in `ROADMAP.md` only after the layout check has run
+   at all three tiers over the ladder (D-057) *and* the keyboard rule has run on the phone (D-062).
+4. **Do not add scope.** Everything (f) needs already exists; a phase close that grows a feature is a
+   phase that has not closed.
 
-**The device debt is cleared** — (b), (c) and (d) all passed on the Redmi on 2026-09-01, along with
-the D-020 and startup proofs (D-062). (f) still owns the phase close, but it no longer carries a
-backlog: what it needs is a pass over whatever (e) adds.
-
-**Known issue 21 is fixed** (D-062), at the owner's direction: `EditorSheet` pins every editing
-sheet's primary action above the keyboard and scrolls its fields. Both editor sheets are on it, both
-pickers are deliberately not, and the rule is guarded by a widget sweep at the measured inset **and**
-by a device pass that raises the real keyboard.
-
-After (e) the order is (f), a device pass over the new filter UI under the keyboard rule, and the
-phase close.
+**Nothing is blocked and nothing is owed.** The device debt that carried through three sessions is
+cleared, known issues 16 and 21 are both closed, and the Redmi is connected.
 
 ### Standing constraints for the rest of Phase 5, from the owner
 
@@ -1759,8 +1889,8 @@ phase close.
   spent* (D-013) — done in (d) via `InvoiceCancelAction`, with the ruling on the payments it keeps
   (D-061).
 - **List filters over status, customer and Jalali period, at the query level** — not in Dart over a
-  loaded page.
-- **Paging `watchForCustomer`**, known issue 16.
+  loaded page. Done in (e) (D-063).
+- **Paging `watchForCustomer`**, known issue 16 — done in (e).
 - **A device pass before the phase is called done** — at **all three tiers**, over the written ladder
   (D-057), not on one tier at whatever amounts the flow produces. **Done for (b), (c) and (d)** on the
   Redmi, 2026-09-01. **And the device test must `reach` what it asserts rather than assume where it

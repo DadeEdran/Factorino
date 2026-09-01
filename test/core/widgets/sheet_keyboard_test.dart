@@ -1,10 +1,20 @@
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
+import 'package:factorino/core/utils/clock.dart';
+import 'package:factorino/core/widgets/search_field.dart';
+import 'package:factorino/data/models/customer.dart';
+import 'package:factorino/data/models/invoice_list_item.dart';
+import 'package:factorino/data/providers.dart';
+import 'package:factorino/features/invoices/presentation/widgets/customer_picker_sheet.dart';
+import 'package:factorino/features/invoices/presentation/widgets/invoice_filter_sheet.dart';
 import 'package:factorino/features/invoices/presentation/widgets/invoice_line_editor_sheet.dart';
 import 'package:factorino/features/invoices/presentation/widgets/payment_editor_sheet.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
 
+import '../../features/customers/fake_customer_repository.dart';
+import '../../features/invoices/fake_invoice_repository.dart';
 import '../../features/screen_harness.dart';
 
 /// Every sheet that can raise a soft keyboard, asserted **with the keyboard up**.
@@ -116,6 +126,89 @@ void main() {
     expectActionAboveKeyboard(
       tester,
       find.widgetWithText(FilledButton, strings.actionSave),
+    );
+  });
+
+  testWidgets('a picker keeps its search field above the keyboard', (
+    WidgetTester tester,
+  ) async {
+    // **The pickers do not take `EditorSheet` and should not** — they commit by
+    // tapping a row, so the list *is* the action and a pinned button would
+    // duplicate it. The rule still has to hold for them in its own form: the
+    // control the user types into must stay inside the space the keyboard
+    // leaves, with the list beneath it taking the loss.
+    await pumpScreen(
+      tester,
+      Builder(
+        builder: (BuildContext context) {
+          return Scaffold(
+            body: Center(
+              child: ElevatedButton(
+                onPressed: () => showCustomerPickerSheet(context),
+                child: const Text('open'),
+              ),
+            ),
+          );
+        },
+      ),
+      overrides: <Override>[
+        customerRepositoryProvider.overrideWithValue(
+          FakeCustomerRepository(const <Customer>[]),
+        ),
+      ],
+      size: phone,
+      viewInsets: const EdgeInsets.only(bottom: keyboard),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    final Finder search = find.byType(SearchField);
+    expect(search, findsOneWidget);
+    expect(
+      tester.getRect(search).bottom,
+      lessThanOrEqualTo(800 - keyboard),
+      reason:
+          'a search field a user cannot see while typing into it is the same '
+          'defect as a save button they cannot see (known issue 21, D-062)',
+    );
+  });
+
+  testWidgets('the filter sheet pins its action too', (
+    WidgetTester tester,
+  ) async {
+    // It has no text field of its own, so no keyboard rises for it — but it
+    // opens the customer picker, which does, and it is built on `EditorSheet`,
+    // so the assertion costs nothing and states that the shape is shared.
+    await pumpScreen(
+      tester,
+      Builder(
+        builder: (BuildContext context) => Scaffold(
+          body: Center(
+            child: ElevatedButton(
+              onPressed: () => showInvoiceFilterSheet(context),
+              child: const Text('open'),
+            ),
+          ),
+        ),
+      ),
+      overrides: <Override>[
+        invoiceRepositoryProvider.overrideWithValue(
+          FakeInvoiceRepository(const <InvoiceListItem>[]),
+        ),
+        nowProvider.overrideWithValue(DateTime.utc(2026, 8, 24, 6)),
+      ],
+      size: phone,
+      viewInsets: const EdgeInsets.only(bottom: keyboard),
+    );
+    await tester.tap(find.text('open'));
+    await tester.pumpAndSettle();
+
+    final AppStrings strings = AppStrings.of(
+      tester.element(find.byType(FilterChip).first),
+    );
+    expectActionAboveKeyboard(
+      tester,
+      find.widgetWithText(FilledButton, strings.invoiceFilterApply),
     );
   });
 

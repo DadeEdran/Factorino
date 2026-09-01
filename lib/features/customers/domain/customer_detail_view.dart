@@ -17,6 +17,7 @@ class CustomerDetailView {
     required this.customer,
     required this.totals,
     required this.invoices,
+    this.hasMoreInvoices = false,
   });
 
   final Customer customer;
@@ -32,4 +33,12 @@ class CustomerDetailView {
   /// already loaded above, not a second read: resolving it per row would be an
   /// N+1 query issued from a screen that already has the answer.
   final List<InvoiceListItem> invoices;
+
+  /// Whether there are more invoices behind the page in [invoices].
+  ///
+  /// Part of the same value rather than a second provider the screen watches,
+  /// for the reason the class exists: the list and the affordance to widen it
+  /// have to describe the same moment, or the button offers a page that has
+  /// already arrived.
+  final bool hasMoreInvoices;
 }

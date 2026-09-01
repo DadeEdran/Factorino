@@ -1,7 +1,10 @@
 import 'package:factorino/core/localization/generated/app_strings.dart';
+import 'package:factorino/core/formatting/number_display.dart';
 import 'package:factorino/core/money/money.dart';
+import 'package:factorino/core/utils/list_query.dart';
 import 'package:factorino/core/widgets/app_table.dart';
 import 'package:factorino/core/widgets/empty_state.dart';
+import 'package:factorino/core/widgets/load_more_footer.dart';
 import 'package:factorino/core/widgets/skeleton.dart';
 import 'package:factorino/core/widgets/stat_tile.dart';
 import 'package:factorino/data/models/customer.dart';
@@ -467,6 +470,106 @@ void main() {
 
       final AppStrings strings = stringsOf(tester, CustomerDetailScreen);
       expect(find.text(strings.invoiceNumberPending), findsOneWidget);
+    });
+  });
+
+  group("the invoice list is paged (known issue 16)", () {
+    /// More invoices than one page, so "did the limit reach the query" has a
+    /// visible answer. The fake pages its own list, exactly as the real
+    /// repository pages in SQL.
+    FakeInvoiceRepository many() => FakeInvoiceRepository(<InvoiceListItem>[
+      for (int i = 0; i < 100; i++) invoice('i$i', 'INV-1405-$i'),
+    ]);
+
+    testWidgets('asks for one page, not for every invoice the customer has', (
+      WidgetTester tester,
+    ) async {
+      // It used to ask for a flat 1000 with no way to ask past it. Invisible
+      // below a few hundred invoices, and a growing query cost above it — on
+      // the page a long-standing customer is exactly the person to open.
+      final FakeInvoiceRepository invoices = many();
+      await pumpDetail(
+        tester,
+        customers: FakeCustomerRepository(<Customer>[customer()]),
+        invoices: invoices,
+      );
+      await tester.pumpAndSettle();
+
+      expect(invoices.lastCustomerLimit, ListQuery.defaultPageSize);
+    });
+
+    testWidgets('offers a way to widen it, and widening reaches the query', (
+      WidgetTester tester,
+    ) async {
+      final FakeInvoiceRepository invoices = many();
+      await pumpDetail(
+        tester,
+        customers: FakeCustomerRepository(<Customer>[customer()]),
+        invoices: invoices,
+      );
+      await tester.pumpAndSettle();
+
+      // **Scrolled to, not assumed visible.** The footer sits after a full page
+      // of invoice cards, so it is not in the tree until the list is scrolled —
+      // the same lazy-sliver fact the device pass ran into (D-062), met here at
+      // the widget level. It is an item in the list rather than a bar pinned
+      // beneath it, deliberately, so it costs no height on a full screen.
+      await tester.scrollUntilVisible(find.byType(LoadMoreFooter), 600);
+      await tester.pumpAndSettle();
+      expect(find.byType(LoadMoreFooter), findsOneWidget);
+
+      final AppStrings strings = stringsOf(tester, CustomerDetailScreen);
+      await tester.tap(find.text(strings.actionLoadMore));
+      await tester.pumpAndSettle();
+
+      expect(invoices.lastCustomerLimit, ListQuery.defaultPageSize * 2);
+    });
+
+    testWidgets('and no control once the last page is short', (
+      WidgetTester tester,
+    ) async {
+      await pumpDetail(
+        tester,
+        customers: FakeCustomerRepository(<Customer>[customer()]),
+        invoices: FakeInvoiceRepository(<InvoiceListItem>[
+          for (int i = 0; i < 3; i++) invoice('i$i', 'INV-1405-$i'),
+        ]),
+        size: const Size(400, 3000),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(LoadMoreFooter), findsNothing);
+    });
+
+    testWidgets('the totals are not a sum of the page', (
+      WidgetTester tester,
+    ) async {
+      // **The property that makes paging this list safe.** Billed and
+      // outstanding are one SQL aggregate over every invoice the customer has
+      // (D-044), so showing a page beneath them does not make them wrong. A
+      // total computed from the loaded rows would change every time the user
+      // pressed «بیشتر», which is the defect this asserts against.
+      final FakeInvoiceRepository invoices = FakeInvoiceRepository(
+        <InvoiceListItem>[
+          for (int i = 0; i < 100; i++)
+            invoice('i$i', 'INV-1405-$i', rial: 1000000),
+        ],
+        customerTotals: CustomerTotals(
+          billed: Money.rial(100000000),
+          outstanding: Money.rial(40000000),
+        ),
+      );
+      await pumpDetail(
+        tester,
+        customers: FakeCustomerRepository(<Customer>[customer()]),
+        invoices: invoices,
+        size: const Size(400, 3000),
+      );
+      await tester.pumpAndSettle();
+
+      // 100,000,000 rial is 10,000,000 toman -- the figure the aggregate
+      // reports, not the forty invoices the first page rendered.
+      expect(find.textContaining(formatGroupedPersian(10000000)), findsWidgets);
     });
   });
 

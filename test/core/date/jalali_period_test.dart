@@ -174,6 +174,67 @@ void main() {
     });
   });
 
+  group('jalaliMonthShifted - «ماه گذشته», and why it is not a subtraction', () {
+    test('one step back is the previous Jalali month', () {
+      final now = DateTime.utc(2026, 8, 24, 12);
+      expect(jalaliMonthOf(now), jalaliMonth(1405, 6));
+      expect(jalaliMonthShifted(now, -1), jalaliMonth(1405, 5));
+      expect(jalaliMonthShifted(now, 1), jalaliMonth(1405, 7));
+      expect(jalaliMonthShifted(now, 0), jalaliMonthOf(now));
+    });
+
+    test('it rolls over the Jalali year in both directions', () {
+      // Farvardin is month 1: one step back is Esfand of the *previous* year,
+      // and that is the boundary a naive `month - 1` gets wrong.
+      final inFarvardin = DateTime.utc(2026, 3, 25, 12);
+      expect(jalaliMonthOf(inFarvardin), jalaliMonth(1405, 1));
+      expect(jalaliMonthShifted(inFarvardin, -1), jalaliMonth(1404, 12));
+
+      final inEsfand = DateTime.utc(2026, 3, 15, 12);
+      expect(jalaliMonthOf(inEsfand), jalaliMonth(1404, 12));
+      expect(jalaliMonthShifted(inEsfand, 1), jalaliMonth(1405, 1));
+    });
+
+    test('a fixed span of days would be wrong, and here is where', () {
+      // **The reason this helper exists rather than a subtraction at the call
+      // site.** Shahrivar is 31 days. Stand on its last day and step back the
+      // thirty days somebody would reach for, and you land on its *first* day
+      // — the same month. «ماه گذشته» would then show the month the user is
+      // already looking at, and only in some months of the year.
+      final lastDayOfShahrivar = jalaliMonth(
+        1405,
+        6,
+      ).start.add(const Duration(days: 30));
+      expect(jalaliMonthOf(lastDayOfShahrivar), jalaliMonth(1405, 6));
+
+      final naive = lastDayOfShahrivar.subtract(const Duration(days: 30));
+      expect(
+        jalaliMonthOf(naive),
+        jalaliMonth(1405, 6),
+        reason:
+            'thirty days before the last day of a 31-day month is still that '
+            'month, which is exactly why «ماه گذشته» may not be a subtraction',
+      );
+      expect(jalaliMonthShifted(lastDayOfShahrivar, -1), jalaliMonth(1405, 5));
+    });
+
+    test('a whole year of steps returns the same month a year earlier', () {
+      final now = DateTime.utc(2026, 8, 24, 12);
+      expect(jalaliMonthShifted(now, -12), jalaliMonth(1404, 6));
+      expect(jalaliMonthShifted(now, 12), jalaliMonth(1406, 6));
+    });
+
+    test('the offset is a parameter here too', () {
+      // Same rule as every other helper in this file: the Iran offset is a
+      // default, never a hidden assumption.
+      final now = DateTime.utc(2026, 8, 24, 12);
+      expect(
+        jalaliMonthShifted(now, -1, offset: Duration.zero),
+        isNot(jalaliMonthShifted(now, -1)),
+      );
+    });
+  });
+
   group('jalaliDay', () {
     test('runs Tehran midnight to Tehran midnight', () {
       final range = jalaliDayOf(DateTime.utc(2026, 8, 24, 12));

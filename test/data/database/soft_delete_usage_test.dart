@@ -27,6 +27,17 @@ void main() {
   final rawQuery = RegExp(
     r'(?<![A-Za-z0-9_])(select|customSelect|selectOnly)\s*\(',
   );
+
+  /// Riverpod's `provider.select((value) => value.field)`, which is **not** a
+  /// database read and is the narrowing the project spec asks for by name.
+  ///
+  /// It cannot be excluded by the lookbehind: drift's own `_db.select(table)`
+  /// is preceded by a dot too, and that is the main form this test exists to
+  /// catch. What separates them is the argument -- a provider selector is
+  /// handed a function literal, so `select(` is immediately followed by `(`,
+  /// and a drift select is handed a table.
+  final providerSelector = RegExp(r'\.select\s*\(\s*\(');
+
   const exemption = 'soft-delete-exempt:';
 
   test('no unexplained raw select() in lib/', () {
@@ -43,6 +54,7 @@ void main() {
       for (var i = 0; i < lines.length; i++) {
         final line = lines[i];
         if (!rawQuery.hasMatch(line)) continue;
+        if (providerSelector.hasMatch(line)) continue;
         if (line.contains(exemption)) continue;
         // The marker may sit anywhere in the comment block immediately above
         // the call, so a reason long enough to be useful can wrap.
@@ -61,6 +73,21 @@ void main() {
           '"// $exemption <reason>" if the raw form is deliberate:\n'
           '${offenders.join('\n')}',
     );
+  });
+
+  test('a provider selector is not a database read', () {
+    // The refinement above, pinned in both directions: it must keep catching
+    // drift's form, which is also preceded by a dot, or the exclusion has
+    // blinded the scanner rather than narrowed it.
+    expect(
+      providerSelector.hasMatch(
+        'invoiceListQueryProvider.select((query) => query.filter),',
+      ),
+      isTrue,
+    );
+    expect(providerSelector.hasMatch('_db.select(_db.invoices)'), isFalse);
+    expect(rawQuery.hasMatch('_db.select(_db.invoices)'), isTrue);
+    expect(rawQuery.hasMatch('_db.selectOnly(_db.payments)'), isTrue);
   });
 
   test('the helper is where it is expected to be', () {

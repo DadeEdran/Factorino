@@ -861,6 +861,52 @@
   "invoiceCancelFailed": "ابطال این فاکتور ممکن نشد.",
   "@invoiceCancelFailed": {},
 
+  "invoiceFilterAction": "فیلترها",
+  "@invoiceFilterAction": {
+    "description": "Opens the filter sheet. In the page title row, where it costs no vertical space at any tier (section 10's unbounded-card rule)."
+  },
+  "invoiceFilterTitle": "فیلتر فاکتورها",
+  "@invoiceFilterTitle": {},
+  "invoiceFilterApply": "نمایش نتایج",
+  "@invoiceFilterApply": {
+    "description": "Says what the button does rather than repeating the sheet's title. The filter is already live as the user taps; this dismisses the sheet."
+  },
+  "invoiceFilterClearAll": "پاک کردن همه",
+  "@invoiceFilterClearAll": {},
+  "invoiceFilterStatusSection": "وضعیت",
+  "@invoiceFilterStatusSection": {},
+  "invoiceFilterCustomerSection": "مشتری",
+  "@invoiceFilterCustomerSection": {},
+  "invoiceFilterPeriodSection": "بازهٔ زمانی",
+  "@invoiceFilterPeriodSection": {},
+  "invoiceFilterCustomerAny": "همهٔ مشتریان",
+  "@invoiceFilterCustomerAny": {},
+  "invoiceFilterCustomerChoose": "انتخاب مشتری",
+  "@invoiceFilterCustomerChoose": {},
+  "invoiceFilterPeriodAny": "همهٔ تاریخ‌ها",
+  "@invoiceFilterPeriodAny": {},
+  "invoiceFilterPeriodThisMonth": "این ماه",
+  "@invoiceFilterPeriodThisMonth": {
+    "description": "The current JALALI month, not the Gregorian one (section 5, D-006). «فروش این ماه» on the dashboard means the same thing."
+  },
+  "invoiceFilterPeriodLastMonth": "ماه گذشته",
+  "@invoiceFilterPeriodLastMonth": {},
+  "invoiceFilterPeriodThisYear": "امسال",
+  "@invoiceFilterPeriodThisYear": {
+    "description": "The current Jalali year."
+  },
+  "invoiceFilterActiveLabel": "{count} فیلتر فعال",
+  "@invoiceFilterActiveLabel": {
+    "description": "The badge on the filter control. A user who has narrowed the list must be able to see that they have, or an empty list reads as lost data.",
+    "placeholders": { "count": { "type": "String" } }
+  },
+  "emptyInvoicesFilteredTitle": "فاکتوری با این فیلترها پیدا نشد",
+  "@emptyInvoicesFilteredTitle": {
+    "description": "A distinct state from «هنوز فاکتوری ثبت نشده». Telling a user with 400 invoices that they have none would be false, and would send them looking for lost data."
+  },
+  "emptyInvoicesFilteredBody": "هیچ فاکتوری با فیلترهای انتخاب‌شده مطابقت ندارد. فیلترها را تغییر دهید یا پاک کنید.",
+  "@emptyInvoicesFilteredBody": {},
+
   "invoiceDetailCancelledDueNote": "این فاکتور باطل شده است؛ مانده‌ی آن مطالبه‌ای از مشتری نیست.",
   "@invoiceDetailCancelledDueNote": {
     "description": "The remaining balance is still shown, because hiding a figure is worse than explaining it — but on a void document it would otherwise read as money still owed."

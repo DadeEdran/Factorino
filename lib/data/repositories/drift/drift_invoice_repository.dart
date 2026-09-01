@@ -14,6 +14,7 @@ import '../../models/customer_totals.dart';
 import '../../models/invoice.dart';
 import '../../models/invoice_detail.dart';
 import '../../models/invoice_draft.dart';
+import '../../models/invoice_filter.dart';
 import '../../models/invoice_list_item.dart';
 import '../../models/invoice_number.dart';
 import '../../models/invoice_status.dart';
@@ -68,15 +69,25 @@ class DriftInvoiceRepository implements InvoiceRepository {
   }
 
   @override
-  Stream<List<Invoice>> watchForCustomer(String customerId) {
+  Stream<List<Invoice>> watchForCustomer(
+    String customerId, {
+    int limit = 100,
+    int offset = 0,
+  }) {
+    // Known issue 16, closed: the page reaches SQL instead of a flat cap of
+    // 1000 rows that nothing could ask past.
     return (_aliveQuery(
-      limit: 1000,
-      offset: 0,
+      limit: limit,
+      offset: offset,
     )..where((row) => row.customerId.equals(customerId))).watch().map(_mapRows);
   }
 
   @override
-  Stream<List<InvoiceListItem>> watchList({int limit = 100, int offset = 0}) {
+  Stream<List<InvoiceListItem>> watchList({
+    InvoiceFilter filter = InvoiceFilter.none,
+    int limit = 100,
+    int offset = 0,
+  }) {
     // One join, not one query per row. `_aliveQuery` already carries the
     // ordering, the soft-delete filter and the LIMIT, and `join` keeps all
     // three -- drift copies them onto the joined statement -- so the paging
@@ -88,15 +99,23 @@ class DriftInvoiceRepository implements InvoiceRepository {
     // survive untouched. Filtering here would drop those invoices out of the
     // list entirely the moment their customer was deleted -- making that
     // promise false, silently, and only for the users who took it at its word.
-    final JoinedSelectStatement<HasResultSet, dynamic> query =
-        _aliveQuery(limit: limit, offset: offset).join(
-          <Join<HasResultSet, dynamic>>[
-            innerJoin(
-              _db.customers,
-              _db.customers.id.equalsExp(_db.invoices.customerId),
-            ),
-          ],
-        );
+    // **The filter is applied before the join, on the invoices side**, so it
+    // narrows the same statement that carries the LIMIT. Applied after, it
+    // would filter a page rather than page a filtered set.
+    final SimpleSelectStatement<$InvoicesTable, InvoiceRow> base = _aliveQuery(
+      limit: limit,
+      offset: offset,
+    );
+    _applyFilter(base, filter);
+
+    final JoinedSelectStatement<HasResultSet, dynamic> query = base.join(
+      <Join<HasResultSet, dynamic>>[
+        innerJoin(
+          _db.customers,
+          _db.customers.id.equalsExp(_db.invoices.customerId),
+        ),
+      ],
+    );
 
     return query.watch().map(
       (List<TypedResult> rows) => rows
@@ -675,6 +694,39 @@ class DriftInvoiceRepository implements InvoiceRepository {
       throw InvoiceNotEditable(id, row.status);
     }
     return row;
+  }
+
+  /// Turns an [InvoiceFilter] into `WHERE` clauses (§13, and §7's ban on
+  /// string-built SQL — every clause here is drift's typed, parameterized API).
+  ///
+  /// One place, so the three predicates cannot drift apart between the list and
+  /// whatever asks next.
+  void _applyFilter(
+    SimpleSelectStatement<$InvoicesTable, InvoiceRow> query,
+    InvoiceFilter filter,
+  ) {
+    // An empty set means **every** status, not none. Written as an early skip
+    // rather than as an `isInValues` over all five, because `IN (everything)`
+    // is a clause the planner still has to evaluate for a filter the user did
+    // not set.
+    if (filter.statuses.isNotEmpty) {
+      query.where((row) => row.status.isInValues(filter.statuses.toList()));
+    }
+
+    if (filter.customerId case final String id) {
+      query.where((row) => row.customerId.equals(id));
+    }
+
+    // Half-open, exactly as `InstantRange` defines itself and exactly as
+    // `watchInPeriod` applies it (D-006). An inclusive upper bound here would
+    // pull in the first invoice of the next Jalali month.
+    if (filter.period case final InstantRange period) {
+      query.where(
+        (row) =>
+            row.issueDate.isBiggerOrEqualValue(period.startMillis) &
+            row.issueDate.isSmallerThanValue(period.endMillis),
+      );
+    }
   }
 
   Future<Invoice> _setStatus(String id, InvoiceStatus status) async {

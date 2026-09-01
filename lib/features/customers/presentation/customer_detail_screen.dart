@@ -13,6 +13,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/async_error_view.dart';
 import '../../../core/widgets/empty_state.dart';
+import '../../../core/widgets/load_more_footer.dart';
 import '../../../core/widgets/page_body.dart';
 import '../../../core/widgets/record_field.dart';
 import '../../../core/widgets/skeleton.dart';
@@ -139,6 +140,13 @@ class _DetailBody extends ConsumerWidget {
     final LayoutTier tier = context.tier;
     final DateTime now = ref.watch(nowProvider);
 
+    // Known issue 16: this list is a page now, so the page can grow. Read from
+    // the notifier rather than held, because widening the window is a write to
+    // the query, not to this widget.
+    void loadMore() => ref
+        .read(customerInvoicesQueryProvider(view.customer.id).notifier)
+        .loadMore();
+
     final Widget totals = _Totals(view: view, strings: strings, tier: tier);
     final Widget record = _RecordCard(
       customer: view.customer,
@@ -166,7 +174,12 @@ class _DetailBody extends ConsumerWidget {
                 const SizedBox(height: AppSpacing.xxl),
                 SectionHeader(title: strings.customerInvoicesSection),
                 Expanded(
-                  child: _InvoiceTable(view: view, strings: strings, now: now),
+                  child: _InvoiceTable(
+                    view: view,
+                    strings: strings,
+                    now: now,
+                    onLoadMore: loadMore,
+                  ),
                 ),
               ],
             ),
@@ -207,6 +220,17 @@ class _DetailBody extends ConsumerWidget {
               // The name would be the same on every row of this customer's own
               // page, so the invoice number takes the heading instead.
               showCustomer: false,
+            ),
+          ),
+        // Known issue 16's other half. The list is a **page** now, so the page
+        // needs a way to grow -- the totals above it are unaffected either way,
+        // being one SQL aggregate over every invoice rather than a sum of what
+        // is on screen (D-044).
+        if (view.hasMoreInvoices)
+          SliverToBoxAdapter(
+            child: LoadMoreFooter(
+              label: strings.actionLoadMore,
+              onPressed: loadMore,
             ),
           ),
       ],
@@ -432,11 +456,13 @@ class _InvoiceTable extends StatelessWidget {
     required this.view,
     required this.strings,
     required this.now,
+    required this.onLoadMore,
   });
 
   final CustomerDetailView view;
   final AppStrings strings;
   final DateTime now;
+  final VoidCallback onLoadMore;
 
   @override
   Widget build(BuildContext context) {
@@ -450,13 +476,23 @@ class _InvoiceTable extends StatelessWidget {
         ),
         Expanded(
           child: ListView.builder(
-            itemCount: view.invoices.length,
-            itemBuilder: (BuildContext context, int index) => InvoiceTableRow(
-              item: view.invoices[index],
-              strings: strings,
-              now: now,
-              showCustomer: false,
-            ),
+            // One extra row for the footer, so it scrolls with the rows rather
+            // than pinning beneath them (`LoadMoreFooter`).
+            itemCount: view.invoices.length + (view.hasMoreInvoices ? 1 : 0),
+            itemBuilder: (BuildContext context, int index) {
+              if (index >= view.invoices.length) {
+                return LoadMoreFooter(
+                  label: strings.actionLoadMore,
+                  onPressed: onLoadMore,
+                );
+              }
+              return InvoiceTableRow(
+                item: view.invoices[index],
+                strings: strings,
+                now: now,
+                showCustomer: false,
+              );
+            },
           ),
         ),
       ],

@@ -964,6 +964,57 @@ class AppStringsFa extends AppStrings {
   String get invoiceCancelFailed => 'ابطال این فاکتور ممکن نشد.';
 
   @override
+  String get invoiceFilterAction => 'فیلترها';
+
+  @override
+  String get invoiceFilterTitle => 'فیلتر فاکتورها';
+
+  @override
+  String get invoiceFilterApply => 'نمایش نتایج';
+
+  @override
+  String get invoiceFilterClearAll => 'پاک کردن همه';
+
+  @override
+  String get invoiceFilterStatusSection => 'وضعیت';
+
+  @override
+  String get invoiceFilterCustomerSection => 'مشتری';
+
+  @override
+  String get invoiceFilterPeriodSection => 'بازهٔ زمانی';
+
+  @override
+  String get invoiceFilterCustomerAny => 'همهٔ مشتریان';
+
+  @override
+  String get invoiceFilterCustomerChoose => 'انتخاب مشتری';
+
+  @override
+  String get invoiceFilterPeriodAny => 'همهٔ تاریخ‌ها';
+
+  @override
+  String get invoiceFilterPeriodThisMonth => 'این ماه';
+
+  @override
+  String get invoiceFilterPeriodLastMonth => 'ماه گذشته';
+
+  @override
+  String get invoiceFilterPeriodThisYear => 'امسال';
+
+  @override
+  String invoiceFilterActiveLabel(String count) {
+    return '$count فیلتر فعال';
+  }
+
+  @override
+  String get emptyInvoicesFilteredTitle => 'فاکتوری با این فیلترها پیدا نشد';
+
+  @override
+  String get emptyInvoicesFilteredBody =>
+      'هیچ فاکتوری با فیلترهای انتخاب‌شده مطابقت ندارد. فیلترها را تغییر دهید یا پاک کنید.';
+
+  @override
   String get invoiceDetailCancelledDueNote =>
       'این فاکتور باطل شده است؛ مانده‌ی آن مطالبه‌ای از مشتری نیست.';
 

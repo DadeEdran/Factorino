@@ -527,6 +527,60 @@ pixels below the fold on a phone, because `autofocus` raises a keyboard taking 2
 Not a defect and not an overflow — the sheet scrolls — but the fix is D-053's split-by-purpose applied
 to a sheet, which is a design call. Known issue 10 did not recur; the APK installed first try.
 
+**Increment (e) — filters and paging, completed 2026-09-01**
+
+Status, customer and Jalali period, applied as `WHERE` clauses by the repository; and known issue 16
+closed. **Decision recorded: D-063.**
+
+- **The filter reaches SQL, and the test says why that matters.** Filtering in Dart would apply the
+  page limit before the predicate, so a filter matching three invoices in ten thousand would return
+  whichever fell in the first page and the screen would report "no results" about data that is there.
+  Pinned with twelve invoices, a page of five, and the single match sorting last.
+- **The window and the filter are one value** (`InvoiceQuery`), so narrowing resets the window and
+  widening keeps the predicate. Both directions are tested.
+- **«سررسید گذشته» is deliberately not a filter.** It is derived at display time (D-041); a SQL
+  predicate would be a second implementation of a rule `invoiceStatusViewOf` owns, and the visible
+  form of their disagreement is a badge the filter does not return. Overdue invoices remain reachable
+  under «پرداخت نشده» and «پرداخت جزئی».
+- **The control is in the title row** — §10's unbounded-card rule, applied for the second time since
+  it was written — **and shows a count when filters are on**, because a control that looks the same
+  either way is how a user concludes their invoices are gone.
+- **A filtered empty list is its own state**, offering «پاک کردن همه» rather than "make an invoice".
+- **`jalaliMonthShifted` is new in `core/date/`**: «ماه گذشته» may not be a subtraction, because
+  stepping back thirty days from the last day of a 31-day Jalali month lands in the same month. A test
+  stands on that day.
+- **Known issue 16 closed.** `watchForCustomer` takes a page, driven by a per-customer `ListQuery`
+  family; `CustomerDetailView` carries `hasMoreInvoices`. Safe only because the totals beside it are
+  one SQL aggregate over every invoice rather than a sum of the page — now asserted.
+- **Two scanners fired.** The token scanner was right (a `Duration` literal doing calendar
+  arithmetic — fixed by moving it into `core/date/`); the soft-delete scanner was wrong, catching
+  Riverpod's `provider.select((q) => q.filter)`, and was narrowed with a test pinning it in both
+  directions rather than silenced with an exemption comment that would have claimed a database read.
+- **The keyboard sweep found a real defect on its first outing**: the customer picker's empty state
+  overflowed by 24 pixels with the keyboard up — 238 pixels of room against 262 — at exactly the
+  moment a user is typing a search that matches nothing. `EmptyState` scrolls now rather than clipping
+  the sentence that explains it.
+- **40 new tests; 935 pass** (was 895).
+
+**Verification (D-057, D-062), by tier:**
+
+```
+widget sweep, all three tiers                   PASS  the filter control and sheet at each tier;
+                                                      the sheet's chips wrap rather than clip
+keyboard sweep                                  PASS  both editor sheets, the filter sheet and the
+                                                      picker's search field, at the measured 255 px
+device pass - Android phone, Vazirmatn          PASS  both device suites re-run after the shared
+                                                      EmptyState change: 0 layout errors, the
+                                                      payment and line sheets both at action bottom
+                                                      532.7 against a 548.7 limit
+```
+
+**Security note (increment e).** No new data class, no new stored field, and no new personal data. A
+filter is a read predicate over rows the application already owns, expressed through drift's typed,
+parameterized API — **no string-built SQL** (§7), and the customer filter carries an id rather than a
+name. Paging reduces what a single query loads rather than widening it. No new permission or platform
+surface; the threat model is unchanged.
+
 **Security note (increment d).** The first code that **writes** third-party personal identifiers,
 so the threat model gains a write path:
 
@@ -1155,8 +1209,8 @@ paths were reviewed in (c). What is new:
 
 ## Phase 5 — Invoice Management and Payments
 
-**Status:** `IN_PROGRESS` — (a2), (b), (c) and (d) are delivered and their device debt is cleared;
-filters and the phase close remain.
+**Status:** `IN_PROGRESS` — (a2), (b), (c), (d) and (e) are delivered and the device debt is
+cleared; the phase close remains.
 
 | # | Increment | Status |
 |---|---|---|
@@ -1167,7 +1221,7 @@ filters and the phase close remain.
 | — | **Known issue 19**: exact allocation at every invoice size (D-059) | `COMPLETED` 2026-09-01 |
 | c | **Payments: record and delete**, both recomputing derived status in the same transaction (§6) (D-060) | `COMPLETED` 2026-09-01 |
 | d | **Cancellation**, the copy that says what it does and does not do, and the ruling on payments it keeps (D-061) | `COMPLETED` 2026-09-01 |
-| e | List filters over status, customer and Jalali period, at the query level; paging `watchForCustomer` | `NOT_STARTED` |
+| e | **List filters** over status, customer and Jalali period, at the query level; paging `watchForCustomer` (D-063) | `COMPLETED` 2026-09-01 |
 | f | The device pass, and the phase close | `NOT_STARTED` |
 
 (a2) is a migration and therefore its own reviewable step, on (a2)-of-Phase-4's and (c2)'s precedent.

@@ -82,6 +82,13 @@ Future<CustomerDetailView?> customerDetail(Ref ref, String id) async {
   return CustomerDetailView(
     customer: customer,
     totals: totals,
+    // Whether the page that came back filled the window. The totals above are
+    // **not** computed from this page -- they are one SQL aggregate over every
+    // invoice the customer has (D-044) -- which is what makes it safe to show
+    // only a page of the list beneath them.
+    hasMoreInvoices: ref
+        .watch(customerInvoicesQueryProvider(id))
+        .hasMoreAfter(invoices.length),
     // The name is the one already loaded, not a lookup per row (D-040). A
     // customer's own page is the one place the join `watchList` performs is
     // genuinely unnecessary -- there is exactly one name and it is in hand.
@@ -110,15 +117,35 @@ Future<CustomerDetailView?> customerDetail(Ref ref, String id) async {
 Stream<CustomerTotals> _customerTotals(Ref ref, String id) =>
     ref.watch(invoiceRepositoryProvider).watchCustomerTotals(id);
 
-/// This customer's invoices.
+/// The window one customer's invoice list is asking for.
+///
+/// A family, keyed by customer, so opening a second customer's page does not
+/// inherit how far the first was scrolled — and so the window is disposed with
+/// the page rather than accumulating one entry per customer ever viewed.
+///
+/// Added in Phase 5 (e), closing known issue 16: this list used to take a flat
+/// cap of 1000 rows that nothing could ask past.
+@riverpod
+class CustomerInvoicesQuery extends _$CustomerInvoicesQuery {
+  @override
+  ListQuery build(String id) => const ListQuery();
+
+  void loadMore() => state = state.loadingMore();
+}
+
+/// This customer's invoices, one page at a time.
 ///
 /// `watchForCustomer` was built in increment (d) for this screen and had no
 /// call site until now. Using it rather than adding a parallel read is
 /// deliberate: a second query answering the same question is a second place for
 /// the soft-delete filter and the ordering to be got wrong.
 @riverpod
-Stream<List<Invoice>> _customerInvoices(Ref ref, String id) =>
-    ref.watch(invoiceRepositoryProvider).watchForCustomer(id);
+Stream<List<Invoice>> _customerInvoices(Ref ref, String id) => ref
+    .watch(invoiceRepositoryProvider)
+    .watchForCustomer(
+      id,
+      limit: ref.watch(customerInvoicesQueryProvider(id)).limit,
+    );
 
 /// The customer write path.
 ///

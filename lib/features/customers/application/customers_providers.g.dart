@@ -350,7 +350,7 @@ final class CustomerDetailProvider
   }
 }
 
-String _$customerDetailHash() => r'c746d01b84ca4c4d3826bf4a509fefdc7582c9ff';
+String _$customerDetailHash() => r'4cb6f87c98beca9abc19aae8b8e26121eeab9c75';
 
 /// Everything the customer detail screen shows, read together.
 ///
@@ -498,7 +498,157 @@ final class _CustomerTotalsFamily extends $Family
   String toString() => r'_customerTotalsProvider';
 }
 
-/// This customer's invoices.
+/// The window one customer's invoice list is asking for.
+///
+/// A family, keyed by customer, so opening a second customer's page does not
+/// inherit how far the first was scrolled — and so the window is disposed with
+/// the page rather than accumulating one entry per customer ever viewed.
+///
+/// Added in Phase 5 (e), closing known issue 16: this list used to take a flat
+/// cap of 1000 rows that nothing could ask past.
+
+@ProviderFor(CustomerInvoicesQuery)
+final customerInvoicesQueryProvider = CustomerInvoicesQueryFamily._();
+
+/// The window one customer's invoice list is asking for.
+///
+/// A family, keyed by customer, so opening a second customer's page does not
+/// inherit how far the first was scrolled — and so the window is disposed with
+/// the page rather than accumulating one entry per customer ever viewed.
+///
+/// Added in Phase 5 (e), closing known issue 16: this list used to take a flat
+/// cap of 1000 rows that nothing could ask past.
+final class CustomerInvoicesQueryProvider
+    extends $NotifierProvider<CustomerInvoicesQuery, ListQuery> {
+  /// The window one customer's invoice list is asking for.
+  ///
+  /// A family, keyed by customer, so opening a second customer's page does not
+  /// inherit how far the first was scrolled — and so the window is disposed with
+  /// the page rather than accumulating one entry per customer ever viewed.
+  ///
+  /// Added in Phase 5 (e), closing known issue 16: this list used to take a flat
+  /// cap of 1000 rows that nothing could ask past.
+  CustomerInvoicesQueryProvider._({
+    required CustomerInvoicesQueryFamily super.from,
+    required String super.argument,
+  }) : super(
+         retry: null,
+         name: r'customerInvoicesQueryProvider',
+         isAutoDispose: true,
+         dependencies: null,
+         $allTransitiveDependencies: null,
+       );
+
+  @override
+  String debugGetCreateSourceHash() => _$customerInvoicesQueryHash();
+
+  @override
+  String toString() {
+    return r'customerInvoicesQueryProvider'
+        ''
+        '($argument)';
+  }
+
+  @$internal
+  @override
+  CustomerInvoicesQuery create() => CustomerInvoicesQuery();
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(ListQuery value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<ListQuery>(value),
+    );
+  }
+
+  @override
+  bool operator ==(Object other) {
+    return other is CustomerInvoicesQueryProvider && other.argument == argument;
+  }
+
+  @override
+  int get hashCode {
+    return argument.hashCode;
+  }
+}
+
+String _$customerInvoicesQueryHash() =>
+    r'c902d0108b2f1b01b1927b5ae5b1d80d98970f4e';
+
+/// The window one customer's invoice list is asking for.
+///
+/// A family, keyed by customer, so opening a second customer's page does not
+/// inherit how far the first was scrolled — and so the window is disposed with
+/// the page rather than accumulating one entry per customer ever viewed.
+///
+/// Added in Phase 5 (e), closing known issue 16: this list used to take a flat
+/// cap of 1000 rows that nothing could ask past.
+
+final class CustomerInvoicesQueryFamily extends $Family
+    with
+        $ClassFamilyOverride<
+          CustomerInvoicesQuery,
+          ListQuery,
+          ListQuery,
+          ListQuery,
+          String
+        > {
+  CustomerInvoicesQueryFamily._()
+    : super(
+        retry: null,
+        name: r'customerInvoicesQueryProvider',
+        dependencies: null,
+        $allTransitiveDependencies: null,
+        isAutoDispose: true,
+      );
+
+  /// The window one customer's invoice list is asking for.
+  ///
+  /// A family, keyed by customer, so opening a second customer's page does not
+  /// inherit how far the first was scrolled — and so the window is disposed with
+  /// the page rather than accumulating one entry per customer ever viewed.
+  ///
+  /// Added in Phase 5 (e), closing known issue 16: this list used to take a flat
+  /// cap of 1000 rows that nothing could ask past.
+
+  CustomerInvoicesQueryProvider call(String id) =>
+      CustomerInvoicesQueryProvider._(argument: id, from: this);
+
+  @override
+  String toString() => r'customerInvoicesQueryProvider';
+}
+
+/// The window one customer's invoice list is asking for.
+///
+/// A family, keyed by customer, so opening a second customer's page does not
+/// inherit how far the first was scrolled — and so the window is disposed with
+/// the page rather than accumulating one entry per customer ever viewed.
+///
+/// Added in Phase 5 (e), closing known issue 16: this list used to take a flat
+/// cap of 1000 rows that nothing could ask past.
+
+abstract class _$CustomerInvoicesQuery extends $Notifier<ListQuery> {
+  late final _$args = ref.$arg as String;
+  String get id => _$args;
+
+  ListQuery build(String id);
+  @$mustCallSuper
+  @override
+  WhenComplete runBuild() {
+    final ref = this.ref as $Ref<ListQuery, ListQuery>;
+    final element =
+        ref.element
+            as $ClassProviderElement<
+              AnyNotifier<ListQuery, ListQuery>,
+              ListQuery,
+              Object?,
+              Object?
+            >;
+    return element.handleCreate(ref, () => build(_$args));
+  }
+}
+
+/// This customer's invoices, one page at a time.
 ///
 /// `watchForCustomer` was built in increment (d) for this screen and had no
 /// call site until now. Using it rather than adding a parallel read is
@@ -508,7 +658,7 @@ final class _CustomerTotalsFamily extends $Family
 @ProviderFor(_customerInvoices)
 final _customerInvoicesProvider = _CustomerInvoicesFamily._();
 
-/// This customer's invoices.
+/// This customer's invoices, one page at a time.
 ///
 /// `watchForCustomer` was built in increment (d) for this screen and had no
 /// call site until now. Using it rather than adding a parallel read is
@@ -523,7 +673,7 @@ final class _CustomerInvoicesProvider
           Stream<List<Invoice>>
         >
     with $FutureModifier<List<Invoice>>, $StreamProvider<List<Invoice>> {
-  /// This customer's invoices.
+  /// This customer's invoices, one page at a time.
   ///
   /// `watchForCustomer` was built in increment (d) for this screen and had no
   /// call site until now. Using it rather than adding a parallel read is
@@ -573,9 +723,9 @@ final class _CustomerInvoicesProvider
   }
 }
 
-String _$_customerInvoicesHash() => r'b3f1ed70e7769384ea7c3d82471215cb37ad94e9';
+String _$_customerInvoicesHash() => r'6de284c6b0da066dff042d8f347d1001fd5d4fd1';
 
-/// This customer's invoices.
+/// This customer's invoices, one page at a time.
 ///
 /// `watchForCustomer` was built in increment (d) for this screen and had no
 /// call site until now. Using it rather than adding a parallel read is
@@ -593,7 +743,7 @@ final class _CustomerInvoicesFamily extends $Family
         isAutoDispose: true,
       );
 
-  /// This customer's invoices.
+  /// This customer's invoices, one page at a time.
   ///
   /// `watchForCustomer` was built in increment (d) for this screen and had no
   /// call site until now. Using it rather than adding a parallel read is

@@ -1,4 +1,6 @@
+import 'package:factorino/core/date/jalali_period.dart';
 import 'package:factorino/core/formatting/jalali_display.dart';
+import 'package:factorino/core/formatting/number_display.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/core/utils/clock.dart';
@@ -10,6 +12,7 @@ import 'package:factorino/core/widgets/load_more_footer.dart';
 import 'package:factorino/core/widgets/skeleton.dart';
 import 'package:factorino/core/widgets/status_badge.dart';
 import 'package:factorino/data/models/invoice.dart';
+import 'package:factorino/data/models/invoice_filter.dart';
 import 'package:factorino/data/models/invoice_list_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
 import 'package:factorino/data/providers.dart';
@@ -543,6 +546,338 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(LoadMoreFooter), findsNothing);
+    });
+  });
+
+  group('filters (e)', () {
+    /// A hundred invoices, so a page is smaller than the set and "did the
+    /// filter reach the query" is a question with a visible answer.
+    FakeInvoiceRepository stocked() => FakeInvoiceRepository(<InvoiceListItem>[
+      for (int i = 0; i < 100; i++)
+        item('i$i', liveCustomerName: 'مشتری $i', sequence: i + 1),
+    ]);
+
+    Future<(AppStrings, FakeInvoiceRepository, WidgetRef)> pumpList(
+      WidgetTester tester, {
+      FakeInvoiceRepository? repository,
+      Size size = kMobileSize,
+    }) async {
+      final FakeInvoiceRepository repo = repository ?? stocked();
+      late WidgetRef capturedRef;
+      await pumpScreen(
+        tester,
+        Consumer(
+          builder: (BuildContext context, WidgetRef ref, Widget? child) {
+            capturedRef = ref;
+            return const InvoicesScreen();
+          },
+        ),
+        overrides: withRepository(repo),
+        size: size,
+      );
+      await tester.pumpAndSettle();
+      return (stringsOf(tester, InvoicesScreen), repo, capturedRef);
+    }
+
+    testWidgets('the unfiltered list asks for no filter at all', (
+      WidgetTester tester,
+    ) async {
+      final (_, FakeInvoiceRepository repo, _) = await pumpList(tester);
+
+      expect(repo.lastFilter, InvoiceFilter.none);
+      expect(repo.lastFilter!.isActive, isFalse);
+    });
+
+    testWidgets('the filter reaches the repository, not a Dart .where', (
+      WidgetTester tester,
+    ) async {
+      // **The assertion this whole increment turns on.** The fake does not
+      // narrow its own list, so the only way a screen can appear to filter is
+      // by sending the predicate to the query. If this ever passes while
+      // `lastFilter` is `none`, the narrowing has moved into Dart and the page
+      // limit is being applied to the wrong set.
+      final (_, FakeInvoiceRepository repo, WidgetRef ref) = await pumpList(
+        tester,
+      );
+
+      ref
+          .read(invoiceListQueryProvider.notifier)
+          .filter(
+            const InvoiceFilter(
+              statuses: <InvoiceStatus>{InvoiceStatus.cancelled},
+            ),
+          );
+      await tester.pumpAndSettle();
+
+      expect(repo.lastFilter, isNotNull);
+      expect(repo.lastFilter!.statuses, <InvoiceStatus>{
+        InvoiceStatus.cancelled,
+      });
+    });
+
+    testWidgets('changing the filter resets the window to one page', (
+      WidgetTester tester,
+    ) async {
+      // A user who has loaded eight pages and then narrows should not have the
+      // app ask for eight pages of the narrower set. That rule lives in
+      // `InvoiceQuery.filtering`, which is why the window and the filter are
+      // one value rather than two providers.
+      final (_, FakeInvoiceRepository repo, WidgetRef ref) = await pumpList(
+        tester,
+      );
+
+      ref.read(invoiceListQueryProvider.notifier).loadMore();
+      ref.read(invoiceListQueryProvider.notifier).loadMore();
+      await tester.pumpAndSettle();
+      expect(repo.lastLimit, ListQuery.defaultPageSize * 3);
+
+      ref
+          .read(invoiceListQueryProvider.notifier)
+          .filter(
+            const InvoiceFilter(statuses: <InvoiceStatus>{InvoiceStatus.paid}),
+          );
+      await tester.pumpAndSettle();
+
+      expect(repo.lastLimit, ListQuery.defaultPageSize);
+    });
+
+    testWidgets('and load-more keeps the filter it was widening', (
+      WidgetTester tester,
+    ) async {
+      final (_, FakeInvoiceRepository repo, WidgetRef ref) = await pumpList(
+        tester,
+      );
+
+      const InvoiceFilter paid = InvoiceFilter(
+        statuses: <InvoiceStatus>{InvoiceStatus.paid},
+      );
+      ref.read(invoiceListQueryProvider.notifier).filter(paid);
+      await tester.pumpAndSettle();
+      ref.read(invoiceListQueryProvider.notifier).loadMore();
+      await tester.pumpAndSettle();
+
+      expect(repo.lastLimit, ListQuery.defaultPageSize * 2);
+      expect(
+        repo.lastFilter,
+        paid,
+        reason: 'widening the window must not quietly drop the predicate',
+      );
+    });
+
+    testWidgets('the control says how many filters are on', (
+      WidgetTester tester,
+    ) async {
+      // A filter control that looks the same filtered and unfiltered is how a
+      // user comes back tomorrow, sees four invoices where there were four
+      // hundred, and concludes the app lost them.
+      final (AppStrings strings, _, WidgetRef ref) = await pumpList(tester);
+
+      expect(find.text(strings.invoiceFilterAction), findsOneWidget);
+
+      ref
+          .read(invoiceListQueryProvider.notifier)
+          .filter(
+            InvoiceFilter(
+              statuses: const <InvoiceStatus>{InvoiceStatus.paid},
+              customerId: 'c1',
+            ),
+          );
+      await tester.pumpAndSettle();
+
+      expect(
+        find.text(strings.invoiceFilterActiveLabel(formatGroupedPersian(2))),
+        findsOneWidget,
+      );
+      expect(find.text(strings.invoiceFilterAction), findsNothing);
+    });
+
+    testWidgets('an empty filtered list is not "you have no invoices"', (
+      WidgetTester tester,
+    ) async {
+      // Telling a user with four hundred invoices that they have none is false,
+      // and it sends them looking for lost data instead of at the chips they
+      // just tapped.
+      final (AppStrings strings, _, WidgetRef ref) = await pumpList(
+        tester,
+        repository: FakeInvoiceRepository(const <InvoiceListItem>[]),
+      );
+
+      expect(find.text(strings.emptyInvoicesTitle), findsOneWidget);
+
+      ref
+          .read(invoiceListQueryProvider.notifier)
+          .filter(
+            const InvoiceFilter(
+              statuses: <InvoiceStatus>{InvoiceStatus.cancelled},
+            ),
+          );
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.emptyInvoicesFilteredTitle), findsOneWidget);
+      expect(find.text(strings.emptyInvoicesFilteredBody), findsOneWidget);
+      expect(find.text(strings.emptyInvoicesTitle), findsNothing);
+    });
+
+    testWidgets('and it offers the way out, which is not "make an invoice"', (
+      WidgetTester tester,
+    ) async {
+      final (AppStrings strings, _, WidgetRef ref) = await pumpList(
+        tester,
+        repository: FakeInvoiceRepository(const <InvoiceListItem>[]),
+        size: kDesktopSize,
+      );
+
+      ref
+          .read(invoiceListQueryProvider.notifier)
+          .filter(
+            const InvoiceFilter(
+              statuses: <InvoiceStatus>{InvoiceStatus.cancelled},
+            ),
+          );
+      await tester.pumpAndSettle();
+
+      await tester.tap(
+        find.descendant(
+          of: find.byType(EmptyState),
+          matching: find.text(strings.invoiceFilterClearAll),
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.emptyInvoicesTitle), findsOneWidget);
+    });
+
+    testWidgets('the sheet opens and offers the five stored statuses', (
+      WidgetTester tester,
+    ) async {
+      // Five, not six: «سررسید گذشته» is derived at display time (D-041) and is
+      // deliberately not a filter, because a SQL predicate for it would be a
+      // second implementation of a rule `invoiceStatusViewOf` owns.
+      final (AppStrings strings, _, _) = await pumpList(tester);
+
+      await tester.tap(find.text(strings.invoiceFilterAction));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceFilterTitle), findsOneWidget);
+      expect(find.byType(FilterChip), findsNWidgets(5));
+      expect(find.text(strings.statusOverdue), findsNothing);
+    });
+
+    testWidgets('tapping a status chip sends that status to the query', (
+      WidgetTester tester,
+    ) async {
+      final (AppStrings strings, FakeInvoiceRepository repo, _) =
+          await pumpList(tester);
+
+      await tester.tap(find.text(strings.invoiceFilterAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilterChip, strings.statusCancelled),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repo.lastFilter!.statuses, <InvoiceStatus>{
+        InvoiceStatus.cancelled,
+      });
+    });
+
+    testWidgets('the period presets are Jalali, resolved from the clock', (
+      WidgetTester tester,
+    ) async {
+      // §5 and D-006. «این ماه» must be the Jalali month the fixed clock is in
+      // — Shahrivar 1405 — and never a Gregorian one.
+      final (AppStrings strings, FakeInvoiceRepository repo, _) =
+          await pumpList(tester);
+
+      await tester.tap(find.text(strings.invoiceFilterAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(ChoiceChip, strings.invoiceFilterPeriodThisMonth),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repo.lastFilter!.period, jalaliMonth(1405, 6));
+    });
+
+    testWidgets('«ماه گذشته» is the previous Jalali month', (
+      WidgetTester tester,
+    ) async {
+      final (AppStrings strings, FakeInvoiceRepository repo, _) =
+          await pumpList(tester);
+
+      await tester.tap(find.text(strings.invoiceFilterAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(ChoiceChip, strings.invoiceFilterPeriodLastMonth),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repo.lastFilter!.period, jalaliMonth(1405, 5));
+    });
+
+    // **Every tier, because the filter control and the sheet are new layout**
+    // (D-057). No money is rendered here, so this sweeps the tiers rather than
+    // the amount ladder: what varies across tiers is where the control sits and
+    // how many chips fit on a row, and a `Wrap` that overflowed would fail each
+    // of these on its own.
+    for (final MapEntry<String, Size> tier in kAllTierSizes.entries) {
+      testWidgets('the filter sheet lays out at ${tier.key}', (
+        WidgetTester tester,
+      ) async {
+        final (AppStrings strings, _, _) = await pumpList(
+          tester,
+          // The tier's real width, and a height that renders the whole sheet.
+          size: Size(tier.value.width, 2000),
+        );
+
+        await tester.tap(find.text(strings.invoiceFilterAction));
+        await tester.pumpAndSettle();
+
+        // **Scoped to the sheet.** At the desktop tier «وضعیت» is also the
+        // invoice table's status column header behind it, so an unscoped finder
+        // reports two and fails a sheet that is laid out perfectly well. The
+        // same trap the empty-state assertions in this file already carry.
+        Finder inSheet(String text) => find.descendant(
+          of: find.byType(BottomSheet),
+          matching: find.text(text),
+        );
+
+        expect(inSheet(strings.invoiceFilterStatusSection), findsOneWidget);
+        expect(inSheet(strings.invoiceFilterCustomerSection), findsOneWidget);
+        expect(inSheet(strings.invoiceFilterPeriodSection), findsOneWidget);
+        expect(find.byType(FilterChip), findsNWidgets(5));
+      });
+
+      testWidgets('the filter control is reachable at ${tier.key}', (
+        WidgetTester tester,
+      ) async {
+        // On a phone the create action is the floating button and only the
+        // filter is in the title row; on the wider tiers both are. Either way
+        // the list must be narrowable — the tier where a user has the most
+        // invoices on screen is not the tier where they most need to filter.
+        final (AppStrings strings, _, _) = await pumpList(
+          tester,
+          size: tier.value,
+        );
+
+        expect(find.text(strings.invoiceFilterAction), findsOneWidget);
+      });
+    }
+
+    testWidgets('clearing puts every filter back', (WidgetTester tester) async {
+      final (AppStrings strings, FakeInvoiceRepository repo, _) =
+          await pumpList(tester);
+
+      await tester.tap(find.text(strings.invoiceFilterAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilterChip, strings.statusCancelled),
+      );
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceFilterClearAll));
+      await tester.pumpAndSettle();
+
+      expect(repo.lastFilter, InvoiceFilter.none);
     });
   });
 

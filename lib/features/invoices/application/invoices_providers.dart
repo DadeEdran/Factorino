@@ -1,35 +1,53 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
-import '../../../core/utils/list_query.dart';
 import '../../../data/models/invoice_detail.dart';
+import '../../../data/models/invoice_filter.dart';
 import '../../../data/models/invoice_list_item.dart';
 import '../../../data/providers.dart';
+import '../domain/invoice_query.dart';
 
 part 'invoices_providers.g.dart';
 
-/// The window the invoice list is currently asking the database for.
+/// The window **and the filter** the invoice list is currently asking the
+/// database for.
 ///
 /// The same one-value-not-two shape as the customer and product lists, for the
-/// same reason (D-038). The search term is unused here in Phase 1 — the invoice
-/// list has no search field yet — but the window still exists, because the
-/// paging is what makes the list survive five thousand invoices, and that is
-/// needed on the first day rather than the day someone notices.
+/// same reason (D-038) — and since Phase 5 (e) it carries the filter too, so
+/// that narrowing the list resets the window rather than asking the database
+/// for eight pages of a set the user has just made smaller. See [InvoiceQuery].
 @riverpod
 class InvoiceListQuery extends _$InvoiceListQuery {
   @override
-  ListQuery build() => const ListQuery();
+  InvoiceQuery build() => const InvoiceQuery();
 
   void loadMore() => state = state.loadingMore();
+
+  /// Replaces the whole filter. The screen builds the new value from the old
+  /// one — `filter.withStatuses(...)`, `withCustomer(null)` — so there is one
+  /// way in rather than one method per field, and clearing is not a special
+  /// case.
+  void filter(InvoiceFilter value) => state = state.filtering(value);
+
+  void clearFilter() => state = state.filtering(InvoiceFilter.none);
 }
 
-/// The invoice list, as a live query over the current window.
+/// The invoice list, as a live query over the current window and filter.
 ///
-/// **The limit reaches SQL** (D-038), and the customer name is resolved by the
-/// same query rather than by a lookup per row (D-040).
+/// **Both the limit and the filter reach SQL** (D-038, and §13's rule that
+/// aggregation and narrowing run as queries rather than as Dart loops over a
+/// loaded page). The customer name is resolved by the same query rather than by
+/// a lookup per row (D-040).
+///
+/// Nothing here narrows the returned list. If this provider ever grows a
+/// `.where(...)` over `items`, the limit has already been applied to the
+/// unfiltered set and the page is wrong — that is the failure mode the
+/// repository test `the filter reaches SQL, so the page is of matches` pins.
 @riverpod
 Stream<List<InvoiceListItem>> invoiceList(Ref ref) {
-  final ListQuery query = ref.watch(invoiceListQueryProvider);
-  return ref.watch(invoiceRepositoryProvider).watchList(limit: query.limit);
+  final InvoiceQuery query = ref.watch(invoiceListQueryProvider);
+  return ref
+      .watch(invoiceRepositoryProvider)
+      .watchList(filter: query.filter, limit: query.window.limit);
 }
 
 /// One invoice, with its lines, its payments and its customer, as a live query.

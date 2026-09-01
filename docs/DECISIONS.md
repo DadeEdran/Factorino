@@ -3468,3 +3468,120 @@ layout errors: 0
 Before it, the payment sheet's «ذخیره» sat at 618.6 against the same 548.7 limit. The rule is now the
 same in three places — the primitive, the widget sweep and the device pass — and **the check
 reproduces the conditions the user is actually in**, which is the whole of D-062 stated once.
+
+---
+
+## D-063 — Invoice filters are a value the repository turns into SQL, and «overdue» is deliberately not one
+
+**Date:** 2026-09-01
+**Status:** ACCEPTED — implemented as Phase 5 increment (e)
+**Extends:** D-038 (one value, not two providers), D-006 (Jalali periods), D-040, §13
+**Resolves:** known issue 16
+
+### 1. One value, and it reaches SQL
+
+`InvoiceFilter` — a set of statuses, an optional customer id, an optional
+`InstantRange` — is handed to `InvoiceRepository.watchList` and applied as `WHERE` clauses on the
+statement that already carries the ordering, the soft-delete filter and the `LIMIT`.
+
+**Filtering in Dart would be the paging defect one step later.** The limit would apply to the rows
+*before* narrowing, so a filter matching three invoices out of ten thousand would return whichever of
+them fell in the first page and the screen would report "no results" about data that is right there.
+That is not a hypothetical: the repository test `the filter reaches SQL, so the page is of matches`
+builds twelve invoices with the single match sorting last, asks for a page of five, and requires the
+match back.
+
+`_applyFilter` is one method, so the three predicates cannot drift apart between the list and whatever
+asks next. An **empty status set means every status** — the unfiltered list is the default and has to
+be the cheapest thing to say — and it is written as an early skip rather than `IN (all five)`, which
+is a clause the planner would still evaluate for a filter nobody set.
+
+### 2. The window and the filter are one value, because changing one must reset the other
+
+`InvoiceQuery` holds a `ListQuery` and an `InvoiceFilter`. A user who has loaded eight pages and then
+narrows to «پرداخت نشده» should not have the application ask for three hundred and twenty unpaid
+invoices. Held as two providers that is a rule somebody has to remember; held as one value it is
+`filtering()`, which builds the new state from the first page. `loadingMore()` keeps the filter, and a
+test pins that widening the window does not quietly drop the predicate.
+
+### 3. «سررسید گذشته» is not a filter, and that is the interesting decision
+
+Overdue is **derived at display time** from the due date against one clock instant (D-041), by
+`invoiceStatusViewOf`, on whole Jalali days. A SQL predicate for it — `due_date < now AND status IN
+(unpaid, partiallyPaid)` — would be a **second implementation of that rule**, in a different language,
+with a different notion of "today". The two would eventually disagree, and the visible form of that
+disagreement is a badge saying «سررسید گذشته» on an invoice the «سررسید گذشته» filter does not return.
+
+Nothing becomes unreachable: an overdue invoice **is** `unpaid` or `partiallyPaid` and appears under
+those. The five stored statuses are offered; the derived one is not. If a dedicated overdue filter is
+ever wanted, the honest way to build it is to make the SQL predicate and `invoiceStatusViewOf` agree
+by test over a fixture that straddles the boundary — the shape D-056's backfill and D-059's reference
+implementation both use — not to write the predicate and hope.
+
+### 4. What the UI had to say, and where it had to not add height
+
+- **The control is in the title row on every tier**, which costs no vertical space — §10's rule about
+  what may sit above the thing a page exists to show, applied for the second time since it was
+  written. A filter bar above the list was the obvious alternative and was refused on exactly that
+  ground.
+- **It shows a count when filters are on.** A control that looks identical filtered and unfiltered is
+  how a user returns tomorrow, finds four invoices where there were four hundred, and concludes the
+  application lost them.
+- **A filtered empty list is a different state from an empty account.** «هنوز فاکتوری ثبت نشده» is
+  *false* for a user with four hundred invoices and one filter, and it sends them looking for lost
+  data instead of at the chips they just tapped. The filtered state offers «پاک کردن همه», not "make
+  an invoice" — the invoices exist; the filter is hiding them.
+- **The period presets are Jalali** and resolve through `core/date/`. «ماه گذشته» is
+  `jalaliMonthShifted(now, -1)`, new in this increment, because the one-liner at a call site is wrong
+  in a way that only shows in some months: Jalali months are 31, 30 or 29 days, and stepping back
+  thirty days from the last day of a 31-day month lands in the *same* month. The helper shifts the
+  month **number** and lets `jalaliMonth` resolve the boundaries. A test stands on that exact day and
+  shows the subtraction failing.
+- **The customer is chosen through the picker the invoice form already uses**, so there is one place
+  the search normalization (D-029) and the soft-delete rule can be got wrong instead of two.
+
+### 5. Known issue 16 closed: one customer's invoices are paged
+
+`watchForCustomer` took a flat cap of 1000 rows that nothing could ask past. It takes `limit`/`offset`
+like every sibling, driven by a per-customer `ListQuery` family so a second customer's page does not
+inherit how far the first was scrolled. `CustomerDetailView` carries `hasMoreInvoices` in the same
+value as the list, so the control and the rows describe one moment.
+
+**Paging this list is only safe because the totals are not a sum of it.** Billed and outstanding are
+one SQL aggregate over every invoice the customer has (D-044); a total computed from the loaded rows
+would change every time the user pressed «بیشتر». There is now a test that says so.
+
+### 6. Two of the project's own scanners fired, and one of them was wrong
+
+Worth recording, because the resolution differed each time.
+
+- **`theme_tokens_only_test` caught `const Duration(milliseconds: 1)`** in the filter sheet — the
+  millisecond-step trick for finding the previous month. The scanner was **right**, and the fix was
+  not an exemption but `jalaliMonthShifted`, which removes the arithmetic from the widget entirely.
+  §5 already said calendar arithmetic belongs in `core/date/`; the token scanner is what noticed it
+  had leaked out.
+- **`soft_delete_usage_test` caught Riverpod's `provider.select((q) => q.filter)`** as a raw database
+  read. The scanner was **wrong**: `.select` on a provider is not a query, and it is the narrowing
+  §13 asks for by name. It could not be excluded by the existing lookbehind, because drift's own
+  `_db.select(table)` is also preceded by a dot — what separates them is that a provider selector is
+  handed a *function literal*, so `select(` is followed by `(`. The scanner now excludes that one
+  form and has a test pinning it in both directions, so the exclusion narrows it rather than blinding
+  it. Marking the line `soft-delete-exempt:` was the alternative and was refused: the comment would
+  have claimed a database read was deliberate when there is no database read.
+
+### 7. And the keyboard sweep found a real defect on its first outing
+
+Adding the picker sheets to `sheet_keyboard_test.dart` — they are exempt from `EditorSheet` by design,
+but the *rule* still applies to them in its own form — failed immediately. The customer picker's empty
+state **overflowed by 24 pixels** with the keyboard up: 238 logical pixels of room against the 262 it
+needs, on a 400 × 800 phone. That is a yellow-and-black band across the exact moment a user is typing a
+search that matches nothing, which is when that empty state exists to be read.
+
+`EmptyState` now scrolls instead of overflowing. Clipping was refused: the part that would be cut is
+the sentence explaining the state, and an empty state with no explanation is the blank screen the
+widget exists to prevent. On a page with room the column is `MainAxisSize.min` and measures exactly as
+before, so nothing else changes.
+
+**This is D-062 paying for itself inside one increment**, the same way D-057 paid for itself by
+surfacing known issue 19. The rule was written for sheets with commit actions; the first thing it
+caught was an empty state in a sheet that has neither.

@@ -1838,6 +1838,102 @@ abstract class AppStrings {
   /// **'ابطال این فاکتور ممکن نشد.'**
   String get invoiceCancelFailed;
 
+  /// Opens the filter sheet. In the page title row, where it costs no vertical space at any tier (section 10's unbounded-card rule).
+  ///
+  /// In fa, this message translates to:
+  /// **'فیلترها'**
+  String get invoiceFilterAction;
+
+  /// No description provided for @invoiceFilterTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'فیلتر فاکتورها'**
+  String get invoiceFilterTitle;
+
+  /// Says what the button does rather than repeating the sheet's title. The filter is already live as the user taps; this dismisses the sheet.
+  ///
+  /// In fa, this message translates to:
+  /// **'نمایش نتایج'**
+  String get invoiceFilterApply;
+
+  /// No description provided for @invoiceFilterClearAll.
+  ///
+  /// In fa, this message translates to:
+  /// **'پاک کردن همه'**
+  String get invoiceFilterClearAll;
+
+  /// No description provided for @invoiceFilterStatusSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'وضعیت'**
+  String get invoiceFilterStatusSection;
+
+  /// No description provided for @invoiceFilterCustomerSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشتری'**
+  String get invoiceFilterCustomerSection;
+
+  /// No description provided for @invoiceFilterPeriodSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'بازهٔ زمانی'**
+  String get invoiceFilterPeriodSection;
+
+  /// No description provided for @invoiceFilterCustomerAny.
+  ///
+  /// In fa, this message translates to:
+  /// **'همهٔ مشتریان'**
+  String get invoiceFilterCustomerAny;
+
+  /// No description provided for @invoiceFilterCustomerChoose.
+  ///
+  /// In fa, this message translates to:
+  /// **'انتخاب مشتری'**
+  String get invoiceFilterCustomerChoose;
+
+  /// No description provided for @invoiceFilterPeriodAny.
+  ///
+  /// In fa, this message translates to:
+  /// **'همهٔ تاریخ‌ها'**
+  String get invoiceFilterPeriodAny;
+
+  /// The current JALALI month, not the Gregorian one (section 5, D-006). «فروش این ماه» on the dashboard means the same thing.
+  ///
+  /// In fa, this message translates to:
+  /// **'این ماه'**
+  String get invoiceFilterPeriodThisMonth;
+
+  /// No description provided for @invoiceFilterPeriodLastMonth.
+  ///
+  /// In fa, this message translates to:
+  /// **'ماه گذشته'**
+  String get invoiceFilterPeriodLastMonth;
+
+  /// The current Jalali year.
+  ///
+  /// In fa, this message translates to:
+  /// **'امسال'**
+  String get invoiceFilterPeriodThisYear;
+
+  /// The badge on the filter control. A user who has narrowed the list must be able to see that they have, or an empty list reads as lost data.
+  ///
+  /// In fa, this message translates to:
+  /// **'{count} فیلتر فعال'**
+  String invoiceFilterActiveLabel(String count);
+
+  /// A distinct state from «هنوز فاکتوری ثبت نشده». Telling a user with 400 invoices that they have none would be false, and would send them looking for lost data.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتوری با این فیلترها پیدا نشد'**
+  String get emptyInvoicesFilteredTitle;
+
+  /// No description provided for @emptyInvoicesFilteredBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'هیچ فاکتوری با فیلترهای انتخاب‌شده مطابقت ندارد. فیلترها را تغییر دهید یا پاک کنید.'**
+  String get emptyInvoicesFilteredBody;
+
   /// The remaining balance is still shown, because hiding a figure is worse than explaining it — but on a void document it would otherwise read as money still owed.
   ///
   /// In fa, this message translates to:

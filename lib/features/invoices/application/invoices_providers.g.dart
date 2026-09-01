@@ -8,33 +8,33 @@ part of 'invoices_providers.dart';
 
 // GENERATED CODE - DO NOT MODIFY BY HAND
 // ignore_for_file: type=lint, type=warning
-/// The window the invoice list is currently asking the database for.
+/// The window **and the filter** the invoice list is currently asking the
+/// database for.
 ///
 /// The same one-value-not-two shape as the customer and product lists, for the
-/// same reason (D-038). The search term is unused here in Phase 1 — the invoice
-/// list has no search field yet — but the window still exists, because the
-/// paging is what makes the list survive five thousand invoices, and that is
-/// needed on the first day rather than the day someone notices.
+/// same reason (D-038) — and since Phase 5 (e) it carries the filter too, so
+/// that narrowing the list resets the window rather than asking the database
+/// for eight pages of a set the user has just made smaller. See [InvoiceQuery].
 
 @ProviderFor(InvoiceListQuery)
 final invoiceListQueryProvider = InvoiceListQueryProvider._();
 
-/// The window the invoice list is currently asking the database for.
+/// The window **and the filter** the invoice list is currently asking the
+/// database for.
 ///
 /// The same one-value-not-two shape as the customer and product lists, for the
-/// same reason (D-038). The search term is unused here in Phase 1 — the invoice
-/// list has no search field yet — but the window still exists, because the
-/// paging is what makes the list survive five thousand invoices, and that is
-/// needed on the first day rather than the day someone notices.
+/// same reason (D-038) — and since Phase 5 (e) it carries the filter too, so
+/// that narrowing the list resets the window rather than asking the database
+/// for eight pages of a set the user has just made smaller. See [InvoiceQuery].
 final class InvoiceListQueryProvider
-    extends $NotifierProvider<InvoiceListQuery, ListQuery> {
-  /// The window the invoice list is currently asking the database for.
+    extends $NotifierProvider<InvoiceListQuery, InvoiceQuery> {
+  /// The window **and the filter** the invoice list is currently asking the
+  /// database for.
   ///
   /// The same one-value-not-two shape as the customer and product lists, for the
-  /// same reason (D-038). The search term is unused here in Phase 1 — the invoice
-  /// list has no search field yet — but the window still exists, because the
-  /// paging is what makes the list survive five thousand invoices, and that is
-  /// needed on the first day rather than the day someone notices.
+  /// same reason (D-038) — and since Phase 5 (e) it carries the filter too, so
+  /// that narrowing the list resets the window rather than asking the database
+  /// for eight pages of a set the user has just made smaller. See [InvoiceQuery].
   InvoiceListQueryProvider._()
     : super(
         from: null,
@@ -54,35 +54,35 @@ final class InvoiceListQueryProvider
   InvoiceListQuery create() => InvoiceListQuery();
 
   /// {@macro riverpod.override_with_value}
-  Override overrideWithValue(ListQuery value) {
+  Override overrideWithValue(InvoiceQuery value) {
     return $ProviderOverride(
       origin: this,
-      providerOverride: $SyncValueProvider<ListQuery>(value),
+      providerOverride: $SyncValueProvider<InvoiceQuery>(value),
     );
   }
 }
 
-String _$invoiceListQueryHash() => r'906619579a240a1ea118848158cba018aa7f47a4';
+String _$invoiceListQueryHash() => r'a3535141b0429465903e0e06f8c0dca414562dd8';
 
-/// The window the invoice list is currently asking the database for.
+/// The window **and the filter** the invoice list is currently asking the
+/// database for.
 ///
 /// The same one-value-not-two shape as the customer and product lists, for the
-/// same reason (D-038). The search term is unused here in Phase 1 — the invoice
-/// list has no search field yet — but the window still exists, because the
-/// paging is what makes the list survive five thousand invoices, and that is
-/// needed on the first day rather than the day someone notices.
+/// same reason (D-038) — and since Phase 5 (e) it carries the filter too, so
+/// that narrowing the list resets the window rather than asking the database
+/// for eight pages of a set the user has just made smaller. See [InvoiceQuery].
 
-abstract class _$InvoiceListQuery extends $Notifier<ListQuery> {
-  ListQuery build();
+abstract class _$InvoiceListQuery extends $Notifier<InvoiceQuery> {
+  InvoiceQuery build();
   @$mustCallSuper
   @override
   WhenComplete runBuild() {
-    final ref = this.ref as $Ref<ListQuery, ListQuery>;
+    final ref = this.ref as $Ref<InvoiceQuery, InvoiceQuery>;
     final element =
         ref.element
             as $ClassProviderElement<
-              AnyNotifier<ListQuery, ListQuery>,
-              ListQuery,
+              AnyNotifier<InvoiceQuery, InvoiceQuery>,
+              InvoiceQuery,
               Object?,
               Object?
             >;
@@ -90,18 +90,32 @@ abstract class _$InvoiceListQuery extends $Notifier<ListQuery> {
   }
 }
 
-/// The invoice list, as a live query over the current window.
+/// The invoice list, as a live query over the current window and filter.
 ///
-/// **The limit reaches SQL** (D-038), and the customer name is resolved by the
-/// same query rather than by a lookup per row (D-040).
+/// **Both the limit and the filter reach SQL** (D-038, and §13's rule that
+/// aggregation and narrowing run as queries rather than as Dart loops over a
+/// loaded page). The customer name is resolved by the same query rather than by
+/// a lookup per row (D-040).
+///
+/// Nothing here narrows the returned list. If this provider ever grows a
+/// `.where(...)` over `items`, the limit has already been applied to the
+/// unfiltered set and the page is wrong — that is the failure mode the
+/// repository test `the filter reaches SQL, so the page is of matches` pins.
 
 @ProviderFor(invoiceList)
 final invoiceListProvider = InvoiceListProvider._();
 
-/// The invoice list, as a live query over the current window.
+/// The invoice list, as a live query over the current window and filter.
 ///
-/// **The limit reaches SQL** (D-038), and the customer name is resolved by the
-/// same query rather than by a lookup per row (D-040).
+/// **Both the limit and the filter reach SQL** (D-038, and §13's rule that
+/// aggregation and narrowing run as queries rather than as Dart loops over a
+/// loaded page). The customer name is resolved by the same query rather than by
+/// a lookup per row (D-040).
+///
+/// Nothing here narrows the returned list. If this provider ever grows a
+/// `.where(...)` over `items`, the limit has already been applied to the
+/// unfiltered set and the page is wrong — that is the failure mode the
+/// repository test `the filter reaches SQL, so the page is of matches` pins.
 
 final class InvoiceListProvider
     extends
@@ -113,10 +127,17 @@ final class InvoiceListProvider
     with
         $FutureModifier<List<InvoiceListItem>>,
         $StreamProvider<List<InvoiceListItem>> {
-  /// The invoice list, as a live query over the current window.
+  /// The invoice list, as a live query over the current window and filter.
   ///
-  /// **The limit reaches SQL** (D-038), and the customer name is resolved by the
-  /// same query rather than by a lookup per row (D-040).
+  /// **Both the limit and the filter reach SQL** (D-038, and §13's rule that
+  /// aggregation and narrowing run as queries rather than as Dart loops over a
+  /// loaded page). The customer name is resolved by the same query rather than by
+  /// a lookup per row (D-040).
+  ///
+  /// Nothing here narrows the returned list. If this provider ever grows a
+  /// `.where(...)` over `items`, the limit has already been applied to the
+  /// unfiltered set and the page is wrong — that is the failure mode the
+  /// repository test `the filter reaches SQL, so the page is of matches` pins.
   InvoiceListProvider._()
     : super(
         from: null,
@@ -143,7 +164,7 @@ final class InvoiceListProvider
   }
 }
 
-String _$invoiceListHash() => r'181e311f9992be47d8556c328f6238a8c7a7816b';
+String _$invoiceListHash() => r'e5c7079eb8a96b347a7452f78090caec4f190c5c';
 
 /// One invoice, with its lines, its payments and its customer, as a live query.
 ///

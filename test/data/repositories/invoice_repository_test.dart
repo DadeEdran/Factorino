@@ -12,6 +12,7 @@ import 'package:factorino/data/database/app_database.dart'
 import 'package:factorino/data/models/invoice.dart';
 import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
+import 'package:factorino/data/models/invoice_filter.dart';
 import 'package:factorino/data/models/invoice_list_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
 import 'package:factorino/data/models/payment.dart';
@@ -989,6 +990,339 @@ void main() {
           .first;
       expect(totals.billed, Money.rial(0));
       expect(totals.outstanding, Money.rial(0));
+    });
+  });
+
+  group('filters, applied in SQL (e)', () {
+    late String otherCustomerId;
+
+    setUp(() async {
+      otherCustomerId = (await harness.customer(name: 'کاوه رستمی')).id;
+    });
+
+    /// Six invoices spread across statuses, customers and Jalali months, so
+    /// every predicate has something it must exclude as well as something it
+    /// must include. A filter test whose fixture only contains matches passes
+    /// on a query that ignores the filter entirely.
+    Future<Map<String, String>> seed() async {
+      final Map<String, String> ids = <String, String>{};
+
+      Future<void> make(
+        String key, {
+        required String customer,
+        required DateTime issued,
+        required InvoiceStatus status,
+      }) async {
+        final created = await harness.invoices.create(
+          harness.draft(customer, issueDate: issued, unitPriceRial: 1000000),
+        );
+        ids[key] = created.invoice.id;
+        switch (status) {
+          case InvoiceStatus.draft:
+            break;
+          case InvoiceStatus.unpaid:
+            await harness.invoices.issue(created.invoice.id);
+          case InvoiceStatus.partiallyPaid:
+            await harness.invoices.issue(created.invoice.id);
+            await harness.payments.record(
+              created.invoice.id,
+              PaymentDraft(
+                amount: Money.rial(100000),
+                paidAt: issued,
+                method: PaymentMethod.cash,
+              ),
+            );
+          case InvoiceStatus.paid:
+            await harness.invoices.issue(created.invoice.id);
+            final Invoice stored = (await harness.invoices.findById(
+              created.invoice.id,
+            ))!;
+            await harness.payments.record(
+              created.invoice.id,
+              PaymentDraft(
+                amount: stored.grandTotal,
+                paidAt: issued,
+                method: PaymentMethod.cash,
+              ),
+            );
+          case InvoiceStatus.cancelled:
+            await harness.invoices.issue(created.invoice.id);
+            await harness.invoices.cancel(created.invoice.id);
+        }
+      }
+
+      // Shahrivar 1405 is 2026-08-23 .. 2026-09-22.
+      await make(
+        'draft',
+        customer: customerId,
+        issued: DateTime.utc(2026, 8, 25, 6),
+        status: InvoiceStatus.draft,
+      );
+      await make(
+        'unpaid',
+        customer: customerId,
+        issued: DateTime.utc(2026, 8, 26, 6),
+        status: InvoiceStatus.unpaid,
+      );
+      await make(
+        'partial',
+        customer: customerId,
+        issued: DateTime.utc(2026, 8, 27, 6),
+        status: InvoiceStatus.partiallyPaid,
+      );
+      await make(
+        'paid',
+        customer: otherCustomerId,
+        issued: DateTime.utc(2026, 8, 28, 6),
+        status: InvoiceStatus.paid,
+      );
+      await make(
+        'cancelled',
+        customer: otherCustomerId,
+        issued: DateTime.utc(2026, 8, 29, 6),
+        status: InvoiceStatus.cancelled,
+      );
+      // The previous Jalali month, Mordad 1405.
+      await make(
+        'lastMonth',
+        customer: customerId,
+        issued: DateTime.utc(2026, 8, 10, 6),
+        status: InvoiceStatus.unpaid,
+      );
+
+      return ids;
+    }
+
+    Future<Set<String>> listed(InvoiceFilter filter) async {
+      final List<InvoiceListItem> items = await harness.invoices
+          .watchList(filter: filter)
+          .first;
+      return items.map((InvoiceListItem item) => item.invoice.id).toSet();
+    }
+
+    test('no filter is every invoice, not none', () async {
+      // The default has to be the cheapest thing to say. An empty status set
+      // meaning "nothing matches" would make the unfiltered list empty.
+      final Map<String, String> ids = await seed();
+      expect(await listed(InvoiceFilter.none), ids.values.toSet());
+    });
+
+    test('status narrows to exactly those statuses', () async {
+      final Map<String, String> ids = await seed();
+
+      expect(
+        await listed(
+          const InvoiceFilter(statuses: <InvoiceStatus>{InvoiceStatus.draft}),
+        ),
+        <String>{ids['draft']!},
+      );
+      expect(
+        await listed(
+          const InvoiceFilter(
+            statuses: <InvoiceStatus>{
+              InvoiceStatus.unpaid,
+              InvoiceStatus.partiallyPaid,
+            },
+          ),
+        ),
+        <String>{ids['unpaid']!, ids['partial']!, ids['lastMonth']!},
+      );
+      // The one a user reaches for after a cancellation, and the one most
+      // likely to be quietly wrong: `cancelled` is set by hand and is not part
+      // of any derived group.
+      expect(
+        await listed(
+          const InvoiceFilter(
+            statuses: <InvoiceStatus>{InvoiceStatus.cancelled},
+          ),
+        ),
+        <String>{ids['cancelled']!},
+      );
+    });
+
+    test('customer narrows by id, not by name', () async {
+      final Map<String, String> ids = await seed();
+
+      expect(await listed(InvoiceFilter(customerId: customerId)), <String>{
+        ids['draft']!,
+        ids['unpaid']!,
+        ids['partial']!,
+        ids['lastMonth']!,
+      });
+      expect(await listed(InvoiceFilter(customerId: otherCustomerId)), <String>{
+        ids['paid']!,
+        ids['cancelled']!,
+      });
+    });
+
+    test('the period is Jalali, and half-open at both ends', () async {
+      // D-006. Five of the six invoices are in Shahrivar 1405; the sixth is in
+      // Mordad, four days earlier by the Gregorian calendar and a **month**
+      // earlier by the one the business uses.
+      final Map<String, String> ids = await seed();
+
+      expect(
+        await listed(InvoiceFilter(period: jalaliMonth(1405, 6))),
+        <String>{
+          ids['draft']!,
+          ids['unpaid']!,
+          ids['partial']!,
+          ids['paid']!,
+          ids['cancelled']!,
+        },
+      );
+      expect(
+        await listed(InvoiceFilter(period: jalaliMonth(1405, 5))),
+        <String>{ids['lastMonth']!},
+      );
+    });
+
+    test('an invoice one hour outside the period is outside it', () async {
+      // The boundary is the assertion. `InstantRange` is half-open, so the
+      // instant that opens Shahrivar belongs to Shahrivar and the millisecond
+      // before it does not.
+      final InstantRange month = jalaliMonth(1405, 6);
+      final firstMoment = await harness.invoices.create(
+        harness.draft(customerId, issueDate: month.start),
+      );
+      final lastMoment = await harness.invoices.create(
+        harness.draft(
+          customerId,
+          issueDate: month.start.subtract(const Duration(milliseconds: 1)),
+        ),
+      );
+
+      final Set<String> inMonth = await listed(InvoiceFilter(period: month));
+      expect(inMonth, contains(firstMoment.invoice.id));
+      expect(inMonth, isNot(contains(lastMoment.invoice.id)));
+    });
+
+    test('the three combine, and combine as AND', () async {
+      final Map<String, String> ids = await seed();
+
+      expect(
+        await listed(
+          InvoiceFilter(
+            statuses: const <InvoiceStatus>{InvoiceStatus.unpaid},
+            customerId: customerId,
+            period: jalaliMonth(1405, 6),
+          ),
+        ),
+        // Not `lastMonth`, which matches the first two and fails the third.
+        <String>{ids['unpaid']!},
+      );
+
+      // And a combination nothing satisfies returns nothing rather than
+      // falling back to a wider set.
+      expect(
+        await listed(
+          InvoiceFilter(
+            statuses: const <InvoiceStatus>{InvoiceStatus.paid},
+            customerId: customerId,
+          ),
+        ),
+        isEmpty,
+      );
+    });
+
+    test('the filter reaches SQL, so the page is of matches', () async {
+      // **The defect this whole increment is shaped to avoid.** Filtering a
+      // loaded page in Dart would apply the LIMIT before the predicate: with
+      // twelve invoices, a page of five and one match at the far end, a Dart
+      // filter returns nothing and the screen says "no results" about data that
+      // is right there.
+      for (int i = 0; i < 12; i++) {
+        final created = await harness.invoices.create(
+          harness.draft(
+            customerId,
+            issueDate: DateTime.utc(2026, 8, 24, 6).add(Duration(days: i)),
+          ),
+        );
+        // The oldest one, which sorts last, is the only cancelled invoice.
+        if (i == 0) {
+          await harness.invoices.issue(created.invoice.id);
+          await harness.invoices.cancel(created.invoice.id);
+        }
+      }
+
+      final List<InvoiceListItem> page = await harness.invoices
+          .watchList(
+            filter: const InvoiceFilter(
+              statuses: <InvoiceStatus>{InvoiceStatus.cancelled},
+            ),
+            limit: 5,
+          )
+          .first;
+
+      expect(
+        page,
+        hasLength(1),
+        reason:
+            'the one match must come back even though it sorts outside the '
+            'first page of the unfiltered list',
+      );
+      expect(page.single.invoice.status, InvoiceStatus.cancelled);
+    });
+
+    test('a soft-deleted invoice stays out of every filter', () async {
+      // The filter narrows the alive set; it does not replace it.
+      final created = await harness.invoices.create(harness.draft(customerId));
+      await harness.invoices.softDeleteDraft(created.invoice.id);
+
+      expect(
+        await listed(
+          const InvoiceFilter(statuses: <InvoiceStatus>{InvoiceStatus.draft}),
+        ),
+        isEmpty,
+      );
+    });
+  });
+
+  group("one customer's invoices are paged (known issue 16)", () {
+    test('the limit reaches SQL, and load-more widens it', () async {
+      for (int i = 0; i < 7; i++) {
+        await harness.invoices.create(
+          harness.draft(
+            customerId,
+            issueDate: DateTime.utc(2026, 8, 24, 6).add(Duration(days: i)),
+          ),
+        );
+      }
+
+      expect(
+        await harness.invoices.watchForCustomer(customerId, limit: 3).first,
+        hasLength(3),
+      );
+      expect(
+        await harness.invoices.watchForCustomer(customerId, limit: 6).first,
+        hasLength(6),
+      );
+      expect(
+        await harness.invoices.watchForCustomer(customerId).first,
+        hasLength(7),
+      );
+    });
+
+    test('and it is still that customer, newest first', () async {
+      final other = await harness.customer(name: 'کاوه رستمی');
+      await harness.invoices.create(
+        harness.draft(other.id, issueDate: DateTime.utc(2026, 8, 30, 6)),
+      );
+      final mine = await harness.invoices.create(
+        harness.draft(customerId, issueDate: DateTime.utc(2026, 8, 29, 6)),
+      );
+      final older = await harness.invoices.create(
+        harness.draft(customerId, issueDate: DateTime.utc(2026, 8, 20, 6)),
+      );
+
+      final List<Invoice> page = await harness.invoices
+          .watchForCustomer(customerId, limit: 10)
+          .first;
+
+      expect(page.map((Invoice invoice) => invoice.id), <String>[
+        mine.invoice.id,
+        older.invoice.id,
+      ], reason: 'paging must not have cost the ordering or the scoping');
     });
   });
 

@@ -129,6 +129,28 @@ InstantRange jalaliMonthOf(
   return jalaliMonth(date.year, date.month, offset: offset);
 }
 
+/// The Jalali month [months] steps away from the one [instant] falls in.
+///
+/// **Calendar arithmetic belongs here and nowhere else** (/// D-006). The tempting one-liner at a call site -- subtract a millisecond from
+/// the start of this month, or subtract thirty days -- is wrong in a way that
+/// only shows up some months: Jalali months are 31 days for the first six, 30
+/// for the next five, and 29 or 30 for Esfand depending on the year. Shifting
+/// the month *number* and letting [jalaliMonth] resolve the boundaries is the
+/// only form that is right in every month of every year.
+///
+/// Negative steps go backwards, and the year rolls over in both directions.
+InstantRange jalaliMonthShifted(
+  DateTime instant,
+  int months, {
+  Duration offset = kIranStandardOffset,
+}) {
+  final date = jalaliAt(instant, offset: offset);
+  // Counted as absolute months from year zero, so the rollover is a division
+  // rather than a pair of if-statements that each have to be got right.
+  final absolute = date.year * 12 + (date.month - 1) + months;
+  return jalaliMonth(absolute ~/ 12, absolute % 12 + 1, offset: offset);
+}
+
 /// The Jalali year containing [instant] -- the user's business and tax year.
 InstantRange jalaliYearOf(
   DateTime instant, {

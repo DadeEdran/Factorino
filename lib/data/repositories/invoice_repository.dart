@@ -4,6 +4,7 @@ import '../models/customer_totals.dart';
 import '../models/invoice.dart';
 import '../models/invoice_detail.dart';
 import '../models/invoice_draft.dart';
+import '../models/invoice_filter.dart';
 import '../models/invoice_list_item.dart';
 import '../models/invoice_status.dart';
 
@@ -38,7 +39,17 @@ abstract interface class InvoiceRepository {
     int offset = 0,
   });
 
-  Stream<List<Invoice>> watchForCustomer(String customerId);
+  /// One customer's invoices, newest first, **paged**.
+  ///
+  /// The page reaches SQL like every other list's does (§13, D-038). It used to
+  /// cap at a flat 1000 rows with no way to ask for more, which was known issue
+  /// 16: invisible below a few hundred invoices and a growing query cost above
+  /// it, on a screen a long-standing customer is exactly the person to open.
+  Stream<List<Invoice>> watchForCustomer(
+    String customerId, {
+    int limit = 100,
+    int offset = 0,
+  });
 
   /// The invoice list, with each invoice's customer name resolved in the same
   /// query (D-040).
@@ -48,7 +59,20 @@ abstract interface class InvoiceRepository {
   /// read issued from a widget — invisible at ten invoices and ruinous at five
   /// thousand, which is the class of defect the project spec is written
   /// against. One join, one query, one stream.
-  Stream<List<InvoiceListItem>> watchList({int limit = 100, int offset = 0});
+  /// [filter] narrows the population **in SQL** — status, customer and a
+  /// Jalali period, all as `WHERE` clauses on the same statement that already
+  /// carries the ordering, the soft-delete filter and the `LIMIT`.
+  ///
+  /// Filtering a loaded page in Dart would be the same defect as paging in
+  /// Dart, one step later: the limit would then apply to the rows *before*
+  /// narrowing, so a filter matching three invoices out of ten thousand would
+  /// return whichever of them happened to fall in the first page, and the
+  /// screen would report "no results" for data that is right there.
+  Stream<List<InvoiceListItem>> watchList({
+    InvoiceFilter filter = InvoiceFilter.none,
+    int limit = 100,
+    int offset = 0,
+  });
 
   /// The number of invoices on record, as a **live** query — see the note on
   /// `CustomerRepository.watchCount`.

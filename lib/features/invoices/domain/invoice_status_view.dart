@@ -27,19 +27,35 @@ InvoiceStatusView invoiceStatusViewOf(
   return switch (invoice.status) {
     // Set by hand, never derived, and never aged: a cancelled invoice past its
     // due date is not overdue, it is cancelled, and a paid one is paid.
-    InvoiceStatus.draft => InvoiceStatusView.draft,
-    InvoiceStatus.paid => InvoiceStatusView.paid,
-    InvoiceStatus.cancelled => InvoiceStatusView.cancelled,
+    InvoiceStatus.draft ||
+    InvoiceStatus.paid ||
+    InvoiceStatus.cancelled => invoiceStatusViewOfStored(invoice.status),
 
     // Still owed. These are the only two an overdue date can apply to.
-    InvoiceStatus.unpaid =>
+    InvoiceStatus.unpaid || InvoiceStatus.partiallyPaid =>
       isOverdue(invoice, now: now)
           ? InvoiceStatusView.overdue
-: InvoiceStatusView.unpaid,
-    InvoiceStatus.partiallyPaid =>
-      isOverdue(invoice, now: now)
-          ? InvoiceStatusView.overdue
-: InvoiceStatusView.partiallyPaid,
+: invoiceStatusViewOfStored(invoice.status),
+  };
+}
+
+/// The view a **stored** status maps to, with the overdue rule not applied.
+///
+/// For surfaces that label statuses rather than invoices — the filter chips in
+/// Phase 5 (e), which offer the five stored statuses and deliberately not
+/// «سررسید گذشته» (see [InvoiceFilter.statuses]). There is no invoice to age
+/// and no clock to age it against.
+///
+/// [invoiceStatusViewOf] routes through this rather than repeating the five
+/// cases, so a status added to the enum has exactly one place to be mapped and
+/// the compiler names it.
+InvoiceStatusView invoiceStatusViewOfStored(InvoiceStatus status) {
+  return switch (status) {
+    InvoiceStatus.draft => InvoiceStatusView.draft,
+    InvoiceStatus.unpaid => InvoiceStatusView.unpaid,
+    InvoiceStatus.partiallyPaid => InvoiceStatusView.partiallyPaid,
+    InvoiceStatus.paid => InvoiceStatusView.paid,
+    InvoiceStatus.cancelled => InvoiceStatusView.cancelled,
   };
 }
 
