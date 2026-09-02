@@ -2237,6 +2237,42 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'متأسفانه انجام این کار ممکن نشد. لطفاً دوباره تلاش کنید.'**
   String get errorGenericBody;
+
+  /// The heading of the printed invoice. «فاکتور فروش» is the conventional name of this document in Iran; the in-app title is «فاکتور {number}», which names one invoice rather than the kind of document, and a page held on its own has to say what it is.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور فروش'**
+  String get invoiceDocumentTitle;
+
+  /// Printed as a filled band across the top of a draft. The requirement is that somebody HOLDING the page knows it is not final without reading it closely (owner, D-075), so it is set large and reversed out of a solid fill rather than as a line of prose. Keep it short for that reason -- it has to be legible at arm's length. Why a draft is dangerous unmarked: it has no invoice number and its totals can still change, so the customer would hold a document that later disagrees with the invoice, under a number they never saw. Note it carries a ZWNJ, so it exercises the D-073 atom on the largest type on the page.
+  ///
+  /// In fa, this message translates to:
+  /// **'پیش‌نویس — سند نهایی نیست'**
+  String get invoiceDocumentDraftBanner;
+
+  /// Labels the invoice number in the printed header. Deliberately the full «شماره فاکتور» rather than «شماره»: on a page with no other numbered field the short form reads as a form field, and this is the reference the customer quotes when they pay.
+  ///
+  /// In fa, this message translates to:
+  /// **'شماره فاکتور'**
+  String get invoiceDocumentNumberLabel;
+
+  /// Heads the party block on the printed invoice. Deliberately NOT the in-app «طرف حساب», which is right on screen where the same record can be read either way. On the document there is one role and «خریدار» is what an Iranian invoice calls it.
+  ///
+  /// In fa, this message translates to:
+  /// **'خریدار'**
+  String get invoiceDocumentBuyerHeading;
+
+  /// One factual line under the party block, printed ONLY for an invoice issued before the party snapshot existed (D-052, schema v3), where the document's own statement of the buyer was never stored. It is not an apology and not a warning: it says where the details came from, which is true and is what a reader would otherwise assume wrongly. The other three provenance cases print nothing -- see D-075. Keep it to one sentence; a document that explains itself at length reads as unreliable.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشخصات خریدار از پروندهٔ فعلی مشتری خوانده شده است.'**
+  String get invoiceDocumentPartyFromRecord;
+
+  /// The row-number column of the printed lines table. Conventional on an Iranian invoice, and the column a customer points at when they query one line. Narrow: it holds at most three Persian digits.
+  ///
+  /// In fa, this message translates to:
+  /// **'ردیف'**
+  String get invoiceDocumentColumnRow;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {

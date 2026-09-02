@@ -38,10 +38,13 @@ import 'font_glyph_safety.dart';
 /// that actually contain an unsafe rune become atoms; everything around them
 /// stays ordinary text and wraps normally.
 ///
-/// **The pieces go in logical order inside the [pw.Row].** `pw.Row` has no
-/// `textDirection`, and the line's RTL mirroring is applied to span boxes and
-/// does not reach inside a `WidgetSpan`'s child — so reversing them, which
-/// looks obviously right for RTL, renders «نویس‌پیش».
+/// **The pieces go in logical order inside the [pw.Row].** `pw.Row` takes no
+/// `textDirection` argument, which invites the conclusion that it lays out
+/// left to right and that RTL therefore needs the pieces reversed. It does
+/// not: `Flex.layout` reads `Directionality.of(context)` and starts from the
+/// right on an RTL page, so logical order is already correct and reversing
+/// renders «نویس‌پیش». Verified on a rendered page before and after, because
+/// the wrong version also looks deliberate.
 ///
 /// ## Why it takes [DocumentText] and not [String]
 ///

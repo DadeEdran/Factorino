@@ -4833,3 +4833,203 @@ there rather than quietly satisfied here, per §17's rule against documenting ar
 not exist.
 
 **1137 tests pass**, was 1092 (+45). `flutter analyze` clean.
+
+---
+
+## D-075 — What a draft prints, what a pre-snapshot invoice prints, and why both were chosen against the house style
+
+**Date:** 2026-09-02
+**Status:** ACCEPTED (owner, both as recommended)
+**Decides:** the two product questions Phase 7 (b) could not be built without.
+
+Two cases where the document has to state something the data does not fully support. Both were put
+to the owner as proposals with recommendations, and both were accepted as recommended.
+
+### 1. A draft prints, and is marked unmissably
+
+A draft has neither of the things that make a document a document: **no invoice number** (D-048
+allocates on issue, so that abandoning a draft does not spend one) and **no party snapshot** (D-052
+— a draft deliberately follows the live customer record). Its totals can also still change.
+
+An **unmarked** draft is therefore the failure D-004 and D-052 exist to prevent, arriving in a new
+place: the customer holds a document that later disagrees with the invoice, under a number they
+never saw.
+
+**Refusing to print one was the safer and cheaper option and was rejected.** پیش‌فاکتور is an
+ordinary, common document in this market. Refusing would push the user to issue an invoice and then
+cancel it — **spending a number permanently** — which is a worse outcome forced on them by our
+convenience (owner).
+
+**The marking is a filled band, not a line of prose.** The requirement the owner set is that
+somebody *holding* the page knows it is not final **without reading it closely**. A sentence in the
+body text does not do that. `invoiceDocumentDraftBanner` — «پیش‌نویس — سند نهایی نیست» — is set at
+16 pt bold, reversed out of a solid dark band running the full content width, directly under the
+header rule. The number field reads «بدون شماره», reusing `invoiceNumberPending`, which already
+exists for exactly this absence and is deliberately not a repeat of the status badge.
+
+*(It also happens to be the hardest test of the D-073 atom on the page: «پیش‌نویس» carries a ZWNJ
+and is the largest type the document sets.)*
+
+### 2. A pre-snapshot invoice prints the live record, with one factual line
+
+For an invoice issued before schema v3, the application genuinely **does not know** who the
+document was addressed to. Printing today's record silently is a fabrication: rename the customer,
+reprint, and the document names a different party than the original did.
+
+**Refusing was again the house-style option and was again rejected.** It would mean a user simply
+cannot print their older invoices — and that data is real and correct. What is unknown is only
+whether the customer's details have changed since (owner).
+
+**The renderer computes nothing new.** `partyProvenanceOf` already derives four cases and is tested
+(D-052). They map to the document at one line:
+
+| provenance | what the document prints | says |
+|---|---|---|
+| `snapshotMatchesRecord` | the snapshot | nothing |
+| `snapshotDivergedFromRecord` | the snapshot | nothing — the document is right, and the divergence is the app user's business, not the reader's |
+| `draftFollowsRecord` | the live record | nothing — the draft band has already said nothing is final |
+| `issuedWithoutSnapshot` | the live record | **one line** |
+
+The line is `invoiceDocumentPartyFromRecord`: «مشخصات خریدار از پروندهٔ فعلی مشتری خوانده شده است.»
+Set as a muted caption at the foot of the party block. It is not an apology and not a warning — it
+states where the details came from, which is true, and which is the thing a reader would otherwise
+assume wrongly.
+
+### Why both went against the house style, recorded because the pattern is otherwise consistent
+
+This project refuses rather than invents, repeatedly and deliberately: «ثبت‌نشده» where a figure was
+never recorded (D-055), the money engine surfacing a clamp rather than absorbing it (D-027), the
+backup import refusing a container it cannot verify (D-069). Both answers here go the other way, and
+the owner asked for the reason to be written down rather than left as an exception nobody can
+account for.
+
+**The reason is that refusing costs the user a document they legitimately need, and neither answer
+invents anything.** That second half is what distinguishes these from the cases above. «ثبت‌نشده»
+exists because printing a zero would be a *claim about the sale* that the data does not support. A
+marked draft claims nothing — the band says exactly what the document is. A pre-snapshot invoice
+claims nothing either — the line says exactly where the details came from. In both cases the
+document is telling the truth about its own limits, which is what the refusals were protecting in
+the first place.
+
+Refusing would have been the *cheaper* option in both cases. That is worth stating plainly: the
+house style is not "refuse", it is "never assert what you do not know", and refusing is only its
+cheapest implementation.
+
+---
+
+## D-076 — Phase 7 (b): the one template, and where the seller block is not
+
+**Date:** 2026-09-02
+**Status:** ACCEPTED
+**Implements:** §12's boundary, D-075's two answers, and D-068's one-template reduction.
+
+The invoice prints. Header, party block, lines table, totals — on A4, RTL, in Vazirmatn, at every
+rung of the D-057 ladder, over one page and over two.
+
+### The shape
+
+```
+features/invoices/document/
+  invoice_document_view.dart          the view model: DocumentText and nothing else
+  invoice_document_view_builder.dart  InvoiceDetail + AppStrings -> the view
+  invoice_document_generator.dart     the interface, and the failure type
+  pdf_invoice_document_generator.dart the one template
+```
+
+The flow is one-way and each step drops something: `InvoiceDetail` (models, `Money`, `DateTime`) →
+the builder → `InvoiceDocumentView` (`DocumentText` only) → the generator (layout only). The
+renderer never sees a `Money`, so it **cannot** recompute a total, and never sees a raw `String`, so
+it **cannot** print an `à`.
+
+### `InvoiceDocumentGenerator` exists now, and is the interface §B.13 wrongly claimed
+
+D-074 withdrew the ARCHITECTURE claim that Phase 1 had defined it rather than quietly writing the
+file to make the claim true. It is written here because there is now a renderer to put behind it. It
+throws `InvoiceDocumentFailure` with a **reason code rather than a message**, because §7 forbids a
+raw exception string reaching the user and the Persian sentence is the presentation layer's choice.
+§12's rule that the boundary fails loudly rather than silently producing nothing is the reason it
+throws at all: a zero-byte file that a save dialog happily writes is a defect the user discovers
+days later, opening the attachment they sent.
+
+### What the page decides, and what it does not
+
+**Decided in the builder, once:** which figure is printed, which row is omitted, which date format,
+which digits, whether the party note appears. **Decided in the renderer:** where things sit. There
+is no arithmetic in either file; the summary rows come from `InvoiceSummaryFigures`, which D-056
+already described as "the beginning of" this view model.
+
+Three rules the page follows, each with a reason that has already cost this project something:
+
+* **A zero row is omitted, not printed as «۰».** A discount line reading zero invites the reader to
+  look for a discount that was never given; a tax line reading zero is a statement about the
+  business's VAT registration rather than about this sale.
+* **An unrecorded gross is an admission, never a zero** (D-055), and carries **no unit** —
+  «ثبت‌نشده تومان» is nonsense, because there is no amount for the unit to qualify.
+* **Every money column carries «تومان».** §9 is explicit that the unit is always shown and never a
+  bare number. The first draft had `gross` as a bare `DocumentText` and the rendered page showed it
+  immediately: one column of figures with no unit, between two columns that had it. The alternative
+  — the unit once in the column heading, bare digits in the cells — is conventional on Iranian
+  invoices and costs less ink; it is **not** taken, because it is a reinterpretation of §9 rather
+  than a reading of it, and that is the owner's call and not the renderer's.
+
+### The table geometry is declared, per D-065
+
+531 pt of content width, of which the five fixed columns take 350 (ردیف 26, تعداد 62, three money
+columns at 88) and the description takes the remaining **181**. Declared as tokens and asserted:
+`invoice_document_view_test.dart` fails if the fixed columns ever grow past the content width or the
+description falls below 120 pt. D-065's lesson is that a crushed column **lays out successfully and
+reports no error** — the on-screen document table shipped one at 21.6 pt — so the only thing that
+catches it is asserting the number.
+
+### Two things the rendered page corrected that no test had caught
+
+Recorded because both were invisible until the pixels were read, which is the method D-070
+established and this phase keeps being paid by:
+
+1. **The `مبلغ کل` column printed bare digits** while the two money columns either side printed
+   «تومان». A type error in the view model, not a layout bug: `gross` was a `DocumentText` because
+   the admission case made a bare string look reasonable while writing it.
+2. **The demonstration invoice did not reconcile.** The fixture set the grand total and the tax and
+   discount rows independently, so the page showed a summary that did not add up. Nothing was wrong
+   with the renderer — which is exactly the problem: **a demonstration page that cannot be checked
+   with a pencil is one where a real reconciliation defect would look like more of the same.** The
+   fixture now satisfies `gross − discount + tax == grandTotal`, and the two-page render shows
+   ۲٬۵۰۰٬۰۰۰ − ۱۲۵٬۰۰۰ + ۲۳۷٬۵۰۰ = ۲٬۶۱۲٬۵۰۰.
+
+### The gap: there is no seller block, because there is no seller
+
+**`AppSettings` and the `settings` table hold no business identity at all** — no name, no address,
+no کد اقتصادی, no phone. `grep` for `businessName`, `sellerName` or `فروشنده` across `lib/` returns
+nothing. A conventional Iranian فاکتور فروش carries both فروشنده and خریدار blocks, and this
+document carries only the buyer.
+
+**Nothing is invented to fill it.** A placeholder seller block on a customer-facing document would
+be the one thing this phase must not do. The scope the owner set for (b) was "header, party block,
+lines table, totals", which this delivers exactly; the seller block was never in it.
+
+**Closing it is a schema change**, and is therefore a decision rather than an oversight: four
+nullable text columns on `settings` (name, economic ID, address, phone), schema v5 with its
+migration test, four fields on the settings form, and the device proof D-055's ladder pattern
+requires. Raised with the owner rather than absorbed.
+
+### Verification
+
+`flutter analyze` clean. **1159 tests pass**, was 1137 (+22).
+
+Rendered and read at: the ladder ceiling (۱۰۰٬۰۰۰٬۰۰۰ تومان), all four rungs, a draft, a
+pre-snapshot invoice, and a 28-line invoice over two pages — where the repeated header carries the
+invoice number and the footer counts `2 / 2`. The RTL column order came out right without
+intervention: `pw.Table` places its cells in the page's direction, which was checked on the page
+rather than assumed, because the wrong order would also have looked deliberate.
+
+**The theme guard caught the one literal that got past review** — `width: 1` on the header rule the
+whole page hangs from. Tokenised. `theme_tokens_only_test.dart` scans this folder like every other
+one, which is the argument for the guard scanning by directory rather than by allow-list.
+
+### Still owed, and not owed to (b)
+
+* **The real size measurement.** Nothing reachable from `main()` imports `core/pdf/` yet, so the
+  AOT compiler still shakes the renderer out and D-074's +133 KB remains a floor. Confirmed rather
+  than assumed: (b) adds the whole document layer and the arm64 release APK is **byte-identical at 21,653,926**.
+* **The Android cold-start re-measurement**, which needs the Redmi on the cable.
+* Both land with **(d)**, which is what makes the document reachable.

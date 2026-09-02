@@ -720,3 +720,36 @@ The direction of flow is one-way and enforced by types: a screen-layer `String` 
 it is answering a question about bytes, and staying plain Dart is what lets
 `tool/render_document_text.dart` drive the real production classes when a page has to be looked at
 rather than reasoned about.
+
+### And the document itself: `features/invoices/document/`
+
+```
+features/invoices/document/
+  invoice_document_view.dart          the view model -- DocumentText and nothing else
+  invoice_document_view_builder.dart  InvoiceDetail + AppStrings -> the view
+  invoice_document_generator.dart     the interface §12 asks for, and its failure type
+  pdf_invoice_document_generator.dart the one template (D-068)
+```
+
+A fourth folder beside `presentation/`, `application/` and `domain/`, because the document is an
+output surface rather than a screen: it has no widgets, no providers and no user interaction, and
+putting the page layout in `presentation/` would put a `pw.Widget` tree next to a Flutter one under
+the same name.
+
+**The flow is one-way and every step drops something**, which is the whole design:
+
+```
+InvoiceDetail            models, Money, DateTime
+  -> builder             formats once; every decision made here
+  -> InvoiceDocumentView DocumentText only -- no Money, no DateTime, no String
+  -> generator           layout only
+```
+
+The renderer never receives a `Money`, so it **cannot** recompute a total and disagree with the
+screen (§12). It never receives a raw `String`, so it **cannot** print the wrong glyph (D-073) or
+lose a digit to a bidi isolate (D-070 finding 1). Both are type-level rather than conventions,
+because both faults are silent and produce output that looks correct.
+
+`InvoiceDocumentGenerator` throws `InvoiceDocumentFailure` carrying a **reason code, never a
+message**: §7 forbids a raw exception string reaching the user, and the Persian sentence is the
+presentation layer's decision.

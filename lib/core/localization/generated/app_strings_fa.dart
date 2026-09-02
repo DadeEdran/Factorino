@@ -1192,4 +1192,23 @@ class AppStringsFa extends AppStrings {
   @override
   String get errorGenericBody =>
       'متأسفانه انجام این کار ممکن نشد. لطفاً دوباره تلاش کنید.';
+
+  @override
+  String get invoiceDocumentTitle => 'فاکتور فروش';
+
+  @override
+  String get invoiceDocumentDraftBanner => 'پیش‌نویس — سند نهایی نیست';
+
+  @override
+  String get invoiceDocumentNumberLabel => 'شماره فاکتور';
+
+  @override
+  String get invoiceDocumentBuyerHeading => 'خریدار';
+
+  @override
+  String get invoiceDocumentPartyFromRecord =>
+      'مشخصات خریدار از پروندهٔ فعلی مشتری خوانده شده است.';
+
+  @override
+  String get invoiceDocumentColumnRow => 'ردیف';
 }

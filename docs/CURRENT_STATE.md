@@ -2,10 +2,14 @@
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
 >
-> **Last updated: 2026-09-02 — Phase 7 is OPEN and increment (a) is delivered (D-074).** The `pdf`
-> dependency is in, the text layer and its two boundaries are built and tested, and the entry-gate
-> size measurement is taken. **No document is generated yet.** Two product questions are with the
-> owner: what a draft prints, and what a pre-snapshot invoice prints for its party.
+> **Last updated: 2026-09-02 — Phase 7 (a) and (b) are both delivered. The invoice prints.**
+> Header, party block, lines table and totals on A4 in Persian, at every rung of the D-057 ladder
+> and over two pages, driven by a view model the renderer cannot recompute from. The two product
+> questions are **decided** (D-075): a draft prints marked with an unmissable band, and a
+> pre-snapshot invoice prints the live record with one factual line. **One thing is blocked on the
+> owner:** the schema holds no business identity, so the document has a خریدار block and no
+> فروشنده block (D-076). **Nothing is generated from the app yet** — (d) makes it reachable, and
+> the real size and cold-start measurements go with it.
 >
 > Earlier the same day: **the ZWNJ blocker was solved (D-073), and two earlier diagnoses of it
 > were wrong.** It is not a missing glyph, not the subsetting, and not the control character:
@@ -46,9 +50,11 @@ the phase. **Nothing is awaiting review.**
 
 **Phase 6 — Backup and Restore · `COMPLETED`** (2026-09-01) — all four increments delivered at
 D-068's reduced standards. **Nothing unfinished, nothing deferred out of it.**
-**Phase 7 — PDF Generation · `IN_PROGRESS`** — the last phase in the plan. **(a) delivered**
-2026-09-02 (D-074): the dependency, `core/pdf/`, the guards and the entry-gate measurement.
-**(b) is next**: the view model and `InvoiceDocumentGenerator`.
+**Phase 7 — PDF Generation · `IN_PROGRESS`** — the last phase in the plan.
+**(a) delivered** 2026-09-02 (D-074): the dependency, `core/pdf/`, the guards, the entry-gate
+measurement. **(b) delivered** 2026-09-02 (D-075, D-076): the view model, the generator interface
+and the one template. **(c) BLOCKED** on the seller-block decision. **(d) next**: save/share, the
+device pass, and the two measurements the gate still owes.
 **Phases 8–15 · `DEFERRED_INDEFINITELY`** (D-068). Not next, not later, not scheduled. Two items
 inside them are called out in `ROADMAP.md` as minutes of work that gate distribution rather than
 phase-sized work: the Android manifest's `allowBackup="false"` (known issue 15) and release
@@ -205,8 +211,8 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of Phase 7 (a)
-flutter test:               PASS   (1137/1137, was 1092 before Phase 7 (a))   as of Phase 7 (a)
+flutter analyze:            PASS   (No issues found)                          as of Phase 7 (b)
+flutter test:               PASS   (1159/1159, was 1137 after (a), 1092)      as of Phase 7 (b)
 Android build:              PASS   debug AND release APKs built (2026-09-01), release installed
                                    and cold-started on the Redmi
 
@@ -243,6 +249,14 @@ Phase 7 size, post-pdf:     TAKEN  arm64 21,653,926 (+133,402 on the 60b5cd5 bas
                                    stale kernel_blob.bin and reads 120 MB. A floor, not the
                                    cost: nothing from main() imports core/pdf/ yet
 Phase 7 cold start, post:   OWED   needs the Redmi on the cable
+Phase 7 size after (b):     TAKEN  arm64 21,653,926 -- BYTE-IDENTICAL to (a), which is the proof
+                                   that the figure is a floor: the whole document layer adds
+                                   nothing to the binary because nothing from main() imports it
+Invoice document rendered:  PASS   read off the pixels at the ladder ceiling, all 4 rungs, a
+                                   draft, a pre-snapshot invoice, and 28 lines over 2 pages.
+                                   RTL column order, the ZWNJ atom at 16pt bold in the draft
+                                   band, the repeated header, the 2/2 footer, and a summary that
+                                   reconciles with a pencil
 
 Persian content sweep:      PASS   11 screens x 3 tiers, strings at the length real data reaches,
                                    over the real repositories -- no crushed text anywhere (D-065)
@@ -2264,33 +2278,34 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 7 is open. Increment (a) is delivered and nothing from it is owed** except the two
-measurements named below, which cannot be taken until there is a renderer and a cable.
+**Phase 7 (a) and (b) are delivered. The invoice prints** — but only into a test's byte array;
+nothing in the application generates one yet.
 
-**The single specific next action: Phase 7 (b) — the document view model and
-`InvoiceDocumentGenerator`.** Concretely:
+**One decision is with the owner and blocks (c): the seller block.** `AppSettings` and the
+`settings` table hold no business identity at all — no name, no address, no کد اقتصادی, no phone —
+so the document carries a خریدار block and no فروشنده block, which a conventional Iranian فاکتور
+فروش has. Nothing is invented to fill it (D-076). Closing it is four nullable text columns on
+`settings`, **schema v5** with its migration test, four fields on the settings form and a device
+proof: scoped, but a schema change with two days of access left.
 
-1. **Write the interface.** `ARCHITECTURE.md` §B.13 claimed Phase 1 defined
-   `InvoiceDocumentGenerator`; it never existed in `lib/`. The claim is withdrawn there (D-074) and
-   the interface belongs here: a platform-neutral contract taking a fully computed, already
-   formatted view model, with an implementation that fails loudly rather than producing nothing.
-2. **Build `InvoiceDocumentView` from `InvoiceDetail`**, formatted once, computing nothing —
-   `core/money/` stays the only calculator. Every string on it is a `DocumentText`, so the control
-   stripping happens at construction and cannot be skipped downstream.
-3. **The field type that carries rule 2's other half.** (a) made concatenation loud
-   (`DocumentText.toString()` returns a wrapper, not the text); (b) adds the label/value pair and
-   the widget that renders them as two widgets, which is what makes D-070 finding 2 disappear
-   rather than need a remedy. It was deliberately not built in (a) — a field widget with no
-   document to sit in is the speculative abstraction §15 forbids.
-4. **Answer the two product questions first**, because both change the view model's shape rather
-   than its layout. Proposals are with the owner: what a draft prints or whether it prints at all,
-   and what a pre-snapshot invoice prints for its party.
+**The single specific next action, which is not blocked: Phase 7 (d) — make the document
+reachable.** Concretely:
 
-**Two measurements are owed and are not owed to (b).** The Phase 7 gate wants the size figures
-re-taken **on the commit immediately after the renderer works** — (a)'s +133 KB APK and +240 KB
-Windows deltas are a floor, since nothing reachable from `main()` imports `core/pdf/` yet and the
-AOT compiler shakes most of `package:pdf` out. And the **Android cold start** re-measurement needs
-the Redmi on the cable; the 1,401 ms baseline stands unchallenged until then.
+1. A provider that loads the three Vazirmatn faces from `rootBundle` into a `DocumentTypeface`,
+   builds the view from the `invoiceDetailProvider` the detail screen already watches, and renders.
+2. An action on `/invoices/:id` that saves the file — reusing the **D-071 backup gateway**, which
+   already solves exactly this on both targets (`ACTION_CREATE_DOCUMENT` on Android,
+   `file_selector_windows` on desktop) and is already proven with a confirmed save on each.
+3. **The §7 question (d) owns and (b) deliberately did not touch:** a generated PDF holds full
+   customer and financial data. Where it lands, whether a temporary copy exists, and who deletes it
+   are this increment's decisions, and the ROADMAP security note for Phase 7 already names them.
+4. **Then the two measurements the gate owes**, in this order and only once step 1 lands:
+   - the **real size figure** — D-074's +133 KB is a floor, now proven so: (b) added the entire
+     document layer and the arm64 release APK came out **byte-identical at 21,653,926**, because
+     nothing reachable from `main()` imports `core/pdf/` and the AOT compiler shakes it out;
+   - the **Android cold start**, which needs the Redmi on the cable. The owner has asked to be told
+     when the cable session is wanted — it is wanted for this, together with the phone-tier device
+     pass on the new save flow.
 
 ### The Phase 6 close, 2026-09-01
 
