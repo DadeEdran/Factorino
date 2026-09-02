@@ -2784,7 +2784,8 @@ rendered page**, not the source. Then continue down the list below.
 
 | commit | what |
 |---|---|
-| **`cc5c639`** | Phase 7 (c): schema v5 and the seller block; the two rulings; known issue 24 (D-077) |
+| **`a111fa6`** | The (d) cable session: the three Android measurements, the settings-suite regression (c) shipped, and the retired cold-start baseline (D-078) |
+| `cc5c639` | Phase 7 (c): schema v5 and the seller block; the two rulings; known issue 24 (D-077) |
 | `0436094` | Phase 7 (b): the invoice prints — the view model, the generator interface, the one template (D-075, D-076) |
 | `47beb6e` | Phase 7 (a): the `pdf` dependency and the text layer that makes it safe (D-074) |
 | `b4465a7` | The ZWNJ cause found, and `tools/pdf_raster/` so the page is visible from the terminal (D-073) |
