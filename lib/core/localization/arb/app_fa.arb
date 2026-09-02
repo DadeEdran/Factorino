@@ -1130,6 +1130,10 @@
   "@invoiceDocumentSellerPhoneLabel": {
     "description": "Labels the seller telephone in the printed block. Its own entry rather than the customer mobile label, because a business published number is as often a landline. The value is drawn as a separate widget from this label and never concatenated with it -- D-070 measured that shape coming out with its digit groups reversed."
   },
+  "invoiceIssueAction": "صدور فاکتور",
+  "@invoiceIssueAction": {
+    "description": "Issues a saved draft, from the invoice detail screen. Short, because it is a floating action label on a phone. The confirmation it opens reuses invoiceIssueConfirmTitle/Body/Action, which the editor already had -- the consequences are identical wherever issuing is started from, and two different explanations of one irreversible act is how they drift apart."
+  },
   "invoiceDeleteDraftAction": "حذف پیش‌نویس",
   "@invoiceDeleteDraftAction": {
     "description": "Deletes a draft invoice. Offered only on a draft, in the title row menu beside the export. Says 'delete the draft' rather than 'delete the invoice' because what is being removed is explicitly not yet an invoice -- it has no number and nobody has seen it, which is the whole reason deleting it is allowed where cancelling an issued one is not (section 6)."

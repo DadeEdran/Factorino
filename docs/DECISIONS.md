@@ -5602,3 +5602,96 @@ The Windows device suites run at **1264 × 681**, which is now the **tablet** ti
 duly reports `tier : tablet` where it used to report desktop. So the **desktop tier no longer has any
 device coverage**; it is held by the widget sweep at 1400 and by `width_sweep_test.dart`. Getting it
 back means running those suites in a window at least 1312 wide.
+
+---
+
+## D-082 — A saved draft had no way forward, and the printed line total could not be checked
+
+**Date:** 2026-09-02 (night). Three findings from the owner's first real use of the app on a phone.
+
+### 1. A saved draft could never be issued — and it explains a second report
+
+**Issuing existed in exactly one place: the editor screen, at the moment of creation.**
+`InvoiceEditor` is keyed by the `DateTime` it was opened (`build(DateTime openedAt)`) and its
+`issue()` calls `save()`, which calls `create` — a *new* invoice, every time. Nothing anywhere loaded
+an existing invoice into the editor, and no other screen offered issuing.
+
+So a user who saved a draft intending to issue it later had made a document that **could never become
+an invoice**. Half the workflow the application exists for was unreachable.
+
+**And it accounts for the separate report that the record-payment action was missing.** It was not
+missing. `acceptsPayments` is false for a draft, so the floating action is correctly absent and the
+payments card explains why in Persian. But if every invoice a user owns is a draft — because they
+cannot be issued — then the payment action is never seen, and the page reads as inert. **One cause,
+two reports.** Nothing was changed for the second one, and the device suite already proves the
+payment action works on an issued invoice on that exact phone.
+
+**The fix.** `InvoiceCancellation.issue()`, and two entry points that mirror how recording a payment
+is already offered (D-060): the **floating action on a phone**, where a draft's slot was empty
+precisely because it accepts no payments, and an **inline button under the summary** on the wider
+tiers, so the two are never on screen together. The confirmation is the editor's copy **verbatim** —
+the consequences (a number spent permanently, D-013; editability ended, §6) do not depend on where
+issuing was started from, and two wordings of one irreversible act is how they drift apart.
+
+**Still not possible: editing a saved draft.** `updateDraft` exists in the repository and nothing
+calls it. Issuing was the blocking half — a draft that can be issued is a workflow; a draft that can
+be edited is a convenience — but it is a real gap and is now known issue 29.
+
+### 2. «جمع سطر» was the one figure on the page a reader could not arrive at
+
+**Reported as: the line-total column does not add up.** It did add up — Σ lineTotal *is* the grand
+total — but not in any way a person holding the page could verify.
+
+`lineTotal` is the line's own net **after its share of the invoice-level discount**, plus its tax.
+The share comes from the largest-remainder allocation in §4 step 4, which the document never shows.
+So the reader sees `قیمت واحد × تعداد = مبلغ کل`, and then a `جمع سطر` that is neither of those and
+cannot be derived from anything printed.
+
+**Decision: the column is removed.** Not either of the two repairs the owner offered, and here is why
+each was rejected:
+
+* **Show the line's own total before the invoice discount** (i.e. `lineNet`). It sums to the
+  *subtotal*, which this page does not print — the summary's first row is `grossTotal`. So the column
+  still would not tie to anything, and where no line carries its own discount it is an exact
+  duplicate of `مبلغ کل`.
+* **Show the allocated share on its own line.** It adds a sixth money-bearing column to a table whose
+  description column D-065 already found crushed to 21.6 points, in order to expose an internal
+  apportionment the customer cannot independently check and has no reason to care about. The
+  invoice-level discount is already stated once, in the summary, as a single number that *is*
+  checkable against the total.
+
+**What removing it leaves is a page that reconciles end to end:**
+
+```
+قیمت واحد × تعداد            = مبلغ کل        (per row, by hand)
+Σ مبلغ کل                    = جمع سطرها      (column to summary)
+جمع سطرها − کسر تخفیف + مالیات = مبلغ قابل پرداخت (summary chain)
+```
+
+Every printed number is either computed by the reader or labelled in the summary. It also returns 88
+points to the description column, which is the one that was crushed.
+
+**One residual, stated rather than papered over.** Amounts are computed in Rial and displayed in
+Toman, so a row can be off by a Toman or two against a hand multiplication when the Rial figure is
+not a round number of Toman — on the ceiling fixture, `۱۳٬۳۳۳٬۳۳۲ × ۲٫۵` reads as 33,333,330 while
+the row prints 33,333,333, and the three rows sum to 99,999,999 against a stated 100,000,000. The
+summary chain is exact. This is inherent to displaying a unit coarser than the one the arithmetic
+uses; with ordinary prices it does not arise. Not fixed, and not hidden.
+
+**The on-screen table keeps its `جمع سطر` column**, deliberately. §4's requirement is about *the
+document a customer keeps*. On screen the reader is the business owner, who can see the
+invoice-level discount field that produced the allocation, and the per-line contribution is
+information they may legitimately want.
+
+### 3. A guard that broke every debug build, caught by running the thing
+
+The release-signing refusal added earlier the same night was written as a `throw` inside
+`buildTypes { release { ... } }`. **Gradle configures every build type regardless of which one is
+being assembled**, so `assembleDebug` threw as well — breaking `flutter run`, `flutter test -d
+<device>` and every integration suite.
+
+It was caught within minutes, by running the device suite rather than by reading the diff, and it is
+recorded because the shape recurs: **a guard placed at configuration time fires for builds it was
+never meant to judge.** It now attaches to the release assemble/bundle *tasks*, and only when the
+keystore is absent, so a debug build never sees it. Both directions re-verified: `--debug` builds,
+`--release` refuses with the written message.

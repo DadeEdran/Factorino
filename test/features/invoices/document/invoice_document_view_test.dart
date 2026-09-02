@@ -89,8 +89,6 @@ void main() {
       line.unitPrice.unit,
       line.gross.digits,
       line.gross.unit,
-      line.total.digits,
-      line.total.unit,
     ],
     for (final DocumentAmountRow row in view.totals) ...<DocumentText>[
       row.label,
@@ -116,10 +114,16 @@ void main() {
           formatGroupedPersian(detail.invoice.grandTotal.toman),
           reason: 'grand total at $rung',
         );
+        // **No per-line total is asserted, because none is printed** (D-082).
+        // «جمع سطر» carried the line's share of the invoice-level discount,
+        // apportioned by an allocation the page never showed, so it was the one
+        // figure a reader could not reach with a pencil. What the line does
+        // print is its gross, and the gross column sums to the summary's first
+        // row — which is the reconciliation the customer actually performs.
         expect(
-          view.lines.single.total.digits.value,
-          formatGroupedPersian(detail.items.single.lineTotal.toman),
-          reason: 'line total at $rung',
+          view.lines.single.gross.digits.value,
+          formatGroupedPersian(detail.items.single.gross!.toman),
+          reason: 'line gross at $rung',
         );
       }
     });

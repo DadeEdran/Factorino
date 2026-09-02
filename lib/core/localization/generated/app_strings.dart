@@ -2364,6 +2364,12 @@ abstract class AppStrings {
   /// **'تلفن'**
   String get invoiceDocumentSellerPhoneLabel;
 
+  /// Issues a saved draft, from the invoice detail screen. Short, because it is a floating action label on a phone. The confirmation it opens reuses invoiceIssueConfirmTitle/Body/Action, which the editor already had -- the consequences are identical wherever issuing is started from, and two different explanations of one irreversible act is how they drift apart.
+  ///
+  /// In fa, this message translates to:
+  /// **'صدور فاکتور'**
+  String get invoiceIssueAction;
+
   /// Deletes a draft invoice. Offered only on a draft, in the title row menu beside the export. Says 'delete the draft' rather than 'delete the invoice' because what is being removed is explicitly not yet an invoice -- it has no number and nobody has seen it, which is the whole reason deleting it is allowed where cancelling an issued one is not (section 6).
   ///
   /// In fa, this message translates to:

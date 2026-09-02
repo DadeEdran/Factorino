@@ -1,6 +1,7 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/security/app_log.dart';
+import '../../../data/models/invoice.dart';
 import '../../../data/providers.dart';
 
 part 'invoice_cancellation.g.dart';
@@ -51,6 +52,38 @@ class InvoiceCancellation extends _$InvoiceCancellation {
         scope: 'invoice-cancellation',
       );
       return false;
+    } finally {
+      link.close();
+    }
+  }
+
+  /// Issues this invoice, which must be a draft. Returns the issued invoice, or
+  /// null if the write failed.
+  ///
+  /// **This is the other half of a workflow that had only one.** Issuing lived
+  /// exclusively on the *editor* screen, at the moment of creation, and
+  /// `InvoiceEditor` is keyed by the instant it was opened and always creates a
+  /// new invoice — so there was no path from a **saved draft** to an issued
+  /// one. A user who saved a draft meaning to issue it later had made a
+  /// document that could never become an invoice, and every downstream action
+  /// (recording a payment, cancelling) is correctly unavailable on a draft, so
+  /// the whole page looked inert. Reported from the phone, 2026-09-02.
+  ///
+  /// Returns the invoice rather than a bool, because the caller has to tell the
+  /// user the number that was just allocated — which is the one fact about
+  /// issuing that did not exist a moment ago.
+  Future<Invoice?> issue() async {
+    final link = ref.keepAlive();
+    try {
+      return await ref.read(invoiceRepositoryProvider).issue(invoiceId);
+    } on Object catch (error, stackTrace) {
+      AppLog.error(
+        () => 'issuing an invoice failed',
+        error: error,
+        stackTrace: stackTrace,
+        scope: 'invoice-cancellation',
+      );
+      return null;
     } finally {
       link.close();
     }

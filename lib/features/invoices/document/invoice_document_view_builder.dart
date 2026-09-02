@@ -88,7 +88,6 @@ InvoiceDocumentView buildInvoiceDocumentView({
       text(strings.invoiceLineColumnQuantity),
       text(strings.invoiceLineColumnUnitPrice),
       text(strings.invoiceLineColumnGross),
-      text(strings.invoiceLineColumnTotal),
     ],
     lines: <InvoiceDocumentLine>[
       for (int i = 0; i < detail.items.length; i++)
@@ -241,7 +240,6 @@ InvoiceDocumentLine _line(
         unit: text(''),
       ),
     },
-    total: toman(item.lineTotal),
   );
 }
 

@@ -965,6 +965,155 @@ void main() {
       return strings;
     }
 
+    testWidgets('a draft offers issuing, in the slot the phone puts it', (
+      WidgetTester tester,
+    ) async {
+      // **The gap reported from the phone, 2026-09-02.** Issuing lived only on
+      // the editor screen, at creation time, so a saved draft had no way
+      // forward at all — and because a draft correctly refuses payments and
+      // cancellation, the whole page read as broken rather than incomplete.
+      //
+      // On a phone the floating slot is the one place a primary action costs no
+      // height (§10), and on a draft it was empty: `acceptsPayments` is false.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+
+      expect(
+        find.widgetWithText(FloatingActionButton, strings.invoiceIssueAction),
+        findsOneWidget,
+        reason: 'a draft must offer the one action that moves it forward',
+      );
+      expect(
+        find.text(strings.invoiceDetailRecordPayment),
+        findsNothing,
+        reason: 'and not the one it correctly refuses',
+      );
+    });
+
+    testWidgets('an issued invoice keeps the payment action, not issuing', (
+      WidgetTester tester,
+    ) async {
+      // The two states are mutually exclusive by construction: `isEditable` and
+      // `acceptsPayments` cannot both be true. This pins that the new branch
+      // did not displace the old one.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(),
+      );
+
+      expect(
+        find.widgetWithText(
+          FloatingActionButton,
+          strings.invoiceDetailRecordPayment,
+        ),
+        findsOneWidget,
+      );
+      expect(find.text(strings.invoiceIssueAction), findsNothing);
+    });
+
+    testWidgets('issuing asks first, names what it costs, and reports the '
+        'number', (WidgetTester tester) async {
+      final (
+        AppStrings strings,
+        FakeInvoiceRepository repo,
+      ) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+
+      await tester.tap(find.text(strings.invoiceIssueAction));
+      await tester.pumpAndSettle();
+
+      // The editor's own copy, reused verbatim: the consequences do not depend
+      // on where issuing was started from, and two wordings of one irreversible
+      // act is how they drift apart.
+      expect(find.text(strings.invoiceIssueConfirmTitle), findsOneWidget);
+      expect(find.text(strings.invoiceIssueConfirmBody), findsOneWidget);
+      expect(
+        strings.invoiceIssueConfirmBody,
+        allOf(contains('شماره'), contains('ویرایش')),
+        reason:
+            'the copy must name both irreversible consequences — the number is '
+            'spent (D-013) and editing ends (§6)',
+      );
+
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.invoiceIssueConfirmAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repo.issuedIds, <String>['i1']);
+      expect(
+        find.textContaining(FakeInvoiceRepository.issuedNumber),
+        findsWidgets,
+        reason:
+            'the allocated number is the one fact that did not exist a moment '
+            'ago, and the thing the user quotes to their customer',
+      );
+    });
+
+    testWidgets('declining to issue writes nothing', (
+      WidgetTester tester,
+    ) async {
+      final (
+        AppStrings strings,
+        FakeInvoiceRepository repo,
+      ) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+
+      await tester.tap(find.text(strings.invoiceIssueAction));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, strings.actionCancel));
+      await tester.pumpAndSettle();
+
+      expect(repo.issuedIds, isEmpty);
+    });
+
+    testWidgets('a failed issue says so and the draft stays a draft', (
+      WidgetTester tester,
+    ) async {
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+        failWrites: true,
+      );
+
+      await tester.tap(find.text(strings.invoiceIssueAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.invoiceIssueConfirmAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceSaveFailed), findsOneWidget);
+    });
+
+    testWidgets('the wider tiers offer issuing inline, not floating', (
+      WidgetTester tester,
+    ) async {
+      // D-060's shape, reused: the phone puts the primary action in the
+      // floating slot and the wider tiers put it inline, so the two are never
+      // on screen together.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+        size: const Size(1400, 1200),
+      );
+
+      expect(
+        find.widgetWithText(FilledButton, strings.invoiceIssueAction),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(FloatingActionButton, strings.invoiceIssueAction),
+        findsNothing,
+      );
+    });
+
     testWidgets('a draft offers deletion, and an issued invoice does not', (
       WidgetTester tester,
     ) async {

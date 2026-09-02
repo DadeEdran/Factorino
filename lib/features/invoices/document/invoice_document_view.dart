@@ -47,7 +47,6 @@ class InvoiceDocumentLine {
     required this.quantity,
     required this.unitPrice,
     required this.gross,
-    required this.total,
   });
 
   /// The ردیف column. Persian digits, formatted once, here.
@@ -75,7 +74,12 @@ class InvoiceDocumentLine {
   /// case is what made a bare string look reasonable while writing it.
   final DocumentAmount gross;
 
-  final DocumentAmount total;
+  // **There is deliberately no per-line total** (D-082). «جمع سطر» was here and
+  // was removed: it is the line's own amount after its share of the
+  // invoice-level discount and its tax, and that share comes from a
+  // proportional allocation the document never shows — so it was the one figure
+  // on the page a reader could not arrive at with a pencil, which §4 forbids on
+  // the artifact a customer keeps.
 }
 
 /// The party block.

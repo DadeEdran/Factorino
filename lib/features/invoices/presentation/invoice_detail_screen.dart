@@ -27,6 +27,7 @@ import '../domain/invoice_party_view.dart';
 import '../domain/invoice_status_view.dart';
 import '../domain/invoice_summary_figures.dart';
 import 'widgets/invoice_cancel_action.dart';
+import 'widgets/invoice_issue_action.dart';
 import 'widgets/invoice_document_lines.dart';
 import 'widgets/invoice_payments_section.dart';
 import 'widgets/invoice_totals_summary.dart';
@@ -129,13 +130,29 @@ class InvoiceDetailScreen extends ConsumerWidget {
           // The primary action, in the slot a phone puts one (§10). The
           // payments card carries the same action on the wider tiers and omits
           // it here, so the two are never on screen together.
-          floatingAction: context.tier.isMobile && view.invoice.acceptsPayments
-              ? FloatingActionButton.extended(
-                  onPressed: () => recordPayment(context, ref, view, strings),
-                  icon: const Icon(Icons.add),
-                  label: Text(strings.invoiceDetailRecordPayment),
-                )
-              : null,
+          //
+          // **A draft's primary action is issuing it, and that slot was empty
+          // until 2026-09-02.** `acceptsPayments` is false for a draft, so the
+          // phone showed no floating action at all — and since issuing lived
+          // only on the editor screen, a saved draft had no way forward
+          // anywhere on this page. The user who reported it read the whole
+          // screen as broken, which it effectively was. The two states are
+          // mutually exclusive by construction: `isEditable` and
+          // `acceptsPayments` cannot both be true.
+          floatingAction: switch (context.tier.isMobile) {
+            true when view.invoice.isEditable => FloatingActionButton.extended(
+              onPressed: () => issueInvoice(context, ref, view, strings),
+              icon: const Icon(Icons.check),
+              label: Text(strings.invoiceIssueAction),
+            ),
+            true when view.invoice.acceptsPayments =>
+              FloatingActionButton.extended(
+                onPressed: () => recordPayment(context, ref, view, strings),
+                icon: const Icon(Icons.add),
+                label: Text(strings.invoiceDetailRecordPayment),
+              ),
+            _ => null,
+          },
           actions: <Widget>[
             _StatusChip(
               detail: view,
@@ -205,6 +222,9 @@ class _DetailBody extends StatelessWidget {
     final Widget party = _PartyCard(detail: detail, strings: strings);
     final Widget dates = _DatesCard(detail: detail, strings: strings);
     final Widget summary = _Summary(detail: detail, strings: strings);
+    // Directly under the figures it commits to, and absent on the phone, where
+    // the floating action carries it instead.
+    final Widget issue = InvoiceIssueButton(detail: detail, strings: strings);
     final Widget notes = _NotesCard(detail: detail, strings: strings);
     final Widget payments = InvoicePaymentsSection(
       detail: detail,
@@ -240,6 +260,7 @@ class _DetailBody extends StatelessWidget {
             child: ListView(
               children: <Widget>[
                 summary,
+                issue,
                 const SizedBox(height: AppSpacing.lg),
                 // Directly under the figures they move. A payment recorded here
                 // changes «مانده» one card up, and putting the two a scroll
@@ -281,6 +302,7 @@ class _DetailBody extends StatelessWidget {
     return ListView(
       children: <Widget>[
         summary,
+        issue,
         const SizedBox(height: AppSpacing.xxl),
         SectionHeader(title: strings.invoiceDetailLinesSection),
         lines,

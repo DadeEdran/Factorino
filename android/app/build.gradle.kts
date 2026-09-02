@@ -68,23 +68,43 @@ android {
 
     buildTypes {
         release {
-            // **Fails rather than falling back to the debug key** (known issue
-            // 13). A debug-signed release APK is undistributable and, worse,
-            // cannot be replaced by a properly signed build without every user
-            // uninstalling first -- so the failure has to happen here, at build
-            // time, and not after the thing has been handed to someone.
-            if (keystorePropertiesFile.exists()) {
-                signingConfig = signingConfigs.getByName("release")
+            // **Never the debug key** (known issue 13). Null when there is no
+            // keystore; the task guard below is what turns that into a clear
+            // failure at the moment a release artifact is actually requested.
+            signingConfig = if (keystorePropertiesFile.exists()) {
+                signingConfigs.getByName("release")
             } else {
-                throw GradleException(
-                    "Release build requires android/key.properties, which is " +
-                        "absent. Copy android/key.properties.example, create a " +
-                        "keystore, and fill it in -- see docs/RELEASE.md. " +
-                        "Refusing to sign a release build with the debug key: " +
-                        "the result cannot be distributed and cannot later be " +
-                        "replaced by a properly signed build."
-                )
+                null
             }
+        }
+    }
+}
+
+// Refuse to produce a release artifact without a real keystore.
+//
+// **On the task, not in the `release { }` block, and that distinction cost a
+// broken build.** Throwing inside `buildTypes { release { ... } }` fires during
+// *configuration*, which Gradle performs for every build type regardless of
+// which one is being assembled — so `assembleDebug` threw too, and with it
+// `flutter run`, `flutter test -d <device>` and every integration suite. Caught
+// 2026-09-02 by a device run, immediately after the guard was added.
+//
+// Attached only when the keystore is missing, and only to the tasks that
+// actually emit a release artifact, so a debug build never sees it.
+if (!keystorePropertiesFile.exists()) {
+    tasks.matching { task ->
+        task.name.contains("Release") &&
+            (task.name.startsWith("assemble") || task.name.startsWith("bundle"))
+    }.configureEach {
+        doFirst {
+            throw GradleException(
+                "Release build requires android/key.properties, which is " +
+                    "absent. Copy android/key.properties.example, create a " +
+                    "keystore, and fill it in -- see docs/RELEASE.md. " +
+                    "Refusing to sign a release build with the debug key: the " +
+                    "result cannot be distributed and cannot later be replaced " +
+                    "by a properly signed build."
+            )
         }
     }
 }

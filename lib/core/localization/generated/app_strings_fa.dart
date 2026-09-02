@@ -1262,6 +1262,9 @@ class AppStringsFa extends AppStrings {
   String get invoiceDocumentSellerPhoneLabel => 'تلفن';
 
   @override
+  String get invoiceIssueAction => 'صدور فاکتور';
+
+  @override
   String get invoiceDeleteDraftAction => 'حذف پیش‌نویس';
 
   @override

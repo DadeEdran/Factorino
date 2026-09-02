@@ -277,7 +277,6 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
               _cell(_text(line.quantity, _Doc.small)),
               _cell(_amount(line.unitPrice, _Doc.small)),
               _cell(_amount(line.gross, _Doc.small)),
-              _cell(_amount(line.total, _Doc.small)),
             ],
           ),
       ],
@@ -472,7 +471,14 @@ abstract final class _Doc {
         2: pw.FixedColumnWidth(partyBlockWidth),
       };
 
-  /// Five declared money and count columns; the description takes the rest.
+  /// Four declared money and count columns; the description takes the rest.
+  ///
+  /// **There were five, and the fifth was «جمع سطر»** — the per-line total
+  /// after its share of the invoice-level discount and its tax. It was removed
+  /// 2026-09-02 (D-082): it is the one figure on the page a reader cannot
+  /// arrive at, because the invoice discount is apportioned across lines by an
+  /// allocation the document never shows. Dropping it also hands its 88 points
+  /// to the description, which is the column D-065 found crushed to 21.6.
   static const double rowWidth = 26;
   static const double quantityWidth = 62;
   static const double moneyWidth = 88;
@@ -484,13 +490,12 @@ abstract final class _Doc {
         2: pw.FixedColumnWidth(quantityWidth),
         3: pw.FixedColumnWidth(moneyWidth),
         4: pw.FixedColumnWidth(moneyWidth),
-        5: pw.FixedColumnWidth(moneyWidth),
       };
 
   /// What the fixed columns take, so a test can assert the description column
   /// is left a workable width rather than the 21.6 points D-065 found.
   static const double fixedColumnsWidth =
-      rowWidth + quantityWidth + moneyWidth * 3;
+      rowWidth + quantityWidth + moneyWidth * 2;
 
   static const double descriptionWidth = contentWidth - fixedColumnsWidth;
 }
