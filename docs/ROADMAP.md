@@ -1894,7 +1894,7 @@ dependency never entered `pubspec.yaml` and the baseline below still sits on a P
 
 ## After Phase 7 — distribution, one hour, not optional
 
-**Status:** `NOT_STARTED` — scheduled, unlike Phases 8–15 below (owner, 2026-09-01). **With Phase 7 closed on 2026-09-02 these two items are the only things left between the current build and one that can be given to someone else.**
+**Status:** `COMPLETED` 2026-09-02. Both items are done. Release signing reads a gitignored `android/key.properties` and the release build **fails without it** rather than falling back to the debug key — proved in both directions, and with a throwaway keystore `apksigner` reported the throwaway DN rather than `CN=Android Debug`. `android:allowBackup="false"` and `android:usesCleartextTraffic="false"` are in and were verified **in the built APK** with `aapt2`, not only in the source. See `docs/RELEASE.md`. What remains for a new owner is to create their own keystore; the wiring is done and refuses to be bypassed.
 
 Two items lifted out of the deferred phases because they are minutes of work that decide whether the
 application can be handed to anyone at all:

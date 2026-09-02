@@ -5,7 +5,22 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-02 (night) — Phase 7 is COMPLETE, and a resize defect the owner found is
+> **Last updated: 2026-09-03 — Phase 7 is COMPLETE and the app has been used on a phone.** Eight
+> findings came out of that first real use, and **seven are fixed**: a draft can now be deleted,
+> issued and edited; a settled invoice no longer offers a payment action it does not need; numeric
+> fields select on focus; the printed document states its status; and the printed line-total column
+> — the one figure a customer could not check by hand — is gone. The eighth is **known issue 30**,
+> measured on the phone and partly fixed.
+>
+> **Three of the eight were one shape: a repository method with no call site.** `softDeleteDraft`,
+> `issue` and `updateDraft` all existed, were correct, and were covered by their own tests, and
+> nothing in the interface called any of them. 1,230 tests could not see it. `HANDOVER.md` §6b is
+> the audit that finds this class; §6c is the related one — checks that run in states no user is
+> ever in, of which three were found in three days.
+>
+> **Read `docs/HANDOVER.md` first if you are new.**
+>
+> Earlier: **Phase 7 is COMPLETE, and a resize defect the owner found is
 > fixed (D-081).** The desktop breakpoint was 1024 and should have been 1312: between those widths
 > four screens laid a table out narrower than its columns need. In debug that is the red error box
 > the owner saw; **in release the guard is compiled out and it would have shipped as Persian at one
@@ -290,7 +305,20 @@ Export from the menu:       PASS   phone tier, Redmi (2026-09-02): the menu item
                                    invoice, tapped, the render driven through the real providers,
                                    and D-077's no-seller notice with its «تنظیمات» action shown.
                                    0 layout errors. Gateway faked -- SAF cannot be driven by adb
-flutter test:               PASS   (1204/1204, was 1194 after (d), 1189 after (c)) as of D-081.
+flutter test:               PASS   (1230/1230) as of 2026-09-03, after the eight phone findings.
+                                   Was 1204 at the Phase 7 close, 1194 after (d), 1189 after (c)
+Phone findings, 2026-09-03: FIXED  7 of 8. Draft delete (27), issue from the detail screen (D-082),
+                                   draft edit (29, D-084), the unreconcilable printed line-total
+                                   column removed (D-082), settled invoices withdraw the payment
+                                   action and say so (D-084), numeric fields select on focus
+                                   (D-084), the document states its status (D-085). The eighth is
+                                   known issue 30, measured and partly fixed (D-086)
+Fold, measured on the Redmi: TAKEN 392.7 x 803.6. add-line at 586-611; pinned bar top **670 before,
+                                   726 after** removing «صدور» until a line exists -- the gap above
+                                   add-line went 59 -> 115 px. With the details section UNFOLDED the
+                                   control is out of the widget tree entirely, ~400 px away, and
+                                   that half is still open. D-086
+Invoice export - both:      PASS   re-run after the status work; 0 layout errors on the phone
                                    +5 for `rtl_table_test.dart`; the export suite is an
                                    integration test and is not in this count
 Android build:              PASS   release APKs rebuilt 2026-09-02 after Phase 7 (b);
@@ -2067,7 +2095,7 @@ repositories and driving the real sheets.
 
 | 29 | ~~A saved draft cannot be edited~~ | **Resolved 2026-09-03** (D-084). «ویرایش پیش‌نویس» in the draft's menu reopens it at `/invoices/:id/edit`; `save` calls `updateDraft` rather than `create`. The editing id is carried on `InvoiceEditorState` rather than in the provider's family key, so it survives the rebuild a settings change causes — which would otherwise have turned an edit into a second invoice silently. Four tests against the real database. Editing an *issued* invoice remains impossible, which is §6, not a gap. |
 
-| 30 | **Adding a line on the new-invoice screen is not discoverable, and vanishes once the details section is opened** | Reported from the phone; **measured before anything was changed** (D-086). At 392.7 x 803.6: with the details folded — how the form opens — «افزودن از فهرست» sits at **586–611 px of an 804 px viewport, 59 px above a pinned bar carrying two filled buttons**. With the details section open, which is an ordinary thing to do, it leaves the widget tree entirely and is ~400 px of scrolling away. **The fault is hierarchy, not geometry:** the screen's primary action is a low-contrast control in the bottom sixth, under two prominent buttons for an action (issuing) that cannot yet succeed. Candidates: lines above details on the phone (§10's rule, a fourth time); promote add-line and demote details; keep «صدور» out of the bar until a line exists. **Deliberately not fixed** — each changes the screen's shape and needs a phone to verify, and a recorded number beats a rushed layout change. |
+| 30 | **Adding a line on the new-invoice screen competes with the pinned bar, and vanishes once the details section is opened** | **Partly fixed 2026-09-03** (D-086), measured on the Redmi before and after. «صدور» is now **absent** from the pinned bar until a line exists — an invoice with no lines cannot be issued, so the filled button was advertising an action that could only fail, from the most prominent place on the screen. The bar lost 56 px and the gap above «افزودن از فهرست» went from **59 px to 115 px** (bar top 670 → 726). **Still open:** with the details section unfolded the add-line control leaves the widget tree entirely, ~400 px away. The two remaining candidates — lines above details on the phone, or promoting add-line and demoting details — need a phone to verify and are recorded in D-086. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -2866,23 +2894,32 @@ surprised by. None of this needs re-litigating.
 lives in `rtlTable`, callers declare columns in reading order, and the page was read. Do not re-open
 it; the numbered item 0 below is kept only so the history reads straight.
 
-**PHASE 7 IS `COMPLETED`** (2026-09-02). All four increments delivered, both targets, gate clean at
-1204/1204. It was the last phase in the plan (D-068).
+**PHASE 7 IS `COMPLETED`** (2026-09-02), and the distribution items are done too: the release build
+now **refuses to build without a keystore** rather than falling back to the debug key, and the two
+manifest lines are in and verified in the built APK with `aapt2`. Gate clean at **1230/1230**.
 
-**The single specific next action: the two distribution items in `ROADMAP.md` — release signing, and
-the two Android manifest lines.** They are the only things standing between this build and one that
-can be handed to another person, and the owner has already ruled that if time runs short something
-else is cut instead of these:
+**Development access ended after 2026-09-03. What follows is for whoever picks this up.**
 
-1. **Release signing from a gitignored properties file** (known issue 13). A debug-signed APK cannot
-   be distributed, and cannot later be re-signed with a real key without uninstalling every install
-   of it — so this is not a thing that can be deferred and fixed afterwards.
-2. **`android:allowBackup="false"` and `android:usesCleartextTraffic="false"`** (known issue 15). The
-   first closes a hole §7's threat model already claims is closed: with `allowBackup` defaulting
-   true, the encrypted database and its metadata can be pulled off some configurations by ADB
-   backup.
+**The single specific next action: create a release keystore and sign a build** — `docs/RELEASE.md`
+has the exact commands. It is the only irreversible decision left: a debug-signed APK cannot be
+distributed, and cannot later be replaced by a properly signed one without every user uninstalling
+first. Everything else can be changed afterwards; this cannot.
 
-Both are in `android/`, both are minutes of work, and neither needs the phone.
+Then, in order:
+
+1. **Install that build on a real device and use it once, end to end** — customer, invoice, issue,
+   payment, PDF, backup. That path touches the encrypted database, the money engine, the Jalali
+   dates, the renderer and the file gateway in one pass. **This is how seven of the last eight
+   defects were found**, and none of them by the 1,230 tests.
+2. **Decide about the app lock (known issue 28).** It is the difference between "the data is
+   encrypted" and "the data is safe on a lost phone", and the threat model in `ARCHITECTURE.md`
+   §B.11 now says so plainly.
+3. **Known issue 30's remaining half** — the add-line control leaving the widget tree when the
+   details section is open. Measured, with two candidate fixes recorded in D-086; both need a phone.
+4. **Known issue 26** (crushed Persian at two width bands) and **25** (the lines-table header on a
+   second page), in that order — 26's second band is a reachable desktop window.
+
+Read `docs/HANDOVER.md` before any of it.
 
 *Historical — the previous next action, now done:*
 

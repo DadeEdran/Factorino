@@ -5930,6 +5930,36 @@ Each changes the shape of the screen. With the remaining access measured in hour
 is worth more than a rushed layout change that nobody can check on hardware — the owner's judgement,
 and the right one. **Known issue 30.**
 
+### The third candidate WAS taken, and measured on the phone
+
+**«صدور» is now absent from the pinned bar until the invoice has a line** — absent, not disabled
+(D-021). The owner chose it as the smallest reshape: it removes the competing prominence rather than
+rearranging around it, and it fixes a second thing on the way, since **a filled button for an action
+that can only fail is misleading wherever the add-line control sits**. An invoice with no lines
+cannot be issued at all.
+
+Measured on the Redmi before and after, same device, same session:
+
+| | pinned bar top | gap above add-line |
+|---|---|---|
+| before | 670 | 59 px |
+| **after** | **726** | **115 px** |
+
+The bar lost 56 px — one filled button and its spacing — and the scrolling region gained them. The
+add-line control did not move (586–611); what changed is that it is no longer 59 pixels under a
+filled button, and the room between them nearly doubled. Issuing still works the moment a line
+exists: the same run ends `issued : INV-1405-0001`, 0 layout errors.
+
+**It does not fix the unfolded case**, and that is stated rather than glossed: with the details
+section open, add-line is still out of the widget tree, ~400 px away (the bar's improvement moves
+that measurement from 415 to 471 and no further). **Candidates 1 and 2 remain open** and remain the
+answer to that half.
+
+**A test moved with it.** `invoice_form_device_test` located the bar by the «صدور» label, which no
+longer exists in the state the fold measurement is taken in — measuring against it would have
+measured nothing in exactly the state the check exists to report. It now uses the save-draft label,
+which is always present.
+
 ### And the existing check was measuring the wrong state
 
 `invoice_form_device_test` printed `fits unscrolled: true` and had done since Phase 4. It is not

@@ -188,7 +188,10 @@ void main() {
       final Rect addLineBox = tester.getRect(addFromCatalogue);
       // Where the scrolling region actually ends: the top of the pinned bar.
       final double barTop = tester
-          .getTopLeft(find.text(strings.invoiceActionIssue))
+          // **The save-draft label, not «صدور».** Issuing is absent from the
+          // bar until a line exists (D-086), so measuring against it would
+          // have measured nothing in exactly the state this is here to report.
+          .getTopLeft(find.text(strings.invoiceActionSaveDraft))
           .dy;
       debugPrint(
         'add-line folded: ${addLineFolded.toStringAsFixed(0)} px, '
@@ -248,7 +251,7 @@ void main() {
     final double addTopNow = _distanceDown(tester, addFromCatalogue);
     final double barTopNow = _distanceDown(
       tester,
-      find.text(strings.invoiceActionIssue),
+      find.text(strings.invoiceActionSaveDraft),
     );
     final double viewportHeight = MediaQuery.sizeOf(
       tester.element(find.byType(InvoiceEditorScreen)),
@@ -270,7 +273,7 @@ void main() {
     final double addFolded = _distanceDown(tester, addFromCatalogue);
     final double barFolded = _distanceDown(
       tester,
-      find.text(strings.invoiceActionIssue),
+      find.text(strings.invoiceActionSaveDraft),
     );
     debugPrint(
       'FOLD folded+customer  : add-line top '

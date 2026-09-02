@@ -447,13 +447,43 @@ void main() {
 
       expect(find.text(strings.invoiceIncompleteCustomer), findsOneWidget);
       expect(_enabled(tester, strings.invoiceActionSaveDraft), isFalse);
-      expect(_enabled(tester, strings.invoiceActionIssue), isFalse);
+      // **Issuing is absent, not disabled, while there are no lines** (D-086).
+      // An invoice with no lines cannot be issued at all, so a filled button
+      // for it advertises an action that can only fail — from the most
+      // prominent place on the screen, directly over the add-line control the
+      // user is actually looking for.
+      expect(find.text(strings.invoiceActionIssue), findsNothing);
 
-      // A customer but no lines is a different missing half, and says so.
+      // A customer but no lines is a different missing half, and says so —
+      // and issuing is still absent, because the missing half is the lines.
       editorOf(container).selectCustomer(customer.id);
       await tester.pumpAndSettle();
       expect(find.text(strings.invoiceIncompleteLines), findsOneWidget);
+      expect(find.text(strings.invoiceActionIssue), findsNothing);
+    });
+
+    testWidgets('issuing appears as soon as there is a line, and is blocked '
+        'while the customer is missing', (WidgetTester tester) async {
+      // The other side of the rule, so "absent" cannot quietly become "never
+      // shown". A missing **customer** is a gap the user can see and fix from
+      // this screen, so the button stays and explains itself; a missing
+      // **line** means the task has not been started.
+      final ProviderContainer container = await pumpEditor(tester);
+      final AppStrings strings = stringsOf(tester, InvoiceEditorScreen);
+
+      editorOf(container).addLine(
+        InvoiceLineEntry(
+          title: 'خدمات',
+          unit: 'ساعت',
+          unitPrice: Money.toman(100000),
+          quantityMilli: 1000,
+        ),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceActionIssue), findsOneWidget);
       expect(_enabled(tester, strings.invoiceActionIssue), isFalse);
+      expect(find.text(strings.invoiceIncompleteCustomer), findsOneWidget);
     });
 
     testWidgets('saving a draft writes one, with no number', (

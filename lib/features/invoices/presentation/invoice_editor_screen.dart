@@ -162,6 +162,12 @@ class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
       // Both are disabled for the same reason and the reason is spelled out
       // beneath them, so a disabled button is never a dead end.
       blockedReason: _blockedReason(strings, state),
+      // **Absent until there is something to issue** (D-021, D-086). An
+      // invoice with no lines cannot be issued at all, so a filled button
+      // offering it is advertising an action that can only fail — and it was
+      // doing so from the most prominent place on the screen, directly over
+      // the add-line control that is what the user actually needs to find.
+      showIssue: state.lines.isNotEmpty,
       busy: _writing,
       onSaveDraft: _saveDraft,
       onIssue: () => _issue(strings, state),
@@ -321,6 +327,7 @@ class _EditorActions extends StatelessWidget {
   const _EditorActions({
     required this.strings,
     required this.blockedReason,
+    required this.showIssue,
     required this.busy,
     required this.onSaveDraft,
     required this.onIssue,
@@ -328,6 +335,18 @@ class _EditorActions extends StatelessWidget {
 
   final AppStrings strings;
   final String? blockedReason;
+
+  /// Whether issuing is offered at all.
+  ///
+  /// False until the invoice has a line. **Absent rather than disabled**, which
+  /// is D-021's rule and is why this is a separate flag from [blockedReason]:
+  /// a *missing customer* is a gap the user can see and fix from here, so that
+  /// button stays and explains itself; *no lines at all* means the screen has
+  /// not been used yet, and a prominent filled control for the last step of a
+  /// task nobody has started is noise at the exact moment the user is looking
+  /// for the first step (D-086).
+  final bool showIssue;
+
   final bool busy;
   final VoidCallback onSaveDraft;
   final VoidCallback onIssue;
@@ -357,15 +376,19 @@ class _EditorActions extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: <Widget>[
         if (vertical) ...<Widget>[
-          issue,
-          const SizedBox(height: AppSpacing.sm),
+          if (showIssue) ...<Widget>[
+            issue,
+            const SizedBox(height: AppSpacing.sm),
+          ],
           draft,
         ] else
           Row(
             children: <Widget>[
               Expanded(child: draft),
-              const SizedBox(width: AppSpacing.md),
-              Expanded(child: issue),
+              if (showIssue) ...<Widget>[
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: issue),
+              ],
             ],
           ),
         const SizedBox(height: AppSpacing.sm),

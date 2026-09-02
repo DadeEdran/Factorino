@@ -22,10 +22,13 @@ A user can:
   details onto it.
 * **Record payments** against it, in part or in full. Status (`paid` / `partiallyPaid` / `unpaid`)
   is derived from the payments and persisted.
+* **Issue a saved draft** from its detail page, or **edit** it — change a line, a price, the
+  customer — and save it back. Only drafts are editable (§6).
 * **Cancel** an issued invoice — never edit it. Cancelling keeps its recorded payments and says so.
 * **Delete a draft** — the only kind of invoice that can be deleted.
 * **Save a PDF** of any invoice, in Persian, RTL, with both parties, a lines table, and totals that
-  reconcile by hand.
+  reconcile by hand. The document states where it stands: a draft and a cancelled invoice each carry
+  an unmissable band, and an issued one prints «وضعیت پرداخت» under its payable total.
 * **Back up and restore** the whole database to a single encrypted file under a passphrase.
 * **Configure** the VAT rate, invoice prefix, payment term, rounding unit, and their own business
   details (which appear on the printed invoice).
@@ -56,16 +59,30 @@ None of these are bugs. All were scoped out and recorded (D-068).
 
 ## 3. What is known broken
 
-Full list with detail in `docs/CURRENT_STATE.md` under *Known issues*. The ones that matter:
+Full list with detail in `docs/CURRENT_STATE.md` under *Known issues*. Ordered by **whether a real
+user hits it**, which is not the same as severity.
+
+### A user will hit these
 
 | # | What | Impact |
 |---|---|---|
-| **28** | **There is no app lock.** No PIN, no biometric, no idle timeout, no `FLAG_SECURE`. | **The most significant gap.** Encryption at rest protects the *file*, not a running app on an unlocked device. Anyone holding an unlocked phone can read every customer's کد ملی and export a backup. `docs/ARCHITECTURE.md` §B.11 states this honestly; do not let anyone read the threat model as covering it. |
-| **26** | Crushed Persian at two width bands: the `/invoices/:id` title at 328–376 px, and «پیش‌فرض فاکتور» in the invoice editor at 616–688 px. | Cosmetic but ugly — text laid out narrower than its longest word renders one glyph per row. The second band is a reachable desktop window. Both strings and both bands are pinned in the issue; the reproduction is two lines. |
-| **30** | Adding a line on the new-invoice screen is not discoverable, and leaves the widget tree entirely once the details section is opened. | Measured, not fixed (D-086): 586–611 px of an 804 px viewport, 59 px above a pinned bar of two filled buttons. The fault is hierarchy, not geometry. The numbers and three candidate fixes are recorded. |
-| **25** | An invoice long enough to span a page loses its lines-table header on page 2. | The header row is `repeat: false`, and no fixture has ever actually spanned, so it is untested in both directions. Fix the fixture first, then the flag. |
+| **30** | On the new-invoice screen, «افزودن از فهرست» leaves the widget tree entirely once the details section is opened — ~400 px of scrolling away. | **The one a first-time user actually tripped on.** Partly fixed (D-086): «صدور» is now absent from the pinned bar until a line exists, which took the gap above add-line from 59 px to 115 px, measured on the phone. The unfolded case is still open, with two candidate fixes and the numbers recorded. |
+| **26** | Crushed Persian at two width bands: the `/invoices/:id` title at 328–376 px, and «پیش‌فرض فاکتور» in the invoice editor at 616–688 px. | Text laid out narrower than its longest word renders one glyph per row. **616–688 is a reachable desktop window**, so this is not hypothetical. Both strings and bands are pinned; the reproduction is two lines. |
+| **25** | An invoice long enough to span a page loses its lines-table header on page 2. | Only bites on a long invoice — but when it does, it is on the customer's copy. Untested in both directions: no fixture has ever actually spanned. Fix the fixture first, then the flag. |
+
+### A user will not notice, but you should
+
+| # | What | Impact |
+|---|---|---|
+| **28** | **There is no app lock.** No PIN, no biometric, no idle timeout, no `FLAG_SECURE`. | **The most consequential gap in the product**, and invisible in normal use — which is exactly why it is listed here. Encryption at rest protects the *file*, not a running app on an unlocked device: anyone holding an unlocked phone can read every customer's کد ملی and export a backup. `docs/ARCHITECTURE.md` §B.11 states this honestly; **do not let anyone read the threat model as covering "lost or stolen device"**. |
+| **29b** | A saved draft can be edited; an **issued** invoice cannot. | Not a gap — §6. An issued invoice is corrected by cancelling it and issuing a replacement, because a silently edited document no longer matches the customer's copy. Listed so nobody "fixes" it. |
 | 13 | R8/minification not enabled for release. | Binary size only. |
-| 14 | Web untested, and unencrypted. | Phase 12, deferred. |
+| 14 | Web untested, and gets **no encryption at rest**. | Phase 12, deferred. Treat Web as the least-trusted target if it is ever revived. |
+
+### Resolved during the final sessions, listed so the history reads straight
+
+27 (a draft could not be deleted), 29 (a draft could not be edited), and the issuing gap — all three
+were the same shape: **a repository method with no call site.** See §6b.
 
 **Nothing known is wrong with any figure.** The money engine, the tax and discount allocation, the
 Jalali period boundaries and the invoice numbering are the most heavily tested parts of the codebase
@@ -146,7 +163,7 @@ controllers), and `domain/` where it needs one.
 
 ## 6b. Audit for repository methods with no caller, before trusting the suite
 
-**Three separate features were missing this way, and 1,229 tests could not see any of them.** In one
+**Three separate features were missing this way, and 1,230 tests could not see any of them.** In one
 afternoon of using the app on a phone the owner found that a draft could not be deleted, could not be
 issued, and could not be edited. In all three cases the repository method existed, was correct, and
 was covered by its own tests — `softDeleteDraft`, `issue`, `updateDraft` — and **nothing in the
@@ -166,11 +183,49 @@ grep -rn "methodName" lib/ --include=*.dart | grep -v "\.g\.dart"
 A method that appears only in its own interface, its implementation and its tests is a feature that
 was built and never wired up. Three of them were sitting there at handover.
 
+## 6c. Before trusting a check, ask what state it runs in
+
+**Three checks in three days reported success about conditions no user is ever in.** They were not
+wrong; they were measuring somewhere else, and each looked exactly like coverage.
+
+| The check | The state it ran in | The state that mattered |
+|---|---|---|
+| `AppTableHeader`'s D-065 table-minimum guard | inside `assert`, so **debug builds only** | release, where it is compiled out — four screens would have shipped Persian at one glyph per row (D-081) |
+| The release-signing refusal | Gradle **configuration**, which runs for every build type | it fired on `assembleDebug` too, breaking `flutter run` and every device suite (D-083) |
+| `invoice_form_device_test`'s `fits unscrolled: true` | a **pristine** form: no customer, details folded | after picking a customer and opening the details — where the control leaves the widget tree entirely (D-086) |
+
+**The class, stated once:** *a check is only as good as the conditions it actually runs in.* Before
+trusting one, ask two questions — **what state does this run in, and is a user ever in it?** All
+three were invisible to reading and immediate on running; none would have been caught by a careful
+diff review, and each was caught within minutes of putting the thing in front of a person or a phone.
+
+This sits beside §6b's point rather than repeating it. §6b is about checks that **do not exist**
+(a repository method nothing calls); this is about checks that **exist and watch the wrong thing**.
+
+### Falsifiability, per D-072
+
+Every measurement guard in this codebase is supposed to be **verified to bite** — proved to fail when
+handed the defect it exists for — because a guard that cannot fail is worse than none: it reports
+clean and looks like coverage. `test/core/widgets/guard_controls_test.dart` is the standing home for
+these controls and its header records the audit.
+
+Established as falsifiable: the crushed-text detector (its own negative control), the sheet-keyboard
+rule (a deliberately-wrong sheet, plus the `AppSpacing.lg` slack floor, which fails on five of six
+sheets at twice the floor), `app_table_test` (one pixel either side of its threshold), the contrast
+probe (proved accurate against a known 2.68:1), the source-scanning guards (each carries a matcher
+self-test), the gateway boundary, the width sweep (four screens fail at the old 1024 breakpoint, one
+at 1280), and the release-signing refusal (both directions: debug builds, release refuses).
+
+**Not established, and listed rather than assumed:** the money-magnitude ladder sweeps
+(`money_layout_test`) have no negative control — they are believed to bite because D-058 and D-065
+were both found by them, which is evidence but not a standing proof. If you touch the layout
+primitives they watch, add one.
+
 ## 7. The gate
 
 ```sh
 flutter analyze     # must be clean
-flutter test        # 1229 tests, must all pass
+flutter test        # 1230 tests, must all pass
 ```
 
 Both were clean at handover. Beyond that, a phase is not closed until its layout has been checked at
