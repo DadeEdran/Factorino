@@ -1,3 +1,5 @@
+import 'seller_identity.dart';
+
 /// The single row of application configuration.
 ///
 /// Seeded when the database is created, so no read path anywhere has to handle
@@ -8,6 +10,7 @@ class AppSettings {
     required this.roundingUnitRial,
     required this.invoiceNumberPrefix,
     this.paymentTermDays = kDefaultPaymentTermDays,
+    this.seller = SellerIdentity.none,
     this.devicePrefix,
     this.lastBackupAt,
   });
@@ -40,6 +43,21 @@ class AppSettings {
   /// the place to hide that behind a clamp.
   final int paymentTermDays;
 
+  /// The business the invoice is issued **by** (schema v5, D-077).
+  ///
+  /// **Never null, often empty**, and the difference matters. Every database in
+  /// existence carries [SellerIdentity.none] after the migration, because there
+  /// was nothing to migrate from and nothing honest to invent — so an empty
+  /// identity is the ordinary starting state rather than an error, and no read
+  /// path has to handle a missing one.
+  ///
+  /// It is a value object rather than four nullable fields here for a reason
+  /// that is easy to miss: `copyWith` on a nullable field cannot express *clear
+  /// it*. Emptying the name in the form would otherwise write the old name
+  /// straight back, and the user would find out on the next document they
+  /// printed. See [SellerIdentity].
+  final SellerIdentity seller;
+
   /// Reserved for the multi-device numbering collision cloud sync will
   /// introduce (D-013). Unused in Phase 1.
   final String? devicePrefix;
@@ -54,6 +72,7 @@ class AppSettings {
     int? roundingUnitRial,
     String? invoiceNumberPrefix,
     int? paymentTermDays,
+    SellerIdentity? seller,
     String? devicePrefix,
     DateTime? lastBackupAt,
   }) {
@@ -62,6 +81,10 @@ class AppSettings {
       roundingUnitRial: roundingUnitRial ?? this.roundingUnitRial,
       invoiceNumberPrefix: invoiceNumberPrefix ?? this.invoiceNumberPrefix,
       paymentTermDays: paymentTermDays ?? this.paymentTermDays,
+      // Replaced whole, which is what makes clearing a seller field
+      // expressible at all -- `??` on four nullable strings could not say
+      // "this one is now empty" (D-077).
+      seller: seller ?? this.seller,
       devicePrefix: devicePrefix ?? this.devicePrefix,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
     );

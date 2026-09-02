@@ -13,6 +13,7 @@ import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/page_body.dart';
 import '../../../data/models/app_settings.dart';
+import '../../../data/models/seller_identity.dart';
 import '../../../data/backup/backup_file_gateway.dart';
 import '../../../data/backup/backup_service.dart';
 import '../application/backup_controller.dart';
@@ -20,6 +21,7 @@ import '../application/settings_editor.dart';
 import '../application/settings_providers.dart';
 import 'widgets/backup_password_sheet.dart';
 import 'widgets/backup_restore_confirm_dialog.dart';
+import 'widgets/seller_editor_sheet.dart';
 import 'widgets/settings_editor_sheet.dart';
 
 /// The settings screen: the invoicing configuration, and backup.
@@ -97,6 +99,26 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
 .save(edited);
     if (!mounted) return;
     _say(saved ? strings.settingsSaved : strings.errorGenericBody);
+  }
+
+  /// Edits the seller — the business the invoice is issued by (D-077).
+  ///
+  /// Separate from [_edit] because the two sheets edit different things and
+  /// each section offers its own control; the write goes through the same
+  /// controller, because there is one settings row and one place that writes
+  /// it.
+  Future<void> _editSeller() async {
+    final SellerIdentity? edited = await showSellerEditorSheet(
+      context,
+      seller: settings.seller,
+    );
+    if (edited == null || !mounted) return;
+
+    final bool saved = await ref
+.read(settingsEditorProvider.notifier)
+.save(settings.copyWith(seller: edited));
+    if (!mounted) return;
+    _say(saved ? strings.settingsSellerSaved : strings.errorGenericBody);
   }
 
   Future<void> _export() async {
@@ -202,8 +224,63 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
 
   @override
   Widget build(BuildContext context) {
+    final SellerIdentity seller = settings.seller;
+
     return ListView(
       children: <Widget>[
+        // **First on the screen, and deliberately** (D-077). Every database in
+        // existence reaches v5 with this section empty, because there was
+        // nothing to migrate from and nothing honest to invent — so this is
+        // the one section of this screen every existing user has something to
+        // do in, and the printed invoice is missing half its identity until
+        // they do it.
+        SectionHeader(
+          title: strings.settingsSellerSection,
+          trailing: IconButton(
+            onPressed: _busy ? null : _editSeller,
+            icon: const Icon(Icons.edit_outlined),
+            tooltip: strings.settingsSellerEditTooltip,
+          ),
+        ),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: <Widget>[
+              _SettingRow(
+                label: strings.settingsSellerFieldName,
+                value: seller.name ?? strings.settingsSellerEmpty,
+                // **The sentence that makes an empty seller impossible to be
+                // surprised by.** An empty seller blocks nothing — not
+                // issuing, not printing; it is the user's document and their
+                // call — so the whole of the obligation is that they were
+                // told, in the place they can act on it, before they print.
+                // Hung off the name row rather than the section because the
+                // name is what gates the block: fill it and the sentence goes
+                // away, which is the feedback that makes it a prompt rather
+                // than a standing notice.
+                hint: seller.isPrintable
+                    ? null
+: strings.settingsSellerConsequence,
+              ),
+              const _RowDivider(),
+              _SettingRow(
+                label: strings.settingsSellerFieldEconomicId,
+                value: seller.economicId ?? strings.settingsSellerEmpty,
+              ),
+              const _RowDivider(),
+              _SettingRow(
+                label: strings.settingsSellerFieldPhone,
+                value: seller.phone ?? strings.settingsSellerEmpty,
+              ),
+              const _RowDivider(),
+              _SettingRow(
+                label: strings.settingsSellerFieldAddress,
+                value: seller.address ?? strings.settingsSellerEmpty,
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
         SectionHeader(
           title: strings.settingsInvoicingSection,
           // In the header rather than as a row in the card, and rather than a

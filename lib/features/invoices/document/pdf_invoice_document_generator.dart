@@ -53,7 +53,7 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
             if (view.draftBanner != null) _draftBand(view.draftBanner!),
             _meta(view),
             pw.SizedBox(height: _Doc.blockGap),
-            _party(view.party),
+            _parties(view),
             pw.SizedBox(height: _Doc.blockGap),
             _lines(view),
             pw.SizedBox(height: _Doc.blockGap),
@@ -155,6 +155,65 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
     );
   }
 
+  /// The two parties, side by side (D-077).
+  ///
+  /// **Side by side rather than stacked, and it was measured.** The content
+  /// width is 531 pt, so each block gets [_Doc.partyBlockWidth] -- comfortably
+  /// wider than the longest word either block can hold, which is what D-065
+  /// says to check rather than assume. Stacking them would have cost the height
+  /// of a whole block above the lines table, on a page whose whole job is to
+  /// show the lines; a row costs nothing, and it is also how an Iranian invoice
+  /// is conventionally set.
+  ///
+  /// **The seller is declared LAST, so that it lands on the right**, which is
+  /// the side an Iranian reader looks at first and where the issuer belongs.
+  ///
+  /// That is the opposite of what it looks like, and it was measured rather
+  /// than reasoned: **`pw.Table` lays column 0 out at the left even under
+  /// `textDirection: rtl`.** Read off the rendered page — the first attempt
+  /// declared the seller first and printed it on the left, which looks
+  /// entirely deliberate and is wrong. See the note on
+  /// [_Doc.partyColumnWidths].
+  ///
+  /// **When there is no seller the buyer takes the full width**, rather than
+  /// half a page with a gap where the issuer should be. The layout changes
+  /// shape rather than leaving a hole -- D-065's rule, applied to a block
+  /// instead of to a column.
+  pw.Widget _parties(InvoiceDocumentView view) {
+    final InvoiceDocumentParty? seller = view.seller;
+    if (seller == null) return _party(view.party);
+
+    // **A `Table`, not a `Row`, and both halves of that are measured.**
+    //
+    // A `Row` of two `Expanded`s with `crossAxisAlignment: stretch` gives the
+    // row an unbounded height and `MultiPage` refuses the page outright:
+    // *"Widget won't fit into the page as its height (Infinity) exceed a page
+    // height"*. Found by rendering, not by reading, which is this phase's
+    // method. Dropping `stretch` compiles and renders and looks wrong: two
+    // bordered boxes of different heights side by side read as one of them
+    // having failed to finish. `package:pdf` has no `IntrinsicHeight` to
+    // bound it with.
+    //
+    // `TableCellVerticalAlignment.full` is what makes both cells take the
+    // taller one's height, and the widths are **declared** rather than flexed
+    // — D-065's rule, and the same shape as the lines table below.
+    return pw.Table(
+      columnWidths: _Doc.partyColumnWidths,
+      defaultVerticalAlignment: pw.TableCellVerticalAlignment.full,
+      children: <pw.TableRow>[
+        pw.TableRow(
+          children: <pw.Widget>[
+            // Buyer, gap, seller -- left to right on the page, which puts the
+            // seller on the right for the reader. See above.
+            _party(view.party),
+            pw.SizedBox(width: _Doc.gap),
+            _party(seller),
+          ],
+        ),
+      ],
+    );
+  }
+
   pw.Widget _party(InvoiceDocumentParty party) {
     return pw.Container(
       width: double.infinity,
@@ -171,7 +230,9 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
           _text(party.name, _Doc.subtitle, bold: true),
           for (final DocumentField field in party.fields) ...<pw.Widget>[
             pw.SizedBox(height: _Doc.tight),
-            _field(field, _Doc.body),
+            // `fill`, so a long نشانی wraps inside the box instead of running
+            // off its edge and being clipped mid-word. See `_field`.
+            _field(field, _Doc.body, fill: true),
           ],
           if (party.sourceNote != null) ...<pw.Widget>[
             pw.SizedBox(height: _Doc.gap),
@@ -253,14 +314,30 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
   /// against the Persian label sharing their run. Two widgets have no shared
   /// run to resolve against, which is why the rule makes finding 2 disappear
   /// rather than needing a remedy for it.
-  pw.Widget _field(DocumentField field, double size) {
+  ///
+  /// **[fill] decides whether the value may wrap, and it is not cosmetic.**
+  /// Without it the row is `mainAxisSize: min` with no flexible child, so the
+  /// value takes its intrinsic width and **overflows its container silently**:
+  /// a نشانی in a party block ran off the edge of the box and was clipped
+  /// mid-word — «...پلاک ۴۵۶، واح» — with no overflow, no error and no failing
+  /// test. Read off the rendered page, which is the only thing that showed it,
+  /// and it is the same class as D-065's 21.6-point column.
+  ///
+  /// The default stays `false`, because the two callers that want the old
+  /// behaviour genuinely want it: the invoice number in the page header and
+  /// the dates in the meta row sit beside a `Spacer` and must take their
+  /// natural width. A field that is the whole width of its block wants the
+  /// opposite.
+  pw.Widget _field(DocumentField field, double size, {bool fill = false}) {
+    final pw.Widget value = _text(field.value, size, bold: true);
+
     return pw.Row(
-      mainAxisSize: pw.MainAxisSize.min,
-      crossAxisAlignment: pw.CrossAxisAlignment.end,
+      mainAxisSize: fill ? pw.MainAxisSize.max : pw.MainAxisSize.min,
+      crossAxisAlignment: pw.CrossAxisAlignment.start,
       children: <pw.Widget>[
         _text(field.label, size, color: _Doc.muted),
         pw.SizedBox(width: _Doc.tight),
-        _text(field.value, size, bold: true),
+        if (fill) pw.Expanded(child: value) else value,
       ],
     );
   }
@@ -363,6 +440,28 @@ abstract final class _Doc {
 
   static const double totalsWidth = 240;
 
+  /// What each party block gets when both are printed: half the content width
+  /// less half the gap between them.
+  ///
+  /// Declared rather than left to `Expanded` to work out, for D-065's reason:
+  /// a block laid out at a width nothing asserts is a block that can be
+  /// crushed silently. `invoice_document_view_test.dart` asserts this stays
+  /// wide enough for the longest word a party block can hold.
+  static const double partyBlockWidth = (contentWidth - gap) / 2;
+
+  /// Buyer, gap, seller -- **in left-to-right page order**.
+  ///
+  /// `pw.Table` places column 0 at the left of the page regardless of
+  /// `textDirection`, which was established by rendering the page and looking
+  /// at it, not from the API. So the column a reader meets first is the last
+  /// one declared. Fixed widths rather than flexed, per D-065.
+  static const Map<int, pw.TableColumnWidth> partyColumnWidths =
+      <int, pw.TableColumnWidth>{
+        0: pw.FixedColumnWidth(partyBlockWidth),
+        1: pw.FixedColumnWidth(gap),
+        2: pw.FixedColumnWidth(partyBlockWidth),
+      };
+
   /// Five declared money and count columns; the description takes the rest.
   static const double rowWidth = 26;
   static const double quantityWidth = 62;
@@ -392,6 +491,13 @@ abstract final class InvoiceDocumentLayout {
   static const double fixedColumnsWidth = _Doc.fixedColumnsWidth;
   static const double descriptionWidth = _Doc.descriptionWidth;
   static const double moneyColumnWidth = _Doc.moneyWidth;
+
+  /// The width of one party block when both are printed (D-077).
+  static const double partyBlockWidth = _Doc.partyBlockWidth;
+
+  /// The type size a party block sets its field values in, which is what the
+  /// width above has to be checked against.
+  static const double partyFontSize = _Doc.body;
   static const double lineFontSize = _Doc.small;
   static const double unitScale = _Doc.unitScale;
 }

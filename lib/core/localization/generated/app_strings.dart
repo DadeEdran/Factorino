@@ -364,6 +364,84 @@ abstract class AppStrings {
   /// **'تا کنون پشتیبانی تهیه نشده است'**
   String get settingsLastBackupNever;
 
+  /// Section heading for the user own business details on the settings screen (schema v5, D-077). These are printed as the seller block of the invoice. Named «مشخصات فروشنده» rather than «کسب و کار من» so the heading uses the same word the document does: the user should be able to see which part of the printed page this section fills in.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشخصات فروشنده'**
+  String get settingsSellerSection;
+
+  /// Shown as the value of a seller row that has not been filled in. Deliberately the same admission wording the invoice uses for an unrecorded figure: it says the value was never given, rather than leaving a blank that reads as data which failed to load.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت نشده'**
+  String get settingsSellerEmpty;
+
+  /// The one sentence that makes an empty seller impossible to be surprised by (D-077). Shown under the seller section whenever no business name is stored. It states the consequence -- the block is omitted from the printed invoice -- rather than nagging: an empty seller does not block issuing or printing, it is the user document and their call, so the only obligation is that they were told. Carries a ZWNJ twice, so it exercises the D-073 atom on a real screen string.
+  ///
+  /// In fa, this message translates to:
+  /// **'تا زمانی که نام کسب‌وکار را وارد نکنید، بخش «فروشنده» روی فاکتور چاپ نمی‌شود.'**
+  String get settingsSellerConsequence;
+
+  /// No description provided for @settingsSellerEditTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش مشخصات فروشنده'**
+  String get settingsSellerEditTitle;
+
+  /// Tooltip on the edit control in the seller section header. Deliberately the full phrase rather than the bare edit the invoicing section uses: with two edit controls on one screen, a tooltip that does not say which section it opens is no help at all.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش مشخصات فروشنده'**
+  String get settingsSellerEditTooltip;
+
+  /// The seller business name. The identifying field of the block: the document prints no seller block without it, and the form requires it as soon as any other seller field is filled.
+  ///
+  /// In fa, this message translates to:
+  /// **'نام کسب‌وکار'**
+  String get settingsSellerFieldName;
+
+  /// No description provided for @settingsSellerFieldNameHint.
+  ///
+  /// In fa, this message translates to:
+  /// **'همان‌گونه که باید روی فاکتور چاپ شود.'**
+  String get settingsSellerFieldNameHint;
+
+  /// The seller economic ID. Same label as the customer one, because it is the same thing on the other side of the invoice.
+  ///
+  /// In fa, this message translates to:
+  /// **'کد اقتصادی'**
+  String get settingsSellerFieldEconomicId;
+
+  /// No description provided for @settingsSellerFieldAddress.
+  ///
+  /// In fa, this message translates to:
+  /// **'نشانی'**
+  String get settingsSellerFieldAddress;
+
+  /// The seller telephone. Deliberately a different label from the customer mobile field: a business published number is as often a landline with an area code, and it is stored as typed rather than normalized to the 09xxxxxxxxx mobile shape.
+  ///
+  /// In fa, this message translates to:
+  /// **'تلفن'**
+  String get settingsSellerFieldPhone;
+
+  /// Says the number is kept exactly as typed. Worth saying because the customer mobile field does normalize, so a user who has met that field would reasonably expect this one to as well.
+  ///
+  /// In fa, this message translates to:
+  /// **'همان‌گونه که وارد می‌کنید ذخیره و چاپ می‌شود.'**
+  String get settingsSellerFieldPhoneHint;
+
+  /// Validation error when a seller field is filled but the name is not. Reported, never clamped (D-027): a seller block carrying an economic ID and no name is a fragment rather than an identification. The second sentence is what stops the rule becoming a trap -- it says how to get OUT of the section, because a user who wants no seller block at all must be able to empty it.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همهٔ فیلدها را خالی بگذارید.'**
+  String get settingsErrorSellerNameRequired;
+
+  /// No description provided for @settingsSellerSaved.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشخصات فروشنده ذخیره شد.'**
+  String get settingsSellerSaved;
+
   /// No description provided for @tableColumnNumber.
   ///
   /// In fa, this message translates to:
@@ -2273,6 +2351,18 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'ردیف'**
   String get invoiceDocumentColumnRow;
+
+  /// Heads the seller block on the printed invoice, opposite the buyer block (D-077). A conventional Iranian sales invoice names both parties, and until schema v5 this application could not: the settings row held no business identity at all, so the document carried one block and nothing beside it. The block is printed only when the user has given a business name, and omitted entirely otherwise -- never as a heading over blanks, which reads as a document that failed to print.
+  ///
+  /// In fa, this message translates to:
+  /// **'فروشنده'**
+  String get invoiceDocumentSellerHeading;
+
+  /// Labels the seller telephone in the printed block. Its own entry rather than the customer mobile label, because a business published number is as often a landline. The value is drawn as a separate widget from this label and never concatenated with it -- D-070 measured that shape coming out with its digit groups reversed.
+  ///
+  /// In fa, this message translates to:
+  /// **'تلفن'**
+  String get invoiceDocumentSellerPhoneLabel;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {

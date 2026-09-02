@@ -54,8 +54,16 @@ class AppDatabase extends _$AppDatabase {
   /// and `invoice_items.allocated_invoice_discount_rial`, so that every figure
   /// an Iranian invoice prints is stored rather than re-derived at render
   /// time — and, unlike v3, **backfilled** where the existing row reconciles.
+  ///
+  /// v5 (D-077): four nullable `settings.seller_*` columns — name, کد اقتصادی,
+  /// نشانی, telephone — so the printed invoice can name the business that
+  /// issued it. The schema held no business identity at all, so the document
+  /// carried a خریدار block and nothing opposite it, which is not a document
+  /// anyone can hand to a customer. Nothing is backfilled and nothing is
+  /// defaulted: an invented seller on a customer-facing page is the one thing
+  /// this phase must not do.
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -88,10 +96,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 4 && to >= 4) {
         await migrateV3ToV4(m);
       }
+      if (from < 5 && to >= 5) {
+        await migrateV4ToV5(m);
+      }
 
       // Fail loud on a version this ladder does not cover, rather than
       // opening a database whose shape is not the one the code expects.
-      if (from < 1 || to > 4) {
+      if (from < 1 || to > 5) {
         throw StateError('no migration defined from v$from to v$to');
       }
     },
@@ -395,6 +406,60 @@ Future<void> migrateV3ToV4(Migrator m) async {
     throw StateError(
       'the v3 -> v4 invoice-figures migration left ${violations.length} '
       'foreign-key violation(s); refusing to open. See D-055.',
+    );
+  }
+}
+
+/// v4 -> v5 (D-077): the seller, so the printed invoice can name the business
+/// that issued it.
+///
+/// **Four `ALTER TABLE ... ADD COLUMN`s and no backfill**, and the absence of a
+/// backfill is the decision rather than the omission. [migrateV3ToV4] filled
+/// its columns because they were arithmetic over figures the row already
+/// carried, so leaving them empty would have been a loss of information the
+/// database held. These four are the opposite: the database has never been told
+/// anything about the user's business, so there is nothing to compute and
+/// nothing to copy. D-052's snapshot columns were left empty for exactly this
+/// reason, and the consequence is stated rather than papered over — until the
+/// user fills the settings form in, the document prints no فروشنده block, and
+/// the settings screen is what tells them so.
+///
+/// **A `withDefault` would have been the worst available option.** It is the
+/// one shape that produces a document: a fabricated seller block, on the page
+/// the customer keeps, that nobody would ever question because it looks exactly
+/// like a real one.
+///
+/// **[assertForeignKeysCanBeDisabled] is not called here**, for the reason
+/// [migrateV3ToV4] gives at greater length: that guard checks a precondition of
+/// a 12-step table rebuild, whose step 6 is a `DROP TABLE`. `ADD COLUMN` drops
+/// nothing. Invoking it anyway would teach the next reader that it is a rite
+/// performed before migrations rather than a check on a property one depends
+/// on.
+///
+/// **[_addColumnIfAbsent] rather than [Migrator.addColumn], on a table no step
+/// rebuilds.** `settings` is rebuilt by nothing, so on today's ladder every one
+/// of these four is absent on every path and a plain `addColumn` would do. It
+/// is used all the same, because the next step that rebuilds this table would
+/// otherwise turn a v1 upgrade into `duplicate column name` on open — for
+/// exactly the users furthest behind, and only for them. Cheap here,
+/// unrecoverable there.
+Future<void> migrateV4ToV5(Migrator m) async {
+  final db = m.database as AppDatabase;
+
+  await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerName);
+  await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerEconomicId);
+  await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerAddress);
+  await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerPhone);
+
+  // As in the two steps before it: nothing here can create a dangling
+  // reference, but the check costs one pragma while we can still refuse to
+  // open.
+  // soft-delete-exempt: an integrity pragma, not a read of user rows.
+  final violations = await db.customSelect('pragma foreign_key_check').get();
+  if (violations.isNotEmpty) {
+    throw StateError(
+      'the v4 -> v5 seller migration left ${violations.length} '
+      'foreign-key violation(s); refusing to open. See D-077.',
     );
   }
 }

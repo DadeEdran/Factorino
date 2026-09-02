@@ -3,6 +3,7 @@ import 'dart:async';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/data/models/app_settings.dart';
 import 'package:factorino/data/providers.dart';
+import 'package:factorino/data/models/seller_identity.dart';
 import 'package:factorino/data/repositories/settings_repository.dart';
 import 'package:factorino/features/settings/presentation/settings_screen.dart';
 import 'package:flutter/material.dart';
@@ -48,9 +49,43 @@ void main() {
     return stringsOf(tester, SettingsScreen);
   }
 
+  /// Scrolls until [text] is on screen.
+  ///
+  /// The seller section joined the top of this screen in D-077, so the
+  /// sections below it are past the phone fold and, past the cache extent,
+  /// **not in the tree at all** -- a finder returns nothing rather than
+  /// something off-screen, which reads like a missing widget.
+  Future<void> reach(WidgetTester tester, String text) async {
+    await tester.scrollUntilVisible(
+      find.text(text),
+      120,
+      scrollable: find.byType(Scrollable).first,
+    );
+    await tester.pumpAndSettle();
+  }
+
+  /// Opens the **invoicing** editor.
+  ///
+  /// By tooltip rather than by icon: since D-077 two sections each carry an
+  /// `Icons.edit_outlined` control, and `find.byIcon` matches both. The
+  /// tooltips are exact strings and differ, which is also why the seller's is
+  /// the full phrase rather than the bare «ویرایش» -- with two controls on one
+  /// screen, a tooltip that does not say which section it opens is no help to
+  /// a user either.
   Future<AppStrings> openEditor(WidgetTester tester) async {
     final AppStrings strings = await pumpSettings(tester);
-    await tester.tap(find.byIcon(Icons.edit_outlined));
+    await tester.tap(find.byTooltip(strings.settingsEditTooltip));
+    await tester.pumpAndSettle();
+    return strings;
+  }
+
+  /// Opens the **seller** editor (D-077).
+  Future<AppStrings> openSellerEditor(
+    WidgetTester tester, {
+    AppSettings initial = settings,
+  }) async {
+    final AppStrings strings = await pumpSettings(tester, initial: initial);
+    await tester.tap(find.byTooltip(strings.settingsSellerEditTooltip));
     await tester.pumpAndSettle();
     return strings;
   }
@@ -190,6 +225,7 @@ void main() {
       WidgetTester tester,
     ) async {
       final AppStrings strings = await pumpSettings(tester);
+      await reach(tester, strings.settingsLastBackupNever);
       expect(find.text(strings.settingsLastBackupNever), findsOneWidget);
     });
 
@@ -199,10 +235,11 @@ void main() {
       // **Known issue 6's first half.** This row would have rendered
       // «۱٬۷۵۶٬۰۰۰٬۰۰۰٬۰۰۰» the moment `lastBackupAt` stopped being null, and
       // until this increment nothing could make it non-null, so nothing showed.
-      await pumpSettings(
+      final AppStrings strings = await pumpSettings(
         tester,
         initial: settings.copyWith(lastBackupAt: DateTime.utc(2026, 9, 1, 12)),
       );
+      await reach(tester, strings.settingsLastBackup);
 
       expect(find.textContaining('۱۴۰۵'), findsWidgets);
       expect(
@@ -210,6 +247,136 @@ void main() {
         findsNothing,
         reason: 'an epoch millisecond count is on screen',
       );
+    });
+  });
+
+  /// The seller editor (D-077).
+  ///
+  /// **One rule, and it is reported rather than clamped** (D-027): the
+  /// business name is required as soon as any other seller field carries a
+  /// value, because a block headed «فروشنده» over a کد اقتصادی and no name
+  /// identifies nobody. Emptying all four is always allowed, and has to be —
+  /// it is the only way for a user who wants no seller block to get rid of
+  /// one.
+  group('the seller editor', () {
+    testWidgets('it opens with what is stored', (WidgetTester tester) async {
+      final AppStrings strings = await openSellerEditor(
+        tester,
+        initial: settings.copyWith(
+          seller: const SellerIdentity(
+            name: 'مهندسی نوآوران فناوری پارسیان',
+            economicId: '14003456789012',
+          ),
+        ),
+      );
+
+      expect(find.text(strings.settingsSellerEditTitle), findsOneWidget);
+      // `widgetWithText` on the field, not a bare `find.text`: the screen
+      // behind the sheet is still in the tree and shows the same value in its
+      // row, so a bare finder matches twice and would keep matching if the
+      // field arrived empty.
+      expect(
+        find.widgetWithText(TextFormField, 'مهندسی نوآوران فناوری پارسیان'),
+        findsOneWidget,
+      );
+      expect(
+        find.widgetWithText(TextFormField, '14003456789012'),
+        findsOneWidget,
+      );
+    });
+
+    testWidgets('a name alone is enough, and is written', (
+      WidgetTester tester,
+    ) async {
+      final AppStrings strings = await openSellerEditor(tester);
+      await enter(tester, strings.settingsSellerFieldName, 'کارگاه فنی مهر');
+      await save(tester, strings);
+
+      expect(repository.written, hasLength(1));
+      expect(repository.written.single.seller.name, 'کارگاه فنی مهر');
+      expect(repository.written.single.seller.isPrintable, isTrue);
+    });
+
+    testWidgets('details with no name are refused, and nothing is written', (
+      WidgetTester tester,
+    ) async {
+      // The combination the document cannot print. Refusing it in the form is
+      // what keeps `_seller`'s re-check from ever being the thing the user
+      // meets — and the assertion that matters is what the refusal **left
+      // behind**: a guard that reports after writing is worse than none
+      // (D-060).
+      final AppStrings strings = await openSellerEditor(tester);
+      await enter(
+        tester,
+        strings.settingsSellerFieldEconomicId,
+        '14003456789012',
+      );
+      await save(tester, strings);
+
+      expect(
+        find.text(strings.settingsErrorSellerNameRequired),
+        findsOneWidget,
+      );
+      expect(repository.written, isEmpty);
+      expect(
+        find.text(strings.settingsSellerEditTitle),
+        findsOneWidget,
+        reason: 'the sheet stays open on a refusal, with the value still typed',
+      );
+    });
+
+    testWidgets('clearing every field is allowed, and reaches the row as '
+        'nulls', (WidgetTester tester) async {
+      // **The case `copyWith` on four nullable strings could not express**,
+      // and the reason `SellerIdentity` is a value object: `?? this.name` on a
+      // cleared field writes the old name straight back, and the user finds
+      // out on the next document they print.
+      final AppStrings strings = await openSellerEditor(
+        tester,
+        initial: settings.copyWith(
+          seller: const SellerIdentity(
+            name: 'کارگاه فنی مهر',
+            phone: '02188776655',
+          ),
+        ),
+      );
+
+      await enter(tester, strings.settingsSellerFieldName, '');
+      await enter(tester, strings.settingsSellerFieldPhone, '');
+      await save(tester, strings);
+
+      expect(repository.written, hasLength(1));
+      expect(repository.written.single.seller, SellerIdentity.none);
+      expect(repository.written.single.seller.isEmpty, isTrue);
+    });
+
+    testWidgets('whitespace is not a value', (WidgetTester tester) async {
+      // A name of three spaces would satisfy a `isNotEmpty` check, print as a
+      // blank line under «فروشنده», and look exactly like a document that
+      // failed. Folded at the sheet, and again at the repository.
+      final AppStrings strings = await openSellerEditor(tester);
+      await enter(tester, strings.settingsSellerFieldName, '   ');
+      await enter(tester, strings.settingsSellerFieldPhone, '   ');
+      await save(tester, strings);
+
+      expect(repository.written, hasLength(1));
+      expect(repository.written.single.seller, SellerIdentity.none);
+    });
+
+    testWidgets('editing the seller leaves the invoicing settings alone', (
+      WidgetTester tester,
+    ) async {
+      // Two sheets, one settings row. A seller edit that reset the tax rate to
+      // a default would be the kind of defect nobody looks for, and would show
+      // up on the next invoice rather than on this screen.
+      final AppStrings strings = await openSellerEditor(tester);
+      await enter(tester, strings.settingsSellerFieldName, 'کارگاه فنی مهر');
+      await save(tester, strings);
+
+      final AppSettings written = repository.written.single;
+      expect(written.defaultTaxRateBp, 900);
+      expect(written.invoiceNumberPrefix, 'INV');
+      expect(written.paymentTermDays, 45);
     });
   });
 }

@@ -1742,13 +1742,13 @@ Exported files must be covered by `.gitignore`.
 
 ## Phase 7 — PDF Generation
 
-**Status:** `IN_PROGRESS` — (a) delivered 2026-09-02, and **the last phase in the plan** (D-068).
+**Status:** `IN_PROGRESS` — (a), (b) and (c) delivered 2026-09-02; **(d) is all that remains**, and this is **the last phase in the plan** (D-068).
 
 | # | Increment | Status |
 |---|---|---|
 | a | **The `pdf` dependency, the text layer and its two boundaries** (D-074): `FontGlyphSafety`, `DocumentText`/`DocumentTextBoundary`, `SafeText`, the ARB sweep as a test, `tool/render_document_text.dart` | `COMPLETED` 2026-09-02 |
 | b | **The view model, `InvoiceDocumentGenerator` and the one template** (D-076): header, party block, lines table, totals; the draft band and the party provenance line (D-075) | `COMPLETED` 2026-09-02 |
-| c | **The seller block** — blocked on a decision, see below | `BLOCKED` |
+| c | **The seller block and `schemaVersion = 5`** (D-077): four nullable `settings.seller_*` columns, the migration and its two ladders, the settings section and its sheet, the block on the page | `COMPLETED` 2026-09-02 |
 | d | Save/share, the phone-tier device pass, and the post-renderer size and cold-start measurement the gate still owes | `NOT_STARTED` |
 
 **The two product questions are decided — D-075**, both as recommended and both accepted. A draft
@@ -1759,12 +1759,28 @@ print their older invoices at all. Both were chosen **against** the house style 
 than inventing, and D-075 records why: refusing costs the user a document they legitimately need,
 and neither answer invents anything.
 
-**(c) is blocked on a decision, not on work — D-076.** `AppSettings` and the `settings` table hold
-**no business identity**: no name, no address, no کد اقتصادی, no phone. A conventional Iranian
-فاکتور فروش carries a فروشنده block as well as a خریدار block, and this document carries only the
-buyer. Nothing is invented to fill it. Closing it is four nullable text columns on `settings`,
-**schema v5** with its migration test, four fields on the settings form, and a device proof —
-scoped, but a schema change two days from the end of access, so it is the owner's call.
+**(c) is delivered, and the decision that blocked it was taken — D-077.** The owner ruled that an
+invoice with no seller is not an invoice, which made the phase undeliverable, and that this
+outweighed the risk of a schema change with two days left. Scope held exactly: four nullable
+columns, the migration and its test, the four settings fields, the device proof. **No logo, no
+registration number, no customisation** — D-068's reduction untouched.
+
+Two product questions were decided inside it, both as the owner leaned and both with the second half
+made concrete:
+
+* **An empty seller prints no block at all** — not a heading over blanks, which on a printed page
+  reads as data that *failed* to print. The buyer block widens to the full page instead of leaving
+  a hole. The user is told where they can act on it: the settings screen carries the seller section
+  **first**, with one sentence naming the consequence, and the sentence disappears once the name is
+  filled in.
+* **An empty seller blocks nothing** — not issuing, not printing. It is the user's document and
+  their call. That is why the prompt above is a requirement rather than a courtesy, and why
+  `InvoiceDocumentView.seller` carries the fact so (d)'s print path can say something non-blocking
+  at the moment it matters.
+
+One rule *is* enforced: the block prints if and only if there is a **business name**, and the form
+requires a name as soon as any other seller field is filled — reported, never clamped, with the
+error saying how to empty the section entirely.
 
 **Security note, increment (b).** No new stored data and no new input; the document layer reads an
 invoice the user already has and returns bytes. Two surfaces move and both are named here because
@@ -1775,6 +1791,18 @@ this increment: (b) returns them and nothing persists them, so the §7 question 
 containing full customer and financial data lands, and who cleans it up, belongs to (d) and is
 untouched here. `InvoiceDocumentFailure` carries a **reason code and no message**, so no exception
 string, file path or SQL can reach the user through it.
+
+**Security note, increment (c).** **New stored data, and it is personal**: the user's own business
+name, نشانی, کد اقتصادی and telephone, in four nullable columns on `settings`. They sit inside the
+same encrypted database as everything else (D-010, D-020) and are covered by the same threat model —
+no new file, no new store, no new permission. **New input**, four free-text fields, each bounded by a
+`SellerLimits` constant that `field_limits_test.dart` checks at the column, so an over-long value is
+refused by the form rather than by drift (D-042). **The threat model does not change**, with one
+consequence worth naming: these four values are the only user data in this application that is
+*intended* to leave it — they are printed on a document handed to a third party — which is the
+user's decision to make and the reason the block is omitted rather than defaulted. They are kept out
+of logs like every other identifier (§7); the migration proof prints `<null>`/`<set>`, never a value.
+Backup carries them automatically, the export copying whole rows rather than named columns.
 
 Reduced to **one template**: no template choice, no logo upload, no customisation (D-068).
 Reduced to **one template**: no template choice, no logo upload, no customisation — a clean Persian

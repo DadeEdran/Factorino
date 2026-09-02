@@ -59,4 +59,41 @@ class Settings extends Table with SyncColumns {
   /// reminder -- an offline-only financial app whose user has
   /// never made a backup is one lost phone away from losing the business.
   IntColumn get lastBackupAt => integer().nullable()();
+
+  // ------------------------------------------------ the seller (v5, D-077)
+  //
+  // The business the invoice is issued BY. Until v5 this table held no
+  // business identity at all, so the printed document carried a خریدار block
+  // and nothing opposite it -- and an invoice that does not say who issued it
+  // is not one the user can hand to a customer (D-076).
+  //
+  // **All four are nullable and stay nullable.** Every database that exists
+  // today has none of them and there is no honest value to invent for a
+  // business the application has never been told about, so the migration
+  // writes nothing and the document omits the block until the user fills it
+  // in. A `withDefault` here would put a fabricated seller on a
+  // customer-facing document, which is the one thing this phase must not do.
+  //
+  // The literals rather than `SellerLimits.*`, for the reason every other
+  // length in this file carries one: `drift_dev` reads the argument from the
+  // source expression and generates a column with **no length constraint at
+  // all** for anything that is not an integer literal. `field_limits_test.dart`
+  // asks each column where it actually bites.
+
+  /// The business name, as it appears on the document. The identifying field:
+  /// the form requires it as soon as any other seller field is filled, and the
+  /// document prints no block without it (D-077).
+  TextColumn get sellerName => text().withLength(max: 160).nullable()();
+
+  /// کد اقتصادی of the issuing business. Optional -- plenty of the businesses
+  /// this application is for do not have one.
+  TextColumn get sellerEconomicId => text().withLength(max: 20).nullable()();
+
+  TextColumn get sellerAddress => text().withLength(max: 500).nullable()();
+
+  /// Kept as typed, deliberately not normalized to the `09xxxxxxxxx` mobile
+  /// shape §9 defines for a customer: a seller's published number is as often
+  /// a landline with an area code, and rewriting it would be the application
+  /// overruling the user about their own letterhead.
+  TextColumn get sellerPhone => text().withLength(max: 20).nullable()();
 }

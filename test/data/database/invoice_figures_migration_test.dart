@@ -256,7 +256,13 @@ void main() {
       final db = await openAppDatabase(keyStore: _FixedKeyStore(), file: file);
       addTearDown(db.close);
 
-      expect(await _userVersion(db), 4);
+      // `db.schemaVersion` rather than a literal, and the sibling suite above
+      // already reads it that way. This test's claim is that **the whole
+      // ladder runs in one open** on a v1 file, not that the ladder ends at
+      // any particular rung — pinning the number here made it fail on the day
+      // v5 was added, which is a false alarm about a step this suite is not
+      // about. The v4 step's own claims are the assertions below.
+      expect(await _userVersion(db), db.schemaVersion);
       expect(await _count(db, 'invoices'), 1);
       expect(await _count(db, 'invoice_items'), 2);
       expect(await _count(db, 'payments'), 1);

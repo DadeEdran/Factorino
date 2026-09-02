@@ -128,6 +128,7 @@ class InvoiceDocumentView {
     required this.lines,
     required this.totals,
     required this.grandTotal,
+    this.seller,
     this.draftBanner,
     this.dueDate,
     this.notes,
@@ -149,6 +150,25 @@ class InvoiceDocumentView {
   /// across the page, because the requirement is that somebody **holding** the
   /// page knows it is not final without reading it closely.
   final DocumentText? draftBanner;
+
+  /// The business the invoice was issued **by** (D-077).
+  ///
+  /// **Null is the ordinary case, not an error**, and the renderer omits the
+  /// block entirely rather than drawing a heading over blanks. Every database
+  /// reaches schema v5 with no seller stored, because there was nothing to
+  /// migrate from and nothing honest to invent; a fabricated seller on the one
+  /// page the customer keeps is the thing this phase must not do.
+  ///
+  /// Null here means precisely one thing — the user has given no business
+  /// name — and it is [SellerIdentity.isPrintable] that decided it, in the
+  /// builder, once. A seller with an address and no name is not a block with a
+  /// gap in it; it is not a block.
+  ///
+  /// **The fact travels with the view so the print path can say something
+  /// about it.** The settings screen prompts, which covers the user who goes
+  /// looking; a caller holding this view can see that the document names only
+  /// one party without re-reading the settings row to find out.
+  final InvoiceDocumentParty? seller;
 
   final InvoiceDocumentParty party;
 

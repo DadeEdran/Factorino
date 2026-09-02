@@ -5033,3 +5033,193 @@ one, which is the argument for the guard scanning by directory rather than by al
   than assumed: (b) adds the whole document layer and the arm64 release APK is **byte-identical at 21,653,926**.
 * **The Android cold-start re-measurement**, which needs the Redmi on the cable.
 * Both land with **(d)**, which is what makes the document reachable.
+
+## D-077 — Schema v5 and the seller block: what an empty seller prints, and what it blocks
+
+**Date:** 2026-09-02
+**Status:** ACCEPTED
+**Closes:** D-076's gap. **Supersedes** nothing; D-068's one-template reduction still stands.
+
+An invoice with no seller is not an invoice — the user cannot hand it to a customer, which made
+the whole phase undeliverable. That outweighed the risk of a schema change with two days left,
+against three successful migrations and a settled pattern (owner).
+
+### The scope, as set and as delivered
+
+Four nullable text columns, the migration with its test, the four settings fields, the device
+proof. **No logo, no registration number, no customisation** — D-068's reduction is untouched.
+
+```
+settings.seller_name         TEXT(160) NULL
+settings.seller_economic_id  TEXT(20)  NULL
+settings.seller_address      TEXT(500) NULL
+settings.seller_phone        TEXT(20)  NULL
+```
+
+The lengths are their customer-side counterparts' exactly (`SellerLimits`, checked by
+`field_limits_test.dart` at the column). A seller whose نشانی had to be shorter than their
+customer's would be an arbitrary asymmetry, met only by the users whose own address is longest.
+
+### The migration writes nothing, and that is the decision
+
+`migrateV4ToV5` is four `_addColumnIfAbsent` calls and a `foreign_key_check`. **No backfill and no
+`withDefault`.** D-055's step filled its columns because they were arithmetic over figures the row
+already carried, so leaving them empty would have lost information the database held. These are the
+opposite: the database has never been told anything about the user's business, so there is nothing
+to compute and nothing to copy — D-052's reasoning, reached again from the other direction.
+
+**A `withDefault` was the one available option that would have produced a document**: a fabricated
+seller block, on the page the customer keeps, that nobody would ever question because it looks
+exactly like a real one. The migration suites assert the **absence** as hard as the earlier ones
+assert their figures.
+
+`_addColumnIfAbsent` is used although `settings` is rebuilt by no step and a plain `addColumn` would
+work today. It costs a pragma here; the step that eventually rebuilds this table would otherwise
+turn a v1 upgrade into `duplicate column name` **on open**, for the users furthest behind and for
+nobody else.
+
+### Question 1 — what the document prints when the seller is empty
+
+**Omit the block entirely, and make it impossible to be surprised by.** The owner's view, adopted,
+with the second half made concrete.
+
+A heading over four blank lines is worse than no heading: on a printed page a labelled empty line
+reads as data that *failed to print*, not as data that was never given — so it converts an
+unconfigured application into an apparently broken one. When there is no seller the buyer block
+takes the full content width rather than sitting in half a page with a hole beside it; the layout
+**changes shape rather than leaving a gap**, which is D-065's rule applied to a block.
+
+The "without being told" half is answered where the user can act on it, not on the document:
+
+* The settings screen carries the seller section **first**, above invoicing and backup. Every
+  database reaches v5 with it empty, so it is the one section of that screen every existing user
+  has something to do in.
+* One sentence states the consequence — «تا زمانی که نام کسب‌وکار را وارد نکنید، بخش «فروشنده» روی
+  فاکتور چاپ نمی‌شود.» — hung off the **name row**, so filling the field removes the sentence. A
+  notice that stays put after it has been answered is one the user learns to read past.
+* `InvoiceDocumentView.seller` is null in exactly this case, so **(d)'s print path can see it**
+  without re-reading the settings row. That is where a print-time notice belongs, and (d) is where
+  printing becomes reachable.
+
+### Question 2 — whether an empty seller blocks issuing or printing
+
+**No, neither.** The owner's lean, agreed without reservation. It is the user's document and their
+call; a پیش‌فاکتور or an invoice from a sole trader who has not filled a form in is still the
+document they meant to produce, and blocking issue over a settings field would strand them mid-flow
+in the one place the application must not. D-075 already refused to withhold a draft for the
+analogous reason.
+
+What replaces a block is the prompt above, which is why the prompt is a requirement rather than a
+courtesy.
+
+### The one rule that *is* enforced: a name, or nothing
+
+**The block prints if and only if there is a business name.** `SellerIdentity.isPrintable`, not
+`isNotEmpty`, and the difference is the ruling: an identity carrying a کد اقتصادی and a telephone
+has something in it and still cannot head a block. «فروشنده» over an economic ID alone identifies
+nobody and gives the reader nothing to act on.
+
+So the form **requires the name as soon as any other seller field carries a value** — reported,
+never clamped (D-027) — and the error says how to get out of the rule as well as into it:
+«...برای حذف کامل این بخش، همهٔ فیلدها را خالی بگذارید.» A required-field rule with no stated way
+out is a trap, and a user who wants no seller block must be able to empty one.
+
+The builder re-checks anyway. A value that arrived before the rule existed, through a restored
+backup, or through a future sync never met the form, and that is not the document layer's to assume
+away.
+
+### `SellerIdentity` is a value object because `copyWith` cannot clear a field
+
+Not tidiness. With `String? sellerName` on `AppSettings`, `copyWith(sellerName: null)` is
+indistinguishable from *leave it alone* — so a user who emptied the name would have the old one
+written straight back, **silently**, and would discover it on the next document they printed.
+Replacing the whole object makes clearing the ordinary case rather than a special one. Pinned by
+test at the column, on the VM and on the device, because that is where the old value would survive.
+
+Blanks fold to null in `normalized()`, called at the sheet and again at the repository: a name of
+three spaces satisfies every `isNotEmpty` check on the way in and prints as a blank line.
+
+### Two things the rendered page corrected that no test had caught
+
+The phase's method paying for itself a third time. Both looked entirely fine in the source.
+
+1. **Both نشانی lines ran off their block and were clipped mid-word** — «...پلاک ۴۵۶، واح». `_field`
+   was a `mainAxisSize: min` row with no flexible child, so the value took its intrinsic width and
+   **overflowed with no overflow, no error and no failing test**. It was invisible while the buyer
+   block had the full 531 pt and appeared the moment it had 261.5. Fixed with a `fill` flag putting
+   the value in an `Expanded`; the default stays off, because the header number and the meta dates
+   sit beside a `Spacer` and must take their natural width. Same class as D-065's 21.6-point column.
+2. **`pw.Table` lays column 0 out at the LEFT even under `textDirection: rtl`.** The first attempt
+   declared the seller first, intending the right-hand side, and printed it on the left — where it
+   looks entirely deliberate. The blocks are now declared buyer-then-seller so the reader meets the
+   seller first. **This also means D-076's claim that "the RTL column order came out right" is
+   wrong about the lines table**, which prints ردیف at the far left and جمع سطر at the far right —
+   the reverse of the Iranian convention. Recorded as known issue 24 rather than fixed: it is an
+   accepted increment and outside the scope the owner set.
+
+### Why the blocks are side by side, and why it is a `Table`
+
+Side by side costs no page height on a page whose whole job is to show the lines, and is how an
+Iranian invoice is conventionally set. That trade is only sound if each half is genuinely wide
+enough, so `InvoiceDocumentLayout.partyBlockWidth` is **declared and asserted** against the longest
+unbreakable run a block can hold — a fourteen-digit کد اقتصادی beside its label — rather than left
+to `Expanded` to work out. D-065's lesson is that a block laid out too narrow does not overflow or
+report anything; it renders one glyph per line.
+
+A `pw.Row` of two `Expanded`s with `crossAxisAlignment: stretch` gives the row an **unbounded
+height** and `MultiPage` refuses the page outright — *"Widget won't fit into the page as its height
+(Infinity) exceed a page height"*. Found by rendering, not by reading. Dropping `stretch` compiles,
+renders, and looks wrong: two bordered boxes of different heights side by side read as one of them
+having failed to finish. `package:pdf` has no `IntrinsicHeight`, so the pair is a one-row
+`pw.Table` with `TableCellVerticalAlignment.full` and fixed column widths.
+
+### A fixture standing in for a document a human checks must be internally consistent
+
+Generalised from D-076's second finding, at the owner's direction, and **now a rule in the project spec** rather than an observation about one page.
+
+The demonstration invoice did not reconcile: the fixture set the grand total and the tax and
+discount rows independently. Nothing was wrong with the renderer, **which is exactly the problem** —
+a page that cannot be checked with a pencil is one where a real reconciliation defect would look
+like more of the same, so the fault the fixture hides is the fault the fixture exists to expose.
+
+This is not a fact about invoices. It applies to any fixture standing in for an artifact a human
+inspects: a seeded database a screen is judged from, a backup summary, a rendered page. The seller
+fixture in the render suite follows it — a fourteen-digit کد اقتصادی because that is the real
+length and the run that would wrap first, Persian at the length real data reaches, and a ZWNJ in the
+address because 19% of this application's own strings carry one.
+
+### The APK size figure is a size, not a fingerprint — a correction
+
+D-074 and D-076 recorded the arm64 release APK as **byte-identical** at 21,653,926, offered as proof
+that nothing from `main()` imports `core/pdf/`. The seller block reproduces the number exactly:
+21,653,926 again, after schema v5, a new model, a new sheet, a new settings section and 30 new tests.
+
+**That is a weaker result than it sounds, and it was checked rather than repeated.** A deliberate
+throwaway change to a reachable widget was compiled and measured: `libapp.so` changed content
+(SHA-256 `a4c8c84f…` → `e0256500…`) while its size stayed at 7,078,792 and the APK stayed at
+21,653,926. So the measurement is **quantised** — page padding in the AOT snapshot and alignment
+padding in the zip absorb changes of this size — and an equal figure does **not** establish equal
+content.
+
+The floor claim itself still holds, on the argument rather than on the number: nothing reachable
+from `main()` imports `core/pdf/`, which is a fact about the import graph. But "byte-identical"
+overstates the evidence and should read **"identical in size, at a resolution that does not
+distinguish changes of this magnitude"**. The real cost of the renderer is still owed, and still
+lands with (d).
+
+### Verification
+
+`flutter analyze` clean. **1189 tests pass**, was 1159 (+30).
+
+Migration proof on **Windows**, both ladders — v4 → v5 and v1 → v5 — through the real production
+path on an encrypted file with foreign keys on: `user_version` 4 → 5 and 1 → 5, one settings row,
+four nulls, the user's own tax rate and prefix untouched, still encrypted, and the columns written
+and cleared back through the real repository.
+
+**The Android leg is owed to (d)**, and for a mechanical reason rather than a doubt: the Redmi is on
+the cable and enumerated, but asleep and keyguarded, MIUI refuses `adb` input injection (a known
+constraint), and `install` returns `INSTALL_FAILED_USER_RESTRICTED` until someone taps the on-device
+prompt. It goes in (d)'s cable session with the cold-start measurement.
+
+Rendered and read at the ladder ceiling with both blocks, and with no seller at all. Both defects
+above were found that way and re-read after the fix.

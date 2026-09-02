@@ -8,6 +8,7 @@ import '../../../data/models/customer_snapshot.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/invoice_detail.dart';
 import '../../../data/models/invoice_item.dart';
+import '../../../data/models/seller_identity.dart';
 import '../domain/invoice_party_view.dart';
 import '../domain/invoice_summary_figures.dart';
 import 'invoice_document_view.dart';
@@ -29,6 +30,7 @@ InvoiceDocumentView buildInvoiceDocumentView({
   required InvoiceDetail detail,
   required AppStrings strings,
   required DocumentTextBoundary boundary,
+  SellerIdentity seller = SellerIdentity.none,
 }) {
   final Invoice invoice = detail.invoice;
   final InvoiceSummaryFigures figures = InvoiceSummaryFigures.ofStored(invoice);
@@ -75,6 +77,10 @@ InvoiceDocumentView buildInvoiceDocumentView({
               ),
             ),
           ),
+    // Null when the user has given no business name -- the state every
+    // database is in until they fill the settings form in (D-077). Decided
+    // here, once, like every other decision on this page.
+    seller: _seller(seller, strings, text),
     party: _party(detail, strings, text),
     lineColumns: <DocumentText>[
       text(strings.invoiceDocumentColumnRow),
@@ -109,6 +115,60 @@ String invoiceNumberFor(Invoice invoice, AppStrings strings) =>
     invoice.number == null
     ? strings.invoiceNumberPending
     : isolate(invoice.number!);
+
+/// The seller block, or null.
+///
+/// **Null when there is no business name**, which is not the same test as
+/// "nothing stored" and the difference is the whole of the ruling. An identity
+/// carrying a code and no name has something in it and still cannot head a
+/// block: a heading over an economic ID alone identifies nobody, and on a
+/// printed page it reads as a document that failed rather than as one that was
+/// never filled in. The settings form refuses to save that combination; this
+/// checks anyway, because a value that arrived before the rule existed -- or
+/// through a restored backup -- is not the document layer to assume away.
+///
+/// **An empty field is omitted, never printed blank.** The same rule as the
+/// buyer block below, for the same reason, and the reason it has to be a rule
+/// rather than a habit is that a labelled empty line looks exactly like data
+/// that was lost on the way to the page.
+///
+/// **No `sourceNote`.** The seller is read from the live settings row by
+/// definition, and there is no snapshot for it to have diverged from, so there
+/// is nothing factual to say. D-075 note exists for a buyer whose details the
+/// document never stored; that case has no counterpart on this side.
+InvoiceDocumentParty? _seller(
+  SellerIdentity seller,
+  AppStrings strings,
+  DocumentText Function(String) text,
+) {
+  final SellerIdentity identity = seller.normalized();
+  if (!identity.isPrintable) return null;
+
+  return InvoiceDocumentParty(
+    heading: text(strings.invoiceDocumentSellerHeading),
+    name: text(identity.name!),
+    fields: <DocumentField>[
+      if (identity.economicId != null)
+        DocumentField(
+          label: text(strings.settingsSellerFieldEconomicId),
+          // The same isolating helper the buyer identifiers go through: a
+          // code printed unisolated inside RTL text scrambles, and the
+          // boundary is what makes reusing the screen helper safe here.
+          value: text(formatIdentifierForDisplay(identity.economicId!)),
+        ),
+      if (identity.phone != null)
+        DocumentField(
+          label: text(strings.invoiceDocumentSellerPhoneLabel),
+          value: text(formatIdentifierForDisplay(identity.phone!)),
+        ),
+      if (identity.address != null)
+        DocumentField(
+          label: text(strings.settingsSellerFieldAddress),
+          value: text(identity.address!),
+        ),
+    ],
+  );
+}
 
 InvoiceDocumentParty _party(
   InvoiceDetail detail,

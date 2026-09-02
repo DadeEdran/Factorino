@@ -152,6 +152,49 @@ class AppStringsFa extends AppStrings {
   String get settingsLastBackupNever => 'تا کنون پشتیبانی تهیه نشده است';
 
   @override
+  String get settingsSellerSection => 'مشخصات فروشنده';
+
+  @override
+  String get settingsSellerEmpty => 'ثبت نشده';
+
+  @override
+  String get settingsSellerConsequence =>
+      'تا زمانی که نام کسب‌وکار را وارد نکنید، بخش «فروشنده» روی فاکتور چاپ نمی‌شود.';
+
+  @override
+  String get settingsSellerEditTitle => 'ویرایش مشخصات فروشنده';
+
+  @override
+  String get settingsSellerEditTooltip => 'ویرایش مشخصات فروشنده';
+
+  @override
+  String get settingsSellerFieldName => 'نام کسب‌وکار';
+
+  @override
+  String get settingsSellerFieldNameHint =>
+      'همان‌گونه که باید روی فاکتور چاپ شود.';
+
+  @override
+  String get settingsSellerFieldEconomicId => 'کد اقتصادی';
+
+  @override
+  String get settingsSellerFieldAddress => 'نشانی';
+
+  @override
+  String get settingsSellerFieldPhone => 'تلفن';
+
+  @override
+  String get settingsSellerFieldPhoneHint =>
+      'همان‌گونه که وارد می‌کنید ذخیره و چاپ می‌شود.';
+
+  @override
+  String get settingsErrorSellerNameRequired =>
+      'برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همهٔ فیلدها را خالی بگذارید.';
+
+  @override
+  String get settingsSellerSaved => 'مشخصات فروشنده ذخیره شد.';
+
+  @override
   String get tableColumnNumber => 'شماره';
 
   @override
@@ -1211,4 +1254,10 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentColumnRow => 'ردیف';
+
+  @override
+  String get invoiceDocumentSellerHeading => 'فروشنده';
+
+  @override
+  String get invoiceDocumentSellerPhoneLabel => 'تلفن';
 }

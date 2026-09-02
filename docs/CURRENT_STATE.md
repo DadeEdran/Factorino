@@ -2,14 +2,42 @@
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
 >
-> **Last updated: 2026-09-02 — Phase 7 (a) and (b) are both delivered. The invoice prints.**
-> Header, party block, lines table and totals on A4 in Persian, at every rung of the D-057 ladder
-> and over two pages, driven by a view model the renderer cannot recompute from. The two product
-> questions are **decided** (D-075): a draft prints marked with an unmissable band, and a
-> pre-snapshot invoice prints the live record with one factual line. **One thing is blocked on the
-> owner:** the schema holds no business identity, so the document has a خریدار block and no
-> فروشنده block (D-076). **Nothing is generated from the app yet** — (d) makes it reachable, and
-> the real size and cold-start measurements go with it.
+> **Last updated: 2026-09-02 — Phase 7 (a), (b) and (c) are delivered. The invoice prints, and it
+> now says who issued it.**
+> **(c) closed the D-076 gap at schema v5 (D-077):** four nullable `settings.seller_*` columns, the
+> migration with both ladders proved on Windows, a seller section on the settings screen with its
+> own sheet, and a فروشنده block beside the خریدار block on the page. Scope held exactly — no logo,
+> no registration number, no customisation. **Both product questions are decided:** an empty seller
+> prints **no block at all** rather than a heading over blanks, and it **blocks nothing** — not
+> issuing, not printing — with the settings screen carrying the prompt that makes it impossible to
+> be surprised by.
+>
+> **Reading the rendered page caught two defects nothing else did**, which is now three increments
+> in a row for that method. Every party نشانی was **overflowing its block and being clipped
+> mid-word**, with no overflow and no error — invisible while the buyer block had the full page
+> width. And **`pw.Table` lays column 0 out at the LEFT even under `textDirection: rtl`**, which put
+> the seller on the wrong side until it was corrected — and which means **D-076 was wrong to record
+> that the lines table's RTL column order came out right.** It did not. That is **known issue 24**,
+> left open on purpose because the lines table is an accepted increment and outside (c)'s scope, and
+> it is the **first thing to settle in (d)**.
+>
+> **A correction the owner should see:** the "byte-identical APK" result is a **size** measurement,
+> not a fingerprint. (c) reproduces 21,653,926 exactly — and a deliberate throwaway change to a
+> reachable widget also reproduces it, while changing `libapp.so`'s content hash. The figure is
+> quantised by page and zip alignment and does not distinguish changes of this magnitude. The floor
+> claim still holds on the import graph; the number is weaker evidence than "byte-identical"
+> implied. See D-077.
+>
+> **Owed to (d), and mechanical rather than doubtful:** the Android leg of the v5 migration proof.
+> The Redmi is on the cable and enumerated but asleep and keyguarded, MIUI refuses `adb` input
+> injection, and `install` returns `INSTALL_FAILED_USER_RESTRICTED` until someone taps the on-device
+> prompt. It goes in (d)'s cable session with the cold-start measurement.
+>
+> Earlier the same day: **Phase 7 (a) and (b)** — the `pdf` dependency, `core/pdf/`, the view model,
+> the generator interface and the one template. The two (b) product questions are **decided**
+> (D-075): a draft prints marked with an unmissable band, and a pre-snapshot invoice prints the live
+> record with one factual line. **Nothing is generated from the app yet** — (d) makes it reachable,
+> and the real size and cold-start measurements go with it.
 >
 > Earlier the same day: **the ZWNJ blocker was solved (D-073), and two earlier diagnoses of it
 > were wrong.** It is not a missing glyph, not the subsetting, and not the control character:
@@ -53,8 +81,10 @@ D-068's reduced standards. **Nothing unfinished, nothing deferred out of it.**
 **Phase 7 — PDF Generation · `IN_PROGRESS`** — the last phase in the plan.
 **(a) delivered** 2026-09-02 (D-074): the dependency, `core/pdf/`, the guards, the entry-gate
 measurement. **(b) delivered** 2026-09-02 (D-075, D-076): the view model, the generator interface
-and the one template. **(c) BLOCKED** on the seller-block decision. **(d) next**: save/share, the
-device pass, and the two measurements the gate still owes.
+and the one template. **(c) delivered** 2026-09-02 (D-077): **schema v5**, the seller block, and the
+two rulings about what an empty seller prints and what it blocks. **(d) is all that remains**:
+save/share, the device pass, the two measurements the gate still owes, the Android leg of the v5
+proof, and known issue 24.
 **Phases 8–15 · `DEFERRED_INDEFINITELY`** (D-068). Not next, not later, not scheduled. Two items
 inside them are called out in `ROADMAP.md` as minutes of work that gate distribution rather than
 phase-sized work: the Android manifest's `allowBackup="false"` (known issue 15) and release
@@ -222,8 +252,8 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of Phase 7 (b)
-flutter test:               PASS   (1159/1159, was 1137 after (a), 1092)      as of Phase 7 (b)
+flutter analyze:            PASS   (No issues found)                          as of Phase 7 (c)
+flutter test:               PASS   (1189/1189, was 1159 after (b), 1137)      as of Phase 7 (c)
 Android build:              PASS   release APKs rebuilt 2026-09-02 after Phase 7 (b);
                                    arm64 21,653,926. Last installed and cold-started on the
                                    Redmi 2026-09-01 -- NOT re-installed since the pdf dependency
@@ -265,11 +295,32 @@ Phase 7 size, post-pdf:     TAKEN  arm64 21,653,926 (+133,402 on the 60b5cd5 bas
                                    stale kernel_blob.bin and reads 120 MB. A floor, not the
                                    cost: nothing from main() imports core/pdf/ yet
 Phase 7 cold start, post:   OWED   needs the Redmi on the cable
-Phase 7 size after (b):     TAKEN  arm64 21,653,926 -- BYTE-IDENTICAL to (a), which is the proof
-                                   that the figure is a floor: the whole document layer adds
-                                   nothing to the binary because nothing from main() imports it
+Phase 7 size after (b):     TAKEN  arm64 21,653,926 -- same SIZE as (a). Read the correction
+                                   below before quoting this as "byte-identical"
+Phase 7 size after (c):     TAKEN  arm64 21,653,926 -- the same figure again, after schema v5, a
+                                   new model, a new sheet, a new settings section and 30 tests
+Size figure is QUANTISED:   PROVED A deliberate throwaway change to a reachable widget was built
+                                   and measured: libapp.so content changed (sha256 a4c8c84f... ->
+                                   e0256500...) while its size stayed 7,078,792 and the APK stayed
+                                   21,653,926. So an equal figure does NOT establish equal content
+                                   -- page padding in the AOT snapshot and zip alignment absorb
+                                   changes of this magnitude. The floor claim still holds, on the
+                                   IMPORT GRAPH (nothing from main() imports core/pdf/) rather than
+                                   on the number. D-077
+Seller migration - Windows: PASS   both ladders, v4 -> v5 AND v1 -> v5, through the real production
+                                   path on an encrypted file with foreign keys on: user_version
+                                   4->5 and 1->5, one settings row, four nulls, the user's own tax
+                                   rate and prefix untouched, still encrypted, and the columns
+                                   written and cleared back through the real repository (D-077)
+Seller migration - Android: OWED   needs the Redmi awake and unlocked. Enumerated on the cable, but
+                                   asleep + keyguarded; MIUI refuses adb input injection and
+                                   install returns INSTALL_FAILED_USER_RESTRICTED until someone
+                                   taps the on-device prompt. Goes with (d)
 Invoice document rendered:  PASS   read off the pixels at the ladder ceiling, all 4 rungs, a
-                                   draft, a pre-snapshot invoice, and 28 lines over 2 pages.
+                                   draft, a pre-snapshot invoice, 28 lines over 2 pages, and -- new
+                                   in (c) -- both party blocks at real Persian lengths and a page
+                                   with no seller at all. The (c) read caught TWO defects: clipped
+                                   نشانی lines and the reversed table direction (known issue 24).
                                    RTL column order, the ZWNJ atom at 16pt bold in the draft
                                    band, the repeated header, the 2/2 footer, and a summary that
                                    reconciles with a pencil
@@ -324,8 +375,78 @@ D-048 proof - Android:      PASS   (2026-08-27)
 Web build:                  NOT_RETESTED since plugins were added -- Phase 12, known issue 14
 ```
 
-**Test count is 1159** (Phase 7 (b)), was 1137 after Phase 7 (a), 1092 after Phase 6, 1004 then; 938 after (f), 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
+**Test count is 1189** (Phase 7 (c)), was 1159 after (b), 1137 after (a), 1092 after Phase 6, 1004 then; 938 after (f), 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
 D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What Phase 7 increment (c) delivered — schema v5, and the block that was not there
+
+**Read `docs/DECISIONS.md` D-077 first.** An invoice with no seller is not an invoice: the user
+cannot hand it to a customer, which made the whole phase undeliverable. The owner ruled that this
+outweighed the risk of a schema change with two days left.
+
+### The shape
+
+```
+settings.seller_name         TEXT(160) NULL     SellerLimits.name
+settings.seller_economic_id  TEXT(20)  NULL     SellerLimits.economicId
+settings.seller_address      TEXT(500) NULL     SellerLimits.address
+settings.seller_phone        TEXT(20)  NULL     SellerLimits.phone
+```
+
+`SellerIdentity` (`data/models/`) carries them as one value; `AppSettings.seller` is **never null and
+often empty**, so no read path has a "configuration missing" case. `migrateV4ToV5` is four
+`_addColumnIfAbsent` calls and a `foreign_key_check` — **no backfill, no `withDefault`**.
+
+### The two rulings, and where each lives
+
+| | ruling | enforced by |
+|---|---|---|
+| empty seller, on the page | **no block at all** — never a heading over blanks, which reads as data that *failed* to print. The buyer block widens to the full page | `_seller()` returns null; `_parties()` falls back to the full-width buyer |
+| empty seller, on issuing/printing | **blocks nothing.** The user's document, their call | nothing; `InvoiceDocumentView.seller` carries the fact so (d) can say something non-blocking |
+| being surprised by it | **impossible** — the settings screen carries the seller section **first**, with one sentence naming the consequence, and the sentence goes away once the name is filled | `settingsSellerConsequence`, hung off the name row |
+| details with no name | **not a block with a gap in it.** «فروشنده» over a کد اقتصادی alone identifies nobody | the form requires a name once anything else is filled — reported, never clamped; the builder re-checks `isPrintable` |
+
+### `SellerIdentity` is a value object because `copyWith` cannot clear a field
+
+The one thing here that is easy to miss. With `String? sellerName` on `AppSettings`,
+`copyWith(sellerName: null)` is indistinguishable from *leave it alone* — so a user who emptied the
+name would have the old one **written straight back, silently**, and would find out on the next
+document they printed. Replacing the whole object makes clearing ordinary. Pinned at the column, on
+the VM and on Windows.
+
+### What the pixels caught, and no test did
+
+Third increment running. Both looked fine in the source and in review.
+
+1. **Every party نشانی overflowed its block and was clipped mid-word** — «...پلاک ۴۵۶، واح».
+   `_field` was a `mainAxisSize: min` row with no flexible child, so the value took its intrinsic
+   width and spilled: **no overflow, no error, no failing test**. Invisible while the buyer block
+   had the full 531 pt; it appeared the instant the block had 261.5. Same class as D-065's
+   21.6-point column. Fixed with a `fill` flag that puts the value in an `Expanded` — default off,
+   because the header number and the meta dates sit beside a `Spacer` and must take their natural
+   width.
+2. **`pw.Table` lays column 0 out at the LEFT even under `textDirection: rtl`.** The first attempt
+   declared the seller first, meaning the right-hand side, and printed it on the left — where it
+   looks entirely deliberate. Now declared buyer-then-seller. **This is also why D-076's claim about
+   the lines table is wrong**, and it is known issue 24.
+
+### Two layout facts worth not rediscovering
+
+* **`pw.Row` + two `Expanded` + `crossAxisAlignment: stretch` = an unbounded height**, and
+  `MultiPage` refuses the page: *"Widget won't fit into the page as its height (Infinity) exceed a
+  page height"*. `package:pdf` has **no `IntrinsicHeight`**. The pair is a one-row `pw.Table` with
+  `TableCellVerticalAlignment.full` and fixed column widths.
+* **The party block width is declared and asserted**, not left to `Expanded`: 261.5 pt, checked
+  against a fourteen-digit کد اقتصادی beside its label. D-065's lesson is that a block laid out too
+  narrow renders one glyph per line and reports nothing.
+
+### The APK size correction
+
+**Do not repeat "byte-identical".** (c) reproduces arm64 21,653,926 exactly — and so does a
+deliberate throwaway change to a reachable widget, which changed `libapp.so`'s content hash
+(`a4c8c84f…` → `e0256500…`) while leaving its size at 7,078,792. The figure is **quantised** by page
+padding in the AOT snapshot and alignment padding in the zip. The floor claim holds on the **import
+graph** — nothing reachable from `main()` imports `core/pdf/` — not on the number.
 
 ## What Phase 7 delivered so far — (a) and (b), 2026-09-02
 
@@ -1661,14 +1782,20 @@ repositories and driving the real sheets.
 | 23 | **Drift warns "you've created the database class AppDatabase multiple times" during an export** | Debug builds only. An export legitimately holds two `AppDatabase` instances — the live one and the container — and drift's warning is about two instances sharing **one `QueryExecutor`**, which these do not: they are two different encrypted files. Harmless, and deliberately not silenced with `dontWarnAboutMultipleDatabases`, because that flag is global and would hide a real instance of the problem elsewhere. |
 | 22 | **`adb devices` can come up empty while the phone is plainly enumerated** | Seen 2026-09-01 at the start of (f). Windows had **both** interfaces present — `USB\VID_2717&PID_FF48&MI_00` (WPD) and `&MI_01` (**ADB Interface**) — and `adb devices` still listed nothing. `adb kill-server && adb start-server` fixed it in one go. **Do not read this as the MTP-only symptom** the Next Action section describes: that one shows a *single* WPD entry and no ADB interface, and no restart helps it. Check `Get-PnpDevice` for the `MI_01` ADB interface first; if it is there, restart the daemon rather than touching the phone. |
 
+| 24 | **The printed lines table runs its columns in the wrong direction for an RTL reader** | Found in (c) by rendering, and it contradicts D-076, which recorded that "the RTL column order came out right without intervention". It did not: **`pw.Table` lays column 0 out at the LEFT even under `textDirection: rtl`**, so the printed table reads, right to left, جمع سطر · مبلغ کل · قیمت واحد · تعداد · شرح · ردیف — the reverse of the Iranian convention, where ردیف is the first column a reader meets. Every figure on it is correct and correctly labelled; it is the order that is back to front. **Not fixed in (c)**: the lines table is an accepted increment and outside the scope the owner set, and the fix is a one-line reversal of `lineColumns` and the cell list together, which is exactly the kind of change that should not be made unreviewed on the way past. The same mechanism, found the same way, is what put the seller block on the wrong side before it was corrected — see D-077. |
 (5 and 7 were resolved in (f2) and have been dropped.)
 
-**Nothing in the table above is open in a way a user would notice.** Every entry is either resolved
-(1, 10b, 16, 17, 18, 19, 20, 21), a deliberate design ruling (3, 8), a development-environment
-condition invisible in a shipped build (10, 11, 12, 22), or scheduled work on a surface the phase
-plan already owns (2 and 4 → Phase 13; 6 → when settings becomes editable; 9 → Phase 12; 13 → Phase
-15; 14 → Phase 12; 15 → Phase 9). **The one a user could meet is 6**, and only after settings becomes
-editable — it is unreachable today because `lastBackupAt` is always null.
+**One entry in the table above is now something a user would notice: 24.** The printed invoice's
+lines table runs its columns in the reverse of the Iranian reading order. Every figure on it is
+right; the order is back to front, and it is on the one artifact a customer holds. It is left open
+deliberately — the lines table is an accepted increment and outside (c)'s scope — and it is the
+first thing to settle in (d).
+
+Every other entry is either resolved (1, 10b, 16, 17, 18, 19, 20, 21), a deliberate design ruling
+(3, 8), a development-environment condition invisible in a shipped build (10, 11, 12, 22, 23), or
+scheduled work on a surface the phase plan already owns (2 and 4 → Phase 13; 9 → Phase 12; 13 →
+Phase 15; 14 → Phase 12; 15 → Phase 9). **6 is resolved** — settings became editable in Phase 6 (d)
+and the row renders a Jalali date, with a test.
 
 ## Important context for a future session
 
@@ -1886,6 +2013,42 @@ editable — it is unreachable today because `lastBackupAt` is always null.
   `flutter gen-l10n` after touching the ARB**, then commit the regenerated files.
 
 ## Recently changed files
+
+### Phase 7 increment (c) — schema v5 and the seller block, the newest work
+
+```
+lib/data/models/seller_identity.dart                     NEW  the value object, and why it is one
+lib/data/models/field_limits.dart                        MOD  SellerLimits
+lib/data/models/app_settings.dart                        MOD  seller, non-null, often empty
+lib/data/database/tables/settings.dart                   MOD  four nullable seller_* columns
+lib/data/database/app_database.dart                      MOD  schemaVersion 5, migrateV4ToV5
+lib/data/repositories/drift/drift_settings_repository.dart MOD  maps them; normalizes blanks to null
+
+lib/features/settings/presentation/widgets/seller_editor_sheet.dart  NEW  the sheet, and the one rule
+lib/features/settings/presentation/settings_screen.dart  MOD  the seller section, FIRST on the screen
+
+lib/features/invoices/document/invoice_document_view.dart          MOD  seller, nullable
+lib/features/invoices/document/invoice_document_view_builder.dart  MOD  _seller(); isPrintable decides
+lib/features/invoices/document/pdf_invoice_document_generator.dart MOD  _parties(); _field(fill:)
+
+lib/core/localization/arb/app_fa.arb                     MOD  +15 entries (13 settings, 2 document)
+lib/core/localization/generated/                         GEN  flutter gen-l10n
+drift_schemas/drift_schema_v5.json                       NEW  schema dump
+test/data/database/generated/schema_v5.dart              NEW  drift_dev schema generate output
+
+test/data/database/seller_identity_migration_test.dart   NEW  9 tests, both ladders + the absences
+test/data/database/invoice_figures_migration_test.dart   MOD  asserts db.schemaVersion, not a literal
+test/features/settings/settings_screen_test.dart         MOD  +5 seller tests; reach() for the fold
+test/features/settings/settings_editing_test.dart        MOD  +6 seller-sheet tests; byTooltip
+test/features/invoices/document/invoice_document_view_test.dart   MOD  +7 seller tests, +block width
+test/features/invoices/document/invoice_document_render_test.dart MOD  +2 pages, the seller fixture
+integration_test/seller_migration_proof_test.dart        NEW  the device proof; Windows PASS
+
+The project spec                                                MOD  §14: the fixture-consistency rule
+docs/DECISIONS.md                                        MOD  D-077
+docs/ROADMAP.md                                          MOD  (c) COMPLETED, its security note
+docs/CURRENT_STATE.md                                    MOD  this file; known issue 24
+```
 
 ### The two post-close fixes — the newest work
 
@@ -2402,48 +2565,58 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-> **The session ended here deliberately** (owner, 2026-09-02), immediately after (b) was committed
-> and reported. **Nothing is half-finished, nothing is uncommitted, and no question is waiting on an
-> answer except the seller-block decision below.** `main` is at **`0436094`** and the working tree
-> is clean. Do not re-open (a) or (b); both were reviewed and accepted.
+> **Nothing is half-finished and no question is waiting on an answer.** (a), (b) and (c) were all
+> delivered and reported; do not re-open any of them.
 
-**Phase 7 (a) and (b) are delivered. The invoice prints** — but only into a test's byte array;
-nothing in the application generates one yet.
+**Phase 7 (a), (b) and (c) are delivered. The invoice prints, and it now says who issued it** — but
+still only into a test's byte array. Nothing in the application generates one yet. **(d) is all that
+remains in the plan.**
 
-**Both Phase 7 product questions are answered and need no further discussion — D-075**, accepted by
-the owner as recommended. A **draft prints**, marked with an unmissable filled band, because
-refusing would push users to issue and cancel an invoice and spend a number permanently. A
-**pre-snapshot** invoice prints the live record with one factual line saying where the details came
-from, because refusing would mean a user cannot print their older invoices at all. Both go against
-the house style of refusing rather than inventing, and D-075 records why the exception is principled
-rather than convenient: refusing costs the user a document they legitimately need, and neither
-answer invents anything.
+**Every product question is answered.** D-075 settled the draft band and the pre-snapshot line;
+D-077 settled the seller: an empty seller **prints no block at all**, and **blocks nothing** — not
+issuing, not printing — with the settings screen carrying the prompt that makes it impossible to be
+surprised by. None of this needs re-litigating.
 
-**One decision is with the owner and blocks (c): the seller block.** `AppSettings` and the
-`settings` table hold no business identity at all — no name, no address, no کد اقتصادی, no phone —
-so the document carries a خریدار block and no فروشنده block, which a conventional Iranian فاکتور
-فروش has. Nothing is invented to fill it (D-076). Closing it is four nullable text columns on
-`settings`, **schema v5** with its migration test, four fields on the settings form and a device
-proof: scoped, but a schema change with two days of access left.
+**The single specific next action: Phase 7 (d) — make the document reachable.** In this order:
 
-**The single specific next action, which is not blocked: Phase 7 (d) — make the document
-reachable.** Concretely:
-
-1. A provider that loads the three Vazirmatn faces from `rootBundle` into a `DocumentTypeface`,
-   builds the view from the `invoiceDetailProvider` the detail screen already watches, and renders.
+0. **Known issue 24 first, because it is five minutes and it is on the customer's copy.** The
+   printed lines table runs its columns in the reverse of the Iranian reading order — ردیف at the
+   far left, جمع سطر at the far right — because **`pw.Table` lays column 0 out at the LEFT even
+   under `textDirection: rtl`**. (c) hit the same mechanism on the party blocks and corrected it
+   there; the lines table was left alone because it is an accepted increment and was outside (c)'s
+   scope. The fix is to reverse `lineColumns` **and** the cell list in `_lines` **together** — one
+   without the other silently mislabels every column, which is far worse than the current fault —
+   and then **read the rendered page**, not the source. D-076's write-up claims this already came
+   out right; it does not.
+1. A provider that loads the Vazirmatn faces from `rootBundle` into a `DocumentTypeface`, builds the
+   view from the `invoiceDetailProvider` the detail screen already watches **and the
+   `appSettingsProvider` seller**, and renders. Note `buildInvoiceDocumentView` takes
+   `seller:` and defaults it to `SellerIdentity.none` — a call site that forgets it produces a
+   document with no seller block and no error, so wire it deliberately.
 2. An action on `/invoices/:id` that saves the file — reusing the **D-071 backup gateway**, which
    already solves exactly this on both targets (`ACTION_CREATE_DOCUMENT` on Android,
    `file_selector_windows` on desktop) and is already proven with a confirmed save on each.
-3. **The §7 question (d) owns and (b) deliberately did not touch:** a generated PDF holds full
+3. **The non-blocking notice for an empty seller.** D-077 ruled that printing is never blocked, and
+   that the user must not be able to be *surprised*. The settings screen covers the user who goes
+   looking; this is the other half — `InvoiceDocumentView.seller == null` is the fact to check, at
+   the moment of printing, once, without stopping anything.
+4. **The §7 question (d) owns and (b) deliberately did not touch:** a generated PDF holds full
    customer and financial data. Where it lands, whether a temporary copy exists, and who deletes it
    are this increment's decisions, and the ROADMAP security note for Phase 7 already names them.
-4. **Then the two measurements the gate owes**, in this order and only once step 1 lands:
-   - the **real size figure** — D-074's +133 KB is a floor, now proven so: (b) added the entire
-     document layer and the arm64 release APK came out **byte-identical at 21,653,926**, because
-     nothing reachable from `main()` imports `core/pdf/` and the AOT compiler shakes it out;
-   - the **Android cold start**, which needs the Redmi on the cable. The owner has asked to be told
-     when the cable session is wanted — it is wanted for this, together with the phone-tier device
-     pass on the new save flow.
+5. **Then the measurements and the device work, which need the cable — the owner has asked for the
+   cable session and it is wanted for all of this at once:**
+   - the **real size figure**. D-074's +133 KB is a floor, and the floor claim holds on the **import
+     graph** rather than on the number — see the correction above: 21,653,926 is a *size*, it is
+     quantised, and it does not distinguish changes of this magnitude. Once step 1 lands,
+     `core/pdf/` is reachable from `main()` for the first time and the figure will finally mean
+     something;
+   - the **Android cold start**;
+   - the **phone-tier device pass** on the new save flow;
+   - the **Android leg of the v5 migration proof**, which is written and passing on Windows and only
+     needs the phone. `flutter test integration_test/seller_migration_proof_test.dart -d
+     dmbyayb6rombo7ci`. **The phone must be awake and unlocked first** — it was asleep and
+     keyguarded, MIUI refuses `adb` input injection, and `install` returns
+     `INSTALL_FAILED_USER_RESTRICTED` until someone taps the on-device prompt.
 
 ### The commits this work sits on, newest first
 

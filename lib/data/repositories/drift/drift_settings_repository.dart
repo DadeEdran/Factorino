@@ -4,6 +4,7 @@ import '../../database/app_database.dart';
 import '../../database/soft_delete.dart';
 import '../../database/tables/sync_columns.dart';
 import '../../models/app_settings.dart';
+import '../../models/seller_identity.dart';
 import '../settings_repository.dart';
 import 'mappers.dart';
 
@@ -27,6 +28,12 @@ class DriftSettingsRepository implements SettingsRepository {
 
   @override
   Future<AppSettings> write(AppSettings settings) async {
+    // Blanks fold to null once, here, on the way in. A field the user cleared
+    // by deleting its text arrives as `''`, and a stored `''` would print as a
+    // labelled empty line on the document -- which reads as data that failed
+    // to print rather than as data that was never given (D-077).
+    final SellerIdentity seller = settings.seller.normalized();
+
     await _db
         .update(_db.settings)
         .write(
@@ -35,6 +42,12 @@ class DriftSettingsRepository implements SettingsRepository {
             roundingUnitRial: Value(settings.roundingUnitRial),
             invoiceNumberPrefix: Value(settings.invoiceNumberPrefix),
             paymentTermDays: Value(settings.paymentTermDays),
+            // `Value`, not `Value.absent`, on all four: clearing the seller is
+            // an ordinary edit and has to reach the column as a null.
+            sellerName: Value<String?>(seller.name),
+            sellerEconomicId: Value<String?>(seller.economicId),
+            sellerAddress: Value<String?>(seller.address),
+            sellerPhone: Value<String?>(seller.phone),
             devicePrefix: Value(settings.devicePrefix),
             lastBackupAt: Value(millisFromInstantOrNull(settings.lastBackupAt)),
             updatedAt: Value(nowMillis()),
@@ -63,6 +76,12 @@ class DriftSettingsRepository implements SettingsRepository {
     roundingUnitRial: row.roundingUnitRial,
     invoiceNumberPrefix: row.invoiceNumberPrefix,
     paymentTermDays: row.paymentTermDays,
+    seller: SellerIdentity(
+      name: row.sellerName,
+      economicId: row.sellerEconomicId,
+      address: row.sellerAddress,
+      phone: row.sellerPhone,
+    ),
     devicePrefix: row.devicePrefix,
     lastBackupAt: instantFromMillisOrNull(row.lastBackupAt),
   );

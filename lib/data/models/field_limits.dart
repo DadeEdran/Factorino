@@ -170,3 +170,29 @@ abstract final class SettingsFieldLimits {
   /// bounded only so the field has one.
   static const int password = 200;
 }
+
+/// The seller's own details, matching the four `seller_*` columns on
+/// `settings` (schema v5, D-077).
+///
+/// **Deliberately the same numbers as the customer's counterparts.** The two
+/// sides of an invoice carry the same kinds of value — a name, a نشانی, a
+/// کد اقتصادی — and a seller whose address had to be shorter than their
+/// customer's would be an arbitrary asymmetry the user would meet only when
+/// their own address was refused.
+abstract final class SellerLimits {
+  /// The business name. Matched to [CustomerLimits.companyName] rather than to
+  /// [CustomerLimits.fullName]: this is a letterhead line, and a sole trader
+  /// who puts their own name here still fits inside the longer of the two.
+  static const int name = 160;
+
+  /// Same as [CustomerLimits.economicId].
+  static const int economicId = 20;
+
+  /// Same as [CustomerLimits.address].
+  static const int address = 500;
+
+  /// Same as [CustomerLimits.mobile], and generous for the same reason: a
+  /// seller's published number is as often a landline with an area code, and
+  /// it is kept as typed rather than normalized to the mobile shape.
+  static const int phone = 20;
+}

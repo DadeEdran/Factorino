@@ -11,6 +11,7 @@ import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
 import 'package:factorino/data/models/payment.dart';
+import 'package:factorino/data/models/seller_identity.dart';
 import 'package:factorino/features/invoices/document/invoice_document_generator.dart';
 import 'package:factorino/features/invoices/document/invoice_document_view.dart';
 import 'package:factorino/features/invoices/document/invoice_document_view_builder.dart';
@@ -53,11 +54,16 @@ void main() {
     generator = PdfInvoiceDocumentGenerator(typeface);
   });
 
-  Future<Uint8List> render(String name, InvoiceDetail detail) async {
+  Future<Uint8List> render(
+    String name,
+    InvoiceDetail detail, {
+    SellerIdentity seller = _seller,
+  }) async {
     final InvoiceDocumentView view = buildInvoiceDocumentView(
       detail: detail,
       strings: strings,
       boundary: typeface.boundary,
+      seller: seller,
     );
     final Uint8List bytes = await generator.render(view);
     File('$outputDirectory/$name.pdf').writeAsBytesSync(bytes);
@@ -86,6 +92,7 @@ void main() {
       detail: _detail(toman: 10000000, status: InvoiceStatus.draft),
       strings: strings,
       boundary: typeface.boundary,
+      seller: _seller,
     );
     expect(view.draftBanner, isNotNull);
     expect(view.number.value.value, strings.invoiceNumberPending);
@@ -104,6 +111,7 @@ void main() {
       detail: detail,
       strings: strings,
       boundary: typeface.boundary,
+      seller: _seller,
     );
     expect(view.party.sourceNote, isNotNull);
     expect(
@@ -123,6 +131,54 @@ void main() {
     expect(view.draftBanner, isNull);
   });
 
+  test('an invoice with no seller renders, and the buyer takes the page', () async {
+    // **The page every existing user gets**, until they fill the settings form
+    // in: schema v5 adds the four columns and backfills nothing, because there
+    // was nothing honest to invent (D-077). The buyer block widens to the full
+    // content width rather than sitting in half a page with a hole beside it —
+    // the layout changes shape rather than leaving a gap, which is D-065's
+    // rule applied to a block.
+    //
+    // Written to disk under its own name because this is the page that must be
+    // *looked at*: the machine can only say the block is absent, not that its
+    // absence reads as an unfinished document rather than a broken one.
+    final InvoiceDocumentView view = buildInvoiceDocumentView(
+      detail: _detail(toman: 10000000),
+      strings: strings,
+      boundary: typeface.boundary,
+    );
+    expect(view.seller, isNull);
+
+    expect(
+      await render(
+        'no_seller',
+        _detail(toman: 10000000),
+        seller: SellerIdentity.none,
+      ),
+      isNotEmpty,
+    );
+  });
+
+  test('a seller at real Persian lengths renders beside the buyer', () async {
+    // Both blocks at the length Iranian data actually reaches, side by side at
+    // 261.5 pt each. The width is asserted in the view suite; this is the page
+    // that shows whether it *reads*, which is the only way to know — D-065's
+    // crushed column laid out successfully and reported no error.
+    final InvoiceDocumentView view = buildInvoiceDocumentView(
+      detail: _detail(toman: 100000000),
+      strings: strings,
+      boundary: typeface.boundary,
+      seller: _seller,
+    );
+    expect(view.seller, isNotNull);
+    expect(view.seller!.fields, hasLength(3));
+
+    expect(
+      await render('seller_ceiling', _detail(toman: 100000000)),
+      isNotEmpty,
+    );
+  });
+
   test('enough lines to need a second page', () async {
     expect(
       await render('multipage', _detail(toman: 2500000, lineCount: 28)),
@@ -132,6 +188,23 @@ void main() {
 }
 
 const String _fontDir = 'assets/fonts';
+
+/// The business issuing every page in this suite (D-077).
+///
+/// Persian at the length real data reaches, and a ZWNJ in the address, for the
+/// same reason the line titles carry one: 19% of this application's own strings
+/// do, and a fixture that avoids them is a fixture that cannot show the D-073
+/// atom failing.
+///
+/// The کد اقتصادی is fourteen digits — the real length — because it is the
+/// longest unbreakable run either party block can hold and therefore the thing
+/// that would wrap first if the block were too narrow.
+const SellerIdentity _seller = SellerIdentity(
+  name: 'مهندسی نوآوران فناوری پارسیان',
+  economicId: '14003456789012',
+  address: 'تهران، خیابان شریعتی، نرسیده به پل صدر، پلاک ۴۵۶، واحد ۲',
+  phone: '02188776655',
+);
 
 /// A realistic invoice. Persian at the length real data reaches, and a ZWNJ in
 /// the line titles, because 19% of this application's own strings carry one.

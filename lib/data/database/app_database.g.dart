@@ -5453,6 +5453,54 @@ class $SettingsTable extends Settings
     type: DriftSqlType.int,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _sellerNameMeta = const VerificationMeta(
+    'sellerName',
+  );
+  @override
+  late final GeneratedColumn<String> sellerName = GeneratedColumn<String>(
+    'seller_name',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 160),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellerEconomicIdMeta = const VerificationMeta(
+    'sellerEconomicId',
+  );
+  @override
+  late final GeneratedColumn<String> sellerEconomicId = GeneratedColumn<String>(
+    'seller_economic_id',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellerAddressMeta = const VerificationMeta(
+    'sellerAddress',
+  );
+  @override
+  late final GeneratedColumn<String> sellerAddress = GeneratedColumn<String>(
+    'seller_address',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 500),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _sellerPhoneMeta = const VerificationMeta(
+    'sellerPhone',
+  );
+  @override
+  late final GeneratedColumn<String> sellerPhone = GeneratedColumn<String>(
+    'seller_phone',
+    aliasedName,
+    true,
+    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5468,6 +5516,10 @@ class $SettingsTable extends Settings
     invoiceNumberPrefix,
     devicePrefix,
     lastBackupAt,
+    sellerName,
+    sellerEconomicId,
+    sellerAddress,
+    sellerPhone,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5571,6 +5623,39 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('seller_name')) {
+      context.handle(
+        _sellerNameMeta,
+        sellerName.isAcceptableOrUnknown(data['seller_name']!, _sellerNameMeta),
+      );
+    }
+    if (data.containsKey('seller_economic_id')) {
+      context.handle(
+        _sellerEconomicIdMeta,
+        sellerEconomicId.isAcceptableOrUnknown(
+          data['seller_economic_id']!,
+          _sellerEconomicIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('seller_address')) {
+      context.handle(
+        _sellerAddressMeta,
+        sellerAddress.isAcceptableOrUnknown(
+          data['seller_address']!,
+          _sellerAddressMeta,
+        ),
+      );
+    }
+    if (data.containsKey('seller_phone')) {
+      context.handle(
+        _sellerPhoneMeta,
+        sellerPhone.isAcceptableOrUnknown(
+          data['seller_phone']!,
+          _sellerPhoneMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5633,6 +5718,22 @@ class $SettingsTable extends Settings
       lastBackupAt: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}last_backup_at'],
+      ),
+      sellerName: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seller_name'],
+      ),
+      sellerEconomicId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seller_economic_id'],
+      ),
+      sellerAddress: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seller_address'],
+      ),
+      sellerPhone: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}seller_phone'],
       ),
     );
   }
@@ -5702,6 +5803,22 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   /// reminder -- an offline-only financial app whose user has
   /// never made a backup is one lost phone away from losing the business.
   final int? lastBackupAt;
+
+  /// The business name, as it appears on the document. The identifying field:
+  /// the form requires it as soon as any other seller field is filled, and the
+  /// document prints no block without it (D-077).
+  final String? sellerName;
+
+  /// کد اقتصادی of the issuing business. Optional -- plenty of the businesses
+  /// this application is for do not have one.
+  final String? sellerEconomicId;
+  final String? sellerAddress;
+
+  /// Kept as typed, deliberately not normalized to the `09xxxxxxxxx` mobile
+  /// shape §9 defines for a customer: a seller's published number is as often
+  /// a landline with an area code, and rewriting it would be the application
+  /// overruling the user about their own letterhead.
+  final String? sellerPhone;
   const SettingsRow({
     required this.id,
     required this.createdAt,
@@ -5716,6 +5833,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     required this.invoiceNumberPrefix,
     this.devicePrefix,
     this.lastBackupAt,
+    this.sellerName,
+    this.sellerEconomicId,
+    this.sellerAddress,
+    this.sellerPhone,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5745,6 +5866,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     if (!nullToAbsent || lastBackupAt != null) {
       map['last_backup_at'] = Variable<int>(lastBackupAt);
     }
+    if (!nullToAbsent || sellerName != null) {
+      map['seller_name'] = Variable<String>(sellerName);
+    }
+    if (!nullToAbsent || sellerEconomicId != null) {
+      map['seller_economic_id'] = Variable<String>(sellerEconomicId);
+    }
+    if (!nullToAbsent || sellerAddress != null) {
+      map['seller_address'] = Variable<String>(sellerAddress);
+    }
+    if (!nullToAbsent || sellerPhone != null) {
+      map['seller_phone'] = Variable<String>(sellerPhone);
+    }
     return map;
   }
 
@@ -5771,6 +5904,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       lastBackupAt: lastBackupAt == null && nullToAbsent
           ? const Value.absent()
 : Value(lastBackupAt),
+      sellerName: sellerName == null && nullToAbsent
+          ? const Value.absent()
+: Value(sellerName),
+      sellerEconomicId: sellerEconomicId == null && nullToAbsent
+          ? const Value.absent()
+: Value(sellerEconomicId),
+      sellerAddress: sellerAddress == null && nullToAbsent
+          ? const Value.absent()
+: Value(sellerAddress),
+      sellerPhone: sellerPhone == null && nullToAbsent
+          ? const Value.absent()
+: Value(sellerPhone),
     );
   }
 
@@ -5797,6 +5942,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       ),
       devicePrefix: serializer.fromJson<String?>(json['devicePrefix']),
       lastBackupAt: serializer.fromJson<int?>(json['lastBackupAt']),
+      sellerName: serializer.fromJson<String?>(json['sellerName']),
+      sellerEconomicId: serializer.fromJson<String?>(json['sellerEconomicId']),
+      sellerAddress: serializer.fromJson<String?>(json['sellerAddress']),
+      sellerPhone: serializer.fromJson<String?>(json['sellerPhone']),
     );
   }
   @override
@@ -5818,6 +5967,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'invoiceNumberPrefix': serializer.toJson<String>(invoiceNumberPrefix),
       'devicePrefix': serializer.toJson<String?>(devicePrefix),
       'lastBackupAt': serializer.toJson<int?>(lastBackupAt),
+      'sellerName': serializer.toJson<String?>(sellerName),
+      'sellerEconomicId': serializer.toJson<String?>(sellerEconomicId),
+      'sellerAddress': serializer.toJson<String?>(sellerAddress),
+      'sellerPhone': serializer.toJson<String?>(sellerPhone),
     };
   }
 
@@ -5835,6 +5988,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     String? invoiceNumberPrefix,
     Value<String?> devicePrefix = const Value.absent(),
     Value<int?> lastBackupAt = const Value.absent(),
+    Value<String?> sellerName = const Value.absent(),
+    Value<String?> sellerEconomicId = const Value.absent(),
+    Value<String?> sellerAddress = const Value.absent(),
+    Value<String?> sellerPhone = const Value.absent(),
   }) => SettingsRow(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -5849,6 +6006,14 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     invoiceNumberPrefix: invoiceNumberPrefix ?? this.invoiceNumberPrefix,
     devicePrefix: devicePrefix.present ? devicePrefix.value : this.devicePrefix,
     lastBackupAt: lastBackupAt.present ? lastBackupAt.value : this.lastBackupAt,
+    sellerName: sellerName.present ? sellerName.value : this.sellerName,
+    sellerEconomicId: sellerEconomicId.present
+        ? sellerEconomicId.value
+: this.sellerEconomicId,
+    sellerAddress: sellerAddress.present
+        ? sellerAddress.value
+: this.sellerAddress,
+    sellerPhone: sellerPhone.present ? sellerPhone.value : this.sellerPhone,
   );
   SettingsRow copyWithCompanion(SettingsCompanion data) {
     return SettingsRow(
@@ -5881,6 +6046,18 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       lastBackupAt: data.lastBackupAt.present
           ? data.lastBackupAt.value
 : this.lastBackupAt,
+      sellerName: data.sellerName.present
+          ? data.sellerName.value
+: this.sellerName,
+      sellerEconomicId: data.sellerEconomicId.present
+          ? data.sellerEconomicId.value
+: this.sellerEconomicId,
+      sellerAddress: data.sellerAddress.present
+          ? data.sellerAddress.value
+: this.sellerAddress,
+      sellerPhone: data.sellerPhone.present
+          ? data.sellerPhone.value
+: this.sellerPhone,
     );
   }
 
@@ -5899,7 +6076,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
 ..write('paymentTermDays: $paymentTermDays, ')
 ..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
 ..write('devicePrefix: $devicePrefix, ')
-..write('lastBackupAt: $lastBackupAt')
+..write('lastBackupAt: $lastBackupAt, ')
+..write('sellerName: $sellerName, ')
+..write('sellerEconomicId: $sellerEconomicId, ')
+..write('sellerAddress: $sellerAddress, ')
+..write('sellerPhone: $sellerPhone')
 ..write(')'))
 .toString();
   }
@@ -5919,6 +6100,10 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     invoiceNumberPrefix,
     devicePrefix,
     lastBackupAt,
+    sellerName,
+    sellerEconomicId,
+    sellerAddress,
+    sellerPhone,
   );
   @override
   bool operator ==(Object other) =>
@@ -5936,7 +6121,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.paymentTermDays == this.paymentTermDays &&
           other.invoiceNumberPrefix == this.invoiceNumberPrefix &&
           other.devicePrefix == this.devicePrefix &&
-          other.lastBackupAt == this.lastBackupAt);
+          other.lastBackupAt == this.lastBackupAt &&
+          other.sellerName == this.sellerName &&
+          other.sellerEconomicId == this.sellerEconomicId &&
+          other.sellerAddress == this.sellerAddress &&
+          other.sellerPhone == this.sellerPhone);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingsRow> {
@@ -5953,6 +6142,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String> invoiceNumberPrefix;
   final Value<String?> devicePrefix;
   final Value<int?> lastBackupAt;
+  final Value<String?> sellerName;
+  final Value<String?> sellerEconomicId;
+  final Value<String?> sellerAddress;
+  final Value<String?> sellerPhone;
   final Value<int> rowid;
   const SettingsCompanion({
     this.id = const Value.absent(),
@@ -5968,6 +6161,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.invoiceNumberPrefix = const Value.absent(),
     this.devicePrefix = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
+    this.sellerName = const Value.absent(),
+    this.sellerEconomicId = const Value.absent(),
+    this.sellerAddress = const Value.absent(),
+    this.sellerPhone = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettingsCompanion.insert({
@@ -5984,6 +6181,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.invoiceNumberPrefix = const Value.absent(),
     this.devicePrefix = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
+    this.sellerName = const Value.absent(),
+    this.sellerEconomicId = const Value.absent(),
+    this.sellerAddress = const Value.absent(),
+    this.sellerPhone = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   static Insertable<SettingsRow> custom({
@@ -6000,6 +6201,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? invoiceNumberPrefix,
     Expression<String>? devicePrefix,
     Expression<int>? lastBackupAt,
+    Expression<String>? sellerName,
+    Expression<String>? sellerEconomicId,
+    Expression<String>? sellerAddress,
+    Expression<String>? sellerPhone,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6017,6 +6222,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
         'invoice_number_prefix': invoiceNumberPrefix,
       if (devicePrefix != null) 'device_prefix': devicePrefix,
       if (lastBackupAt != null) 'last_backup_at': lastBackupAt,
+      if (sellerName != null) 'seller_name': sellerName,
+      if (sellerEconomicId != null) 'seller_economic_id': sellerEconomicId,
+      if (sellerAddress != null) 'seller_address': sellerAddress,
+      if (sellerPhone != null) 'seller_phone': sellerPhone,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6035,6 +6244,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String>? invoiceNumberPrefix,
     Value<String?>? devicePrefix,
     Value<int?>? lastBackupAt,
+    Value<String?>? sellerName,
+    Value<String?>? sellerEconomicId,
+    Value<String?>? sellerAddress,
+    Value<String?>? sellerPhone,
     Value<int>? rowid,
   }) {
     return SettingsCompanion(
@@ -6051,6 +6264,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       invoiceNumberPrefix: invoiceNumberPrefix ?? this.invoiceNumberPrefix,
       devicePrefix: devicePrefix ?? this.devicePrefix,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
+      sellerName: sellerName ?? this.sellerName,
+      sellerEconomicId: sellerEconomicId ?? this.sellerEconomicId,
+      sellerAddress: sellerAddress ?? this.sellerAddress,
+      sellerPhone: sellerPhone ?? this.sellerPhone,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6101,6 +6318,18 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     if (lastBackupAt.present) {
       map['last_backup_at'] = Variable<int>(lastBackupAt.value);
     }
+    if (sellerName.present) {
+      map['seller_name'] = Variable<String>(sellerName.value);
+    }
+    if (sellerEconomicId.present) {
+      map['seller_economic_id'] = Variable<String>(sellerEconomicId.value);
+    }
+    if (sellerAddress.present) {
+      map['seller_address'] = Variable<String>(sellerAddress.value);
+    }
+    if (sellerPhone.present) {
+      map['seller_phone'] = Variable<String>(sellerPhone.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6123,6 +6352,10 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
 ..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
 ..write('devicePrefix: $devicePrefix, ')
 ..write('lastBackupAt: $lastBackupAt, ')
+..write('sellerName: $sellerName, ')
+..write('sellerEconomicId: $sellerEconomicId, ')
+..write('sellerAddress: $sellerAddress, ')
+..write('sellerPhone: $sellerPhone, ')
 ..write('rowid: $rowid')
 ..write(')'))
 .toString();
@@ -9339,6 +9572,10 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<String> invoiceNumberPrefix,
   Value<String?> devicePrefix,
   Value<int?> lastBackupAt,
+  Value<String?> sellerName,
+  Value<String?> sellerEconomicId,
+  Value<String?> sellerAddress,
+  Value<String?> sellerPhone,
   Value<int> rowid,
 });
 typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
@@ -9355,6 +9592,10 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<String> invoiceNumberPrefix,
   Value<String?> devicePrefix,
   Value<int?> lastBackupAt,
+  Value<String?> sellerName,
+  Value<String?> sellerEconomicId,
+  Value<String?> sellerAddress,
+  Value<String?> sellerPhone,
   Value<int> rowid,
 });
 
@@ -9432,6 +9673,26 @@ class $$SettingsTableFilterComposer
     column: $table.lastBackupAt,
     builder: (column) => ColumnFilters(column),
   );
+
+  ColumnFilters<String> get sellerName => $composableBuilder(
+    column: $table.sellerName,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sellerEconomicId => $composableBuilder(
+    column: $table.sellerEconomicId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sellerAddress => $composableBuilder(
+    column: $table.sellerAddress,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sellerPhone => $composableBuilder(
+    column: $table.sellerPhone,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$SettingsTableOrderingComposer
@@ -9507,6 +9768,26 @@ class $$SettingsTableOrderingComposer
     column: $table.lastBackupAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get sellerName => $composableBuilder(
+    column: $table.sellerName,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sellerEconomicId => $composableBuilder(
+    column: $table.sellerEconomicId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sellerAddress => $composableBuilder(
+    column: $table.sellerAddress,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sellerPhone => $composableBuilder(
+    column: $table.sellerPhone,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -9573,6 +9854,26 @@ class $$SettingsTableAnnotationComposer
     column: $table.lastBackupAt,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get sellerName => $composableBuilder(
+    column: $table.sellerName,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sellerEconomicId => $composableBuilder(
+    column: $table.sellerEconomicId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sellerAddress => $composableBuilder(
+    column: $table.sellerAddress,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get sellerPhone => $composableBuilder(
+    column: $table.sellerPhone,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -9619,6 +9920,10 @@ class $$SettingsTableTableManager
                 Value<String> invoiceNumberPrefix = const Value.absent(),
                 Value<String?> devicePrefix = const Value.absent(),
                 Value<int?> lastBackupAt = const Value.absent(),
+                Value<String?> sellerName = const Value.absent(),
+                Value<String?> sellerEconomicId = const Value.absent(),
+                Value<String?> sellerAddress = const Value.absent(),
+                Value<String?> sellerPhone = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
@@ -9634,6 +9939,10 @@ class $$SettingsTableTableManager
                 invoiceNumberPrefix: invoiceNumberPrefix,
                 devicePrefix: devicePrefix,
                 lastBackupAt: lastBackupAt,
+                sellerName: sellerName,
+                sellerEconomicId: sellerEconomicId,
+                sellerAddress: sellerAddress,
+                sellerPhone: sellerPhone,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9651,6 +9960,10 @@ class $$SettingsTableTableManager
                 Value<String> invoiceNumberPrefix = const Value.absent(),
                 Value<String?> devicePrefix = const Value.absent(),
                 Value<int?> lastBackupAt = const Value.absent(),
+                Value<String?> sellerName = const Value.absent(),
+                Value<String?> sellerEconomicId = const Value.absent(),
+                Value<String?> sellerAddress = const Value.absent(),
+                Value<String?> sellerPhone = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
@@ -9666,6 +9979,10 @@ class $$SettingsTableTableManager
                 invoiceNumberPrefix: invoiceNumberPrefix,
                 devicePrefix: devicePrefix,
                 lastBackupAt: lastBackupAt,
+                sellerName: sellerName,
+                sellerEconomicId: sellerEconomicId,
+                sellerAddress: sellerAddress,
+                sellerPhone: sellerPhone,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

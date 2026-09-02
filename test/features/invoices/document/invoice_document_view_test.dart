@@ -3,6 +3,7 @@ import 'dart:typed_data';
 
 import 'package:factorino/core/formatting/jalali_display.dart';
 import 'package:factorino/core/formatting/number_display.dart';
+import 'package:factorino/core/formatting/persian_text.dart';
 import 'package:factorino/core/localization/generated/app_strings_fa.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/core/pdf/document_text.dart';
@@ -14,6 +15,7 @@ import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_item.dart';
 import 'package:factorino/data/models/invoice_status.dart';
 import 'package:factorino/data/models/payment.dart';
+import 'package:factorino/data/models/seller_identity.dart';
 import 'package:factorino/features/invoices/document/invoice_document_view.dart';
 import 'package:factorino/features/invoices/document/invoice_document_view_builder.dart';
 import 'package:factorino/features/invoices/document/pdf_invoice_document_generator.dart';
@@ -41,10 +43,14 @@ void main() {
     strings = AppStringsFa();
   });
 
-  InvoiceDocumentView viewOf(InvoiceDetail detail) => buildInvoiceDocumentView(
+  InvoiceDocumentView viewOf(
+    InvoiceDetail detail, {
+    SellerIdentity seller = SellerIdentity.none,
+  }) => buildInvoiceDocumentView(
     detail: detail,
     strings: strings,
     boundary: boundary,
+    seller: seller,
   );
 
   /// Every string the view would hand the renderer.
@@ -58,6 +64,14 @@ void main() {
     if (view.dueDate != null) ...<DocumentText>[
       view.dueDate!.label,
       view.dueDate!.value,
+    ],
+    if (view.seller != null) ...<DocumentText>[
+      view.seller!.heading,
+      view.seller!.name,
+      for (final DocumentField f in view.seller!.fields) ...<DocumentText>[
+        f.label,
+        f.value,
+      ],
     ],
     view.party.heading,
     view.party.name,
@@ -255,6 +269,165 @@ void main() {
     });
   });
 
+  /// The seller block (D-077).
+  ///
+  /// **The block that was not there.** Until schema v5 the settings row held no
+  /// business identity at all, so the document named the buyer and nobody else
+  /// — which is not an invoice anybody can hand to a customer (D-076). The
+  /// interesting cases are all about *absence*: what prints when there is
+  /// nothing, and what prints when there is something but not enough.
+  group('the seller block', () {
+    const SellerIdentity full = SellerIdentity(
+      name: 'مهندسی نوآوران فناوری پارسیان',
+      economicId: '14003456789012',
+      address: 'تهران، خیابان ولی‌عصر، بالاتر از میدان ونک، پلاک ۱۲۳',
+      phone: '02188776655',
+    );
+
+    test('no seller, no block — and nothing invented to fill it', () {
+      // **The state every existing database is in.** The block is omitted
+      // entirely; it does not become a heading over four blank lines, which on
+      // a printed page reads as a document that failed rather than as one that
+      // was never filled in. And nothing is substituted: a placeholder seller
+      // on the page the customer keeps is the one thing this phase must not
+      // do.
+      final InvoiceDocumentView view = viewOf(_detail(toman: 1000000));
+
+      expect(view.seller, isNull);
+      expect(
+        allText(view).map((DocumentText t) => t.value),
+        isNot(contains(strings.invoiceDocumentSellerHeading)),
+        reason:
+            'an omitted block must not leave its heading behind on the page',
+      );
+    });
+
+    test('a full seller prints every field it was given', () {
+      final InvoiceDocumentView view = viewOf(
+        _detail(toman: 1000000),
+        seller: full,
+      );
+
+      expect(view.seller, isNotNull);
+      expect(view.seller!.heading.value, strings.invoiceDocumentSellerHeading);
+      expect(view.seller!.name.value, full.name);
+      expect(view.seller!.fields, hasLength(3));
+
+      final List<String> values = view.seller!.fields
+          .map((DocumentField f) => f.value.value)
+          .toList();
+      // **Persian digits, and the isolates already stripped.** Both
+      // identifiers go through `formatIdentifierForDisplay`, which converts to
+      // Persian digits and wraps the run in U+2068/U+2069; the boundary then
+      // removes the isolates, because those two are not in the font's `cmap`
+      // at all and the shaper silently drops the run's last character (D-070
+      // finding 1). So the value on the page is neither the raw string nor the
+      // screen's string, and asserting either would have passed while the page
+      // printed something else.
+      //
+      // Asserting the Latin form here would have passed *vacuously* — every
+      // `contains` false, every `any` false, and the test green only because
+      // it was looking for the wrong thing.
+      expect(
+        values,
+        contains(toPersianDigits('14003456789012')),
+        reason: '§9: an identifier prints in Persian digits, like every figure',
+      );
+      expect(values, contains(toPersianDigits('02188776655')));
+      expect(values, contains(full.address));
+
+      // And no isolate survived into a string the renderer will draw.
+      for (final String value in values) {
+        expect(value.contains(kFirstStrongIsolate), isFalse);
+        expect(value.contains(kPopDirectionalIsolate), isFalse);
+      }
+    });
+
+    test('an empty field is omitted, never printed blank', () {
+      final InvoiceDocumentView view = viewOf(
+        _detail(toman: 1000000),
+        seller: const SellerIdentity(name: 'کارگاه فنی مهر'),
+      );
+
+      expect(view.seller, isNotNull);
+      expect(
+        view.seller!.fields,
+        isEmpty,
+        reason:
+            'a labelled empty line on a document reads as data that failed to '
+            'print, which is worse than a line that is simply not there',
+      );
+    });
+
+    test('details with no name are not a block with a gap in it', () {
+      // **The ruling, as a test.** An identity carrying an economic ID and a
+      // telephone has something in it and still cannot head a block: the
+      // heading identifies nobody, and the reader cannot act on any of it. The
+      // form refuses to save this; the builder re-checks, because a value that
+      // arrived through a restored backup never met the form.
+      final InvoiceDocumentView view = viewOf(
+        _detail(toman: 1000000),
+        seller: const SellerIdentity(
+          economicId: '14003456789012',
+          phone: '02188776655',
+        ),
+      );
+
+      expect(view.seller, isNull);
+      // The Persian form, which is what would actually be on the page — the
+      // Latin form is absent whatever happens, so looking for it would be a
+      // check that cannot fail.
+      expect(
+        allText(view).map((DocumentText t) => t.value).join(),
+        isNot(contains(toPersianDigits('14003456789012'))),
+        reason:
+            'a field whose block was suppressed must not leak onto the page',
+      );
+    });
+
+    test('whitespace is not a name', () {
+      // Three spaces satisfy every `isNotEmpty` check and print as a blank
+      // line under the heading. Folded here as well as at the repository,
+      // because the builder is the last thing between a stored value and the
+      // page.
+      final InvoiceDocumentView view = viewOf(
+        _detail(toman: 1000000),
+        seller: const SellerIdentity(name: '   ', address: '  '),
+      );
+
+      expect(view.seller, isNull);
+    });
+
+    test('it says nothing about where its details came from', () {
+      // D-075's provenance note is about a **buyer** whose details the
+      // document never stored. The seller is read from the live settings row
+      // by definition and has no snapshot to have diverged from, so there is
+      // nothing factual to say — and a document that explains itself where it
+      // need not reads as unreliable.
+      final InvoiceDocumentView view = viewOf(
+        _detail(toman: 1000000),
+        seller: full,
+      );
+
+      expect(view.seller!.sourceNote, isNull);
+    });
+
+    test('the buyer block is unaffected either way', () {
+      // Two blocks, one function. A change to the seller that quietly altered
+      // what the buyer block says would be invisible in review and visible
+      // only on a printed page.
+      final InvoiceDocumentView without = viewOf(_detail(toman: 1000000));
+      final InvoiceDocumentView with_ = viewOf(
+        _detail(toman: 1000000),
+        seller: full,
+      );
+
+      expect(with_.party.heading.value, without.party.heading.value);
+      expect(with_.party.name.value, without.party.name.value);
+      expect(with_.party.fields.length, without.party.fields.length);
+    });
+  });
+
   group('the declared table geometry', () {
     test('leaves the description column a workable width', () {
       // D-065: the on-screen document table shipped a description column 21.6
@@ -281,6 +454,38 @@ void main() {
           widest.runes.length * perGlyph +
           'تومان'.runes.length * perGlyph * InvoiceDocumentLayout.unitScale;
       expect(InvoiceDocumentLayout.moneyColumnWidth, greaterThan(needed * 0.9));
+    });
+
+    test('and a party block is wider than the longest word it can hold', () {
+      // D-077 set the two blocks side by side rather than stacking them,
+      // which costs no page height and is how an Iranian invoice is
+      // conventionally set. That trade is only sound if each half is genuinely
+      // wide enough — D-065's lesson is that a block laid out too narrow does
+      // **not** overflow or report an error, it just renders one glyph per
+      // line. So the width is asserted rather than trusted to `Expanded`.
+      //
+      // The longest unbreakable run either block can hold is an identifier:
+      // a fourteen-digit کد اقتصادی, drawn beside its own label at the party
+      // font size. Same generous glyph-advance model as the money columns
+      // above, so this fails early rather than at the exact point of overflow;
+      // the real check is the rendered page.
+      const double perGlyph = 0.62 * InvoiceDocumentLayout.partyFontSize;
+      final double needed =
+          '14003456789012'.length * perGlyph +
+          'کد اقتصادی'.runes.length * perGlyph;
+      expect(
+        InvoiceDocumentLayout.partyBlockWidth,
+        greaterThan(needed),
+        reason:
+            'a party block narrower than one label-and-identifier row would '
+            'wrap the identifier, and a broken کد اقتصادی on an invoice is a '
+            'wrong number rather than an ugly one',
+      );
+      expect(
+        InvoiceDocumentLayout.partyBlockWidth * 2,
+        lessThan(InvoiceDocumentLayout.contentWidth),
+        reason: 'two blocks and the gap between them must fit the page',
+      );
     });
   });
 }

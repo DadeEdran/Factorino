@@ -1,0 +1,1924 @@
+{
+  "_meta": {
+    "description": "This file contains a serialized version of schema entities for drift.",
+    "version": "1.3.0"
+  },
+  "options": {
+    "store_date_time_values_as_text": false
+  },
+  "entities": [
+    {
+      "id": 0,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "customers",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "uuidV4",
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "sync_status",
+            "getter_name": "syncStatus",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<SyncStatus>(SyncStatus.values)",
+              "dart_type_name": "SyncStatus"
+            }
+          },
+          {
+            "name": "last_synced_at",
+            "getter_name": "lastSyncedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "full_name",
+            "getter_name": "fullName",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": 1,
+                  "max": 120
+                }
+              }
+            ]
+          },
+          {
+            "name": "mobile",
+            "getter_name": "mobile",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 20
+                }
+              }
+            ]
+          },
+          {
+            "name": "company_name",
+            "getter_name": "companyName",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 160
+                }
+              }
+            ]
+          },
+          {
+            "name": "address",
+            "getter_name": "address",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 500
+                }
+              }
+            ]
+          },
+          {
+            "name": "national_id",
+            "getter_name": "nationalId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 10
+                }
+              }
+            ]
+          },
+          {
+            "name": "economic_id",
+            "getter_name": "economicId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 20
+                }
+              }
+            ]
+          },
+          {
+            "name": "notes",
+            "getter_name": "notes",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 2000
+                }
+              }
+            ]
+          },
+          {
+            "name": "search_name",
+            "getter_name": "searchName",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 300
+                }
+              }
+            ]
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 1,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "products",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "uuidV4",
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "sync_status",
+            "getter_name": "syncStatus",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<SyncStatus>(SyncStatus.values)",
+              "dart_type_name": "SyncStatus"
+            }
+          },
+          {
+            "name": "last_synced_at",
+            "getter_name": "lastSyncedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "name",
+            "getter_name": "name",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": 1,
+                  "max": 160
+                }
+              }
+            ]
+          },
+          {
+            "name": "type",
+            "getter_name": "type",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<ProductType>(ProductType.values)",
+              "dart_type_name": "ProductType"
+            }
+          },
+          {
+            "name": "price_rial",
+            "getter_name": "priceRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "unit",
+            "getter_name": "unit",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": 1,
+                  "max": 30
+                }
+              }
+            ]
+          },
+          {
+            "name": "description",
+            "getter_name": "description",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 2000
+                }
+              }
+            ]
+          },
+          {
+            "name": "search_name",
+            "getter_name": "searchName",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'\\'')",
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 200
+                }
+              }
+            ]
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 2,
+      "references": [
+        0
+      ],
+      "type": "table",
+      "data": {
+        "name": "invoices",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "uuidV4",
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "sync_status",
+            "getter_name": "syncStatus",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<SyncStatus>(SyncStatus.values)",
+              "dart_type_name": "SyncStatus"
+            }
+          },
+          {
+            "name": "last_synced_at",
+            "getter_name": "lastSyncedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "number",
+            "getter_name": "number",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": 1,
+                  "max": 40
+                }
+              }
+            ]
+          },
+          {
+            "name": "number_year",
+            "getter_name": "numberYear",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "number_sequence",
+            "getter_name": "numberSequence",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "customer_id",
+            "getter_name": "customerId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES customers (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES customers (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "customers",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "issue_date",
+            "getter_name": "issueDate",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "due_date",
+            "getter_name": "dueDate",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "discount_rial",
+            "getter_name": "discountRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "discount_percent_bp",
+            "getter_name": "discountPercentBp",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "tax_rate_bp",
+            "getter_name": "taxRateBp",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "notes",
+            "getter_name": "notes",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 2000
+                }
+              }
+            ]
+          },
+          {
+            "name": "customer_name_snapshot",
+            "getter_name": "customerNameSnapshot",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 120
+                }
+              }
+            ]
+          },
+          {
+            "name": "customer_company_snapshot",
+            "getter_name": "customerCompanySnapshot",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 160
+                }
+              }
+            ]
+          },
+          {
+            "name": "customer_national_id_snapshot",
+            "getter_name": "customerNationalIdSnapshot",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 10
+                }
+              }
+            ]
+          },
+          {
+            "name": "customer_economic_id_snapshot",
+            "getter_name": "customerEconomicIdSnapshot",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 20
+                }
+              }
+            ]
+          },
+          {
+            "name": "customer_address_snapshot",
+            "getter_name": "customerAddressSnapshot",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 500
+                }
+              }
+            ]
+          },
+          {
+            "name": "status",
+            "getter_name": "status",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<InvoiceStatus>(InvoiceStatus.values)",
+              "dart_type_name": "InvoiceStatus"
+            }
+          },
+          {
+            "name": "gross_total_rial",
+            "getter_name": "grossTotalRial",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "subtotal_rial",
+            "getter_name": "subtotalRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "total_discount_rial",
+            "getter_name": "totalDiscountRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "total_tax_rial",
+            "getter_name": "totalTaxRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "rounding_adjustment_rial",
+            "getter_name": "roundingAdjustmentRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "grand_total_rial",
+            "getter_name": "grandTotalRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 3,
+      "references": [
+        2,
+        1
+      ],
+      "type": "table",
+      "data": {
+        "name": "invoice_items",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "uuidV4",
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "sync_status",
+            "getter_name": "syncStatus",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<SyncStatus>(SyncStatus.values)",
+              "dart_type_name": "SyncStatus"
+            }
+          },
+          {
+            "name": "last_synced_at",
+            "getter_name": "lastSyncedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "invoice_id",
+            "getter_name": "invoiceId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES invoices (id) ON DELETE CASCADE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES invoices (id) ON DELETE CASCADE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "invoices",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "cascade"
+                }
+              }
+            ]
+          },
+          {
+            "name": "product_id",
+            "getter_name": "productId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES products (id)",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES products (id)"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "products",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": null
+                }
+              }
+            ]
+          },
+          {
+            "name": "position",
+            "getter_name": "position",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "title_snapshot",
+            "getter_name": "titleSnapshot",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": 1,
+                  "max": 200
+                }
+              }
+            ]
+          },
+          {
+            "name": "unit_snapshot",
+            "getter_name": "unitSnapshot",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": 1,
+                  "max": 30
+                }
+              }
+            ]
+          },
+          {
+            "name": "unit_price_rial",
+            "getter_name": "unitPriceRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "quantity_milli",
+            "getter_name": "quantityMilli",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "discount_rial",
+            "getter_name": "discountRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "discount_percent_bp",
+            "getter_name": "discountPercentBp",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "resolved_tax_rate_bp",
+            "getter_name": "resolvedTaxRateBp",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "line_gross_rial",
+            "getter_name": "lineGrossRial",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "allocated_invoice_discount_rial",
+            "getter_name": "allocatedInvoiceDiscountRial",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "line_net_rial",
+            "getter_name": "lineNetRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "line_tax_rial",
+            "getter_name": "lineTaxRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "line_total_rial",
+            "getter_name": "lineTotalRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 4,
+      "references": [
+        2
+      ],
+      "type": "table",
+      "data": {
+        "name": "payments",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "uuidV4",
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "sync_status",
+            "getter_name": "syncStatus",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<SyncStatus>(SyncStatus.values)",
+              "dart_type_name": "SyncStatus"
+            }
+          },
+          {
+            "name": "last_synced_at",
+            "getter_name": "lastSyncedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "invoice_id",
+            "getter_name": "invoiceId",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "defaultConstraints": "REFERENCES invoices (id) ON DELETE CASCADE",
+            "dialectAwareDefaultConstraints": {
+              "sqlite": "REFERENCES invoices (id) ON DELETE CASCADE"
+            },
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "foreign_key": {
+                  "to": {
+                    "table": "invoices",
+                    "column": "id"
+                  },
+                  "initially_deferred": false,
+                  "on_update": null,
+                  "on_delete": "cascade"
+                }
+              }
+            ]
+          },
+          {
+            "name": "amount_rial",
+            "getter_name": "amountRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "paid_at",
+            "getter_name": "paidAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "method",
+            "getter_name": "method",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<PaymentMethod>(PaymentMethod.values)",
+              "dart_type_name": "PaymentMethod"
+            }
+          },
+          {
+            "name": "note",
+            "getter_name": "note",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 500
+                }
+              }
+            ]
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 5,
+      "references": [],
+      "type": "table",
+      "data": {
+        "name": "settings",
+        "was_declared_in_moor": false,
+        "columns": [
+          {
+            "name": "id",
+            "getter_name": "id",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "uuidV4",
+            "dsl_features": []
+          },
+          {
+            "name": "created_at",
+            "getter_name": "createdAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "updated_at",
+            "getter_name": "updatedAt",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": "nowMillis",
+            "dsl_features": []
+          },
+          {
+            "name": "deleted_at",
+            "getter_name": "deletedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "sync_status",
+            "getter_name": "syncStatus",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": [],
+            "type_converter": {
+              "dart_expr": "const EnumIndexConverter<SyncStatus>(SyncStatus.values)",
+              "dart_type_name": "SyncStatus"
+            }
+          },
+          {
+            "name": "last_synced_at",
+            "getter_name": "lastSyncedAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "singleton",
+            "getter_name": "singleton",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "default_tax_rate_bp",
+            "getter_name": "defaultTaxRateBp",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('1000')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "rounding_unit_rial",
+            "getter_name": "roundingUnitRial",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('0')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "payment_term_days",
+            "getter_name": "paymentTermDays",
+            "moor_type": "int",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('30')",
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "invoice_number_prefix",
+            "getter_name": "invoiceNumberPrefix",
+            "moor_type": "string",
+            "nullable": false,
+            "customConstraints": null,
+            "default_dart": "const CustomExpression('\\'INV\\'')",
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": 1,
+                  "max": 12
+                }
+              }
+            ]
+          },
+          {
+            "name": "device_prefix",
+            "getter_name": "devicePrefix",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 8
+                }
+              }
+            ]
+          },
+          {
+            "name": "last_backup_at",
+            "getter_name": "lastBackupAt",
+            "moor_type": "int",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": []
+          },
+          {
+            "name": "seller_name",
+            "getter_name": "sellerName",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 160
+                }
+              }
+            ]
+          },
+          {
+            "name": "seller_economic_id",
+            "getter_name": "sellerEconomicId",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 20
+                }
+              }
+            ]
+          },
+          {
+            "name": "seller_address",
+            "getter_name": "sellerAddress",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 500
+                }
+              }
+            ]
+          },
+          {
+            "name": "seller_phone",
+            "getter_name": "sellerPhone",
+            "moor_type": "string",
+            "nullable": true,
+            "customConstraints": null,
+            "default_dart": null,
+            "default_client_dart": null,
+            "dsl_features": [
+              {
+                "allowed-lengths": {
+                  "min": null,
+                  "max": 20
+                }
+              }
+            ]
+          }
+        ],
+        "is_virtual": false,
+        "without_rowid": false,
+        "constraints": [
+          "CHECK (singleton = 1)"
+        ],
+        "explicit_pk": [
+          "id"
+        ]
+      }
+    },
+    {
+      "id": 6,
+      "references": [
+        0
+      ],
+      "type": "index",
+      "data": {
+        "on": 0,
+        "name": "idx_customers_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 7,
+      "references": [
+        0
+      ],
+      "type": "index",
+      "data": {
+        "on": 0,
+        "name": "idx_customers_search_name",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "search_name",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 8,
+      "references": [
+        1
+      ],
+      "type": "index",
+      "data": {
+        "on": 1,
+        "name": "idx_products_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 9,
+      "references": [
+        1
+      ],
+      "type": "index",
+      "data": {
+        "on": 1,
+        "name": "idx_products_search_name",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "search_name",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 10,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_invoices_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 11,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_invoices_issue_date",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "issue_date",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 12,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_invoices_customer",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "customer_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 13,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_invoices_status",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "status",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 14,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_invoices_number_year",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "number_year",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 15,
+      "references": [
+        2
+      ],
+      "type": "index",
+      "data": {
+        "on": 2,
+        "name": "idx_invoices_number",
+        "sql": null,
+        "unique": true,
+        "columns": [
+          {
+            "column": "number",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 16,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_invoice_items_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 17,
+      "references": [
+        3
+      ],
+      "type": "index",
+      "data": {
+        "on": 3,
+        "name": "idx_invoice_items_invoice",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "invoice_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 18,
+      "references": [
+        4
+      ],
+      "type": "index",
+      "data": {
+        "on": 4,
+        "name": "idx_payments_deleted_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "deleted_at",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 19,
+      "references": [
+        4
+      ],
+      "type": "index",
+      "data": {
+        "on": 4,
+        "name": "idx_payments_invoice",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "invoice_id",
+            "order_by": null
+          }
+        ]
+      }
+    },
+    {
+      "id": 20,
+      "references": [
+        4
+      ],
+      "type": "index",
+      "data": {
+        "on": 4,
+        "name": "idx_payments_paid_at",
+        "sql": null,
+        "unique": false,
+        "columns": [
+          {
+            "column": "paid_at",
+            "order_by": null
+          }
+        ]
+      }
+    }
+  ],
+  "fixed_sql": [
+    {
+      "name": "customers",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"customers\" (\"id\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, \"sync_status\" INTEGER NOT NULL DEFAULT 0, \"last_synced_at\" INTEGER NULL, \"full_name\" TEXT NOT NULL, \"mobile\" TEXT NULL, \"company_name\" TEXT NULL, \"address\" TEXT NULL, \"national_id\" TEXT NULL, \"economic_id\" TEXT NULL, \"notes\" TEXT NULL, \"search_name\" TEXT NOT NULL DEFAULT '', PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "products",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"products\" (\"id\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, \"sync_status\" INTEGER NOT NULL DEFAULT 0, \"last_synced_at\" INTEGER NULL, \"name\" TEXT NOT NULL, \"type\" INTEGER NOT NULL, \"price_rial\" INTEGER NOT NULL, \"unit\" TEXT NOT NULL, \"description\" TEXT NULL, \"search_name\" TEXT NOT NULL DEFAULT '', PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "invoices",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"invoices\" (\"id\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, \"sync_status\" INTEGER NOT NULL DEFAULT 0, \"last_synced_at\" INTEGER NULL, \"number\" TEXT NULL, \"number_year\" INTEGER NULL, \"number_sequence\" INTEGER NULL, \"customer_id\" TEXT NOT NULL REFERENCES customers (id), \"issue_date\" INTEGER NOT NULL, \"due_date\" INTEGER NULL, \"discount_rial\" INTEGER NOT NULL DEFAULT 0, \"discount_percent_bp\" INTEGER NULL, \"tax_rate_bp\" INTEGER NULL, \"notes\" TEXT NULL, \"customer_name_snapshot\" TEXT NULL, \"customer_company_snapshot\" TEXT NULL, \"customer_national_id_snapshot\" TEXT NULL, \"customer_economic_id_snapshot\" TEXT NULL, \"customer_address_snapshot\" TEXT NULL, \"status\" INTEGER NOT NULL, \"gross_total_rial\" INTEGER NULL, \"subtotal_rial\" INTEGER NOT NULL DEFAULT 0, \"total_discount_rial\" INTEGER NOT NULL DEFAULT 0, \"total_tax_rial\" INTEGER NOT NULL DEFAULT 0, \"rounding_adjustment_rial\" INTEGER NOT NULL DEFAULT 0, \"grand_total_rial\" INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "invoice_items",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"invoice_items\" (\"id\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, \"sync_status\" INTEGER NOT NULL DEFAULT 0, \"last_synced_at\" INTEGER NULL, \"invoice_id\" TEXT NOT NULL REFERENCES invoices (id) ON DELETE CASCADE, \"product_id\" TEXT NULL REFERENCES products (id), \"position\" INTEGER NOT NULL DEFAULT 0, \"title_snapshot\" TEXT NOT NULL, \"unit_snapshot\" TEXT NOT NULL, \"unit_price_rial\" INTEGER NOT NULL, \"quantity_milli\" INTEGER NOT NULL, \"discount_rial\" INTEGER NOT NULL DEFAULT 0, \"discount_percent_bp\" INTEGER NULL, \"resolved_tax_rate_bp\" INTEGER NOT NULL, \"line_gross_rial\" INTEGER NULL, \"allocated_invoice_discount_rial\" INTEGER NULL, \"line_net_rial\" INTEGER NOT NULL DEFAULT 0, \"line_tax_rial\" INTEGER NOT NULL DEFAULT 0, \"line_total_rial\" INTEGER NOT NULL DEFAULT 0, PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "payments",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"payments\" (\"id\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, \"sync_status\" INTEGER NOT NULL DEFAULT 0, \"last_synced_at\" INTEGER NULL, \"invoice_id\" TEXT NOT NULL REFERENCES invoices (id) ON DELETE CASCADE, \"amount_rial\" INTEGER NOT NULL, \"paid_at\" INTEGER NOT NULL, \"method\" INTEGER NOT NULL, \"note\" TEXT NULL, PRIMARY KEY (\"id\"));"
+        }
+      ]
+    },
+    {
+      "name": "settings",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE TABLE IF NOT EXISTS \"settings\" (\"id\" TEXT NOT NULL, \"created_at\" INTEGER NOT NULL, \"updated_at\" INTEGER NOT NULL, \"deleted_at\" INTEGER NULL, \"sync_status\" INTEGER NOT NULL DEFAULT 0, \"last_synced_at\" INTEGER NULL, \"singleton\" INTEGER NOT NULL DEFAULT 1, \"default_tax_rate_bp\" INTEGER NOT NULL DEFAULT 1000, \"rounding_unit_rial\" INTEGER NOT NULL DEFAULT 0, \"payment_term_days\" INTEGER NOT NULL DEFAULT 30, \"invoice_number_prefix\" TEXT NOT NULL DEFAULT 'INV', \"device_prefix\" TEXT NULL, \"last_backup_at\" INTEGER NULL, \"seller_name\" TEXT NULL, \"seller_economic_id\" TEXT NULL, \"seller_address\" TEXT NULL, \"seller_phone\" TEXT NULL, PRIMARY KEY (\"id\"), CHECK (singleton = 1));"
+        }
+      ]
+    },
+    {
+      "name": "idx_customers_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_customers_deleted_at ON customers (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_customers_search_name",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_customers_search_name ON customers (search_name)"
+        }
+      ]
+    },
+    {
+      "name": "idx_products_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_products_deleted_at ON products (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_products_search_name",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_products_search_name ON products (search_name)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoices_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_invoices_deleted_at ON invoices (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoices_issue_date",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_invoices_issue_date ON invoices (issue_date)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoices_customer",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_invoices_customer ON invoices (customer_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoices_status",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_invoices_status ON invoices (status)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoices_number_year",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_invoices_number_year ON invoices (number_year)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoices_number",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE UNIQUE INDEX idx_invoices_number ON invoices (number)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoice_items_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_invoice_items_deleted_at ON invoice_items (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_invoice_items_invoice",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_invoice_items_invoice ON invoice_items (invoice_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_payments_deleted_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_payments_deleted_at ON payments (deleted_at)"
+        }
+      ]
+    },
+    {
+      "name": "idx_payments_invoice",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_payments_invoice ON payments (invoice_id)"
+        }
+      ]
+    },
+    {
+      "name": "idx_payments_paid_at",
+      "sql": [
+        {
+          "dialect": "sqlite",
+          "sql": "CREATE INDEX idx_payments_paid_at ON payments (paid_at)"
+        }
+      ]
+    }
+  ]
+}
