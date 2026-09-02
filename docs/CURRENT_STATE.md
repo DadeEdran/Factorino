@@ -2913,7 +2913,9 @@ anything.
 
 | commit | what |
 |---|---|
-| **`a111fa6`** | The (d) cable session: the three Android measurements, the settings-suite regression (c) shipped, and the retired cold-start baseline (D-078) |
+| **`35e581a`** | Phase 7 (d): the provider, the save action, the §7 artifact ruling and the real size figure (D-080) |
+| `f5430ad` | Issue 24 fixed at the source — `rtlTable`; D-072's 16 pixels corrected; known issue 25 (D-079) |
+| `a111fa6` | The (d) cable session: the three Android measurements, the settings-suite regression (c) shipped, and the retired cold-start baseline (D-078) |
 | `cc5c639` | Phase 7 (c): schema v5 and the seller block; the two rulings; known issue 24 (D-077) |
 | `0436094` | Phase 7 (b): the invoice prints — the view model, the generator interface, the one template (D-075, D-076) |
 | `47beb6e` | Phase 7 (a): the `pdf` dependency and the text layer that makes it safe (D-074) |
