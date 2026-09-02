@@ -2,7 +2,14 @@
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
 >
-> **Last updated: 2026-09-02 (evening) — the (d) cable session ran. Phase 7 (a), (b) and (c) are
+> **Last updated: 2026-09-02 (late evening) — Phase 7 (d) is built. The invoice is reachable from
+> the application, it saves through the D-071 gateway, and §7's question about where it lands is
+> answered and tested on both targets (D-080).** Known issue 24 is fixed at the source with a
+> wrapper rather than a reversed list (D-079), and the real size cost is finally measured:
+> **+1.77 MB on arm64**, against D-074's +133 KB floor — thirteen times the estimate, which is what
+> a floor resting on the import graph was warning about.
+>
+> Earlier the same evening: **the (d) cable session ran. Phase 7 (a), (b) and (c) are
 > delivered; the three Android measurements the gate owed are now taken, and the session found a
 > regression (c) had shipped into the settings device suite.**
 >
@@ -260,8 +267,9 @@ it belongs to the section it sits in.
 
 ```
 flutter analyze:            PASS   (No issues found)                          as of Phase 7 (c)
-flutter test:               PASS   (1194/1194, was 1189 after (c), 1159, 1137) as of the (d)
-                                   cable session -- +5 for `rtl_table_test.dart`
+flutter test:               PASS   (1194/1194, was 1189 after (c), 1159, 1137) as of (d).
+                                   +5 for `rtl_table_test.dart`; the export suite is an
+                                   integration test and is not in this count
 Android build:              PASS   release APKs rebuilt 2026-09-02 after Phase 7 (b);
                                    arm64 21,653,926. Last installed and cold-started on the
                                    Redmi 2026-09-01 -- NOT re-installed since the pdf dependency
@@ -353,6 +361,23 @@ Backup gateway - Android:   PASS   RE-RUN 2026-09-02 evening on the current buil
                                    landed 4,096 bytes in Downloads, sha256 identical to the source.
                                    Still interactive: SAF cannot complete without a human, which is
                                    also what makes the result mean something
+Invoice export - both:      PASS   `invoice_export_test.dart`, 3 tests on Windows AND Android
+                                   (D-064). The REAL render from the REAL providers -- fonts out of
+                                   rootBundle, seller out of the repository, view out of a stored
+                                   invoice -- 18,398 bytes, `%PDF-`, named INV-1405-0001.pdf, and
+                                   byte-identical on the two targets. Pins the §7 property in both
+                                   directions: the file EXISTS when offered to the gateway and is
+                                   GONE afterwards, on the confirmed path and on the cancelled one.
+                                   An empty seller still prints, and the outcome says so (D-080)
+Phase 7 size, REAL (d):     TAKEN  arm64 23,423,398, **+1,769,472 on (c)** -- the first figure that
+                                   means anything, because step 1 of (d) is what made core/pdf/
+                                   reachable from main(). armeabi-v7a 21,343,678 (+2,080,768);
+                                   x86_64 24,976,002 (+1,638,400). **D-074's +133 KB floor
+                                   understated the real cost 13x**, which is what "a floor, resting
+                                   on the import graph rather than on the number" was warning
+                                   about. No new assets -- both Vazirmatn faces were already
+                                   bundled for the screen; the delta is the pdf package's own AOT
+                                   code, which the tree-shaker had been discarding entirely. D-080
 RTL table order (issue 24):  PASS  READ OFF THE RENDERED PAGE, both fixtures: ردیف at the far right
                                    through جمع سطر at the far left, فروشنده right and خریدار left.
                                    Fixed via `rtlTable`, a wrapper -- callers declare columns in
@@ -2810,7 +2835,25 @@ surprised by. None of this needs re-litigating.
 lives in `rtlTable`, callers declare columns in reading order, and the page was read. Do not re-open
 it; the numbered item 0 below is kept only so the history reads straight.
 
-**The single specific next action: Phase 7 (d) step 1 — the provider.** A provider that loads the
+**Phase 7 (d) is built.** The provider, the save action, the empty-seller notice and the §7 ruling
+are all in, tested on both targets, and the size figure is taken. What remains before the phase can
+be marked `COMPLETED` is **verification, not construction**:
+
+**The single specific next action: run the phone-tier device pass over the export action itself.**
+`invoice_export_test.dart` drives the *controller* on both targets; nothing has yet driven the
+**menu item** on a phone — tapping «ذخیرهٔ نسخهٔ PDF» in the title row, and reading the snackbar and
+its «تنظیمات» action against a real layout. That is the D-057/D-062 gap this increment opened, and
+it is the same shape as the one (c) opened and (d)'s cable session found: **an increment that
+changes a screen invalidates the suite for that screen.** `invoice_detail_device_test.dart` is the
+file. Note the save dialog itself cannot be tapped by `adb` under MIUI, so the suite should stop at
+the point the picker opens, exactly as `backup_gateway_probe_test.dart` does.
+
+Then: known issue 25 (a fixture that actually spans a page, and `repeat: true` with it), and the
+phase close.
+
+*Historical — the previous next action, now done:*
+
+**~~Phase 7 (d) step 1 — the provider.~~** A provider that loads the
 Vazirmatn faces from `rootBundle` into a `DocumentTypeface`, builds the view from the
 `invoiceDetailProvider` the detail screen already watches **and the `appSettingsProvider` seller**,
 and renders. Note `buildInvoiceDocumentView` takes `seller:` and defaults it to

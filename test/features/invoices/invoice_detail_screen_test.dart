@@ -982,20 +982,48 @@ void main() {
       // Absent, not disabled (D-021). A draft has no number and nobody has seen
       // it; marking it «باطل شده» would void a document that never existed, and
       // the screen must not offer two ways out of one state.
-      await pumpCancellable(tester, view: detail(status: InvoiceStatus.draft));
+      //
+      // **The menu itself is now present**, which changed in (d): it carries
+      // the PDF export, which every invoice is offered including a draft
+      // (D-075 — a draft prints, marked with its band). So the assertion is
+      // about the cancel ITEM rather than about the menu button. Asserting the
+      // button's absence would now pass only by accident of what else the menu
+      // happens to hold.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
 
-      expect(find.byIcon(Icons.more_vert), findsNothing);
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceCancelAction), findsNothing);
+      expect(
+        find.text(strings.invoiceDocumentExportAction),
+        findsOneWidget,
+        reason: 'a draft still prints, so the export is offered on it',
+      );
     });
 
     testWidgets('an invoice already cancelled is not offered it either', (
       WidgetTester tester,
     ) async {
-      await pumpCancellable(
+      final (AppStrings strings, _) = await pumpCancellable(
         tester,
         view: detail(status: InvoiceStatus.cancelled),
       );
 
-      expect(find.byIcon(Icons.more_vert), findsNothing);
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceCancelAction), findsNothing);
+      expect(
+        find.text(strings.invoiceDocumentExportAction),
+        findsOneWidget,
+        reason:
+            'a cancelled invoice is still a document (D-061), and a user who '
+            'could not produce a PDF of what is on their screen would ask why',
+      );
     });
 
     testWidgets('the confirmation says what cancelling does not do', (

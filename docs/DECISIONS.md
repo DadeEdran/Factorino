@@ -5395,3 +5395,105 @@ takes it, with the fixture first. Recorded as **known issue 25**.
   plan for a phase closing in two days.
 * **Leaving the 16 pixels as a note on the one sheet.** Rejected — that is how it got rediscovered on
   a second sheet, and it would have been rediscovered on a third.
+
+---
+
+## D-080 — Phase 7 (d): the document becomes reachable, and where a generated PDF lives
+
+**Date:** 2026-09-02 (evening)
+
+### The §7 question, answered
+
+**A generated invoice is the second most sensitive artifact this application produces**, after a
+backup. It carries the customer's full record — name, کد ملی, کد اقتصادی, telephone, نشانی — beside
+the financial detail of a transaction, and **unlike a backup it is not encrypted**, because a
+document the customer has to be able to open cannot be.
+
+**Decision.** It follows the backup's shape exactly (D-071), which was designed for this and says so
+in its own header:
+
+1. **Written to app-private storage.** The application's `files` directory on Android, `%APPDATA%`
+   on Windows — via `getApplicationSupportDirectory`. Never a shared directory, never `Downloads`,
+   never external storage, never beside the executable.
+2. **Leaves only through the gateway.** SAF's `ACTION_CREATE_DOCUMENT` on Android, the native save
+   dialog on desktop. The user picks the destination on their own device. **No share intent**, so no
+   third-party application is handed a page carrying a customer's national ID.
+3. **Every path deletes the working file** — delivered, cancelled, or failed — in a `finally`.
+
+**Point 3 is the one that would have rotted quietly**, and it is why it has a test rather than a
+comment. A cancelled export that left its file behind would accumulate unencrypted customer records
+inside the application's own directory, and **nothing in the interface would ever mention them
+again**: the user believes no file was produced. "Not readable by other apps" is not a reason to keep
+an artifact nobody asked for.
+
+**What is deliberately not claimed.** Once the user picks a destination the file is theirs and its
+lifetime is theirs; save it into a synced folder and it syncs. That is what a save dialog is for, and
+§7's threat model already excludes a compromised OS. What this owns is that **the application leaves
+no copy behind**.
+
+**How it is held down.** `integration_test/invoice_export_test.dart`, on **both** targets. The fake
+gateway checks the file **exists at the moment it is offered** and the test checks it is gone
+afterwards — both halves, because asserting only the second would pass just as well if the controller
+had never written a file at all, and the cleanup would be trivially correct about nothing. The
+cancelled path gets its own test for the reason above. It also asserts the file is a real PDF by its
+`%PDF-` header rather than by a byte count, and that its path is under the app-private directory.
+
+### What (d) built
+
+* **`documentTypefaceProvider`** — `keepAlive`, loads both Vazirmatn faces from `rootBundle`. Loaded
+  from the bundle rather than the filesystem so the face the safety analysis is derived from is the
+  face actually embedded (D-073); they must not be able to drift.
+* **`InvoiceDocumentController.export`** — the whole widget-facing surface. Renders through the real
+  view builder with `seller:` **wired deliberately**, since `buildInvoiceDocumentView` defaults it to
+  `SellerIdentity.none` and a call site that forgets it produces a document missing half its identity
+  with no error at all.
+* **The action**, in the title row's existing menu — the slot `InvoiceCancelAction`'s own header had
+  already reserved for it. §10's rule: a card here would be the fourth block added above the invoice
+  lines on this family of screens.
+* **The empty-seller notice** (D-077's other half), as a `SnackBar` **after** the save with a
+  «تنظیمات» action. Never a dialog and never before: D-077 ruled that an empty seller blocks nothing,
+  and a modal asking the user to approve their own document is that refusal wearing a different hat.
+  It reports what the file they now hold contains, and offers the fix.
+
+**The export is offered on every invoice, including a draft and a cancelled one.** D-075 settled that
+a draft prints, marked with its band; D-061 that a cancelled invoice is still a document. A user who
+could not produce a PDF of what is on their screen would have to ask why. The two existing tests that
+asserted the *menu* disappears for those states now assert the *cancel item* does — asserting the
+button's absence would have passed only by accident of what else the menu happened to hold.
+
+### `hadSeller` comes out of the render, not out of settings
+
+The outcome carries whether the document actually printed a فروشنده block, rather than the screen
+re-reading `settings.seller` to decide what to say. The settings can change between the render and
+the message, and **the sentence the user reads has to be true of the file they are now holding**.
+
+### One defect found by wiring it up
+
+`ref.read(appSettingsProvider.future)` fails: the provider is a `StreamProvider` and auto-disposes,
+so a one-shot read creates and tears it down before the stream emits — *"disposed during loading
+state, yet no value could be emitted"*. It would have been invisible in any test that overrode the
+provider with a value. The controller reads `settingsRepositoryProvider` instead, which is also the
+more correct thing: an export wants the settings **at this instant**, not a subscription, and §3
+already says a controller talks to a repository.
+
+### The size figure, which finally means something
+
+D-074 recorded **+133,402 bytes** and called it a floor, with the floor claim resting on the import
+graph — nothing reachable from `main()` imported `core/pdf/`. Step 1 of (d) connected it, and the
+real cost is now measurable for the first time:
+
+| ABI | Before (c) | After (d) | Cost of the document feature |
+|---|---|---|---|
+| arm64-v8a | 21,653,926 | **23,423,398** | **+1,769,472** (+1.69 MiB) |
+| armeabi-v7a | 19,262,910 | 21,343,678 | +2,080,768 |
+| x86_64 | 23,337,602 | 24,976,002 | +1,638,400 |
+
+**The floor understated the cost by a factor of thirteen**, which is exactly what "a floor, and the
+claim rests on the import graph rather than on the number" was warning about. The difference is the
+`pdf` package's own code, which the AOT tree-shaker discarded entirely while nothing reachable
+imported it. No new assets: both Vazirmatn faces were already bundled for the screen.
+
+**1.7 MiB for the feature the phase exists to deliver is accepted**, and there is no decision to take
+about it — but it is recorded as measured rather than as estimated, because D-074's estimate was
+wrong by more than an order of magnitude and the next person to reason about binary size from an
+import-graph argument should see how that went.

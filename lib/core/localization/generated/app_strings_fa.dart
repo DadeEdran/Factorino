@@ -1260,4 +1260,21 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentSellerPhoneLabel => 'تلفن';
+
+  @override
+  String get invoiceDocumentExportAction => 'ذخیرهٔ نسخهٔ PDF';
+
+  @override
+  String get invoiceDocumentExportSaved => 'فایل فاکتور ذخیره شد.';
+
+  @override
+  String get invoiceDocumentExportFailed =>
+      'ذخیرهٔ فایل فاکتور انجام نشد. دوباره تلاش کنید.';
+
+  @override
+  String get invoiceDocumentExportNoSeller =>
+      'این فاکتور بدون بخش «فروشنده» ذخیره شد.';
+
+  @override
+  String get invoiceDocumentExportGoToSettings => 'تنظیمات';
 }

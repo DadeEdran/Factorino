@@ -2363,6 +2363,36 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'تلفن'**
   String get invoiceDocumentSellerPhoneLabel;
+
+  /// The menu item on the invoice detail screen that generates the PDF and offers it to the user to save. In the title row menu beside cancellation, per the project spec: an actions card here would be the fourth block added above the invoice lines on this family of screens. Says 'save a PDF copy' rather than 'print' -- nothing is sent to a printer, a file is written where the user chooses.
+  ///
+  /// In fa, this message translates to:
+  /// **'ذخیرهٔ نسخهٔ PDF'**
+  String get invoiceDocumentExportAction;
+
+  /// Confirms a completed save. Shown only after the file has actually been delivered to the location the user picked, never after it was merely generated -- the same rule the backup reminder follows: a message that appears when the user opened the save dialog and thought better of it would say a file exists when none does.
+  ///
+  /// In fa, this message translates to:
+  /// **'فایل فاکتور ذخیره شد.'**
+  String get invoiceDocumentExportSaved;
+
+  /// A failed generation or save. Friendly Persian with no stack trace, no file path and no exception text, per section 7. Says what to do next rather than what went wrong internally, because the internal reason is never something the user can act on.
+  ///
+  /// In fa, this message translates to:
+  /// **'ذخیرهٔ فایل فاکتور انجام نشد. دوباره تلاش کنید.'**
+  String get invoiceDocumentExportFailed;
+
+  /// The other half of D-077's obligation. The settings screen carries the prompt for the user who goes looking; this is for the user who does not, and it fires at the moment of printing. It reports what happened rather than asking permission: D-077 ruled that an empty seller blocks nothing -- not issuing, not printing -- so this must never be a dialog, never a confirmation, and never appear before the file is saved. Paired with a settings action so the fix is one tap away.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور بدون بخش «فروشنده» ذخیره شد.'**
+  String get invoiceDocumentExportNoSeller;
+
+  /// The action beside the no-seller notice, taking the user to the settings screen where the business name is entered. Deliberately the plain section name rather than an instruction, because the notice above it has already said what is missing.
+  ///
+  /// In fa, this message translates to:
+  /// **'تنظیمات'**
+  String get invoiceDocumentExportGoToSettings;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {
