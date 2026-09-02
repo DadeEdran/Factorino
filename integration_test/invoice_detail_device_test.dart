@@ -6,6 +6,7 @@ import 'package:factorino/core/theme/app_theme.dart';
 import 'package:factorino/data/database/app_database.dart';
 import 'package:factorino/data/database/database_bootstrap.dart';
 import 'package:factorino/data/database/encrypted_database.dart';
+import 'package:factorino/data/backup/backup_file_gateway.dart';
 import 'package:factorino/data/models/customer.dart';
 import 'package:factorino/data/models/invoice.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
@@ -105,8 +106,16 @@ void main() {
       }
     });
 
+    // **The gateway is faked, and only the gateway.** Tapping the export opens
+    // SAF's ACTION_CREATE_DOCUMENT, which `adb` cannot dismiss under MIUI, so a
+    // real gateway here would hang the suite until its timeout. Everything on
+    // this side of it is real: the fonts, the render, the settings, the
+    // snackbar and the layout they are all judged at.
     final ProviderContainer container = ProviderContainer(
-      overrides: <Override>[appDatabaseProvider.overrideWithValue(db)],
+      overrides: <Override>[
+        appDatabaseProvider.overrideWithValue(db),
+        backupFileGatewayProvider.overrideWithValue(const _ConfirmingGateway()),
+      ],
     );
     addTearDown(container.dispose);
 
@@ -544,6 +553,63 @@ void main() {
             .findById(invoice.id))!;
         debugPrint('correction    : status ${afterCorrection.status.name}');
         expect(afterCorrection.status, InvoiceStatus.cancelled);
+
+        // ---- the export, from the menu (Phase 7 d) ------------------------
+        //
+        // **What this adds over `invoice_export_test.dart`**, which already
+        // drives the controller on both targets: the *user's* path. The menu
+        // item rendered in Vazirmatn at the device's own metrics, the tap, and
+        // the snackbar that reports the result — none of which the controller
+        // test touches, and all of which are layout.
+        //
+        // Deliberately on the **cancelled** invoice this block has just
+        // produced: D-061 says a cancelled invoice is still a document, and
+        // (d) decided the export is offered on every invoice. If the menu were
+        // still gated on cancellability this would find nothing.
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+
+        expect(
+          find.text(strings.invoiceDocumentExportAction),
+          findsOneWidget,
+          reason: 'a cancelled invoice is still a document, and still prints',
+        );
+        await tester.tap(find.text(strings.invoiceDocumentExportAction));
+
+        // **Poll rather than `pumpAndSettle`.** The export loads two fonts,
+        // lays out a page and writes a file; none of that is animation, so
+        // `pumpAndSettle` returns while the future is still in flight and the
+        // snackbar has not been built yet.
+        for (int step = 0; step < 100; step++) {
+          await tester.pump(const Duration(milliseconds: 100));
+          if (find.byType(SnackBar).evaluate().isNotEmpty) break;
+        }
+        await tester.pump();
+
+        // The seller is empty on this probe database — no settings were
+        // written — so D-077's notice is the branch that fires, and it is the
+        // longer of the two strings and therefore the one that would wrap
+        // badly if either were going to.
+        expect(
+          find.text(strings.invoiceDocumentExportNoSeller),
+          findsOneWidget,
+          reason:
+              'an empty seller must be reported after the save, never asked '
+              'about before it (D-077)',
+        );
+        expect(
+          find.text(strings.invoiceDocumentExportGoToSettings),
+          findsOneWidget,
+          reason: 'and the fix must be one tap away, or it is a nag',
+        );
+        expectNoCrushedText(tester, where: 'the export snackbar');
+        debugPrint('export        : menu tapped, no-seller notice shown');
+
+        // Let the snackbar go before the page is scrolled below, so its
+        // timer does not outlive the test.
+        ScaffoldMessenger.of(tester.element(find.byType(InvoiceDetailScreen)))
+            .clearSnackBars();
+        await tester.pumpAndSettle();
       }
 
       // Scroll the whole page rather than the first viewport: an off-screen
@@ -572,4 +638,22 @@ void main() {
           'it prints a red band and carries on rather than failing anything',
     );
   });
+}
+
+/// Confirms the save without opening a picker.
+///
+/// The real gateway opens system UI a device test cannot drive (D-071); the
+/// confirmed save has its own interactive proof and the cancelled path has one
+/// in `invoice_export_test.dart`. What is under test here is the screen.
+class _ConfirmingGateway implements BackupFileGateway {
+  const _ConfirmingGateway();
+
+  @override
+  Future<bool> deliver({
+    required File source,
+    required String suggestedName,
+  }) async => true;
+
+  @override
+  Future<bool> receive({required File destination}) async => false;
 }

@@ -2,7 +2,14 @@
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
 >
-> **Last updated: 2026-09-02 (late evening) — Phase 7 (d) is built. The invoice is reachable from
+> **Last updated: 2026-09-02 (night) — Phase 7 is COMPLETE, and a resize defect the owner found is
+> fixed (D-081).** The desktop breakpoint was 1024 and should have been 1312: between those widths
+> four screens laid a table out narrower than its columns need. In debug that is the red error box
+> the owner saw; **in release the guard is compiled out and it would have shipped as Persian at one
+> glyph per row.** `width_sweep_test.dart` now renders every screen inside the real shell at every
+> width from 328 to 1600.
+>
+> Earlier: **Phase 7 (d) is built. The invoice is reachable from
 > the application, it saves through the D-071 gateway, and §7's question about where it lands is
 > answered and tested on both targets (D-080).** Known issue 24 is fixed at the source with a
 > wrapper rather than a reversed list (D-079), and the real size cost is finally measured:
@@ -267,7 +274,20 @@ it belongs to the section it sits in.
 
 ```
 flutter analyze:            PASS   (No issues found)                          as of Phase 7 (c)
-flutter test:               PASS   (1194/1194, was 1189 after (c), 1159, 1137) as of (d).
+Width sweep (D-081):        PASS   width_sweep_test.dart -- 10 screens x every width from 328 to
+                                   1600, each inside the REAL AdaptiveScaffold, failing on any
+                                   thrown exception. Verified to bite: 4 screens fail at the old
+                                   1024 breakpoint, 1 at 1280. It is also the ONLY widget test the
+                                   app shell appears in
+Desktop tier device cover:  GAP    the Windows suites run at 1264, which is now the TABLET tier
+                                   (invoice_form_device_test reports `tier : tablet`). The desktop
+                                   tier is held by the widget sweep at 1400 and by the width sweep;
+                                   a device run needs a window >= 1312. Stated, not implied
+Export from the menu:       PASS   phone tier, Redmi (2026-09-02): the menu item on a CANCELLED
+                                   invoice, tapped, the render driven through the real providers,
+                                   and D-077's no-seller notice with its «تنظیمات» action shown.
+                                   0 layout errors. Gateway faked -- SAF cannot be driven by adb
+flutter test:               PASS   (1204/1204, was 1194 after (d), 1189 after (c)) as of D-081.
                                    +5 for `rtl_table_test.dart`; the export suite is an
                                    integration test and is not in this count
 Android build:              PASS   release APKs rebuilt 2026-09-02 after Phase 7 (b);
@@ -2835,11 +2855,27 @@ surprised by. None of this needs re-litigating.
 lives in `rtlTable`, callers declare columns in reading order, and the page was read. Do not re-open
 it; the numbered item 0 below is kept only so the history reads straight.
 
-**Phase 7 (d) is built.** The provider, the save action, the empty-seller notice and the §7 ruling
-are all in, tested on both targets, and the size figure is taken. What remains before the phase can
-be marked `COMPLETED` is **verification, not construction**:
+**PHASE 7 IS `COMPLETED`** (2026-09-02). All four increments delivered, both targets, gate clean at
+1204/1204. It was the last phase in the plan (D-068).
 
-**The single specific next action: run the phone-tier device pass over the export action itself.**
+**The single specific next action: the two distribution items in `ROADMAP.md` — release signing, and
+the two Android manifest lines.** They are the only things standing between this build and one that
+can be handed to another person, and the owner has already ruled that if time runs short something
+else is cut instead of these:
+
+1. **Release signing from a gitignored properties file** (known issue 13). A debug-signed APK cannot
+   be distributed, and cannot later be re-signed with a real key without uninstalling every install
+   of it — so this is not a thing that can be deferred and fixed afterwards.
+2. **`android:allowBackup="false"` and `android:usesCleartextTraffic="false"`** (known issue 15). The
+   first closes a hole §7's threat model already claims is closed: with `allowBackup` defaulting
+   true, the encrypted database and its metadata can be pulled off some configurations by ADB
+   backup.
+
+Both are in `android/`, both are minutes of work, and neither needs the phone.
+
+*Historical — the previous next action, now done:*
+
+**~~Run the phone-tier device pass over the export action.~~**
 `invoice_export_test.dart` drives the *controller* on both targets; nothing has yet driven the
 **menu item** on a phone — tapping «ذخیرهٔ نسخهٔ PDF» in the title row, and reading the snackbar and
 its «تنظیمات» action against a real layout. That is the D-057/D-062 gap this increment opened, and

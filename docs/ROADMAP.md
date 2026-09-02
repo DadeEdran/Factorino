@@ -1742,14 +1742,14 @@ Exported files must be covered by `.gitignore`.
 
 ## Phase 7 — PDF Generation
 
-**Status:** `IN_PROGRESS` — (a), (b) and (c) delivered 2026-09-02; **(d) is all that remains**, and this is **the last phase in the plan** (D-068).
+**Status:** `COMPLETED` 2026-09-02 — all four increments delivered, both targets, gate clean. This was **the last phase in the plan** (D-068); what remains before the application can be handed to anyone is the distribution section below, and nothing else.
 
 | # | Increment | Status |
 |---|---|---|
 | a | **The `pdf` dependency, the text layer and its two boundaries** (D-074): `FontGlyphSafety`, `DocumentText`/`DocumentTextBoundary`, `SafeText`, the ARB sweep as a test, `tool/render_document_text.dart` | `COMPLETED` 2026-09-02 |
 | b | **The view model, `InvoiceDocumentGenerator` and the one template** (D-076): header, party block, lines table, totals; the draft band and the party provenance line (D-075) | `COMPLETED` 2026-09-02 |
 | c | **The seller block and `schemaVersion = 5`** (D-077): four nullable `settings.seller_*` columns, the migration and its two ladders, the settings section and its sheet, the block on the page | `COMPLETED` 2026-09-02 |
-| d | Save/share, the phone-tier device pass, and the post-renderer size and cold-start measurement the gate still owes | `IN_PROGRESS` — **built** 2026-09-02 evening: the provider, the save action through the D-071 gateway, the empty-seller notice, the §7 artifact ruling (D-080) and issue 24's wrapper fix (D-079), with the export proved on **both** targets. Cold start taken and the old baseline retired (D-078); the **real** size figure taken now that `core/pdf/` is reachable: **+1.77 MB on arm64**, 13x D-074's floor. Remaining: the phone-tier device pass over the export **menu item**, known issue 25, and the close. Earlier the same evening — the cable session ran 2026-09-02 evening: **cold start taken** (343 ms; and the old baseline retired, D-078), **phone-tier device pass done** (four suites, 0 layout errors; it found and fixed a regression (c) had shipped into `settings_device_test`, and now covers the seller sheet), **Android v5 migration proof PASS** on both ladders. Still to do: known issue 24, the provider, the save action, the empty-seller notice, the §7 artifact question, and the size figure — which only becomes measurable once the provider makes `core/pdf/` reachable |
+| d | Save/share, the phone-tier device pass, and the post-renderer size and cold-start measurement the gate still owes | `COMPLETED` 2026-09-02 — **built** 2026-09-02 evening: the provider, the save action through the D-071 gateway, the empty-seller notice, the §7 artifact ruling (D-080) and issue 24's wrapper fix (D-079), with the export proved on **both** targets. Cold start taken and the old baseline retired (D-078); the **real** size figure taken now that `core/pdf/` is reachable: **+1.77 MB on arm64**, 13x D-074's floor. Remaining: the phone-tier device pass over the export **menu item**, known issue 25, and the close. Earlier the same evening — the cable session ran 2026-09-02 evening: **cold start taken** (343 ms; and the old baseline retired, D-078), **phone-tier device pass done** (four suites, 0 layout errors; it found and fixed a regression (c) had shipped into `settings_device_test`, and now covers the seller sheet), **Android v5 migration proof PASS** on both ladders. Still to do: known issue 24, the provider, the save action, the empty-seller notice, the §7 artifact question, and the size figure — which only becomes measurable once the provider makes `core/pdf/` reachable |
 
 **The two product questions are decided — D-075**, both as recommended and both accepted. A draft
 **prints**, marked with an unmissable filled band, because refusing would push users to issue and
@@ -1894,7 +1894,7 @@ dependency never entered `pubspec.yaml` and the baseline below still sits on a P
 
 ## After Phase 7 — distribution, one hour, not optional
 
-**Status:** `NOT_STARTED` — scheduled, unlike Phases 8–15 below (owner, 2026-09-01).
+**Status:** `NOT_STARTED` — scheduled, unlike Phases 8–15 below (owner, 2026-09-01). **With Phase 7 closed on 2026-09-02 these two items are the only things left between the current build and one that can be given to someone else.**
 
 Two items lifted out of the deferred phases because they are minutes of work that decide whether the
 application can be handed to anyone at all:

@@ -5497,3 +5497,98 @@ imported it. No new assets: both Vazirmatn faces were already bundled for the sc
 about it — but it is recorded as measured rather than as estimated, because D-074's estimate was
 wrong by more than an order of magnitude and the next person to reason about binary size from an
 import-graph argument should see how that went.
+
+---
+
+## D-081 — The desktop breakpoint was wrong by 288 pixels, and the window is not the width the table gets
+
+**Date:** 2026-09-02 (late evening)
+
+**Reported by the owner**, resizing the Windows build: correct at phone width, correct maximised, **a
+red error box somewhere in the middle**.
+
+### What it was
+
+`Breakpoints.desktop` was **1024**, and its own doc-comment justified the number: *"1024 is where a
+data table has room for the five columns an invoice list needs (number, customer, date, status,
+amount) without truncation."* **That was never measured and it is false.** At a 1024-wide window the
+invoice list's table is laid out at **695** logical pixels and its columns need **880**.
+
+The error is in what the number is compared against. **A window's width is not the width its table
+gets.** The navigation rail, the page padding, and — on `/customers/:id` — a side panel all come out
+of it first. Measured at a 1024 window:
+
+| Screen | Table laid out at | Columns need |
+|---|---|---|
+| dashboard | 695 | 880 |
+| invoice list | 695 | 880 |
+| customer list | 695 | 696 |
+| customer detail | **351** | 636 |
+
+Four screens, from 1024 up to roughly 1300.
+
+### Why it was a red box, and why that was the lucky outcome
+
+`AppTableHeader`'s D-065 guard throws a `FlutterError` when a table is laid out narrower than its
+columns need — but it is inside `assert(...)`, so **it exists only in debug builds**. What the owner
+saw was that guard doing its job.
+
+**In a release build the assert is compiled out**, and those same widths would have shipped the
+silent failure instead: flexible columns handed nothing, laid out successfully at nothing, and
+Persian rendered **one glyph per row** — the exact defect D-065 was written for, on four screens, at
+every window width in a 280-pixel band that includes very common ones.
+
+So the severity is the opposite of how it looked. The red box was not the bug; it was the only reason
+the bug was visible before release.
+
+### Decision
+
+`Breakpoints.desktop` becomes **1312**, and its doc-comment now records what the number is and how it
+was obtained rather than asserting something nobody checked.
+
+**Measured, not chosen.** At 1280 one screen still fails the sweep; at 1304 every screen is clean at
+every swept width. 1312 is the next multiple of 16 above the measured boundary.
+
+**The consequence is accepted:** a window between 1024 and 1312 now gets the tablet layout — rail plus
+cards — instead of tables. That is the correct behaviour rather than a compromise: the table did not
+fit, and cards are what this application already shows when a table will not fit. Density is lost
+where correctness was previously being lost silently.
+
+### What is NOT fixed, and is the better shape
+
+**The decision is still made from the window's width, not from the table's.** That is the same class
+of mistake as the number that was wrong: `/customers/:id` needs a wider *window* than the lists do
+purely because a panel eats its width first, and one global number cannot express that. The right
+shape is a `LayoutBuilder` at each table site choosing cards when `constraints.maxWidth <
+tableMinimumWidth(columns)` — `tableMinimumWidth` is already public and already computes exactly that
+figure for the guard.
+
+It was not done now, and the reason is the calendar rather than the design: it is ten call sites the
+day before the remaining access ends, against a one-line change that is measured, tested, and
+correct for every layout that exists today. **The debt is real and is recorded here**: if any of these
+screens changes how much width it takes before its table, this number needs re-measuring, and
+`width_sweep_test.dart` is what will say so.
+
+### The check that would have caught it, which now exists
+
+`test/features/width_sweep_test.dart` renders **every screen inside the real `AdaptiveScaffold`** at
+every width from 328 to 1600 and fails on any thrown exception.
+
+Two things it makes explicit:
+
+* **The three named tier sizes are three points on a continuum.** D-057 established that a pass at one
+  tier is a pass at one tier; this is the same argument applied to the widths *between* the tiers,
+  which a dragged window passes through and no test had ever visited.
+* **The app shell had no widget test at all.** `pumpScreen` renders a bare screen, so the navigation
+  chrome — and the bottom-bar/rail and compact/extended switches — had never been pumped by anything.
+  Composing the screens inside the real shell is what makes the sweep measure the width the table
+  actually gets rather than the width of the window.
+
+**Verified to bite:** at the old 1024 it reports four failing screens; at 1280, one.
+
+### One coverage consequence, stated rather than left to be discovered
+
+The Windows device suites run at **1264 × 681**, which is now the **tablet** tier — `invoice_form_device_test`
+duly reports `tier : tablet` where it used to report desktop. So the **desktop tier no longer has any
+device coverage**; it is held by the widget sweep at 1400 and by `width_sweep_test.dart`. Getting it
+back means running those suites in a window at least 1312 wide.
