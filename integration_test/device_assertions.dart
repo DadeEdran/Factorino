@@ -1,5 +1,6 @@
 import 'dart:io';
 
+import 'package:factorino/core/theme/app_dimensions.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/rendering.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -120,6 +121,32 @@ void expectActionAboveKeyboard(
         '$sheet must keep its primary action inside the space the keyboard '
         'leaves. A user who types a value and cannot see the button has to '
         'discover it by scrolling (known issue 21, D-062)',
+  );
+
+  // **The floor, and where the number lives.** Every sheet measured on the
+  // phone reports the same slack -- the payment sheet, the line editor, the
+  // backup password sheet and the seller sheet all clear the keyboard by
+  // exactly [AppSpacing.lg]. That is not four coincidences and it is not
+  // headroom: `EditorSheet` pads below its action by that constant, inside a
+  // `SafeArea`, so the distance is a property of the primitive.
+  //
+  // **This corrects D-072**, which read those 16 pixels as margin to watch if
+  // the §8 warning copy grew. Copy growth cannot touch them -- the primitive
+  // caps the field area and scrolls it while the action stays pinned. Asserting
+  // the floor against `AppSpacing.lg` puts the number where it governs every
+  // sheet at once, so the next tight sheet does not rediscover it.
+  //
+  // A floor rather than an equality: a phone with gesture navigation adds its
+  // own bottom safe area, and more clearance is never the defect.
+  expect(
+    height - inset - rect.bottom,
+    greaterThanOrEqualTo(AppSpacing.lg),
+    reason:
+        '$sheet clears the keyboard by '
+        '${(height - inset - rect.bottom).toStringAsFixed(1)}, under the '
+        '${AppSpacing.lg.toStringAsFixed(1)} EditorSheet pads below its '
+        'action. Either the sheet is not built on the primitive or the '
+        'primitive changed; both are decisions, not accidents',
   );
 }
 

@@ -1,4 +1,5 @@
 import 'package:factorino/core/localization/generated/app_strings.dart';
+import 'package:factorino/core/theme/app_dimensions.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/core/utils/clock.dart';
 import 'package:factorino/core/widgets/search_field.dart';
@@ -86,7 +87,24 @@ void main() {
     return strings;
   }
 
-  /// The whole assertion: the action is inside the region the keyboard leaves.
+  /// The whole assertion: the action is inside the region the keyboard leaves,
+  /// **and no closer to it than the primitive's own bottom padding**.
+  ///
+  /// **The floor is [AppSpacing.lg], and it is not a tolerance someone picked
+  /// here.** `EditorSheet` pads below its action by exactly that, inside a
+  /// `SafeArea`, so every sheet built on the primitive lands the same distance
+  /// clear of the keyboard by construction. Asserting the floor against the
+  /// primitive's own constant is what makes the number govern: a sheet that
+  /// bypasses `EditorSheet`, or a change to the primitive's padding, fails here
+  /// instead of being rediscovered one sheet at a time on a phone.
+  ///
+  /// **This corrects D-072's reading of the same 16 pixels.** That entry
+  /// recorded them as *margin to watch if the §8 warning copy grows*. They are
+  /// not margin and copy growth cannot eat them: `EditorSheet` caps the field
+  /// area and scrolls it, and the action stays pinned with the same padding
+  /// under it however tall the content above becomes. The number moves only if
+  /// [AppSpacing.lg] or the primitive changes — which is exactly what this now
+  /// watches.
   void expectActionAboveKeyboard(
     WidgetTester tester,
     Finder action, {
@@ -105,6 +123,16 @@ void main() {
           'logical pixels the keyboard leaves, not ${rect.bottom.toInt()} — a '
           'user who types an amount and cannot see «ذخیره» has to discover it '
           'by scrolling (known issue 21, D-062)',
+    );
+    expect(
+      visibleBottom - rect.bottom,
+      greaterThanOrEqualTo(AppSpacing.lg),
+      reason:
+          'the action must clear the keyboard by at least the '
+          '${AppSpacing.lg.toInt()} logical pixels EditorSheet pads below it, '
+          'and it clears by ${(visibleBottom - rect.bottom).toInt()}. Sitting '
+          'flush against the keyboard is a sheet that is not using the '
+          'primitive, or a primitive whose padding has changed',
     );
     expect(
       rect.top,

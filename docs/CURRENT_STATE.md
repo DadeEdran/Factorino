@@ -260,7 +260,8 @@ it belongs to the section it sits in.
 
 ```
 flutter analyze:            PASS   (No issues found)                          as of Phase 7 (c)
-flutter test:               PASS   (1189/1189, was 1159 after (b), 1137)      as of Phase 7 (c)
+flutter test:               PASS   (1194/1194, was 1189 after (c), 1159, 1137) as of the (d)
+                                   cable session -- +5 for `rtl_table_test.dart`
 Android build:              PASS   release APKs rebuilt 2026-09-02 after Phase 7 (b);
                                    arm64 21,653,926. Last installed and cold-started on the
                                    Redmi 2026-09-01 -- NOT re-installed since the pdf dependency
@@ -346,6 +347,22 @@ Seller migration - Android: PASS   both ladders on the Redmi (2026-09-02 evening
                                    user's own tax rate (900bp), prefix (FCT) and payment term
                                    untouched, still encrypted, and the columns written and cleared
                                    back through the real repository. Matches Windows exactly
+Backup gateway - Android:   PASS   RE-RUN 2026-09-02 evening on the current build. The picker is
+                            (again) confirmed open from logcat -- ACTION_CREATE_DOCUMENT ->
+                                   documentsui PickActivity, foreground -- and the confirmed save
+                                   landed 4,096 bytes in Downloads, sha256 identical to the source.
+                                   Still interactive: SAF cannot complete without a human, which is
+                                   also what makes the result mean something
+RTL table order (issue 24):  PASS  READ OFF THE RENDERED PAGE, both fixtures: ردیف at the far right
+                                   through جمع سطر at the far left, فروشنده right and خریدار left.
+                                   Fixed via `rtlTable`, a wrapper -- callers declare columns in
+                                   reading order and nothing is written backwards (D-079)
+Sheet keyboard slack floor: PASS   Both guards now assert the action clears the keyboard by at
+                                   least `AppSpacing.lg`, the padding EditorSheet puts under it --
+                                   not a literal. Verified to bite: at 2x the floor, 5 of 6 sheets
+                                   fail and the picker (outside EditorSheet by design) passes,
+                                   which is a floor behaving as a floor. D-079 corrects D-072:
+                                   those 16 pixels were never margin
 Invoice document rendered:  PASS   read off the pixels at the ladder ceiling, all 4 rungs, a
                                    draft, a pre-snapshot invoice, 28 lines over 2 pages, and -- new
                                    in (c) -- both party blocks at real Persian lengths and a page
@@ -521,14 +538,73 @@ carries dex optimization, encryption-key generation and database creation, and i
 
 ### 5. What this session did NOT do, so nobody records it as done
 
-* **Known issue 24 is untouched.** The printed lines table still runs back to front. It is the first
-  thing in (d) and it is on the customer's copy.
+* ~~**Known issue 24 is untouched.**~~ **Done later the same evening** — see the section below.
 * **The post-renderer size figure is still a floor.** Nothing reachable from `main()` imports
   `core/pdf/` yet, so there was nothing new to measure. It becomes real when (d)'s provider lands.
-* **`backup_gateway_save_test.dart` was not re-run.** It needs a human to tap the Android save
-  dialog — `adb` cannot inject it under MIUI. It is PASS from D-071 and nothing this session touched
-  the gateway, but it is the one cable item left unexercised.
+* ~~**`backup_gateway_save_test.dart` was not re-run.**~~ **Re-run and PASS** on the current build:
+  the picker open in logcat, and 4,096 bytes landed in Downloads sha256-identical to the source.
 * **No PDF is reachable from the application.** Unchanged from (c). That is all still (d).
+
+## What followed the cable session, the same evening — issue 24, and two corrections
+
+### Known issue 24: fixed at the source, not by reversing the list (D-079)
+
+The plan said to reverse `lineColumns` and the cell list together. **The owner overruled that**, and
+the reason is the one that matters: a table that produces correct output because its columns were
+handed over backwards is a trap for the next person who adds a column.
+
+`pw.Table` places column 0 at the left and walks rightwards — `Table.layout` starts at `x = 0.0` —
+and neither `Table` nor `TableRow` takes a `textDirection`; `Directionality` above them changes
+nothing. That was **verified in `pdf` 3.13.0's own source**, not inferred from behaviour. So the
+package genuinely cannot honour it, and the reversal has to live somewhere.
+
+It now lives in **`rtlTable`** (`lib/core/pdf/rtl_table.dart`). Callers pass rows **and**
+`columnWidths` in **reading order**; the wrapper reverses both. That last word is the point:
+`columnWidths` is index-keyed, so a hand-reversed cell list needs a hand-reversed width map kept in
+step with it — two reversals that must agree with nothing checking that they do, and a disagreement
+**mislabels** every column instead of merely reordering them, which is worse than the original fault.
+Ragged rows and partial width maps are **assertions**, for the same reason.
+
+The party blocks moved onto it too. They carried the same trap in a milder form: correct output from
+a source that read *"Buyer, gap, seller — left to right on the page"*.
+
+**Read off the rendered page**, which is the whole point given D-076 recorded this order as verified
+after looking at a page where every column was plausible where it sat:
+
+```
+ردیف · شرح · تعداد · قیمت واحد · مبلغ کل · جمع سطر     (right to left)
+فروشنده on the right, خریدار on the left
+```
+
+### D-072's 16 pixels were never margin, and the number now governs every sheet
+
+Four sheets report the same keyboard slack — payment, line editor, backup password, seller — all
+exactly **16.0**. Four coincidences is not an explanation. `EditorSheet` pads below its action by
+`AppSpacing.lg`, which is 16, inside a `SafeArea`.
+
+So D-072's reading was wrong twice over: it is not margin, and **copy growth cannot eat it** — the
+primitive caps the field area and scrolls it while the action stays pinned. The number moves only if
+the primitive or the spacing token changes.
+
+Both keyboard guards now assert the action clears the keyboard by **at least `AppSpacing.lg`**,
+naming the primitive's constant rather than a literal — which is what "put the number where it
+governs both" resolves to once you know what the number is. A floor rather than an equality, because
+gesture navigation adds bottom safe area and more clearance is never the defect. **Verified to bite:**
+at twice the floor, five of six sheets fail; the picker, outside `EditorSheet` by design, passes.
+
+### And a new finding on the same page — known issue 25
+
+`multipage.pdf` is the *"enough lines to need a second page"* fixture, and **all 28 rows fit on page
+1**; page 2 carries only the totals. So the lines table has never spanned a page break in any
+fixture, and its header is `repeat: false` — a table that did span would lose its headings.
+
+D-076 recorded "the repeated header" as read off rendered pages. It appears once because the table
+appears once. That is the same failure as the column order, on the same page, found the same way, and
+it is worth saying plainly: **three separate claims in D-076 came from looking at one page and
+finding it plausible.**
+
+Left open deliberately. `repeat: true` is one word and untestable until a fixture actually spans, so
+the fixture comes first and the two go together.
 
 ## What Phase 7 increment (c) delivered — schema v5, and the block that was not there
 
@@ -1934,14 +2010,15 @@ repositories and driving the real sheets.
 | 23 | **Drift warns "you've created the database class AppDatabase multiple times" during an export** | Debug builds only. An export legitimately holds two `AppDatabase` instances — the live one and the container — and drift's warning is about two instances sharing **one `QueryExecutor`**, which these do not: they are two different encrypted files. Harmless, and deliberately not silenced with `dontWarnAboutMultipleDatabases`, because that flag is global and would hide a real instance of the problem elsewhere. |
 | 22 | **`adb devices` can come up empty while the phone is plainly enumerated** | Seen 2026-09-01 at the start of (f). Windows had **both** interfaces present — `USB\VID_2717&PID_FF48&MI_00` (WPD) and `&MI_01` (**ADB Interface**) — and `adb devices` still listed nothing. `adb kill-server && adb start-server` fixed it in one go. **Do not read this as the MTP-only symptom** the Next Action section describes: that one shows a *single* WPD entry and no ADB interface, and no restart helps it. Check `Get-PnpDevice` for the `MI_01` ADB interface first; if it is there, restart the daemon rather than touching the phone. |
 
-| 24 | **The printed lines table runs its columns in the wrong direction for an RTL reader** | Found in (c) by rendering, and it contradicts D-076, which recorded that "the RTL column order came out right without intervention". It did not: **`pw.Table` lays column 0 out at the LEFT even under `textDirection: rtl`**, so the printed table reads, right to left, جمع سطر · مبلغ کل · قیمت واحد · تعداد · شرح · ردیف — the reverse of the Iranian convention, where ردیف is the first column a reader meets. Every figure on it is correct and correctly labelled; it is the order that is back to front. **Not fixed in (c)**: the lines table is an accepted increment and outside the scope the owner set, and the fix is a one-line reversal of `lineColumns` and the cell list together, which is exactly the kind of change that should not be made unreviewed on the way past. The same mechanism, found the same way, is what put the seller block on the wrong side before it was corrected — see D-077. |
+| 24 | ~~The printed lines table runs its columns in the wrong direction for an RTL reader~~ | **Resolved 2026-09-02 (D-079)**, and not by the one-line reversal the plan proposed — at the owner's direction. `pw.Table` places column 0 at the left and takes no `textDirection` (verified in `pdf` 3.13.0's source), so the reversal now lives in **`rtlTable`** (`lib/core/pdf/rtl_table.dart`) and every caller declares columns in **reading order**. Handing `pw.Table` a backwards list would have produced a correct page from a source that traps the next person to add a column — and `columnWidths` is index-keyed, so it would have been two hand-reversals that must agree with nothing checking they do, mislabelling every column when they drift. The party blocks moved onto it too, having carried the same trap. **Read off the rendered page**, not the source: ردیف · شرح · تعداد · قیمت واحد · مبلغ کل · جمع سطر, right to left. |
+| 25 | **The lines table has never crossed a page break, and its header would not repeat if it did** | Found 2026-09-02 while reading the page for issue 24 (D-079). `multipage.pdf` is the *"enough lines to need a second page"* fixture and all **28 rows fit on page 1** — page 2 carries only the totals. So no fixture has ever spanned the table, and the header row is `repeat: false`, meaning a table that did span would lose its headings on the second page. **D-076 recorded "the repeated header" as read off rendered pages**; the header appears once because the table appears once, which cannot distinguish the two behaviours. Deliberately not fixed in passing: `repeat: true` is one word and untestable until a fixture actually spans, so the fixture comes first and the two go together. |
+
 (5 and 7 were resolved in (f2) and have been dropped.)
 
-**One entry in the table above is now something a user would notice: 24.** The printed invoice's
-lines table runs its columns in the reverse of the Iranian reading order. Every figure on it is
-right; the order is back to front, and it is on the one artifact a customer holds. It is left open
-deliberately — the lines table is an accepted increment and outside (c)'s scope — and it is the
-first thing to settle in (d).
+**24 is resolved (D-079)** — the printed table now reads in the Iranian order, and the fix is a
+wrapper rather than a reversed argument list, so adding a column is writing it where it reads.
+**25 is new, from the same page**, and is the only open entry a user could notice: it costs nothing
+today, because no invoice yet produced spans the table across a page.
 
 Every other entry is either resolved (1, 10b, 16, 17, 18, 19, 20, 21), a deliberate design ruling
 (3, 8), a development-environment condition invisible in a shipped build (10, 11, 12, 22, 23), or
@@ -2729,15 +2806,24 @@ D-077 settled the seller: an empty seller **prints no block at all**, and **bloc
 issuing, not printing — with the settings screen carrying the prompt that makes it impossible to be
 surprised by. None of this needs re-litigating.
 
-**The single specific next action: known issue 24 — reverse the printed lines table.** It is the
-first item of (d), it is five minutes, and it is wrong on the one artifact a customer holds.
-Reverse `lineColumns` **and** the cell list in `_lines` **together** — one without the other
-silently mislabels every column, which is far worse than the current fault — then **read the
-rendered page**, not the source. Then continue down the list below.
+**Known issue 24 is DONE (D-079)** — and not as this list originally described it. The reversal
+lives in `rtlTable`, callers declare columns in reading order, and the page was read. Do not re-open
+it; the numbered item 0 below is kept only so the history reads straight.
+
+**The single specific next action: Phase 7 (d) step 1 — the provider.** A provider that loads the
+Vazirmatn faces from `rootBundle` into a `DocumentTypeface`, builds the view from the
+`invoiceDetailProvider` the detail screen already watches **and the `appSettingsProvider` seller**,
+and renders. Note `buildInvoiceDocumentView` takes `seller:` and defaults it to
+`SellerIdentity.none` — a call site that forgets it produces a document with no seller block and no
+error, so wire it deliberately. **Take the real size figure immediately after this lands**: it is the
+moment `core/pdf/` first becomes reachable from `main()`, and the first moment the number means
+anything.
 
 **The rest of Phase 7 (d) — make the document reachable.** In this order:
 
-0. **Known issue 24 first, because it is five minutes and it is on the customer's copy.** The
+0. ~~**Known issue 24 first.**~~ **DONE 2026-09-02 (D-079).** The original wording is kept below
+   for the record; it proposed the one-line reversal the owner rejected. What was built instead is
+   `rtlTable`. Historical text follows: The
    printed lines table runs its columns in the reverse of the Iranian reading order — ردیف at the
    far left, جمع سطر at the far right — because **`pw.Table` lays column 0 out at the LEFT even
    under `textDirection: rtl`**. (c) hit the same mechanism on the party blocks and corrected it

@@ -5298,3 +5298,100 @@ becomes a real measurement the moment (d)'s provider makes `core/pdf/` reachable
 For any measurement whose result would be surprising, rebuilding the old commit and measuring both
 in one sitting is available and cheap, and it is the only thing that separates *the code changed*
 from *the conditions changed*.
+
+---
+
+## D-079 — The RTL table is a wrapper, not a reversed argument list; and D-072's 16 pixels were never margin
+
+**Date:** 2026-09-02 (evening, continuing the (d) cable session)
+
+Three things settled together, because they were found together and the second two are corrections
+to entries this project already had.
+
+### 1. Known issue 24: `rtlTable`, and why not the one-line reversal
+
+**Decision.** `pw.Table` is never used directly for a table a Persian reader reads. All such tables
+go through `rtlTable` (`lib/core/pdf/rtl_table.dart`), which takes rows **and** `columnWidths` in
+**reading order** — the column the reader meets first is index 0 — and performs the reversal itself.
+
+**Why the wrapper rather than reversing the list at the call site**, which is what the plan said and
+what the owner overruled. `pw.Table` places column 0 at the left of the page and walks rightwards:
+`Table.layout` starts at `x = 0.0` and adds each width in turn, and neither `Table` nor `TableRow`
+takes a `textDirection` — a `Directionality` above them changes nothing. Verified in the package
+source (`pdf` 3.13.0), not inferred. So a right-to-left table must be built rather than requested,
+and the only question is *where the reversal lives*.
+
+Handing `pw.Table` a backwards list produces a correct page and leaves a trap: the next person to add
+a column writes it where it reads, into a list that is secretly reversed, and gets a wrong page that
+nothing states is wrong. Worse, `columnWidths` is keyed by index, so a hand-reversed cell list needs
+a hand-reversed width map kept in step with it — **two reversals that must agree, with nothing
+checking that they do**, and a disagreement *mislabels* every column rather than merely reordering
+them, which is strictly worse than the fault being fixed.
+
+So the reversal happens once, in one function, and callers write columns where they belong. The
+invariants that make the reversal meaningful are **assertions**, for the same reason: rows of unequal
+length, or a width map that does not cover every column, cannot be reversed correctly, and guessing
+would produce exactly the mislabelled table the wrapper exists to prevent.
+
+**The party blocks moved onto it too.** They carried the same trap in a milder form — a comment
+reading *"Buyer, gap, seller — left to right on the page"* and a width map documented as being in
+page order rather than reading order. Correct output, backwards source. They are now declared seller
+first, like a reader meets them.
+
+**Verified by rendering, not by reading the source** — which is the point, since D-076 recorded this
+column order as correct having only looked at a page and found every column plausible where it sat.
+`build/document_pages/seller_ceiling.pdf` now reads, right to left: ردیف · شرح · تعداد · قیمت واحد ·
+مبلغ کل · جمع سطر, with فروشنده on the right and خریدار on the left. `rtl_table_test.dart` pins the
+contract and says in its own header that it does **not** settle the page.
+
+### 2. D-072's "16 pixels of margin" is not margin — it is the primitive's padding
+
+**The correction.** D-072 recorded that the backup password sheet clears the keyboard by 16 logical
+pixels and called that *the margin to watch if the §8 warning copy grows*. Both halves are wrong.
+
+Every sheet measured on the phone reports the same number — payment 532.7/548.7, line editor the
+same, backup password 503.6/519.6, seller 576.0/592.0 — all exactly **16.0**. That is not four
+coincidences and it is not headroom: `EditorSheet` pads below its action by `AppSpacing.lg`, which is
+16, inside a `SafeArea`. The distance is a property of the primitive, and **copy growth cannot touch
+it**: `EditorSheet` caps the field area and scrolls it while the action stays pinned, however tall
+the content above becomes. The number moves only if `AppSpacing.lg` or the primitive changes.
+
+**Decision.** The number lives where it governs every sheet at once rather than as a note about one.
+Both keyboard guards — `sheet_keyboard_test.dart` (widget, runs on every commit) and
+`device_assertions.dart` (device) — now assert that the action clears the keyboard by **at least
+`AppSpacing.lg`**, referencing the primitive's own constant rather than a literal.
+
+A **floor, not an equality**, deliberately: a phone with gesture navigation adds its own bottom safe
+area, and more clearance is never the defect. The picker sheets, which are outside `EditorSheet` by
+design (D-062), clear by more and pass.
+
+**Verified to bite**: raised to `AppSpacing.lg * 2`, five of the six guarded sheets fail. The picker
+passes, which is the floor behaving as a floor.
+
+### 3. A new finding: the lines table has never crossed a page break
+
+Reading the multi-page fixture to check the column order showed something else. `multipage.pdf` is
+the "enough lines to need a second page" case — and all **28 rows fit on page 1**. Page 2 carries
+only the totals block. So the lines table has never spanned a page boundary in any fixture, and the
+header row is `repeat: false`, meaning **if a table ever did span pages the header would not repeat**.
+
+D-076 recorded "the repeated header" as read off rendered pages. The header appears once because the
+table appears once; that observation could not have distinguished a repeating header from a
+non-repeating one. Same failure as the column order, on the same page, found the same way.
+
+**Not fixed here.** Setting `repeat: true` is one word, but it is untested until a fixture actually
+spans, and the fixture that claims to span does not. Both belong together and both belong to whoever
+takes it, with the fixture first. Recorded as **known issue 25**.
+
+**Alternatives considered.**
+
+* **The one-line reversal of `lineColumns` and the cell list** (the original plan). Rejected by the
+  owner and rightly: correct output from a backwards source, with the width map as an unguarded
+  second reversal.
+* **Subclassing `pw.Table` to lay out from the right.** Rejected. `Table` implements `SpanningWidget`
+  for multi-page flow and its layout is entangled with that; reimplementing it to change the sign of
+  one accumulator risks the page-breaking behaviour for no gain the wrapper does not already give.
+* **Asking the `pdf` package for `textDirection`.** Not available, and an upstream change is not a
+  plan for a phase closing in two days.
+* **Leaving the 16 pixels as a note on the one sheet.** Rejected — that is how it got rediscovered on
+  a second sheet, and it would have been rediscovered on a third.

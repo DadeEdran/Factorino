@@ -5,6 +5,7 @@ import 'package:pdf/widgets.dart' as pw;
 
 import '../../../core/pdf/document_text.dart';
 import '../../../core/pdf/document_typeface.dart';
+import '../../../core/pdf/rtl_table.dart';
 import 'invoice_document_generator.dart';
 import 'invoice_document_view.dart';
 
@@ -197,17 +198,19 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
     // `TableCellVerticalAlignment.full` is what makes both cells take the
     // taller one's height, and the widths are **declared** rather than flexed
     // — D-065's rule, and the same shape as the lines table below.
-    return pw.Table(
+    // **In reading order**: the seller is the block an Iranian reader meets
+    // first, so it is declared first and `rtlTable` puts it on the right. It
+    // used to be declared last, to land in the right place through a table
+    // that lays out leftwards -- correct on the page and a trap in the source.
+    return rtlTable(
       columnWidths: _Doc.partyColumnWidths,
       defaultVerticalAlignment: pw.TableCellVerticalAlignment.full,
-      children: <pw.TableRow>[
+      rows: <pw.TableRow>[
         pw.TableRow(
           children: <pw.Widget>[
-            // Buyer, gap, seller -- left to right on the page, which puts the
-            // seller on the right for the reader. See above.
-            _party(view.party),
-            pw.SizedBox(width: _Doc.gap),
             _party(seller),
+            pw.SizedBox(width: _Doc.gap),
+            _party(view.party),
           ],
         ),
       ],
@@ -250,10 +253,15 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
   /// column 21.6 points wide. The description is the one flexible column and
   /// it takes what the fixed ones leave.
   pw.Widget _lines(InvoiceDocumentView view) {
-    return pw.Table(
+    // **Reading order throughout** -- ردیف first, جمع سطر last, matching
+    // `view.lineColumns` and `_Doc.columnWidths` position for position.
+    // `rtlTable` is what puts ردیف on the right of the page; nothing here is
+    // written backwards to compensate for a table that lays out leftwards.
+    // That was known issue 24, and it is why the wrapper exists.
+    return rtlTable(
       border: pw.TableBorder.all(color: _Doc.rule, width: _Doc.hairline),
       columnWidths: _Doc.columnWidths,
-      children: <pw.TableRow>[
+      rows: <pw.TableRow>[
         pw.TableRow(
           decoration: const pw.BoxDecoration(color: _Doc.headerFill),
           children: <pw.Widget>[
@@ -449,12 +457,14 @@ abstract final class _Doc {
   /// wide enough for the longest word a party block can hold.
   static const double partyBlockWidth = (contentWidth - gap) / 2;
 
-  /// Buyer, gap, seller -- **in left-to-right page order**.
+  /// Seller, gap, buyer -- **in reading order**, like every other column list
+  /// on this page.
   ///
   /// `pw.Table` places column 0 at the left of the page regardless of
   /// `textDirection`, which was established by rendering the page and looking
-  /// at it, not from the API. So the column a reader meets first is the last
-  /// one declared. Fixed widths rather than flexed, per D-065.
+  /// at it, not from the API. That is handled once, in [rtlTable], rather than
+  /// by declaring anything backwards here. Fixed widths rather than flexed,
+  /// per D-065.
   static const Map<int, pw.TableColumnWidth> partyColumnWidths =
       <int, pw.TableColumnWidth>{
         0: pw.FixedColumnWidth(partyBlockWidth),
