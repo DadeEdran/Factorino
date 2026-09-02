@@ -16,8 +16,8 @@
 > `TtfParser.readGlyph` never checks whether a glyph is empty, so U+200C draws the **next glyph in
 > the font** — «à» in Vazirmatn — and every zero-width control is in the same hazard class. The
 > remedy is to cut the run at the ZWNJ and send no control character at all; it is proven on
-> rendered pages over all **68** ARB entries that contain one. Phase 7 has **not** started. See the
-> Next Action. Rendering is now local — `tools/pdf_raster/` — and no longer depends on a browser.
+> rendered pages over all **68** ARB entries that contain one, and it **shipped** in (a) the same
+> day. Rendering is local — `tools/pdf_raster/` — and no longer depends on a browser.
 >
 > Earlier: **2026-09-01** — Phase 5 is `COMPLETED` and accepted. Since the close, two visual
 > defects reported off the Windows build have been fixed (D-065, D-066) with the checks that would
@@ -92,6 +92,17 @@ made one of them checkable (**D-067**).
 
 
 ## Where the project stands, in one paragraph
+
+**An invoice can be created, read as a document, paid off — and now printed.** Phase 7 (a) and (b)
+are delivered: `pdf` 3.13.0 is a dependency, `core/pdf/` makes Persian safe to hand a renderer that
+has two silent faults in it, and `features/invoices/document/` turns a stored invoice into an A4
+Persian page with a header, a party block, a lines table and totals. **The one thing it cannot do is
+be reached from the application** — nothing on any screen generates a document yet. That is (d),
+and the two measurements the Phase 7 gate owes go with it.
+
+**One decision is with the owner and blocks (c):** the schema holds **no business identity**, so the
+document has a خریدار block and no فروشنده block. Nothing was invented to fill it. See the Next
+Action.
 
 **An invoice can be created, read as a document, and paid off.** Eight screens work end to end on real
 data — Dashboard, Invoices, the invoice **form**, the invoice **detail** page, Customers, Customer
@@ -213,8 +224,13 @@ it belongs to the section it sits in.
 ```
 flutter analyze:            PASS   (No issues found)                          as of Phase 7 (b)
 flutter test:               PASS   (1159/1159, was 1137 after (a), 1092)      as of Phase 7 (b)
-Android build:              PASS   debug AND release APKs built (2026-09-01), release installed
-                                   and cold-started on the Redmi
+Android build:              PASS   release APKs rebuilt 2026-09-02 after Phase 7 (b);
+                                   arm64 21,653,926. Last installed and cold-started on the
+                                   Redmi 2026-09-01 -- NOT re-installed since the pdf dependency
+Windows build:              PASS   release bundle rebuilt CLEAN 2026-09-02, 33,116,830 over
+                                   18 files. Take this only after `flutter clean`: an uncleaned
+                                   Release dir holds an 87 MB stale kernel_blob.bin and reads
+                                   120 MB
 
 Backup container proof:     PASS   5/5 on BOTH targets (D-069) -- encrypted on disk with the
                                    sentinel absent from the raw bytes, right passphrase reopens,
@@ -308,8 +324,116 @@ D-048 proof - Android:      PASS   (2026-08-27)
 Web build:                  NOT_RETESTED since plugins were added -- Phase 12, known issue 14
 ```
 
-**Test count is 1004**, was 938 after (f), 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
+**Test count is 1159** (Phase 7 (b)), was 1137 after Phase 7 (a), 1092 after Phase 6, 1004 then; 938 after (f), 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
 D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What Phase 7 delivered so far — (a) and (b), 2026-09-02
+
+**Read `docs/DECISIONS.md` D-073 through D-076 before touching any of this.** The two faults it
+works around are silent and produce output that looks correct, so code that looks obviously fine is
+the normal case here.
+
+### The two faults, because everything in `core/pdf/` is shaped by them
+
+| | the font fault (D-073) | the shaper fault (D-070 finding 1) |
+|---|---|---|
+| characters | U+200C ZWNJ and friends — **mapped, but the glyph is empty** | U+2068/U+2069 — **not in the `cmap` at all** |
+| what happens | `TtfParser.readGlyph` never checks `loca[i] == loca[i+1]`, so it returns the **next glyph's** outline. U+200C draws a Latin **`à`**, at zero advance width, so nothing about the layout looks wrong | the run silently loses its **last character** — a ten-digit کد ملی prints nine and still looks like a کد ملی |
+| the remedy | **cut** the run there; the character meant something | **delete** it; the document has no use for it |
+| lives in | `core/pdf/safe_text.dart` | `core/pdf/document_text.dart` |
+
+Neither remedy fixes the other's fault. Cutting at a U+2068 would break a join that must not break;
+deleting a U+200C yields «پیشنویس», a misspelling.
+
+### What exists
+
+```
+lib/core/pdf/
+  font_glyph_safety.dart    pure Dart, no Flutter. Parses head/maxp/loca/cmap/hhea out of the
+                            bundled font and DERIVES which runes select an empty glyph. Eleven of
+                            them in Vazirmatn, not the four every write-up had named.
+  document_text.dart        DocumentText + DocumentTextBoundary. The only way to obtain text the
+                            renderer accepts -- SafeText takes nothing else.
+  safe_text.dart            SafeText. Cuts at the join-breakers, emits the affected WORD as an
+                            indivisible WidgetSpan atom so a line break cannot land inside it.
+  document_typeface.dart    the two faces plus both safety layers, derived from the same bytes.
+
+lib/features/invoices/document/
+  invoice_document_view.dart          the view model: DocumentText and nothing else
+  invoice_document_view_builder.dart  InvoiceDetail + AppStrings -> the view
+  invoice_document_generator.dart     the interface §12 asks for, and its failure type
+  pdf_invoice_document_generator.dart the one template
+```
+
+**The flow is one-way and every step drops something.** `InvoiceDetail` (models, `Money`,
+`DateTime`) → builder (formats once; every decision made here) → `InvoiceDocumentView`
+(`DocumentText` only) → generator (layout only). The renderer never sees a `Money`, so it **cannot**
+recompute a total; never sees a raw `String`, so it **cannot** print an `à`. Both are type-level
+rather than conventions.
+
+### The guards, and what each is for
+
+* `test/core/pdf/font_glyph_safety_test.dart` — the class guard, with **three** controls: it finds
+  a non-empty set (a silent parse failure would clear every string), it agrees with `package:pdf`'s
+  own parser on all **811** runes that parser maps, and it asserts **the bug still exists**, so a
+  future `pdf` release that fixes `readGlyph` fails the suite rather than leaving a workaround
+  nobody can explain.
+* `test/core/pdf/arb_document_text_sweep_test.dart` — every ARB entry (**68 of 356** carry a
+  control), both directions: that they really are unsafe as written, and that nothing but the
+  control is lost.
+* `test/core/pdf/document_text_test.dart` — drives the **real** §9 formatters
+  (`formatIdentifierForDisplay`, `isolate`) rather than imitating their output.
+* `test/features/invoices/document/invoice_document_view_test.dart` — the figures are the **stored**
+  ones at every ladder rung, no value contains its own label, the declared table geometry.
+
+### How to look at a page — do this, do not reason about layout
+
+Rendering is local; no browser is involved and none is needed.
+
+```bash
+flutter test test/features/invoices/document/   # writes build/document_pages/*.pdf
+dart run tool/render_document_text.dart         # writes build/document_text/*.pdf
+```
+
+```powershell
+tools\pdf_raster\rasterize.ps1 -Pdf build\document_pages\issued_ceiling.pdf -Out out.png -Width 1700
+tools\pdf_raster\inkcrop.ps1   -In out.png -Out crop.png      # crop to the ink, to read glyphs
+tools\pdf_raster\region.ps1    -In out.png -Out band.png -X 0 -Y 0 -W 1700 -H 1250
+tools\pdf_raster\pxdiff.ps1    -A before.png -B after.png     # what actually changed
+```
+
+`pdf_raster` uses `Windows.Data.Pdf`, which ships with Windows 10 — nothing to install. **Read the
+pixels, not the content stream.** That rule has caught something every single time it was applied
+in this phase, including twice where three readings of the source had missed it.
+
+### What has been read off the pixels, and passed
+
+Ladder ceiling (۱۰۰٬۰۰۰٬۰۰۰ تومان) and all four rungs · a draft with its band · a pre-snapshot
+invoice with its one factual line · 28 lines over two pages, with the repeated header carrying the
+invoice number and a `2 / 2` footer · RTL column order · the ZWNJ atom at 16 pt bold, which is the
+largest type the document sets · a summary that reconciles with a pencil.
+
+### Two things the pixels corrected that no test had caught
+
+Recorded because both looked fine in code review:
+
+1. The **`مبلغ کل` column printed bare digits** between two columns carrying «تومان» — a type error
+   in the view model, not a layout bug. `gross` was a `DocumentText` because the «ثبت‌نشده» case
+   made a bare string look reasonable while writing it.
+2. The **demonstration invoice did not reconcile.** Nothing was wrong with the renderer, which is
+   the problem: a page that cannot be checked with a pencil is one where a real reconciliation
+   defect would look like more of the same.
+
+### Environment notes that will otherwise cost a fresh session an hour
+
+* **`flutter pub get` hangs.** This shell has `PUB_HOSTED_URL` pointing at a mirror whose cache does
+  not hold `pdf`. Use `unset PUB_HOSTED_URL; flutter pub get --offline` — the packages are already
+  in `~/AppData/Local/Pub/Cache/hosted/pub.dev/`. Then run `sh tools/sanitize_lockfile` (D-014).
+* **A bundle size taken without `flutter clean` is not a measurement.** `flutter build` does not
+  clean its output directory, and a stale `data/flutter_assets/kernel_blob.bin` from an earlier
+  debug build is **87 MB** — it read 120 MB before the clean and 33 MB after.
+* `flutter analyze <directory>` analyses only that directory and will report clean while the
+  package does not compile. Run it bare.
 
 ## What the two post-close fixes delivered — D-065, D-066, D-067
 
@@ -2278,8 +2402,22 @@ session starts cold at the Next Action below.
 
 ## Next action
 
+> **The session ended here deliberately** (owner, 2026-09-02), immediately after (b) was committed
+> and reported. **Nothing is half-finished, nothing is uncommitted, and no question is waiting on an
+> answer except the seller-block decision below.** `main` is at **`0436094`** and the working tree
+> is clean. Do not re-open (a) or (b); both were reviewed and accepted.
+
 **Phase 7 (a) and (b) are delivered. The invoice prints** — but only into a test's byte array;
 nothing in the application generates one yet.
+
+**Both Phase 7 product questions are answered and need no further discussion — D-075**, accepted by
+the owner as recommended. A **draft prints**, marked with an unmissable filled band, because
+refusing would push users to issue and cancel an invoice and spend a number permanently. A
+**pre-snapshot** invoice prints the live record with one factual line saying where the details came
+from, because refusing would mean a user cannot print their older invoices at all. Both go against
+the house style of refusing rather than inventing, and D-075 records why the exception is principled
+rather than convenient: refusing costs the user a document they legitimately need, and neither
+answer invents anything.
 
 **One decision is with the owner and blocks (c): the seller block.** `AppSettings` and the
 `settings` table hold no business identity at all — no name, no address, no کد اقتصادی, no phone —
@@ -2306,6 +2444,26 @@ reachable.** Concretely:
    - the **Android cold start**, which needs the Redmi on the cable. The owner has asked to be told
      when the cable session is wanted — it is wanted for this, together with the phone-tier device
      pass on the new save flow.
+
+### The commits this work sits on, newest first
+
+| commit | what |
+|---|---|
+| **`0436094`** | Phase 7 (b): the invoice prints — the view model, the generator interface, the one template (D-075, D-076) |
+| `47beb6e` | Phase 7 (a): the `pdf` dependency and the text layer that makes it safe (D-074) |
+| `b4465a7` | The ZWNJ cause found, and `tools/pdf_raster/` so the page is visible from the terminal (D-073) |
+| `49f3812` | The superseded ZWNJ diagnosis — kept for the record, **wrong in its cause**; read D-073 |
+| `75f7b7a` | The guard audit and its corollary (D-072) |
+
+### What is deliberately NOT built, so nobody builds it twice
+
+* **No document is reachable from the application.** No provider, no button, no file written. That
+  is all (d).
+* **No seller block**, pending the decision above. Not an oversight and not a `TODO`.
+* **No `DocumentField` rendering helper beyond the one inside the template.** Rule 2's other half
+  landed with the template rather than as a shared widget, because a field widget with no second
+  document to sit in is the speculative abstraction §15 forbids.
+* **No PDF preview screen, no share sheet, no print dialog.** Not in the reduced plan (D-068).
 
 ### The Phase 6 close, 2026-09-01
 
