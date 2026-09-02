@@ -2,8 +2,16 @@
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
 >
-> **Last updated: 2026-09-02 — Phase 7 (a), (b) and (c) are delivered. The invoice prints, and it
-> now says who issued it.**
+> **Last updated: 2026-09-02 (evening) — the (d) cable session ran. Phase 7 (a), (b) and (c) are
+> delivered; the three Android measurements the gate owed are now taken, and the session found a
+> regression (c) had shipped into the settings device suite.**
+>
+> **Read `## What the (d) cable session found` before quoting any cold-start number.** The recorded
+> 1,401 ms baseline **does not reproduce**: the same commit, on the same phone, measures **352 ms**
+> today. The startup conclusion now rests on a **paired** measurement taken minutes apart rather
+> than on a comparison against that figure.
+>
+> Earlier the same day:
 > **(c) closed the D-076 gap at schema v5 (D-077):** four nullable `settings.seller_*` columns, the
 > migration with both ladders proved on Windows, a seller section on the settings screen with its
 > own sheet, and a فروشنده block beside the خریدار block on the page. Scope held exactly — no logo,
@@ -28,10 +36,9 @@
 > claim still holds on the import graph; the number is weaker evidence than "byte-identical"
 > implied. See D-077.
 >
-> **Owed to (d), and mechanical rather than doubtful:** the Android leg of the v5 migration proof.
-> The Redmi is on the cable and enumerated but asleep and keyguarded, MIUI refuses `adb` input
-> injection, and `install` returns `INSTALL_FAILED_USER_RESTRICTED` until someone taps the on-device
-> prompt. It goes in (d)'s cable session with the cold-start measurement.
+> **The Android leg of the v5 migration proof is no longer owed — it PASSED**, both ladders, on the
+> Redmi, 2026-09-02 evening. So did all four phone-tier device suites and the cold-start
+> measurement. See the cable-session section below.
 >
 > Earlier the same day: **Phase 7 (a) and (b)** — the `pdf` dependency, `core/pdf/`, the view model,
 > the generator interface and the one template. The two (b) product questions are **decided**
@@ -280,8 +287,10 @@ Backup gateway - Android:   PASS   opens ACTION_CREATE_DOCUMENT on the Redmi, ve
 Backup gateway - Windows:   PASS   confirmed save through file_selector_windows, 4,096 bytes
                                    byte-identical. Interactive test, run deliberately, not in
                                    any suite -- MIUI refuses adb input injection
-Phase 7 cold-start baseline: TAKEN 1,401 ms median of runs 2-5 (1,330-1,465); run 1 was 3,440 ms
-                                   and is kept separate as first-launch work. On `60b5cd5`
+Phase 7 cold-start baseline: WITHDRAWN -- was "1,401 ms median of runs 2-5 (1,330-1,465), on
+                                   60b5cd5". It does NOT reproduce: that same commit, rebuilt and
+                                   measured on the same phone 2026-09-02, gives 352 ms. Do not
+                                   quote it. Use the paired entry below. D-078
 ZWNJ remedy (D-073/D-074):  SHIPPED in core/pdf/, 45 new tests. 68/68 ARB entries carrying
                                    U+200C are unsafe through a plain span and 0/68 through
                                    SafeText; the join break, the word order and the atom's
@@ -292,9 +301,28 @@ ZWNJ remedy (D-073/D-074):  SHIPPED in core/pdf/, 45 new tests. 68/68 ARB entrie
 Phase 7 size, post-pdf:     TAKEN  arm64 21,653,926 (+133,402 on the 60b5cd5 baseline);
                                    Windows bundle 33,116,830 over 18 files (+240,224), from a
                                    CLEAN rebuild -- an uncleaned Release dir carries an 87 MB
-                                   stale kernel_blob.bin and reads 120 MB. A floor, not the
-                                   cost: nothing from main() imports core/pdf/ yet
-Phase 7 cold start, post:   OWED   needs the Redmi on the cable
+                                   stale kernel_blob.bin and reads 120 MB.
+                                   **A floor, and the floor claim rests on the IMPORT GRAPH --
+                                   nothing reachable from main() imports core/pdf/ -- not on the
+                                   number.** The number cannot carry it: it is quantised, and the
+                                   entry below proves it does not distinguish changes of this
+                                   magnitude. When step 1 of (d) lands, core/pdf/ becomes
+                                   reachable and the figure means something for the first time
+Phase 7 cold start, post:   TAKEN  HEAD (f71791c) 343 ms median of 10 steady-state runs
+                                   (317-395), release arm64 on the Redmi, `am force-stop` before
+                                   each. **Compare it only against the PAIRED control**, not
+                                   against the 1,401 ms figure above: the baseline commit 60b5cd5,
+                                   rebuilt and measured on the same phone in the same session,
+                                   gives 352 ms median of 10 (345-366). 343 vs 352 -- the PDF work
+                                   costs nothing measurable at startup. First launch after a fresh
+                                   install is 2.5-9.0 s and is not part of either figure
+Cold-start BASELINE RETIRED: PROVED The recorded 1,401 ms does NOT reproduce. 60b5cd5 is the commit
+                                   it was taken on; rebuilt from a worktree at that exact commit
+                                   and measured on the same Redmi it measures 352 ms, a 4x gap
+                                   with the code held constant. The cause is not established --
+                                   device conditions on 2026-09-01, not the application. Do not
+                                   quote 1,401, and do not quote the "4x faster" that comparing
+                                   against it would produce. D-078
 Phase 7 size after (b):     TAKEN  arm64 21,653,926 -- same SIZE as (a). Read the correction
                                    below before quoting this as "byte-identical"
 Phase 7 size after (c):     TAKEN  arm64 21,653,926 -- the same figure again, after schema v5, a
@@ -312,10 +340,12 @@ Seller migration - Windows: PASS   both ladders, v4 -> v5 AND v1 -> v5, through 
                                    4->5 and 1->5, one settings row, four nulls, the user's own tax
                                    rate and prefix untouched, still encrypted, and the columns
                                    written and cleared back through the real repository (D-077)
-Seller migration - Android: OWED   needs the Redmi awake and unlocked. Enumerated on the cable, but
-                                   asleep + keyguarded; MIUI refuses adb input injection and
-                                   install returns INSTALL_FAILED_USER_RESTRICTED until someone
-                                   taps the on-device prompt. Goes with (d)
+Seller migration - Android: PASS   both ladders on the Redmi (2026-09-02 evening), through the real
+                                   production path on an encrypted file with foreign keys on:
+                                   user_version 4->5 and 1->5, one settings row, four nulls, the
+                                   user's own tax rate (900bp), prefix (FCT) and payment term
+                                   untouched, still encrypted, and the columns written and cleared
+                                   back through the real repository. Matches Windows exactly
 Invoice document rendered:  PASS   read off the pixels at the ladder ceiling, all 4 rungs, a
                                    draft, a pre-snapshot invoice, 28 lines over 2 pages, and -- new
                                    in (c) -- both party blocks at real Persian lengths and a page
@@ -338,7 +368,12 @@ Layout, all 3 tiers x 4 amounts (D-057) -- the phase-close check:
                                    rungs on screen at once -- new in (f)),
                                    invoice_detail_screen_test.dart, invoices_screen_test.dart
   device - Android phone:   PASS   Redmi Note 8 Pro, 392.7 x 803.6, ratio 2.75
-                                   list, detail, form AND settings suites (2026-09-01, Phase 6
+                                   **RE-RUN 2026-09-02 evening, after Phase 7 (c)** -- list,
+                                   detail, form and settings, 0 layout errors on all four. The
+                                   settings suite FAILED first and had to be fixed; the seller
+                                   sheet (c) added is now covered, and its write reaches the real
+                                   encrypted database. See the cable-session section.
+                                   Previously (2026-09-01, Phase 6
                                    close). 0 layout errors on all four. The settings suite raises
                                    the real keyboard on both new sheets and reads the written
                                    settings back out of the real encrypted database.
@@ -359,6 +394,11 @@ Keyboard rule (D-062):
   widget sweep:             PASS   sheet_keyboard_test.dart, 255 px inset, verified to bite
   device - Android phone:   PASS   payment sheet and line editor: keyboard 254.9 of 803.6,
                                    action bottom 532.7, limit 548.7
+                                   seller sheet (new 2026-09-02): keyboard 211.6 of 803.6, action
+                                   bottom 576.0, limit 592.0 -- **16.0 pixels of margin**, tying
+                                   the backup password sheet for the tightest in the application.
+                                   Two sheets now sit on that number; D-072 called it the one to
+                                   watch and it has not moved
                                    customer picker opened FROM the filter sheet (new in (f)):
                                    field bottom 265.0, limit 548.7 -- a modal route over a modal
                                    route, with the real keyboard up
@@ -377,6 +417,118 @@ Web build:                  NOT_RETESTED since plugins were added -- Phase 12, k
 
 **Test count is 1189** (Phase 7 (c)), was 1159 after (b), 1137 after (a), 1092 after Phase 6, 1004 then; 938 after (f), 935 after (e), 892 after (d) and the device pass, 861 after (c), 837 after
 D-059, 794 at the end of (b) and 726 at the end of (a2).
+
+## What the (d) cable session found — 2026-09-02, evening
+
+The session the owner asked for: the cold start, the phone-tier save pass, and the Android leg of
+the v5 proof, with the Redmi awake and unlocked. All three are done. It also found a regression and
+retired a number.
+
+### 1. The Android leg of the v5 proof — PASS, and it matches Windows exactly
+
+`flutter test integration_test/seller_migration_proof_test.dart -d dmbyayb6rombo7ci`. Both ladders,
+`v4 -> v5` and `v1 -> v5`, on an encrypted file through the real production bootstrap with foreign
+keys on: `user_version` 4→5 and 1→5, one settings row, four nulls, the user's own `900`bp rate and
+`FCT` prefix untouched, `file state : encrypted`, and the four columns written and cleared back
+through the real repository. D-077's Windows result now holds on both targets.
+
+### 2. The phone-tier device pass — and (c) had broken it
+
+All four suites pass. Three passed unchanged; **`settings_device_test` failed on its first run**,
+and that is the finding worth keeping, because Phase 7 (c) shipped it broken and nothing noticed.
+
+(c) put the seller section at the **top** of the settings screen — deliberately, and correctly
+(D-077: it is the one section every existing user has something to do in). Two consequences, both
+invisible to `flutter analyze` and to the whole widget suite:
+
+1. **«تهیهٔ پشتیبان» went below the fold** on the 803.6-pixel phone. The suite tapped it with a
+   bare `find.text`, so the finder reported **absence, not invisibility**, and the run died at the
+   tap. The control is perfectly reachable by scrolling — this is a **suite** that assumed the
+   screen it was written against, not a product defect.
+2. **There are now two `Icons.edit_outlined` on the screen**, the seller section's and the
+   invoicing section's, so `find.byIcon(Icons.edit_outlined)` matches both and cannot say which
+   sheet it opened. Fixed by finding on the tooltips, which are already distinct because a screen
+   reader needs them to be — the finder now names the section rather than the glyph.
+
+**And `reach` alone was not enough.** The first fix used `reach` and the tap still silently missed:
+`reach` drags until the widget is *laid out* — a `ListView` child past the cache extent is not in
+the tree at all — but laid out is not the same as inside the viewport. `ensureVisible` after it is
+what puts it on screen. Both are now used, and the comment in the file says why they are different
+questions, because the next person will otherwise delete one of them.
+
+**The generalisation, which is D-064 again from a new direction.** D-064 says a phase closes only
+after the device suites have run. The gap this found is narrower and sharper: **a suite is coupled
+to the screen's layout, so an increment that changes the screen invalidates the suite even when it
+changes nothing the suite asserts about.** (c) added a section and broke a suite that tests backups.
+Nothing in (c)'s own verification would ever have looked there.
+
+### 3. The seller sheet had never met a real keyboard — now it has
+
+The suite was extended rather than only repaired, because (c) shipped a **fourth sheet** onto this
+screen and D-062 applies to it exactly as to the other three. Its address field is `maxLines: 3`,
+the tallest field any sheet in the application puts above its pinned action.
+
+```
+seller editor sheet: keyboard 211.6 of 803.6, action bottom 576.0, limit 592.0
+seller write: reached the database, isPrintable=true
+```
+
+**16.0 pixels of margin** — the same number D-072 flagged on the backup password sheet, now tied by
+a second sheet. It passes, and it is the number to watch if the seller field copy ever grows.
+
+The suite also now asserts the **D-077 prompt behaves as a prompt**: «فروشنده» carries the
+consequence sentence while the name is empty, and the sentence **goes away** once the name is
+filled. A notice that stayed put after the user did the thing it asked for would train them to
+ignore it.
+
+The seller values used are Persian at the length real data reaches (§14) — a full two-line نشانی,
+not «تست» — because the address is the field that was clipping mid-word on the printed page until
+(c) caught it.
+
+### 4. The cold start — and the recorded baseline is retired (D-078)
+
+**The measurement, first:** HEAD `f71791c`, release arm64, `am force-stop` before each,
+10 steady-state runs → **343 ms median** (317–395).
+
+That is **4x faster than the recorded 1,401 ms baseline**, which is not a credible result for a
+change that only *added* code. So it was controlled rather than reported: commit `60b5cd5` — the
+exact commit the baseline was taken on — was checked out into a worktree, rebuilt, installed on the
+same phone in the same session, and measured the same way.
+
+| Build | Median of 10 steady-state runs | Range |
+|---|---|---|
+| `f71791c` (HEAD, after the PDF work) | **343 ms** | 317–395 |
+| `60b5cd5` (the baseline commit itself) | **352 ms** | 345–366 |
+| `60b5cd5`, **as recorded 2026-09-01** | **1,401 ms** | 1,330–1,465 |
+
+**The baseline does not reproduce.** With the code held exactly constant, the same phone gives
+352 ms today against 1,401 ms recorded. The 4x is in the measurement conditions of 2026-09-01, not
+in the application — and the cause is **not established**. Storage was 96% full then and is 96% full
+now; the app is AOT-compiled in a release build so Android dexopt does not explain it; the phone is
+on USB power in both sessions. Saying "device conditions" names the category, not the cause, and it
+should be read as *unexplained* rather than as *explained away*.
+
+**What the conclusion now rests on.** Not the comparison against 1,401 — that comparison would have
+produced the flattering and false claim that startup got four times faster. It rests on the
+**paired** measurement: 343 vs 352, taken minutes apart on one phone, with overlapping ranges.
+**The PDF work (a)+(b)+(c) costs nothing measurable at cold start.** That is the same shape of
+correction as the APK-size one in (c): the number that flattered the conclusion was tested against a
+control and reported as the weaker evidence it is.
+
+**First launch is excluded from both figures** and varies far too much to compare: 2,495 ms,
+4,597 ms and 9,029 ms across three fresh installs this session, against 3,440 ms recorded. It
+carries dex optimization, encryption-key generation and database creation, and it happens once.
+
+### 5. What this session did NOT do, so nobody records it as done
+
+* **Known issue 24 is untouched.** The printed lines table still runs back to front. It is the first
+  thing in (d) and it is on the customer's copy.
+* **The post-renderer size figure is still a floor.** Nothing reachable from `main()` imports
+  `core/pdf/` yet, so there was nothing new to measure. It becomes real when (d)'s provider lands.
+* **`backup_gateway_save_test.dart` was not re-run.** It needs a human to tap the Android save
+  dialog — `adb` cannot inject it under MIUI. It is PASS from D-071 and nothing this session touched
+  the gateway, but it is the one cable item left unexercised.
+* **No PDF is reachable from the application.** Unchanged from (c). That is all still (d).
 
 ## What Phase 7 increment (c) delivered — schema v5, and the block that was not there
 
@@ -2577,7 +2729,13 @@ D-077 settled the seller: an empty seller **prints no block at all**, and **bloc
 issuing, not printing — with the settings screen carrying the prompt that makes it impossible to be
 surprised by. None of this needs re-litigating.
 
-**The single specific next action: Phase 7 (d) — make the document reachable.** In this order:
+**The single specific next action: known issue 24 — reverse the printed lines table.** It is the
+first item of (d), it is five minutes, and it is wrong on the one artifact a customer holds.
+Reverse `lineColumns` **and** the cell list in `_lines` **together** — one without the other
+silently mislabels every column, which is far worse than the current fault — then **read the
+rendered page**, not the source. Then continue down the list below.
+
+**The rest of Phase 7 (d) — make the document reachable.** In this order:
 
 0. **Known issue 24 first, because it is five minutes and it is on the customer's copy.** The
    printed lines table runs its columns in the reverse of the Iranian reading order — ردیف at the
@@ -2603,20 +2761,24 @@ surprised by. None of this needs re-litigating.
 4. **The §7 question (d) owns and (b) deliberately did not touch:** a generated PDF holds full
    customer and financial data. Where it lands, whether a temporary copy exists, and who deletes it
    are this increment's decisions, and the ROADMAP security note for Phase 7 already names them.
-5. **Then the measurements and the device work, which need the cable — the owner has asked for the
-   cable session and it is wanted for all of this at once:**
-   - the **real size figure**. D-074's +133 KB is a floor, and the floor claim holds on the **import
-     graph** rather than on the number — see the correction above: 21,653,926 is a *size*, it is
-     quantised, and it does not distinguish changes of this magnitude. Once step 1 lands,
-     `core/pdf/` is reachable from `main()` for the first time and the figure will finally mean
-     something;
-   - the **Android cold start**;
-   - the **phone-tier device pass** on the new save flow;
-   - the **Android leg of the v5 migration proof**, which is written and passing on Windows and only
-     needs the phone. `flutter test integration_test/seller_migration_proof_test.dart -d
-     dmbyayb6rombo7ci`. **The phone must be awake and unlocked first** — it was asleep and
-     keyguarded, MIUI refuses `adb` input injection, and `install` returns
-     `INSTALL_FAILED_USER_RESTRICTED` until someone taps the on-device prompt.
+5. **The cable work — THREE OF FOUR ITEMS ARE DONE (2026-09-02 evening).** Read
+   `## What the (d) cable session found` for the detail. Status:
+   - the **Android cold start** — **TAKEN**, 343 ms median on HEAD. And the recorded 1,401 ms
+     baseline is **retired**: it does not reproduce on its own commit (D-078). Quote the paired
+     343-vs-352 comparison, never the 1,401;
+   - the **phone-tier device pass** — **DONE**, all four suites, 0 layout errors. It found and
+     fixed a regression (c) had shipped into `settings_device_test`, and it now covers the seller
+     sheet, which had never met a real keyboard;
+   - the **Android leg of the v5 migration proof** — **PASS**, both ladders, matching Windows;
+   - the **real size figure** — **still owed, and still cannot be taken.** D-074's +133 KB is a
+     floor, and the floor claim holds on the **import graph** rather than on the number:
+     21,653,926 is a *size*, it is quantised, and it does not distinguish changes of this
+     magnitude. It becomes measurable the moment step 1 lands and `core/pdf/` is reachable from
+     `main()` for the first time — so **take it right after the provider**, not before.
+
+   One cable item is deliberately unexercised: `backup_gateway_save_test.dart` needs a human to tap
+   the Android save dialog, since MIUI refuses `adb` input injection. It is PASS from D-071 and
+   nothing this session touched the gateway.
 
 ### The commits this work sits on, newest first
 
@@ -2817,9 +2979,11 @@ followed by `DELETE_FAILED_INTERNAL_ERROR` on the cleanup. Its documented remedy
 | 1 | **3,440 ms** — first launch after install: dex optimization, encryption-key generation and database creation all land here |
 | 2–5 | 1,401 · 1,465 · 1,363 · **1,330 ms** |
 
-**Take 1,401 ms as the baseline** (median of the steady-state runs) and keep run 1 separate rather
-than averaging it in, or the figure Phase 7 is compared against would be mostly first-run work that
-never happens again.
+~~**Take 1,401 ms as the baseline**~~ — **WITHDRAWN 2026-09-02, D-078.** This figure does not
+reproduce. The same commit, rebuilt from a worktree and measured on the same Redmi in the same
+session as HEAD, gives **352 ms** median of ten. Nothing may be compared against the number above;
+the reasoning about keeping run 1 separate still stands, and is applied to the paired measurement
+that replaced it. See `## What the (d) cable session found`.
 
 ### The Android save dialog — the link the owner most wanted tested
 
@@ -2997,7 +3161,7 @@ Both were approved to happen ahead of Phase 6 and **both have run**.
 |---|---|
 | Android APK, arm64-v8a, release | **21,520,524 bytes** (armeabi-v7a 19,096,744; x86_64 23,138,664) |
 | Windows release bundle, total | **32,876,606 bytes** over 17 files |
-| Android cold start, 5 runs | **OWED** — needs the cable; take it with the owed Redmi run below |
+| Android cold start | **TAKEN 2026-09-02, and the stored baseline retired (D-078)** — HEAD 343 ms against the baseline commit's own 352 ms, measured paired |
 
 **The shaping probe: Phase 7 is viable — D-070.** `pdf` 3.13.0 with `bidi` 2.0.13 over bundled
 Vazirmatn shapes and joins Persian, lays out RTL, renders Persian digits and U+066C, and places a

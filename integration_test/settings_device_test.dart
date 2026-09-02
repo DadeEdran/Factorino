@@ -6,6 +6,7 @@ import 'package:factorino/data/database/app_database.dart';
 import 'package:factorino/data/database/database_bootstrap.dart';
 import 'package:factorino/data/database/encrypted_database.dart';
 import 'package:factorino/data/models/app_settings.dart';
+import 'package:factorino/data/models/seller_identity.dart';
 import 'package:factorino/data/providers.dart';
 import 'package:factorino/features/settings/presentation/settings_screen.dart';
 import 'package:flutter/foundation.dart';
@@ -42,6 +43,17 @@ void main() {
   /// rounding unit; a large one is what would push the row's value off the
   /// edge if the `Wrap` that replaced the `Row` ever became a `Row` again.
   const int largeRoundingRial = 1000000000;
+
+  /// A seller at the length real Iranian business data reaches (§10, §14) —
+  /// not «تست». The address is the field that grows, and it is the one that
+  /// was clipping mid-word on the printed page until (c) caught it, so the
+  /// value used here is a full two-line نشانی rather than a token.
+  const String sellerName = 'صنایع چوب و دکوراسیون آرمان‌فر';
+  const String sellerEconomicId = '۴۱۱۳۸۷۶۵۴۳۲۱';
+  const String sellerPhone = '۰۲۱-۸۸۷۴۵۶۹۰';
+  const String sellerAddress =
+      'تهران، خیابان شهید بهشتی، نبش کوچهٔ اندیشهٔ سوم، '
+      'ساختمان نگین، طبقهٔ چهارم، واحد ۱۲';
 
   final List<String> layoutErrors = <String>[];
 
@@ -131,10 +143,103 @@ void main() {
     );
     debugPrint('last backup   : rendered as a date, not «هرگز»');
 
+    // ---- the seller sheet, with the REAL keyboard up ----------------------
+    //
+    // **New here, because (c) shipped a sheet this suite never ran.** Schema
+    // v5 put a fourth sheet on this screen — four text fields and a pinned
+    // action — and the device pass was not re-run over it, so until now it had
+    // never met a real keyboard on a real phone. D-062 applies to it exactly
+    // as it applies to the three that were already here, and its address field
+    // is `maxLines: 3`, which is the tallest field any sheet in the
+    // application puts above its action.
+    expect(
+      find.text(strings.settingsSellerConsequence),
+      findsOneWidget,
+      reason:
+          'an empty seller must carry the D-077 prompt where it can be '
+          'acted on, before anything is printed',
+    );
+
+    await tester.tap(find.byTooltip(strings.settingsSellerEditTooltip));
+    await tester.pumpAndSettle();
+
+    final Finder sellerNameField = find.widgetWithText(
+      TextFormField,
+      strings.settingsSellerFieldName,
+    );
+    final double sellerInset = await raiseKeyboard(tester, sellerNameField);
+    debugPrint('seller kbd    : ${sellerInset.toStringAsFixed(1)}');
+
+    expectActionAboveKeyboard(
+      tester,
+      find.widgetWithText(FilledButton, strings.actionSave),
+      sheet: 'seller editor sheet',
+    );
+    expectNoCrushedText(tester, where: 'the seller editor sheet');
+
+    await tester.enterText(sellerNameField, sellerName);
+    await tester.pump();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, strings.settingsSellerFieldEconomicId),
+      sellerEconomicId,
+    );
+    await tester.pump();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, strings.settingsSellerFieldPhone),
+      sellerPhone,
+    );
+    await tester.pump();
+    await tester.enterText(
+      find.widgetWithText(TextFormField, strings.settingsSellerFieldAddress),
+      sellerAddress,
+    );
+    await tester.pump();
+    await tester.tap(find.widgetWithText(FilledButton, strings.actionSave));
+    await tester.pumpAndSettle();
+
+    // ---- and it reached the real encrypted database -----------------------
+    final SellerIdentity storedSeller =
+        (await container.read(settingsRepositoryProvider).read()).seller;
+    expect(storedSeller.name, sellerName);
+    expect(storedSeller.economicId, sellerEconomicId);
+    expect(storedSeller.phone, sellerPhone);
+    expect(storedSeller.address, sellerAddress);
+    expect(
+      storedSeller.isPrintable,
+      isTrue,
+      reason: 'the document can only head a فروشنده block from a name',
+    );
+    debugPrint('seller write  : reached the database, isPrintable=true');
+
+    // D-077: filling the name is what takes the prompt away. A notice that
+    // stayed put after the user did the thing it asked for would be a standing
+    // warning rather than a prompt, and would train them to ignore it.
+    expect(
+      find.text(strings.settingsSellerConsequence),
+      findsNothing,
+      reason: 'the prompt must go away once the name it asks for is there',
+    );
+
     // ---- the backup password sheet, with the REAL keyboard up -------------
     //
     // The one D-062 was written for. Its password field carries `autofocus`,
     // so this is the state a user meets it in.
+    //
+    // **`reach` rather than a bare tap, and that is a (c) regression.** The
+    // seller section went in above this one, and on a 803.6-pixel phone it
+    // pushed «تهیهٔ پشتیبان» off the bottom — so the finder reported absence,
+    // not invisibility, and the suite failed at the tap. The control is
+    // perfectly reachable by scrolling; what was wrong was a suite that
+    // assumed the screen it was written against.
+    // `reach` and then `ensureVisible`, because they answer different
+    // questions and this suite needed both: `reach` drags until the widget is
+    // laid out at all — a `ListView` child past the cache extent is not in the
+    // tree, so a finder reports absence — and `ensureVisible` then puts it
+    // inside the viewport. Stopping after `reach` left the button in the tree
+    // and still below the bottom edge, and the tap silently missed it.
+    await reach(tester, find.text(strings.backupExportAction));
+    await tester.ensureVisible(find.text(strings.backupExportAction));
+    await tester.pumpAndSettle();
     await tester.tap(find.text(strings.backupExportAction));
     await tester.pumpAndSettle();
 
@@ -166,7 +271,17 @@ void main() {
     await tester.pumpAndSettle();
 
     // ---- the settings editor, with the real keyboard up -------------------
-    await tester.tap(find.byIcon(Icons.edit_outlined));
+    //
+    // **By tooltip, and that is the other half of the same (c) regression.**
+    // There are two `Icons.edit_outlined` on this screen now — the seller
+    // section's and this one — so `find.byIcon` matches both and cannot say
+    // which sheet it opened. The tooltips are already distinct because they
+    // have to be for a screen reader; using them here means the finder names
+    // the section rather than the glyph.
+    await reach(tester, find.byTooltip(strings.settingsEditTooltip));
+    await tester.ensureVisible(find.byTooltip(strings.settingsEditTooltip));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byTooltip(strings.settingsEditTooltip));
     await tester.pumpAndSettle();
 
     final Finder termField = find.widgetWithText(

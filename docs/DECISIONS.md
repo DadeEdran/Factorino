@@ -4705,7 +4705,7 @@ after. Baseline on `60b5cd5`, this measurement on the working tree with `pdf` re
 | Android APK, armeabi-v7a, release | 19,096,744 | **19,230,142** | +133,398 (+0.70%) |
 | Android APK, x86_64, release | 23,138,664 | **23,272,066** | +133,402 (+0.58%) |
 | Windows release bundle | 32,876,606 (17 files) | **33,116,830** (18 files) | **+240,224** (+0.73%), +1 file |
-| Android cold start, 5 runs | 1,401 ms median | **OWED** | needs the Redmi on the cable |
+| Android cold start | ~~1,401 ms median~~ **WITHDRAWN, D-078** | **TAKEN** | HEAD 343 ms vs the baseline commit's own 352 ms, measured paired in one session. The stored 1,401 ms does not reproduce on the commit it was taken on |
 
 **This delta is a floor, not the cost, and the difference matters.** Nothing reachable from
 `main()` imports `core/pdf/` yet — the renderer does not exist — so Dart's AOT compiler tree-shakes
@@ -5223,3 +5223,78 @@ prompt. It goes in (d)'s cable session with the cold-start measurement.
 
 Rendered and read at the ladder ceiling with both blocks, and with no seller at all. Both defects
 above were found that way and re-read after the fix.
+
+---
+
+## D-078 — The Phase 7 cold-start baseline is retired, and a startup number is only ever a paired measurement
+
+**Date:** 2026-09-02 (evening, the (d) cable session)
+
+**Decision.** The recorded Phase 7 cold-start baseline of **1,401 ms** is **withdrawn**. It must not
+be quoted, and no conclusion may rest on a comparison against it. Startup cost is from now on
+established by **measuring both builds in the same session on the same device**, never by comparing
+a fresh measurement against a stored one.
+
+**What happened.** HEAD (`f71791c`, after the whole PDF increment) measured **343 ms** median over
+ten steady-state runs — **four times faster** than the stored baseline. A change that only adds code
+does not make startup four times faster, so the result was treated as a symptom rather than as a
+finding.
+
+The control: commit **`60b5cd5`** — the exact commit the baseline was recorded on — was checked out
+into a worktree, rebuilt as a release arm64 APK, installed on the same Redmi in the same session,
+and measured identically.
+
+| Build | Median of 10 steady-state runs | Range |
+|---|---|---|
+| `f71791c` (HEAD) | 343 ms | 317–395 |
+| `60b5cd5` (the baseline commit, today) | 352 ms | 345–366 |
+| `60b5cd5` (**as recorded 2026-09-01**) | 1,401 ms | 1,330–1,465 |
+
+**With the code held exactly constant, the same phone gives 352 ms against 1,401 ms recorded.** The
+stored figure is therefore a property of that session, not of the application.
+
+**Reason.**
+
+1. **The comparison the baseline invited was false and flattering.** Reporting 343 against 1,401
+   would have credited the PDF increment with a 4x startup improvement it did not produce. This is
+   the same failure mode as the "byte-identical APK" claim corrected in D-077, arriving from the
+   opposite direction: there a number was too weak to carry a claim, here a number was wrong in a
+   way that made the claim spectacular. Both are cases of a measurement that agrees with what you
+   hoped, and the response is the same — control it before reporting it.
+2. **The paired measurement answers the question that was actually being asked.** The gate wants to
+   know what Phase 7 cost at startup. 343 vs 352, taken minutes apart with overlapping ranges, says
+   **nothing measurable** — and says it without depending on any stored figure at all.
+3. **A stored startup number has no error bar and no conditions attached.** Size figures survive
+   storage because a build is deterministic enough to re-derive; a launch time is a measurement of a
+   phone in a state, and the state is not in the record.
+
+**The cause of the 1,401 ms is NOT established, and is recorded as unexplained.** Checked and
+excluded: storage pressure (96% full then, 96% full now), Android dexopt (a release build is AOT, so
+the Java shim is all dexopt touches), and power source (USB in both sessions). Writing "device
+conditions" would be naming a category and calling it an explanation. Anyone who works out what it
+actually was should append it here.
+
+**Alternatives considered.**
+
+* **Report 343 ms against the 1,401 ms baseline and note the improvement.** Rejected — it is the
+  false claim above, and it is exactly what the correction culture in this project exists to catch.
+* **Re-take the baseline and store the new number instead.** Rejected as insufficient on its own: it
+  repeats the mistake with fresher digits. A stored number is only safe when the thing measured is
+  reproducible from the record, and this one demonstrably is not.
+* **Discard the whole startup measurement as unreliable.** Rejected — it is measurable, and the
+  paired form measures it well. What is unreliable is comparing across sessions, not the metric.
+* **Keep 1,401 ms with a caveat.** Rejected. A retired number with a footnote still gets quoted; the
+  footnote does not travel with it. It is struck out in `CURRENT_STATE.md` and replaced by the
+  paired figures.
+
+**Consequence for the phase.** The startup half of Phase 7's gate is **satisfied**: the PDF work
+costs nothing measurable at cold start. The size half is still a floor, and the floor claim rests on
+the **import graph** — nothing reachable from `main()` imports `core/pdf/` — rather than on the APK
+byte count, which D-077 proved is quantised past the point of usefulness at this magnitude. It
+becomes a real measurement the moment (d)'s provider makes `core/pdf/` reachable.
+
+**A note on method, since it generalises.** The worktree control cost about fifteen minutes: one
+`git worktree add` at the old commit, `flutter pub get --offline`, one release build, one install.
+For any measurement whose result would be surprising, rebuilding the old commit and measuring both
+in one sitting is available and cheap, and it is the only thing that separates *the code changed*
+from *the conditions changed*.

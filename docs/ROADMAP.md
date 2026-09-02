@@ -1749,7 +1749,7 @@ Exported files must be covered by `.gitignore`.
 | a | **The `pdf` dependency, the text layer and its two boundaries** (D-074): `FontGlyphSafety`, `DocumentText`/`DocumentTextBoundary`, `SafeText`, the ARB sweep as a test, `tool/render_document_text.dart` | `COMPLETED` 2026-09-02 |
 | b | **The view model, `InvoiceDocumentGenerator` and the one template** (D-076): header, party block, lines table, totals; the draft band and the party provenance line (D-075) | `COMPLETED` 2026-09-02 |
 | c | **The seller block and `schemaVersion = 5`** (D-077): four nullable `settings.seller_*` columns, the migration and its two ladders, the settings section and its sheet, the block on the page | `COMPLETED` 2026-09-02 |
-| d | Save/share, the phone-tier device pass, and the post-renderer size and cold-start measurement the gate still owes | `NOT_STARTED` |
+| d | Save/share, the phone-tier device pass, and the post-renderer size and cold-start measurement the gate still owes | `IN_PROGRESS` — the cable session ran 2026-09-02 evening: **cold start taken** (343 ms; and the old baseline retired, D-078), **phone-tier device pass done** (four suites, 0 layout errors; it found and fixed a regression (c) had shipped into `settings_device_test`, and now covers the seller sheet), **Android v5 migration proof PASS** on both ladders. Still to do: known issue 24, the provider, the save action, the empty-seller notice, the §7 artifact question, and the size figure — which only becomes measurable once the provider makes `core/pdf/` reachable |
 
 **The two product questions are decided — D-075**, both as recommended and both accepted. A draft
 **prints**, marked with an unmissable filled band, because refusing would push users to issue and
@@ -1888,7 +1888,7 @@ dependency never entered `pubspec.yaml` and the baseline below still sits on a P
 |---|---|
 | Android APK, arm64-v8a, release | **21,520,524 bytes** (also: armeabi-v7a 19,096,744; x86_64 23,138,664) |
 | Windows release bundle, total | **32,876,606 bytes** over 17 files |
-| Android cold start, 5 runs | **OWED** — needs the cable; taken with the owed Redmi device run |
+| Android cold start | **Do not use a stored baseline — D-078.** The 1,401 ms figure once recorded here is withdrawn: it does not reproduce on its own commit. `60b5cd5` measures **352 ms** median of 10 when rebuilt and measured today, against HEAD's **343 ms**. Startup cost is established by measuring both builds in one session on one device |
 
 ---
 
