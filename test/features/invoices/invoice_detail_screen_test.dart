@@ -930,6 +930,8 @@ void main() {
       );
       repo.details[view.invoice.id] = view;
       repo.failWrites = failWrites;
+      // The same switch covers the draft delete: 'writes fail' is one condition.
+      repo.failDelete = failWrites;
       payments.invoice = view.invoice;
 
       await pumpScreen(
@@ -962,6 +964,130 @@ void main() {
       await tester.pumpAndSettle();
       return strings;
     }
+
+    testWidgets('a draft offers deletion, and an issued invoice does not', (
+      WidgetTester tester,
+    ) async {
+      // **Known issue 27.** `softDeleteDraft` existed and was tested from
+      // Phase 4 and nothing called it, so a draft made by mistake could not be
+      // removed at all — the application unable to undo its own most common
+      // action. The two ways out are mutually exclusive by §6: a draft is
+      // deleted, an issued invoice is cancelled.
+      final (AppStrings draftStrings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      expect(find.text(draftStrings.invoiceDeleteDraftAction), findsOneWidget);
+      expect(find.text(draftStrings.invoiceCancelAction), findsNothing);
+
+      final (AppStrings issuedStrings, _) = await pumpCancellable(
+        tester,
+        view: detail(),
+      );
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      expect(find.text(issuedStrings.invoiceDeleteDraftAction), findsNothing);
+      expect(find.text(issuedStrings.invoiceCancelAction), findsOneWidget);
+    });
+
+    testWidgets('the delete confirmation says what it does not cost', (
+      WidgetTester tester,
+    ) async {
+      // The two facts the user cannot see: no number was spent (D-048) and
+      // nothing reached the customer. A confirmation that decays into
+      // «مطمئن هستید؟» is one people learn to dismiss.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceDeleteDraftAction));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceDeleteDraftTitle), findsOneWidget);
+      expect(find.text(strings.invoiceDeleteDraftBody), findsOneWidget);
+      expect(
+        strings.invoiceDeleteDraftBody,
+        allOf(contains('شماره'), contains('مشتری')),
+        reason:
+            'the copy must name the two things deleting does NOT cost, or it '
+            'is a bare confirmation',
+      );
+    });
+
+    testWidgets('confirming deletes the draft and leaves for the list', (
+      WidgetTester tester,
+    ) async {
+      final (
+        AppStrings strings,
+        FakeInvoiceRepository repo,
+      ) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceDeleteDraftAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.invoiceDeleteDraftAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(repo.deletedDrafts, <String>['i1']);
+      expect(find.text(strings.invoiceDeleteDraftSuccess), findsOneWidget);
+      // **Unlike cancelling, which stays.** A deleted draft's page has nothing
+      // left to show.
+      expect(lastLocation, '/invoices');
+    });
+
+    testWidgets('declining deletes nothing', (WidgetTester tester) async {
+      final (
+        AppStrings strings,
+        FakeInvoiceRepository repo,
+      ) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceDeleteDraftAction));
+      await tester.pumpAndSettle();
+      await tester.tap(find.widgetWithText(TextButton, strings.actionCancel));
+      await tester.pumpAndSettle();
+
+      expect(repo.deletedDrafts, isEmpty);
+      expect(lastLocation, '/');
+    });
+
+    testWidgets('a failed delete says so and stays on the page', (
+      WidgetTester tester,
+    ) async {
+      // Staying put is what lets the user try again; navigating away on a
+      // failure would leave them on the list wondering whether it worked.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.draft),
+        failWrites: true,
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceDeleteDraftAction));
+      await tester.pumpAndSettle();
+      await tester.tap(
+        find.widgetWithText(FilledButton, strings.invoiceDeleteDraftAction),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceDeleteDraftFailed), findsOneWidget);
+      expect(lastLocation, '/');
+    });
 
     testWidgets('an issued invoice offers cancellation', (
       WidgetTester tester,

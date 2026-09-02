@@ -227,7 +227,7 @@ final class InvoiceDocumentControllerProvider
 }
 
 String _$invoiceDocumentControllerHash() =>
-    r'3c0ad46f41642004826e30db7547215a8690f40c';
+    r'49e1db0cab0ba6e62d251c44df34935ce7fdea08';
 
 /// Generates an invoice PDF and hands it to the user to save.
 ///

@@ -1,0 +1,22 @@
+# Release signing material for the Android build.
+#
+# Copy this file to `android/key.properties` and fill in the real values. That
+# file is gitignored, as are *.jks and *.keystore -- none of this may ever be
+# committed.
+#
+# Create the keystore first. From the project root:
+#
+#   keytool -genkey -v -keystore android/app/upload-keystore.jks \
+#     -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+#
+# keytool will ask for a password and for your name and organisation. KEEP THE
+# KEYSTORE AND ITS PASSWORD. Losing either means you can never publish an update
+# to an app signed with it: Android identifies an app by its signature, and a
+# build signed with a different key cannot replace one already installed.
+# Back both up somewhere that is not this machine.
+
+storePassword=CHANGE_ME
+keyPassword=CHANGE_ME
+keyAlias=upload
+# Relative to the `android/` directory.
+storeFile=app/upload-keystore.jks

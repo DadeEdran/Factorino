@@ -660,16 +660,45 @@ prominent thing on a card without competing with it.
 | Data at rest (Android, Windows) | Encrypted SQLite — `sqlite3mc` via `package:sqlite3` build hooks, SQLCipher-compatible format (D-010, D-020) |
 | Encryption key | Random, generated once, in `flutter_secure_storage` (Keystore / DPAPI) |
 | Data at rest (Web) | **Not encrypted** — disclosed in Persian in-app (D-012) |
-| App lock | PIN (salted KDF hash) + biometric, idle timeout — Phase 9 |
+| App lock | **NOT BUILT.** Specified as PIN (salted KDF hash) + biometric with an idle timeout; `lib/core/security/` holds only the logger and the key manager, and `local_auth` is not a dependency. Phase 9, `DEFERRED_INDEFINITELY` (D-068) |
 | Secrets | `--dart-define-from-file`, gitignored, with a committed `.example` |
 | Injection | Drift typed parameterized queries only (D-018) |
 | Logging | Single wrapper; never logs identifiers, names or amounts; stripped in release |
 | Errors | Friendly Persian messages; never a stack trace, SQL, path or raw exception |
 
-**Threat model — covered:** lost or stolen device, shared Windows machine, casual local access,
-accidental secret leakage into the repository, dependency supply-chain drift.
+**Threat model. Corrected 2026-09-02 — this section previously claimed more than the build
+delivers.**
+
+**Covered:**
+
+* **Accidental secret leakage into the repository** — `.gitignore` covers keystores,
+  `key.properties`, `.env*`, exported backups and local databases; no key, token or credential is in
+  the tree, and the release signing config reads from a file that is never committed.
+* **Dependency supply-chain drift** — versions pinned, lockfile sanitized before every commit.
+* **Casual local access to the data files** — the database is encrypted at rest on Android and
+  Windows (D-010, D-020), and an exported backup is separately encrypted under a user passphrase
+  with an HMAC that rejects a tampered file (D-069).
+* **A shared Windows machine, in the file-access sense** — the database lives under the user's own
+  `%APPDATA%`, and it is encrypted, so another account with filesystem access cannot read it.
+
+**Half covered, and this is the correction:**
+
+* **A lost or stolen device.** Encryption at rest protects the *file*. It does not protect a
+  *running application on an unlocked device*, and **there is no app lock** — no PIN, no biometric,
+  no idle timeout, no `FLAG_SECURE`. Anyone holding an unlocked phone can open the app and read every
+  customer's name, کد ملی, telephone and نشانی along with the whole invoice history, and can export a
+  backup. The same is true of a shared Windows machine left logged in.
+  * What the encryption *does* still buy, and it is not nothing: the device powered off, or the
+    storage pulled, or the app's files copied off, all remain protected.
+  * Known issue 28. Nominally Phase 9/10, both `DEFERRED_INDEFINITELY` (D-068).
+
 **Not covered in v1, and documented as such:** a fully compromised OS with root/admin access, and
-browser-based storage on Web.
+browser-based storage on Web (D-012).
+
+**Why the correction is here rather than only in the known-issues list.** A threat model that
+overstates itself is worse than one that admits a gap: it is the document someone reads before
+deciding what the application may be trusted with. This one said "lost or stolen device" was covered
+while the single control that would cover it had never been built.
 
 ## B.12 Offline-first and the planned sync strategy
 

@@ -1262,6 +1262,23 @@ class AppStringsFa extends AppStrings {
   String get invoiceDocumentSellerPhoneLabel => 'تلفن';
 
   @override
+  String get invoiceDeleteDraftAction => 'حذف پیش‌نویس';
+
+  @override
+  String get invoiceDeleteDraftTitle => 'حذف این پیش‌نویس؟';
+
+  @override
+  String get invoiceDeleteDraftBody =>
+      'این پیش‌نویس از فهرست حذف می‌شود و برگرداندن آن ممکن نیست. چون هنوز صادر نشده، هیچ شماره‌ای مصرف نشده و چیزی برای مشتری ارسال نشده است.';
+
+  @override
+  String get invoiceDeleteDraftSuccess => 'پیش‌نویس حذف شد.';
+
+  @override
+  String get invoiceDeleteDraftFailed =>
+      'حذف پیش‌نویس انجام نشد. دوباره تلاش کنید.';
+
+  @override
   String get invoiceDocumentExportAction => 'ذخیرهٔ نسخهٔ PDF';
 
   @override

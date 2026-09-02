@@ -1,8 +1,22 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- android:allowBackup="false" — the project spec, known issue 15.
+         allowBackup defaults to TRUE, and with it the encrypted database and
+         the files alongside it can be pulled off some configurations with
+         `adb backup`, which is one of the two attacks the threat model claims
+         to cover. Leaving the default meant claiming a protection the build did
+         not have. No fullBackupContent and no dataExtractionRules either: an
+         allowlist is still a backup path.
+
+         android:usesCleartextTraffic="false" — nothing here talks to the
+         network at all, and when Supabase eventually does it will be over TLS.
+         Declaring it now means a plaintext request added later fails at the
+         point it is added rather than shipping quietly. -->
     <application
         android:label="فاکتورینو"
         android:name="${applicationName}"
-        android:icon="@mipmap/ic_launcher">
+        android:icon="@mipmap/ic_launcher"
+        android:allowBackup="false"
+        android:usesCleartextTraffic="false">
         <activity
             android:name=".MainActivity"
             android:exported="true"

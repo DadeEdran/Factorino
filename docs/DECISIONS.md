@@ -5538,8 +5538,18 @@ silent failure instead: flexible columns handed nothing, laid out successfully a
 Persian rendered **one glyph per row** — the exact defect D-065 was written for, on four screens, at
 every window width in a 280-pixel band that includes very common ones.
 
-So the severity is the opposite of how it looked. The red box was not the bug; it was the only reason
-the bug was visible before release.
+So the severity is the opposite of how it looked, and the owner put it better than this entry
+originally did:
+
+> **I didn't find a bug; I found the only build in which it was visible.**
+
+That sentence is the argument for `width_sweep_test.dart` existing at all, and it generalises past
+this defect. Every guard in this project that lives inside `assert` — the table minimum, and any that
+follow it — is **absent from the artifact users receive**. A debug run is therefore not a check on
+the release build; it is a check on a *different* build that happens to be noisier. What makes a
+guard count is a test that runs it, because the test is the only place the assert is guaranteed to
+be live and the only place a failure is recorded rather than merely displayed to whoever happened to
+be dragging a window at the time.
 
 ### Decision
 

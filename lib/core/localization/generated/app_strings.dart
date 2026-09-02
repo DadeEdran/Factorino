@@ -2364,6 +2364,36 @@ abstract class AppStrings {
   /// **'تلفن'**
   String get invoiceDocumentSellerPhoneLabel;
 
+  /// Deletes a draft invoice. Offered only on a draft, in the title row menu beside the export. Says 'delete the draft' rather than 'delete the invoice' because what is being removed is explicitly not yet an invoice -- it has no number and nobody has seen it, which is the whole reason deleting it is allowed where cancelling an issued one is not (section 6).
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف پیش‌نویس'**
+  String get invoiceDeleteDraftAction;
+
+  /// The confirmation dialog title. A question, because the action is irreversible from the user's point of view.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف این پیش‌نویس؟'**
+  String get invoiceDeleteDraftTitle;
+
+  /// Says what deleting does and what it costs, the way the cancellation dialog does rather than decaying into 'are you sure?'. Two facts the user cannot see and would otherwise ask about afterwards: no invoice number was spent (a draft never allocates one, D-048) and nothing reached the customer. The deletion is a soft delete in the schema, but that is a sync concern and not something the user can act on, so the copy says 'cannot be brought back' -- which is true of every route they have.
+  ///
+  /// In fa, this message translates to:
+  /// **'این پیش‌نویس از فهرست حذف می‌شود و برگرداندن آن ممکن نیست. چون هنوز صادر نشده، هیچ شماره‌ای مصرف نشده و چیزی برای مشتری ارسال نشده است.'**
+  String get invoiceDeleteDraftBody;
+
+  /// No description provided for @invoiceDeleteDraftSuccess.
+  ///
+  /// In fa, this message translates to:
+  /// **'پیش‌نویس حذف شد.'**
+  String get invoiceDeleteDraftSuccess;
+
+  /// Friendly Persian, no exception text and no identifier (section 7).
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف پیش‌نویس انجام نشد. دوباره تلاش کنید.'**
+  String get invoiceDeleteDraftFailed;
+
   /// The menu item on the invoice detail screen that generates the PDF and offers it to the user to save. In the title row menu beside cancellation, per the project spec: an actions card here would be the fourth block added above the invoice lines on this family of screens. Says 'save a PDF copy' rather than 'print' -- nothing is sent to a printer, a file is written where the user chooses.
   ///
   /// In fa, this message translates to:

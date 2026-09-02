@@ -55,4 +55,38 @@ class InvoiceCancellation extends _$InvoiceCancellation {
       link.close();
     }
   }
+
+  /// Soft-deletes this invoice, which must be a draft. Returns whether it was
+  /// written.
+  ///
+  /// **The other way a document is withdrawn**, and the one this file's own
+  /// header has described since Phase 5 (d) without anything calling it: a
+  /// draft is not cancelled, it is deleted, because cancellation marks a
+  /// document somebody has seen and a draft is one nobody has. §6 makes only
+  /// drafts deletable and the repository enforces it — `softDeleteDraft` throws
+  /// `InvoiceNotEditable` for anything else — so this stays a thin pass-through
+  /// for the same reason [cancel] does.
+  ///
+  /// **Soft**, like every delete in this schema (§6). The row keeps its
+  /// `deleted_at` so a future sync can propagate the deletion; a hard delete
+  /// cannot be told to another device.
+  Future<bool> deleteDraft() async {
+    // Outlives the widget for the same reason as `cancel`: the confirmation
+    // dialog is gone, and on success so is the whole screen.
+    final link = ref.keepAlive();
+    try {
+      await ref.read(invoiceRepositoryProvider).softDeleteDraft(invoiceId);
+      return true;
+    } on Object catch (error, stackTrace) {
+      AppLog.error(
+        () => 'deleting a draft invoice failed',
+        error: error,
+        stackTrace: stackTrace,
+        scope: 'invoice-cancellation',
+      );
+      return false;
+    } finally {
+      link.close();
+    }
+  }
 }

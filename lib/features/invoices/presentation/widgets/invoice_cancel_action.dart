@@ -59,6 +59,7 @@ class InvoiceCancelAction extends ConsumerWidget {
     // and D-061 that a cancelled invoice is still a document; a user who cannot
     // produce a PDF of the thing on their screen would have to ask why.
     final bool cancellable = detail.invoice.isCancellable;
+    final bool isDraft = detail.invoice.isEditable;
 
     return PopupMenuButton<_InvoiceAction>(
       tooltip: strings.actionMore,
@@ -66,6 +67,7 @@ class InvoiceCancelAction extends ConsumerWidget {
       onSelected: (_InvoiceAction action) => switch (action) {
         _InvoiceAction.export => _export(context, ref),
         _InvoiceAction.cancel => _cancel(context, ref),
+        _InvoiceAction.deleteDraft => _deleteDraft(context, ref),
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<_InvoiceAction>>[
         PopupMenuItem<_InvoiceAction>(
@@ -76,6 +78,16 @@ class InvoiceCancelAction extends ConsumerWidget {
           PopupMenuItem<_InvoiceAction>(
             value: _InvoiceAction.cancel,
             child: Text(strings.invoiceCancelAction),
+          ),
+        // **The two are mutually exclusive by construction**, since
+        // `isCancellable` is false exactly where `isEditable` is true. That is
+        // §6's rule rather than a UI choice: a draft is withdrawn by deleting
+        // it, an issued invoice by cancelling it, and offering both would be
+        // offering two ways out of one state.
+        if (isDraft)
+          PopupMenuItem<_InvoiceAction>(
+            value: _InvoiceAction.deleteDraft,
+            child: Text(strings.invoiceDeleteDraftAction),
           ),
       ],
     );
@@ -157,6 +169,71 @@ class InvoiceCancelAction extends ConsumerWidget {
     );
   }
 
+  /// Deletes the draft, after saying what that costs.
+  ///
+  /// **Known issue 27, and it was a gap rather than a decision.**
+  /// `softDeleteDraft` has existed and been tested since Phase 4; nothing ever
+  /// called it, so a draft created by mistake could not be removed at all. This
+  /// widget's own header has said since Phase 5 (d) that deletion is what a
+  /// draft should be offered instead of cancellation — *"which is not this
+  /// increment's"* — and then no increment took it.
+  ///
+  /// **This one leaves the page, unlike cancelling.** A cancelled invoice is
+  /// still a document and the state it has just entered is the one that needs
+  /// explaining, so that screen stays put. A deleted draft is not a document
+  /// and its page no longer has anything to show, so the user goes back to the
+  /// list — the same shape the customer screen's delete already uses.
+  Future<void> _deleteDraft(BuildContext context, WidgetRef ref) async {
+    final bool confirmed = await _confirmDelete(context);
+    if (!confirmed || !context.mounted) return;
+
+    final bool deleted = await ref
+.read(invoiceCancellationProvider(detail.invoice.id).notifier)
+.deleteDraft();
+    if (!context.mounted) return;
+
+    // The message is shown either way, but only a success navigates: leaving a
+    // failed delete on the page it failed on is what lets the user try again.
+    ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+      SnackBar(
+        content: Text(
+          deleted
+              ? strings.invoiceDeleteDraftSuccess
+: strings.invoiceDeleteDraftFailed,
+        ),
+      ),
+    );
+    if (deleted) context.go(AppDestination.invoices.path);
+  }
+
+  /// Says what deleting a draft costs, and the two things it does not cost.
+  ///
+  /// The two facts the user cannot see and would otherwise wonder about
+  /// afterwards: **no invoice number was spent** (a draft never allocates one,
+  /// D-048) and **nothing reached the customer**. Both are reasons this is safe,
+  /// which is what a confirmation should say when the action really is safe —
+  /// rather than «مطمئن هستید؟», which teaches people to dismiss dialogs.
+  Future<bool> _confirmDelete(BuildContext context) async {
+    final bool? confirmed = await showDialog<bool>(
+      context: context,
+      builder: (BuildContext context) => AlertDialog(
+        title: Text(strings.invoiceDeleteDraftTitle),
+        content: Text(strings.invoiceDeleteDraftBody),
+        actions: <Widget>[
+          TextButton(
+            onPressed: () => Navigator.of(context).pop(false),
+            child: Text(strings.actionCancel),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(context).pop(true),
+            child: Text(strings.invoiceDeleteDraftAction),
+          ),
+        ],
+      ),
+    );
+    return confirmed ?? false;
+  }
+
   /// Says what cancelling does **and does not** do, before it is done.
   ///
   /// Two sentences, and the second is conditional. The first is true of every
@@ -208,4 +285,4 @@ class InvoiceCancelAction extends ConsumerWidget {
   }
 }
 
-enum _InvoiceAction { export, cancel }
+enum _InvoiceAction { export, cancel, deleteDraft }
