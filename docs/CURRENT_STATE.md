@@ -2,6 +2,9 @@
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
 >
+> **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
+> deliberately does not, what is known broken, and what to do first. Then come back here.
+>
 > **Last updated: 2026-09-02 (night) — Phase 7 is COMPLETE, and a resize defect the owner found is
 > fixed (D-081).** The desktop breakpoint was 1024 and should have been 1312: between those widths
 > four screens laid a table out narrower than its columns need. In debug that is the red error box
