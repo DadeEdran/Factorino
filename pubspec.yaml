@@ -95,6 +95,37 @@ dependencies:
   file_selector: 1.1.0
   flutter_file_dialog: 3.3.2
 
+  # PDF generation (Phase 7, D-070 and D-073). Builds the page model and writes
+  # the file in pure Dart -- no platform renderer, so one implementation serves
+  # Android, Windows and Web, which is why it beat the alternatives for a
+  # three-platform target.
+  #
+  # It was measured before it was chosen, not after (D-070): a throwaway probe
+  # rendered real invoice pages and the pixels were read, because the risk here
+  # is not "does it produce a PDF" but "does it shape Persian correctly", and
+  # nothing about that is answerable from documentation. It shapes and joins
+  # Persian, lays RTL out, renders Persian digits and the Arabic thousands
+  # separator, and places a Latin invoice number correctly inside an RTL
+  # sentence. The size and startup cost it adds is recorded in D-074 against
+  # the entry-gate baseline taken on `60b5cd5`.
+  #
+  # Two faults in it are known, characterised, and worked around here rather
+  # than reported-and-waited-on. Both are recorded because a future reader will
+  # otherwise remove the workaround as unexplained:
+  #   * `TtfParser.readGlyph` does not check whether a glyph is empty, so any
+  #     zero-length glyph draws the NEXT glyph in the font (D-073). Guarded by
+  #     `core/pdf/font_glyph_safety.dart`, which derives the unsafe set from the
+  #     bundled font rather than listing characters.
+  #   * U+2068/U+2069 are absent from Vazirmatn and the shaper drops the last
+  #     character of a run containing them (D-070 finding 1). Stripped at the
+  #     view-model boundary.
+  #
+  # If it becomes unmaintained: the page model is built behind
+  # `InvoiceDocumentGenerator`, which takes an already-computed view model and
+  # computes nothing, so the surface to port is one implementation class. The
+  # two workarounds above are ours and move with it.
+  pdf: 3.13.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

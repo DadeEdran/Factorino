@@ -2,7 +2,12 @@
 
 > The continuity file. A fresh session reads this first and continues from the Next Action.
 >
-> **Last updated: 2026-09-02 — the ZWNJ blocker is solved (D-073), and two earlier diagnoses of it
+> **Last updated: 2026-09-02 — Phase 7 is OPEN and increment (a) is delivered (D-074).** The `pdf`
+> dependency is in, the text layer and its two boundaries are built and tested, and the entry-gate
+> size measurement is taken. **No document is generated yet.** Two product questions are with the
+> owner: what a draft prints, and what a pre-snapshot invoice prints for its party.
+>
+> Earlier the same day: **the ZWNJ blocker was solved (D-073), and two earlier diagnoses of it
 > were wrong.** It is not a missing glyph, not the subsetting, and not the control character:
 > `TtfParser.readGlyph` never checks whether a glyph is empty, so U+200C draws the **next glyph in
 > the font** — «à» in Vazirmatn — and every zero-width control is in the same hazard class. The
@@ -41,8 +46,9 @@ the phase. **Nothing is awaiting review.**
 
 **Phase 6 — Backup and Restore · `COMPLETED`** (2026-09-01) — all four increments delivered at
 D-068's reduced standards. **Nothing unfinished, nothing deferred out of it.**
-**Phase 7 — PDF Generation · `NOT_STARTED`** ← next, and the last phase in the plan.
-**Phase 7 — PDF Generation · `NOT_STARTED`** — the last phase in the plan.
+**Phase 7 — PDF Generation · `IN_PROGRESS`** — the last phase in the plan. **(a) delivered**
+2026-09-02 (D-074): the dependency, `core/pdf/`, the guards and the entry-gate measurement.
+**(b) is next**: the view model and `InvoiceDocumentGenerator`.
 **Phases 8–15 · `DEFERRED_INDEFINITELY`** (D-068). Not next, not later, not scheduled. Two items
 inside them are called out in `ROADMAP.md` as minutes of work that gate distribution rather than
 phase-sized work: the Android manifest's `allowBackup="false"` (known issue 15) and release
@@ -199,8 +205,8 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of Phase 6 (b)
-flutter test:               PASS   (1050/1050, was 1015 after (a), 1004)      as of Phase 6 (b)
+flutter analyze:            PASS   (No issues found)                          as of Phase 7 (a)
+flutter test:               PASS   (1137/1137, was 1092 before Phase 7 (a))   as of Phase 7 (a)
 Android build:              PASS   debug AND release APKs built (2026-09-01), release installed
                                    and cold-started on the Redmi
 
@@ -224,12 +230,19 @@ Backup gateway - Windows:   PASS   confirmed save through file_selector_windows,
                                    any suite -- MIUI refuses adb input injection
 Phase 7 cold-start baseline: TAKEN 1,401 ms median of runs 2-5 (1,330-1,465); run 1 was 3,440 ms
                                    and is kept separate as first-launch work. On `60b5cd5`
-ZWNJ remedy (D-073):        PROVEN on rendered pages, in the scratchpad probe -- NOT yet in the
-                                   product, which has no PDF code at all. 68/68 ARB entries
-                                   containing U+200C are unsafe through the current path and
-                                   0/68 through the remedy; the join break read off the page
-                                   (sh final, n initial); no line break at the split, at 7 widths.
-                                   The cause is pinned byte-for-byte: readGlyph(322) == readGlyph(323)
+ZWNJ remedy (D-073/D-074):  SHIPPED in core/pdf/, 45 new tests. 68/68 ARB entries carrying
+                                   U+200C are unsafe through a plain span and 0/68 through
+                                   SafeText; the join break, the word order and the atom's
+                                   baseline read off rendered pages at 4 sizes; no line break
+                                   inside the word at 6 widths. Cause pinned byte-for-byte:
+                                   readGlyph(322) == readGlyph(323). The derived unsafe set is
+                                   11 runes, not the 4 every write-up had named
+Phase 7 size, post-pdf:     TAKEN  arm64 21,653,926 (+133,402 on the 60b5cd5 baseline);
+                                   Windows bundle 33,116,830 over 18 files (+240,224), from a
+                                   CLEAN rebuild -- an uncleaned Release dir carries an 87 MB
+                                   stale kernel_blob.bin and reads 120 MB. A floor, not the
+                                   cost: nothing from main() imports core/pdf/ yet
+Phase 7 cold start, post:   OWED   needs the Redmi on the cable
 
 Persian content sweep:      PASS   11 screens x 3 tiers, strings at the length real data reaches,
                                    over the real repositories -- no crushed text anywhere (D-065)
@@ -2251,37 +2264,33 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-**Phase 6 is CLOSED.** Nothing is owed and nothing is awaiting review.
+**Phase 7 is open. Increment (a) is delivered and nothing from it is owed** except the two
+measurements named below, which cannot be taken until there is a renderer and a cable.
 
-**The ZWNJ blocker is diagnosed and its remedy is proven on rendered pages — D-073.** No product
-code has been written for it yet; Phase 7 has not started and `pdf` is still not in `pubspec.yaml`.
+**The single specific next action: Phase 7 (b) — the document view model and
+`InvoiceDocumentGenerator`.** Concretely:
 
-**The single specific next action: start Phase 7 — PDF Generation, whose first commit adds the `pdf`
-dependency and the ZWNJ-safe text builder D-073 specifies**, together with its two guards. Concretely:
+1. **Write the interface.** `ARCHITECTURE.md` §B.13 claimed Phase 1 defined
+   `InvoiceDocumentGenerator`; it never existed in `lib/`. The claim is withdrawn there (D-074) and
+   the interface belongs here: a platform-neutral contract taking a fully computed, already
+   formatted view model, with an implementation that fails loudly rather than producing nothing.
+2. **Build `InvoiceDocumentView` from `InvoiceDetail`**, formatted once, computing nothing —
+   `core/money/` stays the only calculator. Every string on it is a `DocumentText`, so the control
+   stripping happens at construction and cannot be skipped downstream.
+3. **The field type that carries rule 2's other half.** (a) made concatenation loud
+   (`DocumentText.toString()` returns a wrapper, not the text); (b) adds the label/value pair and
+   the widget that renders them as two widgets, which is what makes D-070 finding 2 disappear
+   rather than need a remedy. It was deliberately not built in (a) — a field widget with no
+   document to sit in is the speculative abstraction §15 forbids.
+4. **Answer the two product questions first**, because both change the view model's shape rather
+   than its layout. Proposals are with the owner: what a draft prints or whether it prints at all,
+   and what a pre-snapshot invoice prints for its party.
 
-1. Add `pdf` 3.13.0 to `pubspec.yaml` with the `docs/DECISIONS.md` justification §2 requires.
-2. Build the ZWNJ-safe text builder: a string is cut at every U+200C and the pieces are emitted as a
-   `WidgetSpan(Row(...))` **atom** — pieces in logical order, because the line's RTL mirroring does
-   not reach inside a `WidgetSpan`. Every Persian string the document draws goes through it.
-3. The **class guard**, which is the part that outlives this character: over the bundled font, no
-   rune the renderer is handed may map to a **zero-length glyph**. Ships with a negative control
-   that feeds it a raw ZWNJ and requires a failure (D-072).
-4. The ARB sweep as a test, not a probe: all **68** entries containing U+200C, through the real
-   renderer path.
-
-**Why the remedy is what it is, in one line:** the mark is not a missing-glyph box — `readGlyph`
-does not check whether a glyph is empty, so U+200C draws the **next glyph in Vazirmatn**, which is
-«à». Substitution is dead for the whole class (every zero-width control has a zero-length glyph),
-and pre-shaping was never actually tested — it had been aimed at `arabic.convert`, which this
-configuration never calls. Read D-073 before touching any of it.
-
-**The Phase 7 entry gate is already satisfied**: the baseline sits on `60b5cd5` (arm64 APK
-21,520,524 bytes; Windows bundle 32,876,606 bytes; cold start **1,401 ms** median of runs 2–5, run 1
-kept separate at 3,440 ms as first-launch work), and the viability probe is done (D-070). The print
-contract is settled and measured: **no control characters reach the renderer**, and **the label and
-the value are separate widgets, never one string**.
-
-**After Phase 7, and scheduled**: release signing and the two manifest lines (~1 hour, `ROADMAP.md`).
+**Two measurements are owed and are not owed to (b).** The Phase 7 gate wants the size figures
+re-taken **on the commit immediately after the renderer works** — (a)'s +133 KB APK and +240 KB
+Windows deltas are a floor, since nothing reachable from `main()` imports `core/pdf/` yet and the
+AOT compiler shakes most of `package:pdf` out. And the **Android cold start** re-measurement needs
+the Redmi on the cable; the 1,401 ms baseline stands unchallenged until then.
 
 ### The Phase 6 close, 2026-09-01
 

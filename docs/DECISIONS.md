@@ -4065,10 +4065,28 @@ them is a step at the view-model boundary, and it needs a test, not a comment.
 Latin or Persian-digit run inside RTL on its own), U+200E LRM (in the font, glyph 319, renders
 invisibly), or an explicit `pw.Directionality(textDirection: ltr)` around the run.
 
-> **Withdrawn 2026-09-02 — U+200E LRM is not usable and was never verified on a page (D-073).**
-> The renderer deletes it (Unicode Bidi rule X9) and the letters either side then **join**, so it
-> silently produces a misspelling wherever it is used to break a join; its glyph is zero-length, so
-> anywhere it survived it would draw «₪». "Nothing at all" and the explicit `Directionality` stand.
+> **Withdrawn 2026-09-02 (D-073). Adopted on inference, withdrawn on measurement — that is the
+> lesson, not the character.**
+>
+> The recommendation above says "all three verified working". Two of them were: they were rendered
+> and the pixels were read. **U+200E was not.** What was actually checked was Vazirmatn's `cmap` —
+> U+200E is in it, at glyph 319 — and "so it renders invisibly" was then inferred from that and
+> written down in the same sentence as the two that had been seen. The inference is wrong twice
+> over: the renderer **deletes** the LRM before shaping (Unicode Bidi rule X9), so the letters
+> either side **join** and the string silently becomes a misspelling; and glyph 319 is zero-length,
+> so on any path where it did survive it would draw «₪» rather than nothing.
+>
+> Neither failure is visible in the output. A misspelled Persian word still looks like a word, so no
+> reviewer, no test and no proofread would have caught it — this was on its way into every printed
+> document.
+>
+> **A `cmap` reading is not a page.** A `cmap` says which glyph a rune selects; it says nothing
+> about whether that glyph is what gets drawn, nothing about whether the rune survives the shaper,
+> and nothing about what the shaping does to its neighbours. D-070's own method note already
+> required rendering pages and reading pixels; this line is where that rule was relaxed for one
+> item because the font table seemed to settle it, and it is the one item that was wrong.
+>
+> "Nothing at all" and the explicit LTR `Directionality` stand — both were rendered.
 
 ### 2. A number containing spaces or a `+` still scrambles, and that is the real isolation case
 
@@ -4657,3 +4675,161 @@ content stream held, and paid twice: the à was identified by looking at it, and
 found by a raster diff that came back zero after the source had been read three times without
 finding it. The dependency still has not entered `pubspec.yaml`; all of this ran in the scratchpad
 probe package.
+
+---
+
+## D-074 — Phase 7 (a): the `pdf` dependency, what it costs, and the two boundaries it needs
+
+**Date:** 2026-09-02
+**Status:** ACCEPTED
+**Opens:** Phase 7
+**Implements:** D-073's remedy, and D-070's contract rules 1 and 2 at the view-model boundary.
+
+### The dependency, and the entry-gate measurement
+
+`pdf: 3.13.0` is in `pubspec.yaml` with the §2 justification, including — unusually, and
+deliberately — a written record of the **two faults in it that this application works around**, so
+that a future reader does not remove a workaround they cannot explain.
+
+It pulls **ten** transitive packages: `archive`, `barcode`, `bidi`, `image`, `path_parsing`,
+`petitparser`, `posix`, `qr`, `xml`, and `crypto` (already present). That is a wide addition for one
+feature and is accepted because the alternative — a platform renderer per target — is three
+implementations of the thing §12 exists to keep single.
+
+The Phase 7 gate requires the size baseline to be taken **before** the dependency and re-taken
+after. Baseline on `60b5cd5`, this measurement on the working tree with `pdf` resolved:
+
+| Measurement | Baseline (`60b5cd5`) | With `pdf` | Δ |
+|---|---|---|---|
+| Android APK, arm64-v8a, release | 21,520,524 | **21,653,926** | **+133,402** (+0.62%) |
+| Android APK, armeabi-v7a, release | 19,096,744 | **19,230,142** | +133,398 (+0.70%) |
+| Android APK, x86_64, release | 23,138,664 | **23,272,066** | +133,402 (+0.58%) |
+| Windows release bundle | 32,876,606 (17 files) | **33,116,830** (18 files) | **+240,224** (+0.73%), +1 file |
+| Android cold start, 5 runs | 1,401 ms median | **OWED** | needs the Redmi on the cable |
+
+**This delta is a floor, not the cost, and the difference matters.** Nothing reachable from
+`main()` imports `core/pdf/` yet — the renderer does not exist — so Dart's AOT compiler tree-shakes
+almost all of `package:pdf` out of the snapshot. What is measured here is the cost of the
+dependency being *resolved and present*. The number the gate actually asks for is the one taken
+**on the commit immediately after the renderer works**, and it is still owed. Recording this
+interim point anyway, because a third of a megabyte of unexplained growth six commits from now
+would otherwise be attributed to the renderer.
+
+**Method note, worth more than the numbers.** The first Windows measurement came back at
+**120,286,782 bytes over 19 files** — a 3.7× jump that no pure-Dart package could cause. The
+Release directory held a stale **`data/flutter_assets/kernel_blob.bin` of 87,169,952 bytes**, a
+JIT artifact left over from an earlier debug build, because `flutter build` does not clean the
+output directory. **A bundle size taken without `flutter clean` first is not a measurement.** The
+figure above is from a clean rebuild, verified by asserting `kernel_blob.bin` is absent. The
+baseline was evidently taken clean, since it is in the same range; had it not been, the comparison
+would have been meaningless in the other direction.
+
+The one extra file is not attributed: the baseline recorded a count and not a listing, so saying
+which file appeared would be a guess.
+
+### Two boundaries, because there are two faults
+
+D-073 and D-070 finding 1 look like the same problem — "a control character breaks the document" —
+and have opposite remedies. Conflating them was going to produce a fix that half-worked.
+
+| | D-073, the font fault | D-070 finding 1, the shaper fault |
+|---|---|---|
+| the characters | U+200C and friends: **mapped, but the glyph is empty** | U+2068/U+2069: **not in the `cmap` at all** |
+| what goes wrong | draws the *next* glyph — `à`, at zero advance | the run loses its **last character**, silently |
+| can a font-derived set see it? | yes, that is exactly what it derives | **no** — nothing empty to find |
+| the remedy | **cut** the run there; the character meant something | **delete** it; the document has no use for it |
+| where it lives | `core/pdf/safe_text.dart` | `core/pdf/document_text.dart` |
+
+Neither remedy fixes the other's fault. Cutting at a U+2068 would break a join that should not
+break; deleting a U+200C yields «پیشنویس», a misspelling.
+
+### `FontGlyphSafety` — the class guard, derived from the font
+
+Reads `head`, `maxp`, `loca`, `cmap` and `hhea` out of the bundled font and answers one question:
+which runes select a glyph with no outline of its own.
+
+**Derived rather than listed, at the owner's direction, and it immediately paid.** Every written
+account of this fault — D-070, D-072, D-073 — named four characters: ZWNJ, ZWJ, LRM, RLM. The
+derivation over Vazirmatn returns **eleven**:
+
+```
+U+0000  U+200B  U+200C  U+200D  U+200E  U+200F  U+202A  U+202B  U+202C  U+202D  U+202E
+```
+
+ZWSP and the five bidi embedding and override controls were in the hazard the whole time and nobody
+wrote them down. A hardcoded list would have been wrong on the day it was committed, and wrong
+again the day the font is updated. `font_glyph_safety_test.dart` asserts the four *and* the seven,
+under a test named for the argument.
+
+**Whitespace is excluded, and that exclusion is the reason the fault survived so long.** U+0020 has
+an empty glyph in most fonts and renders perfectly — because `RichText` splits every span on
+`RegExp(r'\s')` and advances the pen for the empty pieces, so a space's glyph is never read at all.
+"Empty glyphs are fine, look at spaces" is the natural inference and it is wrong.
+
+**It parses the font itself rather than reusing `package:pdf`'s parser**, which looks like
+duplication and is the opposite: a guard derived from the reading it is guarding agrees with it by
+construction (D-072). The agreement is asserted instead — every one of the **811** runes the
+package's `charToGlyphIndexMap` holds maps identically here, expressed as `unknown.isEmpty` rather
+than as a threshold somebody chose. The file also carries a **subject control**: it asserts that
+`readGlyph` still returns the following glyph for an empty one, so if a future `pdf` fixes the bug,
+the suite says so rather than carrying a workaround for a defect that no longer exists.
+
+### `SafeText` — the remedy, as an atom
+
+Cuts a string at every unsafe rune and emits the affected **word** as a
+`WidgetSpan(Row(pieces))` — indivisible, so a line break cannot land inside it (D-073 measured a
+bare span split breaking «پیش‌نویس» at four of seven column widths). Only words that carry a
+control become atoms; everything else stays ordinary, wrappable text.
+
+**The atom's vertical placement is read from the font, not tuned by eye.** A `WidgetSpan` is
+positioned by its box and surrounding text by its baseline, so the box drops by the font's
+descent — `hhea.descender / head.unitsPerEm`, **−985 / 2048 = −0.4810** for Vazirmatn. An earlier
+probe had guessed −0.22 and it looked acceptable at one size; the rendered check at 9, 12, 18 and
+28 pt shows the derived value sitting the atom exactly on the line, with «قبل» and «بعد» either
+side of it as the control.
+
+### `DocumentText` — the view-model boundary, as a type
+
+D-070's contract rule 1 says no control characters reach the renderer. A `stripControls(…)` helper
+would enforce that only where somebody remembered to call it, so it is a **type** instead:
+`SafeText` accepts `DocumentText` and nothing else, and the only way to obtain one is through
+`DocumentTextBoundary`. A raw `String` from the screen layer cannot reach the renderer.
+
+The removal set is `FontGlyphSafety`'s derived set **minus the join-breakers** — U+200C and U+200B,
+which mean "do not join" and are honoured by cutting rather than deleting — **plus** the isolates
+and `U+061C`, which a font-derived set cannot see because Vazirmatn does not map them. The
+two-character exception is the one hardcoded list in any of this, and it is hardcoded because it is
+a fact about Unicode semantics rather than about which glyphs happen to be empty. No amount of
+reading `loca` produces it.
+
+`document_text_test.dart` exercises **the application's own formatters** rather than imitating
+them: it takes `formatIdentifierForDisplay('0069543210')` — the real §9 screen formatter — asserts
+that its output really does carry U+2068/U+2069, and then asserts all ten digits survive the
+boundary. That is the D-072 corollary applied: the control calls the real instrument.
+
+### Rule 2, as far as a type can carry it
+
+D-070's contract rule 2 — the label and the value are separate widgets, never concatenated — is
+what makes finding 2 *disappear* rather than need a remedy, since every field in probe 3 rendered
+correctly bare and scrambled only when sharing a run with its own Persian label. `'تلفن: ' + number`
+is the whole bug, and `'$label: $value'` is one keystroke away at every call site.
+
+Dart cannot forbid interpolation, so it is made **loud**: `DocumentText.toString()` returns
+`DocumentText(11 chars)` rather than the text. A page built by concatenation shows a wrapper — wrong
+immediately and wrong in the proof — instead of a phone number that is subtly reordered and only
+for values containing a space or a `+`.
+
+**This is half of rule 2 and is stated as half.** The other half is the field-rendering helper that
+emits label and value as two widgets, and it lands with the document layout rather than now: a
+field widget with no document to sit in is the speculative abstraction §15 forbids.
+
+### What this increment does not contain
+
+No document. No `InvoiceDocumentGenerator`, no page layout, no view model, no generated file. This
+is the text layer and its two boundaries, which is what D-073 said Phase 7's first commit should
+be. **`ARCHITECTURE.md` §B.13 claimed the `InvoiceDocumentGenerator` interface was defined in
+Phase 1; it never was** — `grep` finds it in the documentation and nowhere in `lib/`. Corrected
+there rather than quietly satisfied here, per §17's rule against documenting architecture that does
+not exist.
+
+**1137 tests pass**, was 1092 (+45). `flutter analyze` clean.

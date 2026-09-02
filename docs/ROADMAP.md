@@ -1742,7 +1742,20 @@ Exported files must be covered by `.gitignore`.
 
 ## Phase 7 — PDF Generation
 
-**Status:** `NOT_STARTED` — interface only in Phase 1, and **the last phase in the plan** (D-068).
+**Status:** `IN_PROGRESS` — (a) delivered 2026-09-02, and **the last phase in the plan** (D-068).
+
+| # | Increment | Status |
+|---|---|---|
+| a | **The `pdf` dependency, the text layer and its two boundaries** (D-074): `FontGlyphSafety`, `DocumentText`/`DocumentTextBoundary`, `SafeText`, the ARB sweep as a test, `tool/render_document_text.dart` | `COMPLETED` 2026-09-02 |
+| b | **The view model and `InvoiceDocumentGenerator`** — the interface ARCHITECTURE §B.13 wrongly claimed Phase 1 had built, plus the field type that carries rule 2's other half | `NOT_STARTED` |
+| c | The one invoice template, laid out | `NOT_STARTED` |
+| d | Save/share, the phone-tier device pass, and the post-renderer size and cold-start measurement the gate still owes | `NOT_STARTED` |
+
+**Two open product questions carried into (b)**, both raised with the owner and neither decided in
+(a): what a **draft** prints — or whether it prints at all — and what a **pre-snapshot** invoice
+prints for its party.
+
+Reduced to **one template**: no template choice, no logo upload, no customisation (D-068).
 Reduced to **one template**: no template choice, no logo upload, no customisation — a clean Persian
 invoice that prints correctly. Phone-tier device pass, one large realistic amount. **Not** reduced:
 the renderer receives a fully computed, already formatted view model and computes nothing, and
@@ -1777,6 +1790,15 @@ would describe a shell rather than a product, and a baseline nobody trusts is wo
 invites attributing later growth to whatever happened to be measured. This gate is the right place
 for it (owner, 2026-08-24).
 
+
+**Security note, increment (a).** No new stored data, no new input, no new permission and no new
+platform surface: (a) adds a dependency and three pure-transformation classes, and generates no
+file. The threat model moves in one place — **ten transitive packages** arrive with `pdf`
+(`archive`, `barcode`, `bidi`, `image`, `path_parsing`, `petitparser`, `posix`, `qr`, `xml`), which
+is supply-chain surface §7 asks to be counted rather than waved through. None of them requests a
+permission or opens a socket; `pdf` builds the page model in pure Dart. Diagnostics in the new code
+report **codepoints, never the text** — an invoice line title is customer content and §7 forbids
+logging it, and a "which character broke this?" log line is exactly where that rule gets forgotten.
 
 **Security note.** Generated PDFs contain full customer and financial data and are written to
 user-accessible storage. Temporary files must be cleaned up, and any share/print intent on Android is

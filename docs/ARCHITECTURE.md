@@ -684,7 +684,39 @@ solve that the current schema only reserves space for is invoice-number collisio
 
 ## B.13 PDF boundary
 
-Phase 1 defines `InvoiceDocumentGenerator` as a platform-neutral interface with a single
-implementation that **fails loudly** rather than silently producing nothing. The interface takes a
-fully computed, already formatted view model, so the eventual renderer cannot recompute — and
-therefore cannot disagree with — the invoice totals.
+> **Corrected 2026-09-02.** The paragraph below described a plan, not the code. `grep` for
+> `InvoiceDocumentGenerator` finds it in this file and **nowhere in `lib/`** — the interface was
+> never written, in Phase 1 or since. §17 forbids documenting architecture that does not exist, so
+> the claim is withdrawn rather than quietly satisfied by adding the file. What Phase 7 (a) *did*
+> build is described below it; the generator interface lands with the document itself.
+
+~~Phase 1 defines `InvoiceDocumentGenerator` as a platform-neutral interface with a single
+implementation that **fails loudly** rather than silently producing nothing.~~ The **intent** stands
+and is what Phase 7 builds to: the interface takes a fully computed, already formatted view model,
+so the renderer cannot recompute — and therefore cannot disagree with — the invoice totals.
+
+### What exists today: `core/pdf/`, the text layer and its two boundaries
+
+Phase 7 (a) built the layer every later piece sits on, because two separate faults in
+`package:pdf` make Persian text unsafe to hand it raw (D-070, D-073, D-074).
+
+```
+core/pdf/
+  font_glyph_safety.dart   pure Dart. Reads head/maxp/loca/cmap/hhea out of the bundled
+                           font and derives which runes select an EMPTY glyph -- those
+                           draw the NEXT glyph in the font instead of nothing.
+  document_text.dart       DocumentText + DocumentTextBoundary. The only way to obtain
+                           text the renderer will accept. Deletes the controls the font
+                           cannot draw at all; keeps the two that mean "do not join".
+  safe_text.dart           SafeText. Cuts a run at the join-breakers and emits the
+                           affected word as an indivisible WidgetSpan atom.
+```
+
+The direction of flow is one-way and enforced by types: a screen-layer `String` →
+`DocumentTextBoundary` → `DocumentText` → `SafeText` → spans. `SafeText` accepts nothing but
+`DocumentText`, so the control-stripping step cannot be skipped at a call site.
+
+`font_glyph_safety.dart` carries **no Flutter import**, for the same reason `core/money/` does not:
+it is answering a question about bytes, and staying plain Dart is what lets
+`tool/render_document_text.dart` drive the real production classes when a page has to be looked at
+rather than reasoned about.
