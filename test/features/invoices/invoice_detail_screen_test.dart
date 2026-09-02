@@ -965,6 +965,68 @@ void main() {
       return strings;
     }
 
+    testWidgets('a settled invoice withdraws the floating action and says why', (
+      WidgetTester tester,
+    ) async {
+      // **Finding 5.** A fully paid invoice went on offering «ثبت پرداخت» as
+      // the page's primary action, which is wrong twice over: nothing is owed,
+      // and the floating slot is for the thing the user came to do.
+      //
+      // Withdrawing it silently is the mistake a draft's page made, so the card
+      // says the invoice is settled — and it keeps the way in, because money
+      // arriving twice is a fact the record has to be able to hold.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(
+          status: InvoiceStatus.paid,
+          payments: <Payment>[payment(20000000)],
+        ),
+      );
+
+      expect(
+        find.widgetWithText(
+          FloatingActionButton,
+          strings.invoiceDetailRecordPayment,
+        ),
+        findsNothing,
+        reason: 'nothing is owed, so this is not the page\'s primary action',
+      );
+      expect(
+        find.text(strings.invoiceDetailPaymentsSettled),
+        findsOneWidget,
+        reason: 'a control that vanishes without a word reads as broken',
+      );
+      expect(
+        find.widgetWithText(FilledButton, strings.invoiceDetailRecordPayment),
+        findsOneWidget,
+        reason:
+            'an overpayment must stay recordable: money really does arrive '
+            'twice, and the record has to be able to hold that',
+      );
+    });
+
+    testWidgets('a partly paid invoice keeps the floating action', (
+      WidgetTester tester,
+    ) async {
+      // The boundary: something is still owed, so the primary action stands.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(
+          status: InvoiceStatus.partiallyPaid,
+          payments: <Payment>[payment(5000000)],
+        ),
+      );
+
+      expect(
+        find.widgetWithText(
+          FloatingActionButton,
+          strings.invoiceDetailRecordPayment,
+        ),
+        findsOneWidget,
+      );
+      expect(find.text(strings.invoiceDetailPaymentsSettled), findsNothing);
+    });
+
     testWidgets('a draft offers issuing, in the slot the phone puts it', (
       WidgetTester tester,
     ) async {

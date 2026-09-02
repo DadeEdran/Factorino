@@ -143,6 +143,7 @@ class InvoiceEditorState {
     this.discountPercentBp,
     this.taxRateBp,
     this.notes,
+    this.editingInvoiceId,
   }) : totals = calculateInvoice(
          InvoiceInput(
            lines: <InvoiceLineInput>[
@@ -159,6 +160,18 @@ class InvoiceEditorState {
            roundingUnitRial: settings.roundingUnitRial,
          ),
        );
+
+  /// The **saved draft** this form is editing, or null when it is composing a
+  /// new invoice (known issue 29).
+  ///
+  /// **On the state rather than in the provider's family key**, deliberately.
+  /// `invoiceEditorProvider` is keyed by the instant the form opened, and that
+  /// key is threaded through four widgets; adding a second key would have
+  /// touched every one of them and their tests to express something only
+  /// [save] reads. Carrying it here also means it survives the rebuild that a
+  /// settings change causes, which goes through `copyWith` and would otherwise
+  /// drop it — turning an edit into a second invoice silently.
+  final String? editingInvoiceId;
 
   /// The settings the preview was computed against.
   ///
@@ -276,6 +289,7 @@ class InvoiceEditorState {
     int? taxRateBp,
     bool clearNotes = false,
     String? notes,
+    String? editingInvoiceId,
   }) {
     return InvoiceEditorState(
       settings: settings ?? this.settings,
@@ -291,6 +305,8 @@ class InvoiceEditorState {
           : (discountPercentBp ?? this.discountPercentBp),
       taxRateBp: clearTaxRate ? null : (taxRateBp ?? this.taxRateBp),
       notes: clearNotes ? null : (notes ?? this.notes),
+      // Never cleared through `copyWith`: an edit does not stop being an edit.
+      editingInvoiceId: editingInvoiceId ?? this.editingInvoiceId,
     );
   }
 }

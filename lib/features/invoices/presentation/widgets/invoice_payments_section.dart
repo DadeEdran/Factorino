@@ -45,11 +45,26 @@ class InvoicePaymentsSection extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final ThemeData theme = Theme.of(context);
     final bool acceptsPayments = detail.invoice.acceptsPayments;
+    // **Settled means nothing is owed, not that nothing more can arrive.**
+    // Once the invoice is fully paid the floating action is withdrawn — the
+    // floating slot is for the page's *primary* action, and on a settled
+    // invoice recording more money is an exception rather than the thing the
+    // user came to do. But money genuinely arriving twice is a fact the record
+    // has to be able to hold, so the way in moves here rather than closing:
+    // beside the payments already listed, which is where an exceptional
+    // addition belongs.
+    final bool isSettled = acceptsPayments && detail.isFullyPaid;
+
     // **The button is absent on a phone because the floating one is already
     // there**, exactly as the invoice list omits its empty-state button on
     // mobile: a second control saying the same thing is one too many (§10). On
     // the wider tiers there is no floating action, and this is the only way in.
-    final bool showInlineAction = acceptsPayments && !context.tier.isMobile;
+    //
+    // The exception is a settled invoice, where the phone has no floating
+    // action to defer to — so the card carries it, and the two are still never
+    // on screen together.
+    final bool showInlineAction =
+        acceptsPayments && (!context.tier.isMobile || isSettled);
 
     final bool isCancelled = detail.invoice.status == InvoiceStatus.cancelled;
 
@@ -91,6 +106,19 @@ class InvoicePaymentsSection extends ConsumerWidget {
                 isLast: payment == detail.payments.last,
               ),
           const SizedBox(height: AppSpacing.md),
+          // **Said, not merely shown by absence.** Withdrawing the floating
+          // action without explaining it is exactly what made a draft's page
+          // read as broken rather than as finished, and a settled invoice is
+          // the happier version of the same silence.
+          if (isSettled) ...<Widget>[
+            Text(
+              strings.invoiceDetailPaymentsSettled,
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurfaceVariant,
+              ),
+            ),
+            const SizedBox(height: AppSpacing.md),
+          ],
           if (showInlineAction)
             Align(
               alignment: AlignmentDirectional.centerStart,

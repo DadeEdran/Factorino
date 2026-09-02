@@ -2364,11 +2364,23 @@ abstract class AppStrings {
   /// **'تلفن'**
   String get invoiceDocumentSellerPhoneLabel;
 
+  /// Shown in the payments card when the invoice is fully paid. It replaces the floating record-payment action, which is hidden once nothing is owed -- the floating slot is for the page's primary action and on a settled invoice recording more money is an exception, not the main thing to do. The sentence exists because hiding a control without saying why is how a page comes to look broken (the same mistake a draft's inert page made). It must keep naming the way in: money genuinely arriving twice is a fact the record has to be able to hold, so an overpayment stays recordable rather than being refused.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور تسویه شده است. اگر مبلغی دوباره دریافت شد، می‌توانید آن را همین‌جا به‌عنوان اضافه‌پرداخت ثبت کنید.'**
+  String get invoiceDetailPaymentsSettled;
+
   /// Issues a saved draft, from the invoice detail screen. Short, because it is a floating action label on a phone. The confirmation it opens reuses invoiceIssueConfirmTitle/Body/Action, which the editor already had -- the consequences are identical wherever issuing is started from, and two different explanations of one irreversible act is how they drift apart.
   ///
   /// In fa, this message translates to:
   /// **'صدور فاکتور'**
   String get invoiceIssueAction;
+
+  /// Reopens a saved draft in the invoice editor (known issue 29). Only a draft is editable -- section 6 -- so this never appears on an issued invoice, where the correction path is cancellation instead. Says 'edit the draft' rather than 'edit the invoice' for the same reason the delete item does: what is being changed is explicitly not yet an invoice.
+  ///
+  /// In fa, this message translates to:
+  /// **'ویرایش پیش‌نویس'**
+  String get invoiceEditDraftAction;
 
   /// Deletes a draft invoice. Offered only on a draft, in the title row menu beside the export. Says 'delete the draft' rather than 'delete the invoice' because what is being removed is explicitly not yet an invoice -- it has no number and nobody has seen it, which is the whole reason deleting it is allowed where cancelling an issued one is not (section 6).
   ///

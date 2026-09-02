@@ -80,6 +80,14 @@ GoRouter createRouter() {
                 builder: (BuildContext context, GoRouterState state) =>
                     const InvoiceEditorScreen(),
               ),
+              // `:id/edit` before `:id` for the same reason `new` comes before
+              // both: declaration order decides, and `:id` would otherwise
+              // match `/invoices/x/edit` as a detail page.
+              GoRoute(
+                path: ':id/edit',
+                builder: (BuildContext context, GoRouterState state) =>
+                    InvoiceEditorScreen(invoiceId: state.pathParameters['id']!),
+              ),
               GoRoute(
                 path: ':id',
                 builder: (BuildContext context, GoRouterState state) =>

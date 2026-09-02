@@ -5695,3 +5695,143 @@ recorded because the shape recurs: **a guard placed at configuration time fires 
 never meant to judge.** It now attaches to the release assemble/bundle *tasks*, and only when the
 keystore is absent, so a debug build never sees it. Both directions re-verified: `--debug` builds,
 `--release` refuses with the written message.
+
+---
+
+## D-083 — A guard placed at configuration time fires for builds it was never meant to judge
+
+**Date:** 2026-09-02 (night). Lifted out of D-082 into its own entry at the owner's direction,
+because the lesson is not about signing.
+
+**What happened.** The release-signing refusal (D-081's companion work) was written as a `throw`
+inside `buildTypes { release { ... } }` in `android/app/build.gradle.kts`. **Gradle configures every
+build type on every invocation, regardless of which one is being assembled**, so `assembleDebug` ran
+straight into it. That broke `flutter run`, `flutter test -d <device>`, and every integration suite —
+i.e. the entire ability to put the application on a phone — for a guard that was only ever meant to
+stop an unsigned *release*.
+
+**How it was caught: by running the thing.** The next action after adding it was the phone device
+suite, which failed immediately with the guard's own message. Reading the diff would not have found
+it; the code says "release" three times and looks exactly like what was intended. The build log said
+`Build file 'build.gradle.kts' line: 79` while assembling **debug**, and that line is the whole
+diagnosis.
+
+**The fix.** The refusal now attaches to the *tasks that emit a release artifact*, and only when the
+keystore is absent:
+
+```kotlin
+if (!keystorePropertiesFile.exists()) {
+    tasks.matching { task ->
+        task.name.contains("Release") &&
+            (task.name.startsWith("assemble") || task.name.startsWith("bundle"))
+    }.configureEach { doFirst { throw GradleException(...) } }
+}
+```
+
+`signingConfig` is simply `null` when there is no keystore — never the debug key, which was the
+original point.
+
+**Both directions re-verified**, which is the standing rule for a guard in this project: `--debug`
+builds and installs; `--release` refuses with the written message; and with a throwaway keystore the
+release APK is signed with it and not with `CN=Android Debug`.
+
+### Why this is its own entry
+
+**It is the resize defect's lesson from the other direction, and together they make a rule.**
+
+* D-081: a guard that lives inside `assert` **does not exist** in the artifact users receive, so a
+  debug run is not a check on the release build.
+* D-083: a guard that runs at Gradle **configuration** time exists in *every* build, including the
+  ones it was never meant to judge.
+
+The general form: **a check is only as good as the conditions it actually runs in, and both failures
+were invisible to reading and immediate on running.** Neither a unit test nor a careful diff review
+would have surfaced either one; a debug run surfaced this in seconds and a dragged window surfaced
+the other.
+
+The practical consequence for whoever works on this next: after touching the build files, the
+verification is not "the release build still works" — it is **build a debug APK, build a release
+one, and confirm each does what it should**, because the two share configuration and a change aimed
+at one lands on both.
+
+---
+
+## D-084 — A settled invoice, an editable draft, and numbers that replace themselves
+
+**Date:** 2026-09-03. Findings 5, 29 and 6 from the owner's phone testing.
+
+### Finding 5 — a fully paid invoice went on offering «ثبت پرداخت» as its primary action
+
+**Wrong twice over:** nothing is owed, and the floating slot is for the thing the user came to do.
+
+**But hiding it outright is not available**, because money genuinely arriving twice is a fact the
+record has to be able to hold — a duplicate transfer, a customer paying an invoice they had already
+settled. Refusing to record that would make the ledger unable to describe what happened, which is a
+worse fault than an unnecessary button.
+
+**Decision: the action moves rather than closes.** Once `isFullyPaid`, the floating action is
+withdrawn and the **payments card carries it instead**, beside the payments already listed — which is
+where an exceptional addition belongs. On the phone that is a change to the existing rule that the
+card omits the action (D-060), and the rule it was protecting still holds: the two are never on
+screen together.
+
+**And the withdrawal is said, not left to be inferred.** `invoiceDetailPaymentsSettled` states that
+the invoice is settled and that a further receipt can still be recorded here. Removing a control
+silently is precisely what made a draft's page read as broken in D-082, and a settled invoice is the
+happier version of the same silence.
+
+The alternative — keep the button and refuse with copy — was rejected: a control whose only purpose
+is to explain why it does nothing is the affordance-leading-nowhere D-021 rules out, and it would
+have left overpayment unrecordable anyway.
+
+### Finding 29 — a saved draft could not be edited
+
+The same shape as the two before it: **`updateDraft` had existed and been tested in the repository
+since Phase 4, and nothing called it** — exactly where issuing was before D-082 and deletion was
+before known issue 27. Three separate holes, all of them a repository method with no way in.
+
+Now that a draft can be issued, a draft is a workflow, and a workflow where correcting a typo means
+deleting the invoice and retyping every line is not one.
+
+**The id lives on `InvoiceEditorState`, not in the provider's family key.** `invoiceEditorProvider`
+is keyed by the instant the form opened and that key is threaded through four widgets; a second key
+would have touched every one of them and their tests to express something only `save` reads. Carrying
+it on the state also means it survives the rebuild a settings change causes — which goes through
+`copyWith`, and would otherwise have dropped it and **turned an edit into a second invoice silently**.
+
+**`loadDraft` is idempotent**, and that is load-bearing rather than defensive: the screen loads after
+the first frame, and a settings change rebuilds the provider and would load again, discarding
+everything typed since.
+
+**One reconstruction is a judgement call.** §4 snapshots the *resolved* tax rate onto every item, so
+a line that merely inherited the invoice's rate is indistinguishable from one explicitly set to the
+same number. On reopen, a rate equal to the inherited resolution is treated as inherited (`null`).
+The resolved figure is identical either way; the two differ only if the user then changes the invoice
+rate, and following it is the likelier intent.
+
+**An issued invoice is refused** rather than loaded — composing a new invoice out of its lines would
+be worse than doing nothing — and the repository refuses the write regardless.
+
+**Still not built:** editing an issued invoice, which is not a gap but §6. Correction is by
+cancellation.
+
+### Finding 6 — numeric fields now select their contents on focus
+
+Changing a quantity from ۱ to ۳ meant clearing the ۱ first. A number is replaced far more often than
+it is edited in place; prose is the opposite, where selecting everything on focus would arm the next
+keystroke to destroy an address.
+
+**Implemented in `AppTextField` and derived from the keyboard type**, so it covers every numeric
+field in the application at once rather than being applied at nine call sites and forgotten at the
+tenth.
+
+**Not `digitsOnly`, which was the obvious marker and is the wrong one.** The quantity field — the one
+the behaviour was actually reported against — sets `digitsOnly: false` deliberately, because it has
+to accept the Persian decimal separator; so does a discount field in percent mode. Gating on the flag
+would have missed the reported case entirely and looked correct in review.
+
+**The selection is applied after the frame**, because the framework sets its own selection while
+installing focus. Assigning directly works in a widget test and is overwritten on a device — the
+worst of both, and the reason the test asserts after `pumpAndSettle` rather than synchronously.
+
+Phone fields are included: a phone number is a value that gets retyped, not edited mid-string.

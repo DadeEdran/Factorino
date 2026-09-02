@@ -39,7 +39,7 @@ import '../theme/app_typography.dart';
 ///   field is decoration, and §10 removes what does not aid comprehension. A
 ///   field that silently stops accepting input is worse, though — so the
 ///   counter appears once the limit is close enough to be the reason.
-class AppTextField extends StatelessWidget {
+class AppTextField extends StatefulWidget {
   const AppTextField({
     required this.controller,
     required this.label,
@@ -105,37 +105,94 @@ class AppTextField extends StatelessWidget {
   final ValueChanged<String>? onChanged;
 
   @override
+  State<AppTextField> createState() => _AppTextFieldState();
+}
+
+class _AppTextFieldState extends State<AppTextField> {
+  late final FocusNode _focusNode = FocusNode()..addListener(_onFocusChange);
+
+  /// Whether focusing this field should select what is already in it.
+  ///
+  /// **Numeric fields only, and derived from the keyboard rather than from a
+  /// flag at nine call sites.** A number is replaced far more often than it is
+  /// edited in place: changing a quantity from ۱ to ۳ is one keystroke of
+  /// intent, and without this it is clear-then-type. Prose is the opposite —
+  /// tapping into a note or an address is nearly always to put the caret
+  /// somewhere, and selecting it all would arm a keystroke to destroy it.
+  ///
+  /// **Not `digitsOnly`**, which was the obvious marker and is the wrong one:
+  /// the quantity field — the field the behaviour was actually reported
+  /// against — deliberately sets it false so it can accept the Persian decimal
+  /// separator, and so does a discount field in percent mode.
+  bool get _selectsAllOnFocus {
+    final TextInputType? type = widget.keyboardType;
+    if (type == null) return false;
+    // `numberWithOptions(...)` shares its index with `TextInputType.number`,
+    // so this covers the decimal and signed variants too.
+    return type.index == TextInputType.number.index ||
+        type.index == TextInputType.phone.index;
+  }
+
+  void _onFocusChange() {
+    if (!_focusNode.hasFocus || !_selectsAllOnFocus) return;
+    final String text = widget.controller.text;
+    if (text.isEmpty) return;
+
+    // **After the frame**, because the framework sets its own selection while
+    // it is installing focus — assigning here directly is overwritten on a real
+    // device and survives only in a widget test, which is the worst of both.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || !_focusNode.hasFocus) return;
+      widget.controller.selection = TextSelection(
+        baseOffset: 0,
+        extentOffset: widget.controller.text.length,
+      );
+    });
+  }
+
+  @override
+  void dispose() {
+    _focusNode
+..removeListener(_onFocusChange)
+..dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final AppStrings strings = AppStrings.of(context);
 
     return TextFormField(
-      controller: controller,
-      autofocus: autofocus,
-      keyboardType: keyboardType,
-      textInputAction: textInputAction,
-      maxLines: maxLines,
-      maxLength: maxLength,
-      obscureText: obscureText,
-      inputFormatters: digitsOnly
+      controller: widget.controller,
+      focusNode: _focusNode,
+      autofocus: widget.autofocus,
+      keyboardType: widget.keyboardType,
+      textInputAction: widget.textInputAction,
+      maxLines: widget.maxLines,
+      maxLength: widget.maxLength,
+      obscureText: widget.obscureText,
+      inputFormatters: widget.digitsOnly
           ? const <TextInputFormatter>[_DigitsOnlyFormatter()]
 : null,
-      onChanged: onChanged,
+      onChanged: widget.onChanged,
       buildCounter: _buildCounter,
       decoration: InputDecoration(
-        labelText: label,
-        helperText: helperText,
-        hintText: hintText,
-        suffixText: suffixText,
+        labelText: widget.label,
+        helperText: widget.helperText,
+        hintText: widget.hintText,
+        suffixText: widget.suffixText,
       ),
       validator: (String? value) {
         final String text = value ?? '';
         // Measured the way `GeneratedColumn.checkTextLength` measures, so this
         // fires exactly when the column would have refused the value -- never
         // earlier, and never a character later.
-        if (text.length > maxLength) {
-          return strings.validationTooLong(toPersianDigits('$maxLength'));
+        if (text.length > widget.maxLength) {
+          return strings.validationTooLong(
+            toPersianDigits('${widget.maxLength}'),
+          );
         }
-        return validator?.call(value);
+        return widget.validator?.call(value);
       },
     );
   }

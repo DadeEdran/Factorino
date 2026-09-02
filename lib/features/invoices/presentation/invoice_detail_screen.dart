@@ -145,7 +145,9 @@ class InvoiceDetailScreen extends ConsumerWidget {
               icon: const Icon(Icons.check),
               label: Text(strings.invoiceIssueAction),
             ),
-            true when view.invoice.acceptsPayments =>
+            // Nothing owed: the action moves into the payments card, which
+            // says why. See `InvoicePaymentsSection`.
+            true when view.invoice.acceptsPayments && !view.isFullyPaid =>
               FloatingActionButton.extended(
                 onPressed: () => recordPayment(context, ref, view, strings),
                 icon: const Icon(Icons.add),

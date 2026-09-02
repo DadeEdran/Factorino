@@ -48,7 +48,14 @@ import 'widgets/invoice_totals_summary.dart';
 /// `single_calculation_path_test.dart` fails the build on any other arithmetic
 /// path (D-046).
 class InvoiceEditorScreen extends ConsumerStatefulWidget {
-  const InvoiceEditorScreen({super.key});
+  const InvoiceEditorScreen({this.invoiceId, super.key});
+
+  /// The saved **draft** to reopen, or null to compose a new invoice.
+  ///
+  /// Passed to the notifier rather than into the provider's family key, which
+  /// is the instant the form opened and is threaded through four widgets. See
+  /// `InvoiceEditorState.editingInvoiceId`.
+  final String? invoiceId;
 
   @override
   ConsumerState<InvoiceEditorScreen> createState() =>
@@ -58,6 +65,22 @@ class InvoiceEditorScreen extends ConsumerStatefulWidget {
 class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
   /// The family key, settled once. See the class comment.
   late final DateTime _openedAt = ref.read(nowProvider);
+
+  /// Loading the draft is deferred to the first frame because the provider's
+  /// own `build` is async — the state does not exist yet in `initState`, and
+  /// `loadDraft` returns immediately when it is null. `loadDraft` is idempotent,
+  /// so the rebuild a settings change causes cannot discard what has been typed.
+  @override
+  void initState() {
+    super.initState();
+    final String? id = widget.invoiceId;
+    if (id == null) return;
+    WidgetsBinding.instance.addPostFrameCallback((_) async {
+      await ref.read(invoiceEditorProvider(_openedAt).future);
+      if (!mounted) return;
+      await ref.read(invoiceEditorProvider(_openedAt).notifier).loadDraft(id);
+    });
+  }
 
   /// True while a write is in flight, so a double tap cannot produce two
   /// invoices. Local rather than derived, because `InvoiceEditor` returns its

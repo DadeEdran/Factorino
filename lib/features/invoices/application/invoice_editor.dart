@@ -4,6 +4,8 @@ import '../../../core/money/money.dart';
 import '../../../core/security/app_log.dart';
 import '../../../data/models/app_settings.dart';
 import '../../../data/models/invoice.dart';
+import '../../../data/models/invoice_detail.dart';
+import '../../../data/models/invoice_item.dart';
 import '../../../data/providers.dart';
 import '../../../data/repositories/invoice_repository.dart';
 import '../../settings/application/settings_providers.dart';
@@ -70,6 +72,81 @@ class InvoiceEditor extends _$InvoiceEditor {
       dueDate: previous.dueDateFollowsIssueDate
           ? defaultDueDate(previous.issueDate, settings.paymentTermDays)
           : null,
+    );
+  }
+
+  /// Loads a saved **draft** into this form, once.
+  ///
+  /// **Known issue 29.** Until now the editor could only compose a new invoice:
+  /// it is keyed by the instant it opened and `save` always called `create`, so
+  /// a draft with a typo in it had to be deleted and retyped. `updateDraft` has
+  /// existed and been tested in the repository since Phase 4 with nothing
+  /// calling it — the same position issuing was in before D-082.
+  ///
+  /// **Idempotent, and that is load-bearing.** The screen calls this after the
+  /// first build; a settings change rebuilds the provider and would call it
+  /// again, throwing away everything the user had typed since. The guard is
+  /// `editingInvoiceId`, which `copyWith` carries across rebuilds.
+  Future<void> loadDraft(String invoiceId) async {
+    final InvoiceEditorState? current = state.value;
+    if (current == null || current.editingInvoiceId != null) return;
+
+    final InvoiceDetail? detail = await ref
+        .read(invoiceRepositoryProvider)
+        .findDetail(invoiceId);
+    // Not a draft, gone, or soft-deleted: leave the form empty rather than
+    // silently composing a new invoice out of an issued one's lines. The screen
+    // never offers this for a non-draft, and the repository refuses the write
+    // regardless (`InvoiceNotEditable`).
+    if (detail == null || !detail.invoice.isEditable) return;
+
+    final InvoiceEditorState? latest = state.value;
+    if (latest == null || latest.editingInvoiceId != null) return;
+
+    final Invoice invoice = detail.invoice;
+    // The rate a line would resolve to if it declared none of its own: invoice
+    // first, then the settings default (§4 step 6).
+    final int inherited = invoice.taxRateBp ?? latest.settings.defaultTaxRateBp;
+
+    state = AsyncValue<InvoiceEditorState>.data(
+      InvoiceEditorState(
+        settings: latest.settings,
+        editingInvoiceId: invoiceId,
+        customerId: invoice.customerId,
+        issueDate: invoice.issueDate,
+        dueDate: invoice.dueDate,
+        // A stored due date is a day somebody committed to. Re-deriving it from
+        // the payment term on reopen would move it, which is exactly what
+        // `dueDateFollowsIssueDate` exists to prevent (D-052).
+        dueDateFollowsIssueDate: false,
+        discount: invoice.discount,
+        discountPercentBp: invoice.discountPercentBp,
+        taxRateBp: invoice.taxRateBp,
+        notes: invoice.notes,
+        lines: <InvoiceLineEntry>[
+          for (final InvoiceItem item in detail.items)
+            InvoiceLineEntry(
+              productId: item.productId,
+              title: item.title,
+              unit: item.unit,
+              unitPrice: item.unitPrice,
+              quantityMilli: item.quantityMilli,
+              discount: item.discount,
+              discountPercentBp: item.discountPercentBp,
+              // **Reconstructed, because the stored rate cannot say whether it
+              // was chosen or inherited.** §4 snapshots the *resolved* rate
+              // onto every item, so an item that simply took the invoice's rate
+              // is indistinguishable from one that was set to the same number.
+              // Treating a matching rate as inherited is the safer read: the
+              // resolved figure is identical either way, and it differs only if
+              // the user later changes the invoice rate — where following it is
+              // the likelier intent than silently not following it.
+              taxRateBp: item.resolvedTaxRateBp == inherited
+                  ? null
+                  : item.resolvedTaxRateBp,
+            ),
+        ],
+      ),
     );
   }
 
@@ -218,8 +295,16 @@ class InvoiceEditor extends _$InvoiceEditor {
     final InvoiceEditorState? current = state.value;
     if (current == null || !current.isComplete) return null;
 
+    final String? editing = current.editingInvoiceId;
     return _guarded(() {
-      return ref.read(invoiceRepositoryProvider).create(current.toDraft());
+      // **Update, not create, when this form opened on a saved draft.** Without
+      // the branch, editing a draft would leave the original untouched and add
+      // a second one beside it — a duplicate the user would find later and have
+      // no way to explain.
+      final InvoiceRepository repository = ref.read(invoiceRepositoryProvider);
+      return editing == null
+          ? repository.create(current.toDraft())
+          : repository.updateDraft(editing, current.toDraft());
     });
   }
 

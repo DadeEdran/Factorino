@@ -68,6 +68,9 @@ class InvoiceCancelAction extends ConsumerWidget {
         _InvoiceAction.export => _export(context, ref),
         _InvoiceAction.cancel => _cancel(context, ref),
         _InvoiceAction.deleteDraft => _deleteDraft(context, ref),
+        _InvoiceAction.editDraft => context.go(
+          AppRoutes.invoiceEditFor(detail.invoice.id),
+        ),
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<_InvoiceAction>>[
         PopupMenuItem<_InvoiceAction>(
@@ -84,6 +87,15 @@ class InvoiceCancelAction extends ConsumerWidget {
         // §6's rule rather than a UI choice: a draft is withdrawn by deleting
         // it, an issued invoice by cancelling it, and offering both would be
         // offering two ways out of one state.
+        // Editing comes before deleting: correcting a typo is the ordinary
+        // reason to open this menu on a draft, and destroying it is the
+        // exception. Both are draft-only -- §6 makes only a draft editable,
+        // and an issued invoice is corrected by cancellation instead.
+        if (isDraft)
+          PopupMenuItem<_InvoiceAction>(
+            value: _InvoiceAction.editDraft,
+            child: Text(strings.invoiceEditDraftAction),
+          ),
         if (isDraft)
           PopupMenuItem<_InvoiceAction>(
             value: _InvoiceAction.deleteDraft,
@@ -285,4 +297,4 @@ class InvoiceCancelAction extends ConsumerWidget {
   }
 }
 
-enum _InvoiceAction { export, cancel, deleteDraft }
+enum _InvoiceAction { export, cancel, editDraft, deleteDraft }

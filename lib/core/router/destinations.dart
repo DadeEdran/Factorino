@@ -101,6 +101,14 @@ abstract final class AppRoutes {
 
   static String invoiceDetailFor(String id) => '/invoices/$id';
 
+  /// Reopening a saved **draft** in the editor (known issue 29).
+  ///
+  /// Declared after [invoiceDetail] for the reason [customerEdit] is: `:id`
+  /// would otherwise swallow the literal segment.
+  static const String invoiceEdit = '/invoices/:id/edit';
+
+  static String invoiceEditFor(String id) => '/invoices/$id/edit';
+
   /// The new product or service form.
   static const String productCreate = '/products/new';
 

@@ -202,6 +202,139 @@ void main() {
       expect(await broken.issue(), isNull);
     },
   );
+
+  group('reopening a saved draft (known issue 29)', () {
+    /// Saves a complete draft and returns its id.
+    Future<String> savedDraft() async {
+      fillComplete();
+      editor().setNotes('پرداخت تا سررسید.');
+      editor().setDiscountAmount(Money.toman(10000));
+      final InvoiceCreationResult? created = await editor().save();
+      return created!.invoice.id;
+    }
+
+    test('loads the stored draft back into the form', () async {
+      final String id = await savedDraft();
+
+      // A second editor, as a fresh screen would open one.
+      final DateTime reopenedAt = openedAt.add(const Duration(minutes: 5));
+      container.listen(
+        invoiceEditorProvider(reopenedAt),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      await container.read(invoiceEditorProvider(reopenedAt).future);
+      await container
+          .read(invoiceEditorProvider(reopenedAt).notifier)
+          .loadDraft(id);
+
+      final InvoiceEditorState reopened = container
+          .read(invoiceEditorProvider(reopenedAt))
+          .requireValue;
+
+      expect(reopened.editingInvoiceId, id);
+      expect(reopened.customerId, customerId);
+      expect(reopened.lines, hasLength(1));
+      expect(reopened.lines.single.title, 'خدمات');
+      expect(reopened.lines.single.quantityMilli, 1500);
+      expect(reopened.discount, Money.toman(10000));
+      expect(reopened.notes, 'پرداخت تا سررسید.');
+      // A stored due date is a day somebody committed to; reopening must not
+      // re-derive it from the payment term (D-052).
+      expect(reopened.dueDateFollowsIssueDate, isFalse);
+    });
+
+    test(
+      'saving an edit updates that invoice rather than adding a second',
+      () async {
+        final String id = await savedDraft();
+
+        final DateTime reopenedAt = openedAt.add(const Duration(minutes: 5));
+        container.listen(
+          invoiceEditorProvider(reopenedAt),
+          (_, _) {},
+          fireImmediately: true,
+        );
+        await container.read(invoiceEditorProvider(reopenedAt).future);
+        final InvoiceEditor reopened = container.read(
+          invoiceEditorProvider(reopenedAt).notifier,
+        );
+        await reopened.loadDraft(id);
+
+        reopened.setNotes('ویرایش شد.');
+        final InvoiceCreationResult? saved = await reopened.save();
+
+        // **The property that matters.** Without the update branch this would
+        // have written a second invoice beside the original -- a duplicate the
+        // user finds later with no way to explain it.
+        expect(saved!.invoice.id, id);
+        final InvoiceDetail? stored = await harness.invoices.findDetail(id);
+        expect(stored!.invoice.notes, 'ویرایش شد.');
+        expect(
+          stored.invoice.status,
+          InvoiceStatus.draft,
+          reason:
+              'editing a draft leaves it a draft; issuing is a separate act',
+        );
+      },
+    );
+
+    test('a second load does not discard what has been typed', () async {
+      final String id = await savedDraft();
+
+      final DateTime reopenedAt = openedAt.add(const Duration(minutes: 5));
+      container.listen(
+        invoiceEditorProvider(reopenedAt),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      await container.read(invoiceEditorProvider(reopenedAt).future);
+      final InvoiceEditor reopened = container.read(
+        invoiceEditorProvider(reopenedAt).notifier,
+      );
+      await reopened.loadDraft(id);
+      reopened.setNotes('در حال ویرایش');
+
+      // A settings change rebuilds the provider and the screen would load
+      // again. Idempotence is what stops that throwing away the edit.
+      await reopened.loadDraft(id);
+
+      expect(
+        container.read(invoiceEditorProvider(reopenedAt)).requireValue.notes,
+        'در حال ویرایش',
+      );
+    });
+
+    test('an issued invoice is refused, leaving the form empty', () async {
+      fillComplete();
+      final Invoice? issued = await editor().issue();
+
+      final DateTime reopenedAt = openedAt.add(const Duration(minutes: 5));
+      container.listen(
+        invoiceEditorProvider(reopenedAt),
+        (_, _) {},
+        fireImmediately: true,
+      );
+      await container.read(invoiceEditorProvider(reopenedAt).future);
+      final InvoiceEditor reopened = container.read(
+        invoiceEditorProvider(reopenedAt).notifier,
+      );
+      await reopened.loadDraft(issued!.id);
+
+      final InvoiceEditorState state = container
+          .read(invoiceEditorProvider(reopenedAt))
+          .requireValue;
+      expect(
+        state.editingInvoiceId,
+        isNull,
+        reason:
+            'an issued invoice is corrected by cancellation, never by editing '
+            '(§6) -- and composing a new invoice out of its lines silently '
+            'would be worse than doing nothing',
+      );
+      expect(state.lines, isEmpty);
+    });
+  });
 }
 
 /// A repository whose writes fail, to exercise the controller's error path.

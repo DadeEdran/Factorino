@@ -1262,7 +1262,14 @@ class AppStringsFa extends AppStrings {
   String get invoiceDocumentSellerPhoneLabel => 'تلفن';
 
   @override
+  String get invoiceDetailPaymentsSettled =>
+      'این فاکتور تسویه شده است. اگر مبلغی دوباره دریافت شد، می‌توانید آن را همین‌جا به‌عنوان اضافه‌پرداخت ثبت کنید.';
+
+  @override
   String get invoiceIssueAction => 'صدور فاکتور';
+
+  @override
+  String get invoiceEditDraftAction => 'ویرایش پیش‌نویس';
 
   @override
   String get invoiceDeleteDraftAction => 'حذف پیش‌نویس';
