@@ -56,7 +56,7 @@ void main() {
   /// Every string the view would hand the renderer.
   List<DocumentText> allText(InvoiceDocumentView view) => <DocumentText>[
     view.title,
-    if (view.draftBanner != null) view.draftBanner!,
+    if (view.banner != null) view.banner!,
     view.number.label,
     view.number.value,
     view.issueDate.label,
@@ -241,12 +241,12 @@ void main() {
       final InvoiceDocumentView view = viewOf(
         _detail(toman: 1000000, status: InvoiceStatus.draft),
       );
-      expect(view.draftBanner, isNotNull);
+      expect(view.banner, isNotNull);
       expect(view.number.value.value, strings.invoiceNumberPending);
     });
 
     test('an issued invoice is not marked', () {
-      expect(viewOf(_detail(toman: 1000000)).draftBanner, isNull);
+      expect(viewOf(_detail(toman: 1000000)).banner, isNull);
     });
 
     test('only the pre-snapshot case says where the party came from', () {

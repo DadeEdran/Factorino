@@ -94,7 +94,7 @@ void main() {
       boundary: typeface.boundary,
       seller: _seller,
     );
-    expect(view.draftBanner, isNotNull);
+    expect(view.banner, isNotNull);
     expect(view.number.value.value, strings.invoiceNumberPending);
     expect(
       await render(
@@ -103,6 +103,89 @@ void main() {
       ),
       isNotEmpty,
     );
+  });
+
+  test('a cancelled invoice is banded, and states no payment status', () async {
+    // **The dangerous document.** A cancelled invoice carries a real number,
+    // looks exactly like a valid claim, and may already have been sent — so it
+    // is marked as unmissably as a draft, in the same slot and with the same
+    // weight (D-085).
+    final InvoiceDetail detail = _detail(
+      toman: 10000000,
+      status: InvoiceStatus.cancelled,
+    );
+    final InvoiceDocumentView view = buildInvoiceDocumentView(
+      detail: detail,
+      strings: strings,
+      boundary: typeface.boundary,
+      seller: _seller,
+    );
+
+    expect(view.banner, isNotNull);
+    expect(view.banner!.value, strings.invoiceDocumentCancelledBanner);
+    expect(
+      view.paymentStatus,
+      isNull,
+      reason:
+          '«پرداخت نشده» beside a void band reads as a demand to pay it, which '
+          'is the opposite of what the band says',
+    );
+    expect(await render('cancelled', detail), isNotEmpty);
+  });
+
+  test('a draft states no payment status either', () {
+    // Nothing to state: a draft is not yet a claim on anyone.
+    final InvoiceDocumentView view = buildInvoiceDocumentView(
+      detail: _detail(toman: 10000000, status: InvoiceStatus.draft),
+      strings: strings,
+      boundary: typeface.boundary,
+      seller: _seller,
+    );
+    expect(view.paymentStatus, isNull);
+  });
+
+  test('an issued invoice prints the STORED status, not a recomputation', () {
+    // §6: the status is derived from the payments and persisted by the
+    // repository. The renderer computes nothing, so a page cannot come to
+    // disagree with the screen that produced it about whether a customer paid.
+    for (final MapEntry<InvoiceStatus, String> expected
+        in <InvoiceStatus, String>{
+          InvoiceStatus.unpaid: strings.statusUnpaid,
+          InvoiceStatus.partiallyPaid: strings.statusPartiallyPaid,
+          InvoiceStatus.paid: strings.statusPaid,
+        }.entries) {
+      final InvoiceDocumentView view = buildInvoiceDocumentView(
+        detail: _detail(toman: 10000000, status: expected.key),
+        strings: strings,
+        boundary: typeface.boundary,
+        seller: _seller,
+      );
+      expect(view.banner, isNull, reason: 'only a draft or a cancellation');
+      expect(view.paymentStatus, isNotNull);
+      expect(
+        view.paymentStatus!.value.value,
+        expected.value,
+        reason: 'the stored ${expected.key.name} must print as itself',
+      );
+      expect(
+        view.paymentStatus!.label.value,
+        strings.invoiceDocumentStatusLabel,
+      );
+    }
+  });
+
+  test('overdue is never printed, because a page is read later than it is made', () {
+    // The one status the screen shows that the document must not: it depends on
+    // the day the page is looked at, and the whole point of a document is that
+    // it is looked at later. `invoiceStatusViewOfStored` is what the builder
+    // uses, and it has no overdue branch.
+    final InvoiceDocumentView view = buildInvoiceDocumentView(
+      detail: _detail(toman: 10000000, status: InvoiceStatus.unpaid),
+      strings: strings,
+      boundary: typeface.boundary,
+      seller: _seller,
+    );
+    expect(view.paymentStatus!.value.value, isNot(strings.statusOverdue));
   });
 
   test('a pre-snapshot invoice renders with the one factual line', () async {
@@ -128,7 +211,7 @@ void main() {
       boundary: typeface.boundary,
     );
     expect(view.party.sourceNote, isNull);
-    expect(view.draftBanner, isNull);
+    expect(view.banner, isNull);
   });
 
   test('an invoice with no seller renders, and the buyer takes the page', () async {

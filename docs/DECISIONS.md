@@ -5835,3 +5835,109 @@ installing focus. Assigning directly works in a widget test and is overwritten o
 worst of both, and the reason the test asserts after `pumpAndSettle` rather than synchronously.
 
 Phone fields are included: a phone number is a value that gets retyped, not edited mid-string.
+
+---
+
+## D-085 — The payment status on the document, and why a cancelled invoice is banded
+
+**Date:** 2026-09-03. Finding 8.
+
+**Decision.** The printed invoice states its status, in two different weights, and the two can never
+collide:
+
+| Status | How it prints |
+|---|---|
+| `draft` | The full-width filled band already defined by D-075. **No payment status.** |
+| `cancelled` | The **same band**, own copy: «باطل شده — این فاکتور اعتبار ندارد». **No payment status.** |
+| `unpaid` / `partiallyPaid` / `paid` | «وضعیت پرداخت» and its value, bold, **directly under the payable total**. No band. |
+
+### One field, not two, for the band
+
+`InvoiceDocumentView.banner` replaced `draftBanner` and carries whichever marking applies. **The two
+cannot co-occur**: cancellation is refused on a draft (`isCancellable`), and a cancelled invoice was
+issued, so it is not a draft. Two nullable fields for one slot would have made a state the domain
+forbids expressible in the view, and the renderer would have had to choose between them.
+
+### Cancelled is banded, and that was the question worth asking
+
+A cancelled invoice is **the dangerous document**. A draft looks provisional; a cancelled invoice
+looks exactly like a valid claim — it carries a real invoice number, it reconciles, and it may
+already have been sent. If any state must be impossible to miss in someone's hand, it is this one.
+So it gets the same weight as a draft rather than a quieter treatment.
+
+The copy says «اعتبار ندارد» — *this is not valid* — rather than «لغو شد» — *it was cancelled*. The
+reader needs to know what the paper in their hand **is**, not what happened to it.
+
+### A cancelled invoice prints no payment status, and that is not an omission
+
+«پرداخت نشده» printed beside a void band **reads as a demand to pay it**, which is the opposite of
+what the band says. A draft prints none either, for the simpler reason that it is not yet a claim on
+anyone.
+
+### The status is the stored one
+
+Read from `invoice.status`, which the repository derives from the payments and persists (§6). The
+renderer computes nothing — a page with its own opinion about whether a customer has paid is the
+worst possible place to find a second one.
+
+**Overdue is deliberately never printed.** It is the one status the screen shows that the document
+must not: it is a function of the day the page is *read*, and the whole point of a document is that
+it is read later than it was made. `invoiceStatusViewOfStored` — which has no overdue branch — is
+what the builder uses, and a test pins that the printed value is never «سررسید گذشته».
+
+### Placement
+
+Under the grand total rather than in a corner: «پرداخت شده» is the answer to the question the reader
+brought to that figure, so it belongs where the eye already is. Read off the rendered page, both
+cases.
+
+---
+
+## D-086 — The add-line fold, measured rather than guessed, and deliberately not fixed
+
+**Date:** 2026-09-03. Finding 7, reported as *"adding a line is not discoverable; the issue and
+save-draft actions sit over it"*.
+
+**Measured on the Redmi at 392.7 × 803.6 before changing anything**, as D-054's fold was. The result
+does not say what the report assumed, and is more useful for it:
+
+| State | add-line top | pinned bar top | On screen? |
+|---|---|---|---|
+| Pristine form, no customer | 586 | 670 | yes |
+| **Details folded, customer picked** (how the form opens) | **586** | **670** | **yes** |
+| **Details unfolded, customer picked** | **out of the widget tree entirely** | 415 | no — ~400 px of scrolling away |
+
+**So it is not simply below the fold.** In the state the form opens in, «افزودن از فهرست» *is* on
+screen — but it sits at 586–611 px of an 804 px viewport, in the bottom sixth, **59 pixels above a
+pinned bar carrying two filled buttons**. And the moment the user opens the details section — to set
+a date, a discount, a tax rate, which is an ordinary thing to do — it leaves the rendered tree
+completely.
+
+**The real fault is hierarchy, not geometry.** The screen's primary action is a low-contrast control
+in the last sixth of the page, directly beneath two prominent buttons for actions the user cannot
+usefully take yet — issuing an invoice with no lines on it. That is why a first-time user did not
+find it, and it is why nudging spacing would not fix it.
+
+**Not fixed, deliberately.** The candidates all need design judgement and a phone to verify:
+
+* put the **lines section above the details section** on the phone, which is §10's own rule (a
+  variable-height block above the thing the page is for belongs below it) applied a fourth time;
+* promote add-line to a filled action and demote the details;
+* keep «صدور» out of the pinned bar until there is at least one line, so the bar stops advertising
+  an action that cannot yet succeed.
+
+Each changes the shape of the screen. With the remaining access measured in hours, a recorded number
+is worth more than a rushed layout change that nobody can check on hardware — the owner's judgement,
+and the right one. **Known issue 30.**
+
+### And the existing check was measuring the wrong state
+
+`invoice_form_device_test` printed `fits unscrolled: true` and had done since Phase 4. It is not
+wrong; it is measured on a **pristine** form, with no customer and the details folded — a state
+nobody adds a line from. The suite now reports the two states above alongside it, so the reassuring
+line no longer stands alone.
+
+That is the third instance of one pattern in as many days: **a check that reports success about
+conditions the user is never in** — the assert-only table guard absent from release builds (D-081),
+the Gradle guard firing in builds it was never meant to judge (D-083), and now a fold measured on a
+form nobody has used yet.

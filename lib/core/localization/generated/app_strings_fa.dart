@@ -1243,6 +1243,13 @@ class AppStringsFa extends AppStrings {
   String get invoiceDocumentDraftBanner => 'پیش‌نویس — سند نهایی نیست';
 
   @override
+  String get invoiceDocumentCancelledBanner =>
+      'باطل شده — این فاکتور اعتبار ندارد';
+
+  @override
+  String get invoiceDocumentStatusLabel => 'وضعیت پرداخت';
+
+  @override
   String get invoiceDocumentNumberLabel => 'شماره فاکتور';
 
   @override

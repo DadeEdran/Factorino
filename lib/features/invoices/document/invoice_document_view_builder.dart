@@ -8,9 +8,11 @@ import '../../../data/models/customer_snapshot.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/invoice_detail.dart';
 import '../../../data/models/invoice_item.dart';
+import '../../../data/models/invoice_status.dart';
 import '../../../data/models/seller_identity.dart';
 import '../domain/invoice_party_view.dart';
 import '../domain/invoice_summary_figures.dart';
+import '../domain/invoice_status_view.dart';
 import 'invoice_document_view.dart';
 
 /// Turns a stored invoice into the fully-computed, already-formatted view the
@@ -34,7 +36,6 @@ InvoiceDocumentView buildInvoiceDocumentView({
 }) {
   final Invoice invoice = detail.invoice;
   final InvoiceSummaryFigures figures = InvoiceSummaryFigures.ofStored(invoice);
-  final bool isDraft = invoice.isEditable;
 
   DocumentText text(String raw) => boundary(raw);
 
@@ -48,7 +49,29 @@ InvoiceDocumentView buildInvoiceDocumentView({
     // A draft is marked, not withheld (D-075). پیش‌فاکتور is an ordinary
     // document in this market, and refusing to print one would push the user
     // to issue and cancel an invoice, spending a number permanently.
-    draftBanner: isDraft ? text(strings.invoiceDocumentDraftBanner) : null,
+    // **One slot, two markings, and they cannot co-occur** (D-085). A draft was
+    // never cancelled and a cancelled invoice was never a draft.
+    banner: switch (invoice.status) {
+      InvoiceStatus.draft => text(strings.invoiceDocumentDraftBanner),
+      InvoiceStatus.cancelled => text(strings.invoiceDocumentCancelledBanner),
+      _ => null,
+    },
+    // **The stored status, not a recomputation** (§6). It is derived from the
+    // payments and persisted by the repository; re-deriving it here would give
+    // the page its own opinion, and a second opinion about whether a customer
+    // has paid is the worst possible place to find one.
+    //
+    // Absent on a draft (nothing to state) and on a cancelled invoice (where
+    // «پرداخت نشده» beside the void band reads as a demand to pay it).
+    paymentStatus: switch (invoice.status) {
+      InvoiceStatus.draft || InvoiceStatus.cancelled => null,
+      final InvoiceStatus status => DocumentField(
+        label: text(strings.invoiceDocumentStatusLabel),
+        value: text(
+          invoiceStatusLabel(invoiceStatusViewOfStored(status), strings),
+        ),
+      ),
+    },
     number: DocumentField(
       label: text(strings.invoiceDocumentNumberLabel),
       // The isolated form, straight from the screen layer's own helper --

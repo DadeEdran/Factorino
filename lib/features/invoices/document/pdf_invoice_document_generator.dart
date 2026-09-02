@@ -51,7 +51,7 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
           header: (pw.Context context) => _header(view, context),
           footer: (pw.Context context) => _footer(view, context),
           build: (pw.Context context) => <pw.Widget>[
-            if (view.draftBanner != null) _draftBand(view.draftBanner!),
+            if (view.banner != null) _draftBand(view.banner!),
             _meta(view),
             pw.SizedBox(height: _Doc.blockGap),
             _parties(view),
@@ -303,6 +303,13 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
                 decoration: const pw.BoxDecoration(color: _Doc.headerFill),
                 child: _totalRow(view.grandTotal, _Doc.subtitle, bold: true),
               ),
+              // **Directly under the figure it qualifies.** «پرداخت شده» is
+              // the answer to the question the reader brought to the total, so
+              // it belongs where the eye already is rather than in a corner.
+              if (view.paymentStatus != null) ...<pw.Widget>[
+                pw.SizedBox(height: _Doc.tight),
+                _field(view.paymentStatus!, _Doc.body),
+              ],
             ],
           ),
         ),

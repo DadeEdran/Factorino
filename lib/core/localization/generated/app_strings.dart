@@ -2328,6 +2328,18 @@ abstract class AppStrings {
   /// **'پیش‌نویس — سند نهایی نیست'**
   String get invoiceDocumentDraftBanner;
 
+  /// Printed as a filled band across the top of a cancelled invoice, in the same slot and with the same weight as the draft band. A cancelled document in someone's hands is the one that causes real trouble -- it looks exactly like a valid claim, carries a real invoice number, and may already have been sent -- so it is marked as unmissably as a draft is. Never both: the two statuses are mutually exclusive, and a draft has no cancellation and a cancelled invoice was never a draft. Says «اعتبار ندارد» rather than «لغو شد» because the reader needs to know what the paper in their hand IS, not what happened to it.
+  ///
+  /// In fa, this message translates to:
+  /// **'باطل شده — این فاکتور اعتبار ندارد'**
+  String get invoiceDocumentCancelledBanner;
+
+  /// Labels the payment status printed under the payable total: پرداخت شده / پرداخت جزئی / پرداخت نشده, reusing the same strings the screen shows. Placed at the grand total because that is where the eye lands and where 'have I paid this?' is answered. NOT printed on a draft (there is no payment status worth printing on a document that is not yet a claim) and NOT on a cancelled invoice, where «پرداخت نشده» beside the void band would read as a demand to pay it. The overdue state is deliberately never printed: it depends on the day the page is read, and a document is read later than it is made.
+  ///
+  /// In fa, this message translates to:
+  /// **'وضعیت پرداخت'**
+  String get invoiceDocumentStatusLabel;
+
   /// Labels the invoice number in the printed header. Deliberately the full «شماره فاکتور» rather than «شماره»: on a page with no other numbered field the short form reads as a form field, and this is the reference the customer quotes when they pay.
   ///
   /// In fa, this message translates to:

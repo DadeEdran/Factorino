@@ -62,6 +62,7 @@ Full list with detail in `docs/CURRENT_STATE.md` under *Known issues*. The ones 
 |---|---|---|
 | **28** | **There is no app lock.** No PIN, no biometric, no idle timeout, no `FLAG_SECURE`. | **The most significant gap.** Encryption at rest protects the *file*, not a running app on an unlocked device. Anyone holding an unlocked phone can read every customer's کد ملی and export a backup. `docs/ARCHITECTURE.md` §B.11 states this honestly; do not let anyone read the threat model as covering it. |
 | **26** | Crushed Persian at two width bands: the `/invoices/:id` title at 328–376 px, and «پیش‌فرض فاکتور» in the invoice editor at 616–688 px. | Cosmetic but ugly — text laid out narrower than its longest word renders one glyph per row. The second band is a reachable desktop window. Both strings and both bands are pinned in the issue; the reproduction is two lines. |
+| **30** | Adding a line on the new-invoice screen is not discoverable, and leaves the widget tree entirely once the details section is opened. | Measured, not fixed (D-086): 586–611 px of an 804 px viewport, 59 px above a pinned bar of two filled buttons. The fault is hierarchy, not geometry. The numbers and three candidate fixes are recorded. |
 | **25** | An invoice long enough to span a page loses its lines-table header on page 2. | The header row is `repeat: false`, and no fixture has ever actually spanned, so it is untested in both directions. Fix the fixture first, then the flag. |
 | 13 | R8/minification not enabled for release. | Binary size only. |
 | 14 | Web untested, and unencrypted. | Phase 12, deferred. |
@@ -143,11 +144,33 @@ controllers), and `domain/` where it needs one.
 
 ---
 
+## 6b. Audit for repository methods with no caller, before trusting the suite
+
+**Three separate features were missing this way, and 1,229 tests could not see any of them.** In one
+afternoon of using the app on a phone the owner found that a draft could not be deleted, could not be
+issued, and could not be edited. In all three cases the repository method existed, was correct, and
+was covered by its own tests — `softDeleteDraft`, `issue`, `updateDraft` — and **nothing in the
+interface called it**.
+
+That is the shape of gap this codebase's tests cannot report. They verify that things work; they have
+no way to say that nothing uses them. A widget test asserts what a screen does, not what it fails to
+offer, and an untouched repository method looks exactly like a well-tested one.
+
+**So before trusting the suite's coverage, grep for it.** For each public method on a repository,
+check there is a call site outside `test/` and `integration_test/`:
+
+```sh
+grep -rn "methodName" lib/ --include=*.dart | grep -v "\.g\.dart"
+```
+
+A method that appears only in its own interface, its implementation and its tests is a feature that
+was built and never wired up. Three of them were sitting there at handover.
+
 ## 7. The gate
 
 ```sh
 flutter analyze     # must be clean
-flutter test        # 1209 tests, must all pass
+flutter test        # 1229 tests, must all pass
 ```
 
 Both were clean at handover. Beyond that, a phase is not closed until its layout has been checked at

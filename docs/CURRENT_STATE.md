@@ -2067,6 +2067,8 @@ repositories and driving the real sheets.
 
 | 29 | ~~A saved draft cannot be edited~~ | **Resolved 2026-09-03** (D-084). «ویرایش پیش‌نویس» in the draft's menu reopens it at `/invoices/:id/edit`; `save` calls `updateDraft` rather than `create`. The editing id is carried on `InvoiceEditorState` rather than in the provider's family key, so it survives the rebuild a settings change causes — which would otherwise have turned an edit into a second invoice silently. Four tests against the real database. Editing an *issued* invoice remains impossible, which is §6, not a gap. |
 
+| 30 | **Adding a line on the new-invoice screen is not discoverable, and vanishes once the details section is opened** | Reported from the phone; **measured before anything was changed** (D-086). At 392.7 x 803.6: with the details folded — how the form opens — «افزودن از فهرست» sits at **586–611 px of an 804 px viewport, 59 px above a pinned bar carrying two filled buttons**. With the details section open, which is an ordinary thing to do, it leaves the widget tree entirely and is ~400 px of scrolling away. **The fault is hierarchy, not geometry:** the screen's primary action is a low-contrast control in the bottom sixth, under two prominent buttons for an action (issuing) that cannot yet succeed. Candidates: lines above details on the phone (§10's rule, a fourth time); promote add-line and demote details; keep «صدور» out of the bar until a line exists. **Deliberately not fixed** — each changes the screen's shape and needs a phone to verify, and a recorded number beats a rushed layout change. |
+
 (5 and 7 were resolved in (f2) and have been dropped.)
 
 **24 is resolved (D-079)** — the printed table now reads in the Iranian order, and the fix is a

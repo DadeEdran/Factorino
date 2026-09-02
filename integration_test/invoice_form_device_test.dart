@@ -236,6 +236,52 @@ void main() {
     await tester.pumpAndSettle();
     debugPrint('customer      : picked through search');
 
+    // ---- known issue 30: the fold, measured in the state a user is in -----
+    //
+    // The «fits unscrolled: true» reported above is taken on a *pristine* form:
+    // details folded, no customer. That is not the state anyone adds a line
+    // from. By the time a customer has been picked -- the first thing anyone
+    // does -- the details section is open above the lines, and the measurement
+    // below is the honest one. Reported rather than asserted: the fix is a
+    // layout decision, not a nudge, and a number is worth more to whoever takes
+    // it than a rushed change (D-086).
+    final double addTopNow = _distanceDown(tester, addFromCatalogue);
+    final double barTopNow = _distanceDown(
+      tester,
+      find.text(strings.invoiceActionIssue),
+    );
+    final double viewportHeight = MediaQuery.sizeOf(
+      tester.element(find.byType(InvoiceEditorScreen)),
+    ).height;
+    debugPrint(
+      'FOLD unfolded+customer: add-line top '
+      '${addTopNow.toStringAsFixed(0)} px '
+      '(-1 = out of the tree entirely), pinned bar top '
+      '${barTopNow.toStringAsFixed(0)}, viewport '
+      '${viewportHeight.toStringAsFixed(0)}',
+    );
+
+    // And the same with the details section folded back up, which is how the
+    // form opens. This is the state a first-time user is actually in when they
+    // go looking for the way to add a line.
+    await _rewind(tester);
+    await tester.tap(find.text(strings.invoiceDetailsTitle));
+    await tester.pumpAndSettle();
+    final double addFolded = _distanceDown(tester, addFromCatalogue);
+    final double barFolded = _distanceDown(
+      tester,
+      find.text(strings.invoiceActionIssue),
+    );
+    debugPrint(
+      'FOLD folded+customer  : add-line top '
+      '${addFolded.toStringAsFixed(0)} px, pinned bar top '
+      '${barFolded.toStringAsFixed(0)}, '
+      'visible = ${addFolded >= 0 && addFolded < barFolded}',
+    );
+    // Put it back the way the rest of the run expects to find it.
+    await tester.tap(find.text(strings.invoiceDetailsTitle));
+    await tester.pumpAndSettle();
+
     // ---- the product picker, then the line sheet ---------------------------
     //
     // With the section open the add-line buttons are below the fold again,

@@ -133,7 +133,8 @@ class InvoiceDocumentView {
     required this.totals,
     required this.grandTotal,
     this.seller,
-    this.draftBanner,
+    this.banner,
+    this.paymentStatus,
     this.dueDate,
     this.notes,
   });
@@ -150,10 +151,32 @@ class InvoiceDocumentView {
   /// Absent where the invoice has no due date, rather than printed empty.
   final DocumentField? dueDate;
 
-  /// Present only for a draft (D-075). The renderer draws it as a filled band
-  /// across the page, because the requirement is that somebody **holding** the
-  /// page knows it is not final without reading it closely.
-  final DocumentText? draftBanner;
+  /// The unmissable marking across the top of the page: a **draft** (D-075) or
+  /// a **cancelled** invoice (D-085), and null for an ordinary one.
+  ///
+  /// **One field for both, because they cannot co-occur.** A draft has never
+  /// been cancelled — cancellation is refused on it (`isCancellable`) — and a
+  /// cancelled invoice was issued, so it is not a draft. Two nullable fields
+  /// for one slot would have made a state the domain forbids expressible in the
+  /// view, and the renderer would have had to pick one.
+  ///
+  /// Both are drawn as a filled band because the requirement is the same for
+  /// each: somebody **holding** the page must know it is not a valid claim
+  /// without reading it closely. A cancelled invoice is the more dangerous of
+  /// the two — it carries a real number and may already have been sent.
+  final DocumentText? banner;
+
+  /// «وضعیت پرداخت» and its value, printed under the payable total.
+  ///
+  /// **From the stored status, never recomputed** (§6). The status is derived
+  /// from the payments and persisted onto the invoice by the repository; the
+  /// renderer computes nothing, and a page that re-derived it could disagree
+  /// with the screen that produced it.
+  ///
+  /// Null for a draft, which has no payment status worth printing, and null for
+  /// a cancelled invoice, where «پرداخت نشده» beside the void band would read
+  /// as a demand.
+  final DocumentField? paymentStatus;
 
   /// The business the invoice was issued **by** (D-077).
   ///
