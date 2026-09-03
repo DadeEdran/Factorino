@@ -16,10 +16,14 @@ A user can:
   Search finds them regardless of which Persian or Arabic digits and letter forms were typed:
   a customer saved as «علي» is found by typing «علی».
 * **Keep products and services** — name, type, unit, price.
-* **Write an invoice** — pick a customer, add lines with fractional quantities, an invoice-level
-  discount, a tax rate, notes, a Jalali issue date and due date. A line taken from the catalogue
-  asks only how many; its title and price are the product record's (D-097). A free line — «سطر
-  آزاد» — collects everything, including a per-line discount, because no record stands behind it. Save it as a draft,
+* **Write an invoice** — pick a customer, add lines with fractional quantities, a tax rate, notes, a
+  Jalali issue date and due date. A line taken from the catalogue asks only how many; its title and
+  price are the product record's (D-097). A free line — «سطر آزاد» — collects everything, because no
+  record stands behind it.
+* **Discount it** — per line, or across the whole invoice, from one «تخفیف» screen reached beside the
+  commit actions (D-098). Either level takes an amount or a percentage, the payable figure is shown
+  before and after, and a discount larger than what it applies to is stated with both figures rather
+  than silently clamped. Save it as a draft,
   then **issue** it, which allocates its number (`INV-1405-0001`, the prefix being configurable) and snapshots the customer's
   details onto it.
 * **Record payments** against it, in part or in full. Status (`paid` / `partiallyPaid` / `unpaid`)
@@ -177,6 +181,13 @@ controllers), and `domain/` where it needs one.
 * **MIUI intermittently refuses `flutter test -d <device>`** with `INSTALL_FAILED_USER_RESTRICTED`.
   Remedy: `flutter build apk --debug`, then `adb install -r` by hand once, then retry. Retrying is
   part of the remedy, not a sign it failed.
+* **`nowProvider` is frozen for the life of the process, and that is deliberate.** It exists so
+  every *figure on screen* answers against one instant — a dashboard cannot straddle midnight
+  mid-frame. It is therefore the wrong clock for anything that needs to be *different* on a second
+  reading: the invoice document's file name reads `DateTime.now()` instead, because with the frozen
+  one every export in a session would propose the same name (D-099). This was nearly shipped the
+  wrong way. A correct decision one call site over is exactly how it becomes a defect.
+
 * **`flutter clean` is a one-way door onto a network you may not have.** `PUB_HOSTED_URL` points
   at the Tsinghua mirror, and on 2026-09-03 that mirror accepted the connection and then hung —
   `flutter pub get` sat at zero CPU for twenty minutes with nothing written to the cache, after
@@ -321,7 +332,7 @@ a year end and a leap-year Esfand 30.
 
 ```sh
 flutter analyze     # must be clean
-flutter test        # 1272 tests, must all pass
+flutter test        # 1289 tests, must all pass
 ```
 
 Both were clean at handover. Beyond that, a phase is not closed until its layout has been checked at

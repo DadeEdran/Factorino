@@ -11,6 +11,7 @@ import '../../../data/backup/backup_file_gateway.dart';
 import '../../../data/models/app_settings.dart';
 import '../../../data/models/invoice_detail.dart';
 import '../../../data/providers.dart';
+import '../domain/invoice_document_file_name.dart';
 import '../document/invoice_document_view.dart';
 import '../document/invoice_document_view_builder.dart';
 import '../document/pdf_invoice_document_generator.dart';
@@ -34,9 +35,22 @@ sealed class InvoiceExportOutcome {
 /// settings could change between the render and the message, and the sentence
 /// the user reads has to be true of the file they now hold (D-077).
 class InvoiceExportSaved extends InvoiceExportOutcome {
-  const InvoiceExportSaved({required this.hadSeller, required this.file});
+  const InvoiceExportSaved({
+    required this.hadSeller,
+    required this.file,
+    this.opened = false,
+  });
 
   final bool hadSeller;
+
+  /// Whether the document was handed to a viewer straight after saving
+  /// (D-100).
+  ///
+  /// A fact about what happened, not a request: the controller attempts it and
+  /// reports, so the screen's message describes the file the user is now
+  /// looking at rather than promising something that may not have worked. False
+  /// on a device with nothing that reads PDFs, which is a real device.
+  final bool opened;
 
   /// Where the user put it, so the message about it can offer to open it.
   ///
@@ -170,13 +184,41 @@ class InvoiceDocumentController extends _$InvoiceDocumentController {
 
       final DeliveredFile? delivered = await ref
           .read(backupFileGatewayProvider)
-          .deliver(source: working, suggestedName: _fileNameFor(detail));
+          .deliver(
+            source: working,
+            // **`DateTime.now()`, deliberately, and not `nowProvider`.** That
+            // provider is frozen for the life of the process on purpose (see
+            // `core/utils/clock.dart`): it exists so that every *figure on
+            // screen* answers against one instant and a dashboard cannot
+            // straddle midnight. A file name is not a figure on screen, and it
+            // needs the reading that makes two exports different files -- with
+            // the frozen clock, every export in a session would propose the
+            // same name and D-099 would buy nothing. The backup's own suggested
+            // name reads the wall clock for exactly this reason.
+            suggestedName: invoiceDocumentFileName(
+              detail.invoice,
+              DateTime.now().toUtc(),
+            ),
+          );
 
       if (delivered == null) return const InvoiceExportCancelled();
 
+      // **Opened straight away, unless the document is missing its seller**
+      // (D-100). Saving is a deliberate act aimed at a destination the user
+      // picked, and looking at what was just produced is the same intent
+      // continuing rather than a new one — so it does not need a second tap.
+      //
+      // The exception is the case D-077 exists for. An invoice with no
+      // فروشنده block is one the user should be *fixing*, and its message
+      // carries the «تنظیمات» action that fixes it; launching a viewer over
+      // that message would bury the one sentence worth reading.
+      final bool hadSeller = view.seller != null;
+      final bool opened = hadSeller ? await openSaved(delivered) : false;
+
       return InvoiceExportSaved(
-        hadSeller: view.seller != null,
+        hadSeller: hadSeller,
         file: delivered,
+        opened: opened,
       );
     } on Object catch (error, stackTrace) {
       // No invoice number, no customer, no amount, no path: §7 keeps all of it
@@ -192,18 +234,6 @@ class InvoiceDocumentController extends _$InvoiceDocumentController {
       if (working != null && working.existsSync()) working.deleteSync();
       link.close();
     }
-  }
-
-  /// The name offered in the save dialog.
-  ///
-  /// The invoice number, which is already the user's own identifier for this
-  /// document and is Latin-digit by construction — so it survives a file
-  /// manager, a cloud drive and a Windows dialog, which is the same reason
-  /// `formatJalaliDateForFileName` exists for backups. A draft has no number
-  /// (D-048), so it falls back to a fixed stem rather than inventing one.
-  String _fileNameFor(InvoiceDetail detail) {
-    final String? number = detail.invoice.number;
-    return '${number ?? 'draft'}.pdf';
   }
 
   /// Asks the platform to open a document this controller delivered.

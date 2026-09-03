@@ -5,7 +5,31 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-03 (third pass) — the phone's invoice form was rebuilt around what the
+> **Last updated: 2026-09-03 (fourth pass) — discounting became a step of its own, saved documents
+> get unique names, and a notification was argued down rather than built.**
+>
+> * **Discounting is a screen, not a field** (D-098). Per-line and invoice-level discounts now live
+>   in one place behind a «تخفیف» action beside «صدور فاکتور» and «ذخیرهٔ پیش‌نویس» — they answer one
+>   question and were being asked in two forms on two screens. It previews what the discount does to
+>   the payable figure before it is committed, and **D-027's clamp warnings finally have somewhere to
+>   be stated**: while typing, against the figure that caused them.
+> * **A saved PDF's name is unique** (D-099): `INV-1405-0001_1405-06-02_10-00-00.pdf`. It was the
+>   invoice number alone, so the second save was the platform's decision — Windows offering to
+>   overwrite, SAF quietly writing `(1)`.
+> * **The document opens itself after saving** (D-100), except when it is missing its seller block,
+>   where the message that fixes that keeps the screen.
+> * **No notification was added, deliberately.** It would cost a dependency, a channel and the
+>   `POST_NOTIFICATIONS` permission — the first prompt this application would ever show — for a
+>   message about a foreground action the user just tapped and is watching. The owner invited the
+>   push-back; D-100 records the argument.
+>
+> **Two things were found while building, not designed.** The clamp warnings were below the fold on a
+> phone until a test could not find them, which is how it became clear the user could not either —
+> they are now pinned with the commit action. And the file-name timestamp was nearly read from
+> `nowProvider`, which is **frozen for the life of the process** on purpose: every export in a session
+> would have proposed the same name, and the whole change would have bought nothing.
+>
+> Earlier the same day: **the phone's invoice form was rebuilt (third pass) — the phone's invoice form was rebuilt around what the
 > user has to do, and the catalogue line asks one question.** The owner tested the previous build
 > and reported the new-invoice screen as still hard to use. It was: **known issue 30 had been closed
 > and the problem had not.**
@@ -371,8 +395,9 @@ Export from the menu:       PASS   phone tier, Redmi (2026-09-02): the menu item
                                    invoice, tapped, the render driven through the real providers,
                                    and D-077's no-seller notice with its «تنظیمات» action shown.
                                    0 layout errors. Gateway faked -- SAF cannot be driven by adb
-flutter test:               PASS   (1272/1272) as of 2026-09-03, after the phone's invoice form
-                                   was rebuilt (D-096, D-097). Was 1269 after the owner's twelve.
+flutter test:               PASS   (1289/1289) as of 2026-09-03, after the discount screen and the
+                                   document naming (D-098, D-099, D-100). Was 1272 after the phone's
+                                   invoice form was rebuilt (D-096, D-097), 1269 after the twelve.
                                    Was 1230 after the eight phone findings, 1204 at the Phase 7
                                    close, 1194 after (d), 1189 after (c). The +38 are: the v6 theme
                                    migration (7), the back rule (8), the navigation bar (5), the
@@ -399,6 +424,13 @@ Rendered page, date+time:   PASS   read off PIXELS, not source, per HANDOVER §6
                                    «تاریخ صدور ۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» -- digits in order, the
                                    bidi-neutral colon not reordered, the isolates stripped at the
                                    boundary without eating the final glyph (D-070 finding 1)
+Discount screen, seen:      PASS   at 420 px, driven end to end: the «تخفیف» action beside the two
+                                   commit actions; the sheet showing «مبلغ فعلی ۲٬۴۰۰٬۰۰۰» over
+                                   «مبلغ پس از تخفیف»; a per-line amount of ۳٬۰۰۰٬۰۰۰ against a line
+                                   worth ۲٬۴۰۰٬۰۰۰ driving the preview to ۰ and «۲٬۴۰۰٬۰۰۰ تومان
+                                   کمتر از مبلغ فعلی»; and D-027's warning **pinned above** «اعمال
+                                   تخفیف» naming both figures. That last one is the assertion the
+                                   engine has been able to make since Phase 4 with nowhere to make it
 Phone tier, seen not argued: PASS  the Windows window narrowed to 420 px -- under the 600 px
                                    tablet breakpoint, so the real mobile layout -- and driven:
                                    the pinned header carries the customer picker and both add

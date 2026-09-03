@@ -4,7 +4,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/formatting/number_input.dart';
 import '../../../../core/localization/generated/app_strings.dart';
-import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
@@ -24,11 +23,12 @@ import 'customer_picker_sheet.dart';
 /// lines by the engine (§4 step 4) and the tax rate it collects is the middle
 /// step of the resolution chain, both inside `InvoiceEditorState`.
 ///
-/// The two mode-plus-value controls here are the invoice-level twins of the
-/// per-line ones in the line sheet, and they exist for the same reasons:
-/// an amount and a percentage are alternatives that must not both be set
-/// (§4 step 2), and an explicit `0` tax rate is not the same as inheriting the
-/// settings default (D-026).
+/// **The invoice-level discount is no longer here** (D-098). It moved to
+/// [showInvoiceDiscountSheet], beside the per-line discounts, because the two
+/// answer one question — what is coming off this invoice — and were being asked
+/// in two forms on two screens. What is left is the tax rate, whose
+/// mode-plus-value control exists for the reason D-026 gives: an explicit `0`
+/// is not the same as inheriting the settings default.
 class InvoiceDetailsSection extends ConsumerStatefulWidget {
   const InvoiceDetailsSection({
     required this.openedAt,
@@ -73,16 +73,12 @@ class InvoiceDetailsSection extends ConsumerStatefulWidget {
       _InvoiceDetailsSectionState();
 }
 
-enum _DiscountMode { amount, percent }
-
 enum _TaxMode { inherit, custom }
 
 class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
-  final TextEditingController _discount = TextEditingController();
   final TextEditingController _taxRate = TextEditingController();
   final TextEditingController _notes = TextEditingController();
 
-  _DiscountMode _discountMode = _DiscountMode.amount;
   _TaxMode _taxMode = _TaxMode.inherit;
 
   /// **Collapsed to begin with**, where the section collapses at all.
@@ -97,7 +93,6 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
 
   @override
   void dispose() {
-    _discount.dispose();
     _taxRate.dispose();
     _notes.dispose();
     super.dispose();
@@ -173,56 +168,6 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
           ),
           const SizedBox(height: AppSpacing.xl),
           Text(
-            strings.invoiceFieldDiscount,
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-          const SizedBox(height: AppSpacing.sm),
-          SegmentedButton<_DiscountMode>(
-            segments: <ButtonSegment<_DiscountMode>>[
-              ButtonSegment<_DiscountMode>(
-                value: _DiscountMode.amount,
-                label: Text(strings.invoiceLineDiscountModeAmount),
-              ),
-              ButtonSegment<_DiscountMode>(
-                value: _DiscountMode.percent,
-                label: Text(strings.invoiceLineDiscountModePercent),
-              ),
-            ],
-            selected: <_DiscountMode>{_discountMode},
-            onSelectionChanged: (Set<_DiscountMode> selection) {
-              setState(() {
-                _discountMode = selection.first;
-                _discount.clear();
-              });
-              // The controller is told too, not just the text field: leaving a
-              // stale amount set while the user types a percentage would let the
-              // amount reach the engine alongside it (§4 step 2).
-              _editor.setDiscountAmount(Money.zero);
-            },
-          ),
-          const SizedBox(height: AppSpacing.md),
-          AppTextField(
-            controller: _discount,
-            label: _discountMode == _DiscountMode.amount
-                ? strings.invoiceLineDiscountModeAmount
-                : strings.invoiceLineDiscountModePercent,
-            maxLength: AmountLimits.tomanDigits,
-            suffixText: _discountMode == _DiscountMode.amount
-                ? strings.unitToman
-                : kPersianPercentSign,
-            helperText: strings.fieldOptional,
-            keyboardType: TextInputType.numberWithOptions(
-              decimal: _discountMode == _DiscountMode.percent,
-            ),
-            digitsOnly: _discountMode == _DiscountMode.amount,
-            // Applied on every keystroke rather than on submit, because the
-            // totals beside this field are a live preview: a discount the user
-            // has typed but not "committed" would leave the summary describing an
-            // invoice that is no longer the one on screen.
-            onChanged: _applyDiscount,
-          ),
-          const SizedBox(height: AppSpacing.xl),
-          Text(
             strings.invoiceFieldTax,
             style: Theme.of(context).textTheme.labelLarge,
           ),
@@ -283,28 +228,6 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
         ],
       ],
     );
-  }
-
-  /// Sends exactly one of the two discount forms, never both.
-  void _applyDiscount(String text) {
-    final String trimmed = text.trim();
-    if (trimmed.isEmpty) {
-      // Clearing the field means "no discount", in whichever mode: the
-      // controller's setters each clear the other form.
-      _editor.setDiscountAmount(Money.zero);
-      return;
-    }
-
-    if (_discountMode == _DiscountMode.amount) {
-      final int? toman = tryParseIntInput(trimmed);
-      if (toman == null || toman < 0 || toman > kMaxAmountRial ~/ 10) return;
-      _editor.setDiscountAmount(Money.toman(toman));
-      return;
-    }
-
-    final int? bp = tryParseScaledInput(trimmed, scale: 100);
-    if (bp == null || bp < 0 || bp > 10000) return;
-    _editor.setDiscountPercent(bp);
   }
 
   void _applyTaxRate(String text) {

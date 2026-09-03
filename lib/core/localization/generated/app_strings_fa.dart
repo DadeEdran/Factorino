@@ -1357,4 +1357,36 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDetailsCollapsedSummary => 'تاریخ، تخفیف، مالیات و یادداشت';
+
+  @override
+  String get invoiceDiscountAction => 'تخفیف';
+
+  @override
+  String get invoiceDiscountTitle => 'تخفیف فاکتور';
+
+  @override
+  String get invoiceDiscountApply => 'اعمال تخفیف';
+
+  @override
+  String get invoiceDiscountLinesSection => 'تخفیف هر سطر';
+
+  @override
+  String get invoiceDiscountPayableNow => 'مبلغ فعلی';
+
+  @override
+  String get invoiceDiscountPayableAfter => 'مبلغ پس از تخفیف';
+
+  @override
+  String invoiceDiscountChange(String amount) {
+    return '$amount تومان کمتر از مبلغ فعلی';
+  }
+
+  @override
+  String invoiceDiscountLineHeading(String number, String title) {
+    return 'سطر $number، $title';
+  }
+
+  @override
+  String get invoiceDocumentExportSavedAndOpened =>
+      'فایل فاکتور ذخیره و باز شد.';
 }

@@ -6517,3 +6517,204 @@ A price typed over the catalogue's own is a figure that **matches no record anyb
 The line still carries `product_id` for traceability (D-004), so the invoice would point at a product
 it no longer agrees with — and six months later, when a customer queries the amount, there is nothing
 to reconcile it against. The catalogue is the one place a price is a fact rather than a keystroke.
+
+---
+
+## D-098 — Discounting is a step, not a field
+
+**Date:** 2026-09-03. Owner request: *"Bring per-line discount back, but not inside the quantity
+sheet — you were right to take it out of there. Put it behind its own «تخفیف» action beside «صدور
+فاکتور» and «ذخیره پیش‌نویس», so discounting is a deliberate step after the lines are entered rather
+than a field mixed into adding one."*
+
+D-097 removed the per-line discount from the add-a-line sheet, which was right and left the
+capability **gone rather than moved**. This is where it moves to.
+
+### The two levels answer one question, so they live in one place
+
+Before this, a discount was entered in two unrelated places: a per-line one inside the sheet that
+adds a line, and the invoice-level one among the optional fields under «مشخصات فاکتور». Neither was
+wrong on its own terms and together they were incoherent — the same question, in two forms, on two
+screens, one of them mixed into the act of adding a product.
+
+**«چه چیزی از این فاکتور کم می‌شود» is one question.** So both levels are on one screen, reached by
+one action, after the lines are entered — because discounting is a decision about a finished list,
+not a property of each thing as it is added.
+
+The invoice-level control therefore **left** «مشخصات فاکتور». What is left behind that fold is the
+tax rate, whose mode-plus-value control stays for D-026's reason: an explicit `0` is not the same as
+inheriting the settings default.
+
+### Where the action sits, and what it costs
+
+Beside the two commit actions, and **outlined rather than filled or tonal**: it is a step taken
+*before* committing and it neither writes nor issues anything, so it must not read as a third way to
+finish.
+
+On the phone it shares a row with «ذخیرهٔ پیش‌نویس», so a third action costs the pinned bar **no
+height at all** — which matters, because that budget is what D-096 spent on the pinned header. On
+the wider tiers it takes a full-width row beneath the other two, where there is room.
+
+**Absent until the invoice has a line** (D-021), like «صدور». A discount screen listing no lines and
+an invoice worth nothing is a control that can only disappoint. It *is* offered before a customer is
+chosen, though: discounting a list of lines does not need to know who they are for.
+
+### Showing the effect before the commitment
+
+*"Show me what the discount actually does to the total before I commit to it."*
+
+The footer states the payable figure **as it stands** and **as it would be**, and names the
+difference. Applying a discount is an intention; what a person agrees to is a number.
+
+**Nothing on the screen calculates.** The preview is `InvoiceEditorState.copyWith(...)`, whose
+constructor runs `calculateInvoice` — the one calculator (§4, D-046). The widget assembles entries
+and reads `totals`. `single_calculation_path_test.dart` fails the build if that stops being true.
+
+Fields are parsed **leniently** for the preview and **strictly** on apply, through the same parsers:
+a half-typed number is the ordinary state of a field being filled in, and freezing the footer on one
+would make the preview useless exactly while it is being used.
+
+### One intent, not N
+
+`InvoiceEditor.applyDiscounts` replaces the whole arrangement in a single state change. Calling
+`replaceLine` five times plus `setDiscountAmount` would walk the screen through five intermediate
+invoices — each a real state, each briefly rendered, and one of them liable to raise a clamp warning
+the finished set does not. The user agreed to one arrangement; the state should move to it once.
+
+### D-027 finally has somewhere to be said
+
+The engine has reported a clamped discount as **data** — kind, line, requested and applied — since
+Phase 4, and the only screen rendering it was the lines section of the form: where a user entering a
+discount was not looking, and only after the value had been committed.
+
+Here the warnings appear **while typing**, against the figure that caused them, before anything is
+applied.
+
+**And they are pinned with the commit action, not left in the scroll** — which was found rather than
+designed. They were at the foot of the fields, the test could not find them, and the reason it could
+not was that on a phone they were below the fold. A warning the person committing does not see is
+not a warning; it is a record of one. This is D-062's rule reaching one step further: that primitive
+exists so a commit action cannot scroll away from the person committing, and the sentence explaining
+why the figure they are committing to is not the figure they typed belongs on the same side of that
+line.
+
+### What the tests name rather than count
+
+Every control on the screen carries the same two Persian words — «مبلغ» and «درصد» — because they
+are the same question at two scopes, so matching on the label cannot say which control is meant. The
+list is also virtualized, so counting fields finds "the third one that happened to be built", which
+is a different control at a different screen height. `kInvoiceDiscountInvoiceKey` and
+`invoiceDiscountLineKey(i)` are how a test says which line it means, and how it scrolls to it.
+
+---
+
+## D-099 — A saved document's name is unique, and readable in a file manager
+
+**Date:** 2026-09-03. Owner request: *"PDF filenames must be unique. Saving twice must not overwrite
+the first file, and must not silently produce two files with the same name."*
+
+The name offered was `{number}.pdf` — the same name every time. What happened on the second save was
+therefore the **platform's** decision, and both platforms decide badly:
+
+* the Windows save dialog asks whether to overwrite, and one careless Enter destroys the first file;
+* Android's SAF silently writes `INV-1405-0001(1).pdf`, leaving two files whose names say nothing
+  about which is which.
+
+Neither is acceptable for a document a customer may already hold a copy of.
+
+### The scheme
+
+```
+INV-1405-0001_1405-06-02_10-00-00.pdf
+└── number ──┘ └── date ─┘ └─ time ─┘
+```
+
+* **The number first.** It is already the user's own identifier for the document and what they would
+  search a folder for; first also groups every export of one invoice together under a name sort.
+  A draft has no number (D-048) and gets the stem `draft` rather than an invented one.
+* **The Jalali date, then the time to the second.** Seconds are what make it unique, and the
+  resolution is not arbitrary: re-saving after correcting the seller details happens inside one
+  minute routinely, so a minute-resolution name would collide on exactly the case that motivates
+  re-saving.
+* **Latin digits, hyphens inside the parts, underscores between them.** The rule
+  `formatJalaliDateForFileName` already records for backups: a name travels outside the application,
+  and Persian digits in one sort unpredictably, break some pickers, and are awkward to type months
+  later. The *date* is still Jalali, which is the part that matters. Hyphens rather than the colons a
+  clock uses, because a colon is illegal in a Windows filename and the drive separator besides — a
+  name carrying one fails at the save dialog with a message about an invalid name that explains
+  nothing.
+
+### The promise, and its limit
+
+It guarantees that **the application never proposes the same name twice**. It cannot guarantee what
+lands on disk: the user may rename the file in the dialog, and a genuine collision remains the
+platform's to resolve. That is the right division — the destination is the user's choice, and this
+owns only the suggestion.
+
+### The clock it reads is not the application's
+
+`nowProvider` is **frozen for the life of the process** on purpose (`core/utils/clock.dart`): it
+exists so every *figure on screen* answers against one instant and a dashboard cannot straddle
+midnight. Reading it here would give every export in a session the same name and buy nothing. So this
+reads `DateTime.now()`, as the backup's own suggested name already does — a file name is not a figure
+on screen, and the property it needs is the opposite one.
+
+This was nearly shipped the other way; the frozen clock is the kind of correct decision that becomes
+a defect one call site over.
+
+---
+
+## D-100 — The saved document opens itself, and there is no notification
+
+**Date:** 2026-09-03. Two owner requests, answered together and answered differently.
+
+### Item 4 — it opens automatically
+
+*"Open the PDF immediately after saving, so it can be looked at right then. Whether that's automatic
+or one tap is your call."*
+
+**Automatic.** Saving is a deliberate act aimed at a destination the user picked, and looking at what
+was just produced is that same intent continuing rather than a new one. The alternative was the
+existing toast action — one tap — and the tap is not the cost: **the snackbar's own duration is.** A
+user who looks away for four seconds is back to finding the file in a file manager, which is the
+friction this was asked to remove.
+
+**The exception is the missing seller.** D-077's message exists to be acted on and carries the
+«تنظیمات» action that acts on it; launching a viewer over it would bury the one sentence worth
+reading. A document that does not name its issuer is one the user should be fixing, not admiring. So
+that case keeps the toast and does not open.
+
+**What this changes about D-091, stated rather than glossed.** That decision justified handing the
+document to a third-party viewer partly on the grounds that it happened *on an explicit tap*. That is
+no longer true, and the justification is now narrower: the **save** is the explicit act, aimed at a
+destination the user chose, and the open is a continuation of it. What has not changed is that
+nothing is shared, no chooser is offered, and no document is handed anywhere the user did not first
+decide to write it.
+
+The message reports what **happened** rather than what was attempted — saved and open, saved with
+nothing to open it, or saved without a seller — and the «باز کردن» action survives only in the middle
+case, as a manual retry. Offering to open a document that is already open would be an action that
+does nothing visible.
+
+### Item 3 — there is no notification, and that is the answer
+
+*"A notification when the PDF is saved, with an action to open it… if a notification is
+disproportionate for something the user just tapped for, say so and argue for the toast instead. I'd
+rather you push back than add a permission we don't need."*
+
+**Pushed back, and not built.**
+
+* **It is disproportionate.** The save is a foreground action the user just tapped and is watching,
+  and it completes in well under a second. Notifications are for things that happen while nobody is
+  looking; one here would arrive over a screen already showing the result.
+* **It costs a dependency and a permission.** `flutter_local_notifications`, a notification channel,
+  a small-icon asset, and on Android 13+ the `POST_NOTIFICATIONS` runtime permission — a permission
+  *prompt*, the first the application would ever show, for a message the user can already see.
+  The project spec asks whether a dependency is needed and §7 warns against packages requesting
+  permissions a feature does not need. This is both.
+* **The underlying need is met by item 4.** What a notification would have offered is a way back to
+  the file; opening it immediately is a shorter path to the same place.
+
+If a later feature genuinely runs while the user is elsewhere — a scheduled backup is the obvious
+candidate — the argument changes completely, and that is the point at which a notification
+dependency should be weighed on its own merits rather than inherited from here.

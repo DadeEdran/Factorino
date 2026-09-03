@@ -2,7 +2,6 @@ import 'dart:async';
 
 import 'package:factorino/core/date/jalali_instant.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
-import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/models/app_settings.dart';
 import 'package:factorino/data/models/customer.dart';
 import 'package:factorino/data/providers.dart';
@@ -211,62 +210,6 @@ void main() {
       expect(stateOf(container).dueDate, isNull);
     },
   );
-
-  testWidgets('an invoice discount typed as an amount reaches the engine', (
-    WidgetTester tester,
-  ) async {
-    final ProviderContainer container = await pumpSection(tester);
-    final AppStrings strings = stringsOf(tester, InvoiceDetailsSection);
-
-    container
-        .read(invoiceEditorProvider(openedAt).notifier)
-        .addLine(
-          InvoiceLineEntry(
-            title: 'کالا',
-            unit: 'عدد',
-            unitPrice: Money.toman(100000),
-            quantityMilli: 1000,
-          ),
-        );
-    await tester.pumpAndSettle();
-
-    await tester.enterText(
-      find
-          .widgetWithText(TextFormField, strings.invoiceLineDiscountModeAmount)
-          .last,
-      '20000',
-    );
-    await tester.pumpAndSettle();
-
-    final InvoiceEditorState state = stateOf(container);
-    expect(state.discount, Money.toman(20000));
-    expect(state.discountPercentBp, isNull);
-    // Allocated across the lines by the engine, before tax (§4 step 4).
-    expect(state.totals.invoiceDiscount, Money.toman(20000));
-  });
-
-  testWidgets('switching the discount to a percentage clears the amount', (
-    WidgetTester tester,
-  ) async {
-    final ProviderContainer container = await pumpSection(tester);
-    final AppStrings strings = stringsOf(tester, InvoiceDetailsSection);
-
-    await tester.enterText(
-      find
-          .widgetWithText(TextFormField, strings.invoiceLineDiscountModeAmount)
-          .last,
-      '20000',
-    );
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text(strings.invoiceLineDiscountModePercent));
-    await tester.pumpAndSettle();
-
-    // The controller was told, not only the field. A stale amount left set
-    // beside a percentage would reach the engine alongside it (§4 step 2).
-    expect(stateOf(container).discount, Money.zero);
-    expect(find.text('20000'), findsNothing);
-  });
 
   testWidgets('an invoice tax rate of zero is not the same as inheriting', (
     WidgetTester tester,

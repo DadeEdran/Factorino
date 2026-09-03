@@ -227,6 +227,37 @@ class InvoiceEditor extends _$InvoiceEditor {
 
   /// The invoice-level tax override. `null` inherits the settings default; `0`
   /// is a real rate meaning zero percent (D-026).
+  /// Applies a whole round of discounting in one state change (D-098).
+  ///
+  /// **One intent rather than N calls to [replaceLine] plus [setDiscountAmount]**,
+  /// and that is not an optimisation. Every one of those recomputes the invoice
+  /// and notifies, so a five-line discount would walk the screen through five
+  /// intermediate invoices — each a real state, each briefly on screen, and one
+  /// of them liable to raise a D-027 clamp warning that the finished set does
+  /// not. The user agreed to one arrangement; the state should move to it once.
+  ///
+  /// [lines] is the full replacement list, already carrying its per-line
+  /// discounts. The sheet builds it from the state it previewed, so what is
+  /// applied is exactly what was shown.
+  ///
+  /// **Nothing here calculates.** The engine runs in `InvoiceEditorState`'s
+  /// constructor as it does for every other intent.
+  void applyDiscounts({
+    required List<InvoiceLineEntry> lines,
+    required Money discount,
+    required int? discountPercentBp,
+  }) => _update(
+    (InvoiceEditorState s) => s.copyWith(
+      lines: lines,
+      discount: discount,
+      // Exactly one of the two is ever set (§4 step 2). A stale percentage left
+      // beside an amount wins in the engine over the amount the user just
+      // agreed to, which is the same trap `setDiscountAmount` clears.
+      discountPercentBp: discountPercentBp,
+      clearDiscountPercent: discountPercentBp == null,
+    ),
+  );
+
   void setTaxRate(int? basisPoints) => _update(
     (InvoiceEditorState s) => basisPoints == null
         ? s.copyWith(clearTaxRate: true)

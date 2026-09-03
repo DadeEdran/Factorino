@@ -69,19 +69,39 @@ class InvoiceExportButton extends ConsumerWidget {
 /// It is silent on a cancelled export, because nothing was produced and there
 /// is nothing to report about it.
 ///
-/// ## The message offers to open what was saved (D-091)
+/// ## It opens what was saved, and the message says so (D-091, D-100)
 ///
 /// A save dialog on Android ends with the file somewhere in the user's own
 /// storage and the application back in front of them, having said only that it
-/// worked. Whether it *did* work — whether the page is right, whether the
-/// Persian shaped, whether the totals read — is a question the user has no way
-/// to answer without leaving and finding the file by hand. So the confirmation
-/// carries the action, on the one occasion it is certain to be wanted.
+/// worked. Whether the page is *right* — the Persian shaped, the totals
+/// readable — is a question they cannot answer without leaving and finding the
+/// file by hand.
 ///
-/// **One action, not two**, and the no-seller case keeps the settings one:
-/// that message exists to be acted on, and a snackbar has room for a single
-/// action. The two never collide, because a document with no seller block is
-/// exactly the one the user should be fixing rather than opening.
+/// **So it opens straight away, with no second tap** (D-100). Saving is a
+/// deliberate act aimed at a destination the user picked, and looking at what
+/// was just produced is that same intent continuing rather than a new one. The
+/// toast's «باز کردن» action remains for the case where the automatic attempt
+/// found nothing to open with, so a device without a PDF viewer is told rather
+/// than left in silence.
+///
+/// **The exception is the missing seller**, which keeps the behaviour D-077
+/// specified: that message exists to be acted on and carries the «تنظیمات»
+/// action that acts on it, and launching a viewer over it would bury the one
+/// sentence worth reading. A document that does not name its issuer is one the
+/// user should be fixing, not admiring.
+///
+/// ## Why there is no notification
+///
+/// A notification was considered for this and **rejected** (D-100). The save is
+/// a foreground action the user just tapped and is watching; it completes in
+/// well under a second. Notifications are for things that happen while nobody
+/// is looking, and one for this would arrive over a screen already showing the
+/// result. It would also cost `flutter_local_notifications`, a channel, an
+/// icon, and the `POST_NOTIFICATIONS` runtime permission on Android 13+ —
+/// a permission prompt, for a message the user can already see. The project spec
+/// asks whether a dependency is needed and §7 warns against packages that
+/// request permissions a feature does not need; this is both.
+
 Future<void> exportInvoiceDocument(
   BuildContext context,
   WidgetRef ref,
@@ -110,38 +130,50 @@ Future<void> exportInvoiceDocument(
       );
     case InvoiceExportSaved(
       hadSeller: final bool hadSeller,
+      opened: final bool opened,
       file: final DeliveredFile file,
     ):
+      // **The message describes what happened, not what was attempted.** Three
+      // outcomes, and each says the true one: the file was saved and is open;
+      // it was saved and nothing here could open it; or it was saved without a
+      // seller block, which is the one the user should act on first.
       messenger.showSnackBar(
         SnackBar(
-          content: Text(
-            hadSeller
-                ? strings.invoiceDocumentExportSaved
-                : strings.invoiceDocumentExportNoSeller,
-          ),
-          action: hadSeller
-              ? SnackBarAction(
-                  label: strings.invoiceDocumentExportOpenAction,
-                  onPressed: () async {
-                    final bool opened = await controller.openSaved(file);
-                    // Said rather than left silent: a tap that does nothing
-                    // reads as the application being broken, and "no viewer
-                    // installed" is a state a real phone is in.
-                    if (!opened && context.mounted) {
-                      ScaffoldMessenger.maybeOf(context)?.showSnackBar(
-                        SnackBar(
-                          content: Text(
-                            strings.invoiceDocumentExportOpenFailed,
-                          ),
-                        ),
-                      );
-                    }
-                  },
-                )
-              : SnackBarAction(
-                  label: strings.invoiceDocumentExportGoToSettings,
-                  onPressed: () => context.go(AppDestination.settings.path),
-                ),
+          content: Text(switch ((hadSeller, opened)) {
+            (false, _) => strings.invoiceDocumentExportNoSeller,
+            (true, true) => strings.invoiceDocumentExportSavedAndOpened,
+            (true, false) => strings.invoiceDocumentExportSaved,
+          }),
+          action: switch ((hadSeller, opened)) {
+            // D-077's obligation, unchanged: the fix, one tap away.
+            (false, _) => SnackBarAction(
+              label: strings.invoiceDocumentExportGoToSettings,
+              onPressed: () => context.go(AppDestination.settings.path),
+            ),
+            // Already open. Offering to open it again would be an action that
+            // does nothing visible.
+            (true, true) => null,
+            // The automatic attempt found nothing to open with. The action is
+            // kept as a manual retry rather than removed, because "no viewer"
+            // and "the viewer was busy" look identical from here, and a user
+            // who installs one wants the file without saving it twice.
+            (true, false) => SnackBarAction(
+              label: strings.invoiceDocumentExportOpenAction,
+              onPressed: () async {
+                final bool retried = await controller.openSaved(file);
+                // Said rather than left silent: a tap that does nothing reads
+                // as the application being broken, and "no viewer installed"
+                // is a state a real phone is in.
+                if (!retried && context.mounted) {
+                  ScaffoldMessenger.maybeOf(context)?.showSnackBar(
+                    SnackBar(
+                      content: Text(strings.invoiceDocumentExportOpenFailed),
+                    ),
+                  );
+                }
+              },
+            ),
+          },
         ),
       );
   }

@@ -2082,3 +2082,17 @@ decision, not a security one.
 **Known issues touched.** 30 is closed. 26 was deliberately not made worse: D-094 put the PDF button
 in the document header rather than the title row, because that row at 328–376 px is 26's first band.
 25 and 28 are unchanged.
+
+### The fourth pass, the same day
+
+| What | Where |
+|---|---|
+| Discounting is a screen of its own, covering both levels, with a live preview and D-027's clamp warnings | D-098 |
+| A saved document's name is unique and readable: number, Jalali date, time to the second | D-099 |
+| The document opens itself after saving; **no notification was added** | D-100 |
+
+**Security note.** Nothing stored and no new dependency — the notification was declined precisely to
+avoid one and the `POST_NOTIFICATIONS` permission behind it. The one change to an outward surface is
+that the viewer hand-off (D-091) now happens without a second tap; D-100 states plainly what that
+narrows about D-091's justification, and what it does not change: nothing is shared, no chooser is
+offered, and the destination is still one the user picked.

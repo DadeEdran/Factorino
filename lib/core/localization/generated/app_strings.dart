@@ -2531,6 +2531,60 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'تاریخ، تخفیف، مالیات و یادداشت'**
   String get invoiceDetailsCollapsedSummary;
+
+  /// The button beside 'issue' and 'save draft' on the invoice form that opens the discount screen (D-098). One word, because it sits between two longer labels in a pinned bar on a phone.
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف'**
+  String get invoiceDiscountAction;
+
+  /// The discount screen's own heading. Names the whole invoice rather than a line, because the screen covers both levels.
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف فاکتور'**
+  String get invoiceDiscountTitle;
+
+  /// Commits everything entered on the discount screen at once. Says 'apply' rather than 'save', because nothing is written to the database here -- the invoice is still a form.
+  ///
+  /// In fa, this message translates to:
+  /// **'اعمال تخفیف'**
+  String get invoiceDiscountApply;
+
+  /// Heading over the per-line discount controls.
+  ///
+  /// In fa, this message translates to:
+  /// **'تخفیف هر سطر'**
+  String get invoiceDiscountLinesSection;
+
+  /// The payable figure as the invoice stands, before anything on this screen is applied. Half of the before-and-after the screen exists to show: applying a discount is an intention, and what the user agrees to is a number.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ فعلی'**
+  String get invoiceDiscountPayableNow;
+
+  /// The payable figure this screen's entries would produce. Updates on every keystroke.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ پس از تخفیف'**
+  String get invoiceDiscountPayableAfter;
+
+  /// The difference between the two figures, stated rather than left to be worked out -- on the one screen where working it out is what the user came to avoid. Shown only when the two actually differ, so an untouched sheet does not open with a row about nothing.
+  ///
+  /// In fa, this message translates to:
+  /// **'{amount} تومان کمتر از مبلغ فعلی'**
+  String invoiceDiscountChange(String amount);
+
+  /// Names one line on the discount screen: its position and its title. The number is 1-based and matches the numbering the clamp warnings quote, so a warning about 'line 3' points at the control headed 'line 3'.
+  ///
+  /// In fa, this message translates to:
+  /// **'سطر {number}، {title}'**
+  String invoiceDiscountLineHeading(String number, String title);
+
+  /// Shown when the saved PDF was handed to a viewer straight away (D-100). Distinct from the plain 'saved' message because it describes what actually happened -- the user is about to be looking at another application, and a message claiming only that the file was saved would leave them wondering what opened it. No action beside it: offering to open a document that is already open is an action that does nothing visible.
+  ///
+  /// In fa, this message translates to:
+  /// **'فایل فاکتور ذخیره و باز شد.'**
+  String get invoiceDocumentExportSavedAndOpened;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {

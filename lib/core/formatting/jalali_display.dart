@@ -184,3 +184,27 @@ String formatJalaliDateForFileName(
   final String day = jalali.day.toString().padLeft(2, '0');
   return '${jalali.year}-$month-$day';
 }
+
+/// The Tehran wall-clock time for a **file name**: `14-30-05`.
+///
+/// The same rule [formatJalaliDateForFileName] follows and for the same
+/// reasons — Latin digits, and a separator a file system will not object to.
+/// Hyphens rather than the colons a clock uses, because a colon is illegal in a
+/// Windows filename and is the drive separator besides; a file named with one
+/// does not fail loudly, it fails at the save dialog with a message about an
+/// invalid name that says nothing about why.
+///
+/// **Seconds, not minutes**, and that is what makes it useful: it is the
+/// component that makes two exports of one invoice different files (D-099). A
+/// user re-saving a document after correcting the seller details does it within
+/// the same minute, routinely.
+String formatJalaliTimeForFileName(
+  DateTime instant, {
+  Duration offset = kIranStandardOffset,
+}) {
+  final DateTime local = instant.toUtc().add(offset);
+  final String hour = local.hour.toString().padLeft(2, '0');
+  final String minute = local.minute.toString().padLeft(2, '0');
+  final String second = local.second.toString().padLeft(2, '0');
+  return '$hour-$minute-$second';
+}

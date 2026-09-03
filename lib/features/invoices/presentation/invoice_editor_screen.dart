@@ -18,6 +18,7 @@ import '../domain/invoice_summary_figures.dart';
 import '../domain/invoice_editor_state.dart';
 import '../domain/invoice_number_label.dart';
 import 'widgets/invoice_details_section.dart';
+import 'widgets/invoice_discount_sheet.dart';
 import 'widgets/invoice_lines_section.dart';
 import 'widgets/invoice_totals_summary.dart';
 
@@ -215,9 +216,15 @@ class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
       // doing so from the most prominent place on the screen, directly over
       // the add-line control that is what the user actually needs to find.
       showIssue: state.lines.isNotEmpty,
+      // **Absent until there is something to discount** (D-021, D-098). A
+      // discount screen listing no lines and an invoice worth nothing is a
+      // control that can only disappoint, and it would sit beside the two that
+      // are already explaining why they cannot be used yet.
+      showDiscount: state.lines.isNotEmpty,
       busy: _writing,
       onSaveDraft: _saveDraft,
       onIssue: () => _issue(strings, state),
+      onDiscount: () => showInvoiceDiscountSheet(context, ref, _openedAt),
     );
   }
 
@@ -375,9 +382,11 @@ class _EditorActions extends StatelessWidget {
     required this.strings,
     required this.blockedReason,
     required this.showIssue,
+    required this.showDiscount,
     required this.busy,
     required this.onSaveDraft,
     required this.onIssue,
+    required this.onDiscount,
   });
 
   final AppStrings strings;
@@ -394,9 +403,14 @@ class _EditorActions extends StatelessWidget {
   /// for the first step (D-086).
   final bool showIssue;
 
+  /// Whether discounting is offered at all (D-098). False until the invoice
+  /// has a line, for the reason [showIssue] is.
+  final bool showDiscount;
+
   final bool busy;
   final VoidCallback onSaveDraft;
   final VoidCallback onIssue;
+  final VoidCallback onDiscount;
 
   /// Stacked, for the sticky bar on a phone where two buttons and a total do
   /// not fit on one line.
@@ -417,6 +431,15 @@ class _EditorActions extends StatelessWidget {
       onPressed: enabled ? onIssue : null,
       child: Text(strings.invoiceActionIssue),
     );
+    // **Outlined, and beside the draft rather than under the issue.** It is a
+    // step taken *before* committing, and neither writing nor issuing anything
+    // -- so it must not read as a third way to finish. Enabled whenever there
+    // are lines, including while the customer is still missing: discounting a
+    // list of lines does not need to know who they are for (D-098).
+    final Widget discount = OutlinedButton(
+      onPressed: busy ? null : onDiscount,
+      child: Text(strings.invoiceDiscountAction),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -427,8 +450,19 @@ class _EditorActions extends StatelessWidget {
             issue,
             const SizedBox(height: AppSpacing.sm),
           ],
-          draft,
-        ] else
+          // Side by side, so a third action costs the pinned bar no height at
+          // all -- which is the budget D-096 spent on the header above.
+          if (showDiscount)
+            Row(
+              children: <Widget>[
+                Expanded(child: draft),
+                const SizedBox(width: AppSpacing.md),
+                Expanded(child: discount),
+              ],
+            )
+          else
+            draft,
+        ] else ...<Widget>[
           Row(
             children: <Widget>[
               Expanded(child: draft),
@@ -438,6 +472,11 @@ class _EditorActions extends StatelessWidget {
               ],
             ],
           ),
+          if (showDiscount) ...<Widget>[
+            const SizedBox(height: AppSpacing.sm),
+            discount,
+          ],
+        ],
         const SizedBox(height: AppSpacing.sm),
         Text(
           // The blocking reason wins the line when there is one: a user

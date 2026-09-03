@@ -1242,5 +1242,46 @@
   "invoiceDetailsCollapsedSummary": "تاریخ، تخفیف، مالیات و یادداشت",
   "@invoiceDetailsCollapsedSummary": {
     "description": "The subtitle of the collapsed invoice-details heading on the phone, once the customer picker has moved out of that section and been pinned above the scroll (D-096). It lists what is actually behind the fold, so the heading answers 'what is in here' rather than repeating the customer -- which it used to show only because the fold would otherwise have hidden the one field a save cannot do without, and which is no longer true."
+  },
+  "invoiceDiscountAction": "تخفیف",
+  "@invoiceDiscountAction": {
+    "description": "The button beside 'issue' and 'save draft' on the invoice form that opens the discount screen (D-098). One word, because it sits between two longer labels in a pinned bar on a phone."
+  },
+  "invoiceDiscountTitle": "تخفیف فاکتور",
+  "@invoiceDiscountTitle": {
+    "description": "The discount screen's own heading. Names the whole invoice rather than a line, because the screen covers both levels."
+  },
+  "invoiceDiscountApply": "اعمال تخفیف",
+  "@invoiceDiscountApply": {
+    "description": "Commits everything entered on the discount screen at once. Says 'apply' rather than 'save', because nothing is written to the database here -- the invoice is still a form."
+  },
+  "invoiceDiscountLinesSection": "تخفیف هر سطر",
+  "@invoiceDiscountLinesSection": {
+    "description": "Heading over the per-line discount controls."
+  },
+  "invoiceDiscountPayableNow": "مبلغ فعلی",
+  "@invoiceDiscountPayableNow": {
+    "description": "The payable figure as the invoice stands, before anything on this screen is applied. Half of the before-and-after the screen exists to show: applying a discount is an intention, and what the user agrees to is a number."
+  },
+  "invoiceDiscountPayableAfter": "مبلغ پس از تخفیف",
+  "@invoiceDiscountPayableAfter": {
+    "description": "The payable figure this screen's entries would produce. Updates on every keystroke."
+  },
+  "invoiceDiscountChange": "{amount} تومان کمتر از مبلغ فعلی",
+  "@invoiceDiscountChange": {
+    "description": "The difference between the two figures, stated rather than left to be worked out -- on the one screen where working it out is what the user came to avoid. Shown only when the two actually differ, so an untouched sheet does not open with a row about nothing.",
+    "placeholders": { "amount": { "type": "String" } }
+  },
+  "invoiceDiscountLineHeading": "سطر {number}، {title}",
+  "@invoiceDiscountLineHeading": {
+    "description": "Names one line on the discount screen: its position and its title. The number is 1-based and matches the numbering the clamp warnings quote, so a warning about 'line 3' points at the control headed 'line 3'.",
+    "placeholders": {
+      "number": { "type": "String" },
+      "title": { "type": "String" }
+    }
+  },
+  "invoiceDocumentExportSavedAndOpened": "فایل فاکتور ذخیره و باز شد.",
+  "@invoiceDocumentExportSavedAndOpened": {
+    "description": "Shown when the saved PDF was handed to a viewer straight away (D-100). Distinct from the plain 'saved' message because it describes what actually happened -- the user is about to be looking at another application, and a message claiming only that the file was saved would leave them wondering what opened it. No action beside it: offering to open a document that is already open is an action that does nothing visible."
   }
 }
