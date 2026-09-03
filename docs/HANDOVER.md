@@ -170,6 +170,23 @@ controllers), and `domain/` where it needs one.
 * **MIUI intermittently refuses `flutter test -d <device>`** with `INSTALL_FAILED_USER_RESTRICTED`.
   Remedy: `flutter build apk --debug`, then `adb install -r` by hand once, then retry. Retrying is
   part of the remedy, not a sign it failed.
+* **`flutter clean` is a one-way door onto a network you may not have.** `PUB_HOSTED_URL` points
+  at the Tsinghua mirror, and on 2026-09-03 that mirror accepted the connection and then hung —
+  `flutter pub get` sat at zero CPU for twenty minutes with nothing written to the cache, after
+  `clean` had already deleted `.dart_tool`. The way out, and it is not obvious: **`pubspec.lock`
+  records every one of the 144 packages against `https://pub.dev`, and that is where they are
+  cached** — so the mirror is only used for *fetching*, and clearing the variable makes the local
+  cache resolvable:
+
+  ```powershell
+  $env:PUB_HOSTED_URL = $null      # the cache is under hosted/pub.dev, not the mirror directory
+  flutter pub get --offline
+  ```
+
+  With the variable still set, `--offline` looks in `hosted/mirrors.tuna...%47dart-pub%47`, finds
+  nothing, and reports *"could not find package pdf in cache"* — which reads like a corrupt cache and
+  is not one. Clean only when a size figure or a distributable artifact actually needs it.
+
 * **The Windows dev database holds twelve demo invoices at small amounts.** Never judge a money
   layout against it — that is exactly the trap D-057 exists for. Use the written ladder in
   `test/support/money_magnitudes.dart`.

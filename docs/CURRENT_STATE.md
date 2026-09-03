@@ -395,19 +395,39 @@ Fold, measured on the Redmi: TAKEN 392.7 x 803.6. add-line at 586-611; pinned ba
 Invoice export - both:      PASS   re-run after the status work; 0 layout errors on the phone
                                    +5 for `rtl_table_test.dart`; the export suite is an
                                    integration test and is not in this count
-Android build:              PASS   **arm64 PROFILE APK built 2026-09-03**, 47,385,392 bytes, at
-                                   build/app/outputs/flutter-apk/app-profile.apk. Profile, not
-                                   release, so it needs no keystore -- the release refusal (D-083)
-                                   is untouched and still fires. Earlier: release APKs rebuilt
-                                   2026-09-02 after Phase 7 (b), arm64 21,653,926. NOT installed on
-                                   a device since 2026-09-01
-Windows build:              PASS   **release rebuilt 2026-09-03** at
-                                   build/windows/x64/runner/Release/ (data/app.so 9,896,840). Note
-                                   factorino.exe keeps an older timestamp because the C++ runner
-                                   did not need relinking -- app.so is what carries the Dart. Take
-                                   a SIZE figure only after `flutter clean`: an uncleaned Release
-                                   dir holds an 87 MB stale kernel_blob.bin and reads 120 MB
-                                   against a clean 33,116,830 over 18 files (2026-09-02)
+Android build:              PASS   **arm64 PROFILE APK, rebuilt from the COMMITTED tree after a
+                                   `flutter clean`**: 35,055,091 bytes. Profile, not release, so it
+                                   needs no keystore -- the release refusal (D-083) is untouched and
+                                   still fires. The engine, the app snapshot and sqlite3mc are
+                                   arm64-only as asked; `libdartjni.so` also ships v7a and x86_64
+                                   because the `jni` dependency does, which costs ~160 KB and
+                                   affects nothing. Verified to be the right build: the
+                                   `open_file` channel string is in classes9.dex.
+                                   **Take the size from a cleaned build.** The same APK built over
+                                   an uncleaned tree earlier the same day read 47,385,392 -- 12 MB
+                                   of stale artifacts, the Android counterpart of the Windows
+                                   kernel_blob.bin trap below.
+                                   Earlier: release APKs 2026-09-02, arm64 21,653,926. NOT installed
+                                   on a device since 2026-09-01
+Windows build:              PASS   **release rebuilt from the COMMITTED tree after a
+                                   `flutter clean`**: 35,050,954 over 19 files at
+                                   build/windows/x64/runner/Release/ (data/app.so 9,896,840).
+                                   Take a SIZE figure only after `flutter clean`: an uncleaned
+                                   Release dir holds an 87 MB stale kernel_blob.bin and reads 120 MB
+Artifacts delivered:        PASS   both replaced in `%USERPROFILE%\Desktop\Factorino-test\`,
+                                   under the fixed names the owner links people to:
+                                   `factorino-arm64.apk` (35,055,091) and
+                                   `factorino-windows-x64.zip` (14,793,816, 21 entries, the bundle
+                                   CONTENTS at the archive root so the README's "extract, enter the
+                                   folder, double-click factorino.exe" is true). **The zip was
+                                   extracted to a scratch directory and launched** -- the exact path
+                                   a tester follows -- and opened its window. `README-fa.txt`
+                                   rewritten for what a tester now sees: a new section 4 for the
+                                   twelve changes, with the two unverified Android behaviours called
+                                   out at the top of it and again under reporting priorities; the
+                                   fixed add-line issue removed from the known-issues list; and a
+                                   new known issue for pre-existing invoices that legitimately
+                                   show ۰۰:۰۰ (see D-092 -- their real time was never stored)
 
 Backup container proof:     PASS   5/5 on BOTH targets (D-069) -- encrypted on disk with the
                                    sentinel absent from the raw bytes, right passphrase reopens,
