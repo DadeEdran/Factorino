@@ -1,3 +1,4 @@
+import 'package:factorino/core/date/jalali_period.dart';
 import 'package:factorino/core/formatting/jalali_display.dart';
 import 'package:factorino/core/formatting/number_display.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
@@ -135,11 +136,12 @@ void main() {
     String id = 'p1',
     PaymentMethod method = PaymentMethod.cash,
     String? note,
+    DateTime? paidAt,
   }) => Payment(
     id: id,
     invoiceId: 'i1',
     amount: Money.rial(rial),
-    paidAt: issued,
+    paidAt: paidAt ?? issued,
     method: method,
     note: note,
     createdAt: issued,
@@ -647,6 +649,49 @@ void main() {
       expect(find.text('چک ۱۲۳۴۵۶'), findsOneWidget);
       expect(find.text(formatJalaliDate(issued)), findsWidgets);
       expect(find.textContaining(formatGroupedPersian(500000)), findsWidgets);
+    });
+
+    testWidgets('a payment recorded at a real moment shows its time', (
+      WidgetTester tester,
+    ) async {
+      // The owner's request: the time beside the date. `issued` is 09:30
+      // Tehran, which is a payment somebody actually entered at 09:30.
+      await pumpWithPayments(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000)]),
+      );
+
+      expect(find.text(formatJalaliDate(issued)), findsWidgets);
+      expect(
+        find.text(formatJalaliTime(issued)),
+        findsOneWidget,
+        reason: 'the time belongs next to the date it happened on (D-110)',
+      );
+    });
+
+    testWidgets('a payment from before the column held one shows none', (
+      WidgetTester tester,
+    ) async {
+      // **Every payment written before D-110 carries the start of its Jalali
+      // day**, because the sheet assigned a day rather than a moment. For those
+      // the column holds no time, and «۰۰:۰۰» would not be a missing value but
+      // a specific claim about when money arrived — on a financial record, and
+      // a false one. So the row shows the date alone.
+      final DateTime dayStart = jalaliDayOf(issued).start;
+
+      await pumpWithPayments(
+        tester,
+        view: detail(payments: <Payment>[payment(5000000, paidAt: dayStart)]),
+      );
+
+      expect(find.text(formatJalaliDate(dayStart)), findsWidgets);
+      expect(
+        find.text(formatJalaliTime(dayStart)),
+        findsNothing,
+        reason:
+            'an absent time must not be rendered as midnight — that is an '
+            'invention, not a value (D-110)',
+      );
     });
 
     testWidgets('a draft says why it cannot take a payment', (

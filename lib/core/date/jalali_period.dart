@@ -159,6 +159,35 @@ InstantRange jalaliYearOf(
   return jalaliYear(jalaliAt(instant, offset: offset).year, offset: offset);
 }
 
+/// The **last Jalali day inside** [range], as the instant that day begins.
+///
+/// The counterpart of the half-open bound, and it exists because the two are
+/// off by a day and the difference is invisible on screen. `InstantRange.end` is
+/// *exclusive*: for a range built from a user picking «۱ تا ۱۰», the stored end
+/// is the 11th's midnight, because that is what makes adjacent periods tile the
+/// timeline exactly. Showing that instant back to the user names a day they did
+/// not pick, and it names it on the label that says what they are looking at.
+///
+/// **No arithmetic on a duration**, which is what a first attempt reaches for —
+/// stepping back a millisecond and reading the day off that. This asks the
+/// question directly instead: an end that falls exactly on a day boundary
+/// belongs to the day before it, and an end that falls part-way through a day
+/// makes that day the last one the range touches. Exact whatever the month
+/// length, and there is no magic number to get wrong.
+///
+/// Used by the invoice filter's custom range (D-111); it lives here rather than
+/// in the sheet because "which day is the last one in this range" is calendar
+/// arithmetic, and §3 keeps that out of a widget.
+DateTime lastJalaliDayOf(
+  InstantRange range, {
+  Duration offset = kIranStandardOffset,
+}) {
+  final endDay = jalaliAt(range.end, offset: offset);
+  final startOfEndDay = startOfJalaliDayUtc(endDay, offset: offset);
+  if (startOfEndDay != range.end) return startOfEndDay;
+  return startOfJalaliDayUtc(endDay.addDays(-1), offset: offset);
+}
+
 /// The number of days in Jalali month [year]/[month]: 31, 30, or 29/30 for
 /// Esfand depending on the leap year.
 int jalaliMonthLength(int year, int month) {

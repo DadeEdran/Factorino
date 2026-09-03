@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/date/jalali_instant.dart';
 import '../../../../core/date/jalali_period.dart';
+import '../../../../core/formatting/jalali_display.dart';
 import '../../../../core/localization/generated/app_strings.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/utils/clock.dart';
 import '../../../../core/widgets/editor_sheet.dart';
+import '../../../../core/widgets/jalali_date_picker.dart';
 import '../../../../data/models/customer.dart';
 import '../../../../data/models/invoice_filter.dart';
 import '../../../../data/models/invoice_status.dart';
@@ -71,6 +74,20 @@ class _InvoiceFilterSheetState extends ConsumerState<_InvoiceFilterSheet> {
       invoiceListQueryProvider.select((query) => query.filter),
     );
     final DateTime now = ref.watch(nowProvider);
+
+    final List<(String, InstantRange?)> presets = _periodOptions(strings, now);
+
+    // **A period that is none of the presets is a custom one**, derived rather
+    // than stored: the filter carries an `InstantRange` and nothing else, and a
+    // second flag saying which control produced it would be a fact about the
+    // UI kept in the query — the two would disagree the first time a preset
+    // range happened to equal a hand-picked one, which for «این ماه» picked day
+    // by day is not hypothetical.
+    final bool isCustom =
+        filter.period != null &&
+        !presets.any(
+          ((String, InstantRange?) option) => option.$2 == filter.period,
+        );
 
     void apply(InvoiceFilter value) =>
         ref.read(invoiceListQueryProvider.notifier).filter(value);
@@ -190,10 +207,7 @@ class _InvoiceFilterSheetState extends ConsumerState<_InvoiceFilterSheet> {
           spacing: AppSpacing.sm,
           runSpacing: AppSpacing.sm,
           children: <Widget>[
-            for (final (String label, InstantRange? range) in _periodOptions(
-              strings,
-              now,
-            ))
+            for (final (String label, InstantRange? range) in presets)
               ChoiceChip(
                 label: Text(label),
                 selected: filter.period == range,
@@ -202,18 +216,107 @@ class _InvoiceFilterSheetState extends ConsumerState<_InvoiceFilterSheet> {
                   apply(filter.withPeriod(range));
                 },
               ),
+            // **The custom range, beside the presets rather than instead of
+            // them** (D-111). The presets answer what a billing application is
+            // usually asked and stay one tap; this answers the rest, and the
+            // owner asked for it after the presets had shipped, which is the
+            // evidence the header's «a later phase's problem» was waiting for.
+            //
+            // It is a `ChoiceChip` like its neighbours so the five options read
+            // as one set of mutually exclusive answers to «بازهٔ زمانی» — a
+            // separate control below them would suggest a range could be
+            // combined with «این ماه», which the filter cannot express.
+            ChoiceChip(
+              avatar: const Icon(Icons.event_outlined, size: AppIconSize.sm),
+              // Once chosen the chip **states the range** rather than repeating
+              // the invitation, so a user returning to the sheet can read what
+              // the list is showing without opening two calendars to find out.
+              label: Text(
+                isCustom
+                    ? strings.invoiceFilterPeriodCustomRange(
+                        formatJalaliDate(filter.period!.start),
+                        // The stored end is **exclusive** (`InstantRange` is
+                        // half-open, so periods tile the timeline), and the
+                        // user picked an inclusive last day. Showing the stored
+                        // instant would name the day *after* the one they
+                        // chose — off by one, on the label that says what they
+                        // are looking at. `core/date/` answers which day that
+                        // is; a widget does no calendar arithmetic (§3).
+                        formatJalaliDate(lastJalaliDayOf(filter.period!)),
+                      )
+                    : strings.invoiceFilterPeriodCustom,
+              ),
+              selected: isCustom,
+              // Not `onSelected`: a `ChoiceChip` reports being *deselected*
+              // too, and there is nothing to do with that here — the way out of
+              // a custom range is «همهٔ تاریخ‌ها» beside it. Tapping this one
+              // always means "choose a range", including when it is already
+              // selected and the user wants a different one.
+              onSelected: (bool _) => _pickCustomRange(strings, filter),
+            ),
           ],
         ),
       ],
     );
   }
 
+  /// Two calendars in turn: the first day, then the last.
+  ///
+  /// **Two sequential picks rather than a range calendar**, because the picker
+  /// this application already has answers "which day" correctly — Jalali
+  /// months, a Saturday week start, Persian digits — and a second grid that
+  /// tracked two selections would be a second implementation of all of that
+  /// (§2's question, and D-072's rule about a guard that agrees with what it
+  /// watches, applied to a widget).
+  ///
+  /// **The end is inclusive to the user and exclusive in the range.** A user
+  /// picking ۱ to ۳۱ means the whole of the 31st; `jalaliDay(last).end` is the
+  /// instant the next day begins, which is exactly the half-open upper bound
+  /// [InstantRange] is documented to want. Passing the picked instant straight
+  /// through would drop the last day of every range the user ever chose.
+  Future<void> _pickCustomRange(
+    AppStrings strings,
+    InvoiceFilter filter,
+  ) async {
+    final DateTime now = ref.read(nowProvider);
+    final InstantRange? current = filter.period;
+
+    final DateTime? first = await showJalaliDatePicker(
+      context,
+      initial: current?.start ?? now,
+      title: strings.invoiceFilterPeriodCustomFrom,
+    );
+    if (first == null || !mounted) return;
+
+    final DateTime? last = await showJalaliDatePicker(
+      context,
+      // The same day, not `now`: a user who picked a day last Ordibehesht is
+      // choosing the other end of *that*, and opening the second calendar on
+      // today's month would make them navigate back to where they just were.
+      initial: first,
+      // Days before the start are shown but not selectable, so an empty range
+      // — which `InstantRange` refuses by throwing — cannot be expressed.
+      firstAllowed: first,
+      title: strings.invoiceFilterPeriodCustomTo,
+    );
+    if (last == null || !mounted) return;
+
+    ref
+        .read(invoiceListQueryProvider.notifier)
+        .filter(
+          filter.withPeriod(InstantRange(first, jalaliDay(jalaliAt(last)).end)),
+        );
+  }
+
   /// The presets, resolved through `core/date/` against one instant.
   ///
-  /// Presets rather than a date-range picker, deliberately: «این ماه» and
-  /// «ماه گذشته» are what a user actually asks a billing application, and a
-  /// pair of Jalali calendars to fill in is four taps to express the same
-  /// question. A custom range is a later phase's problem, not a gap here.
+  /// **Presets first, because «این ماه» and «ماه گذشته» are what a user
+  /// actually asks a billing application** and a pair of calendars to fill in
+  /// is four taps to express the same question. That reasoning stands; what it
+  /// did not license was the sentence that used to follow it, that a custom
+  /// range "is a later phase's problem, not a gap here". It was a gap, the
+  /// owner found it in use, and `_pickCustomRange` sits beside these now
+  /// (D-111).
   List<(String, InstantRange?)> _periodOptions(
     AppStrings strings,
     DateTime now,

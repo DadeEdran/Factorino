@@ -35,22 +35,40 @@ Future<DateTime?> showJalaliDatePicker(
   BuildContext context, {
   required DateTime initial,
   DateTime? firstAllowed,
+  String? title,
 }) {
   return showDialog<DateTime>(
     context: context,
-    builder: (BuildContext context) =>
-        _JalaliDatePickerDialog(initial: initial, firstAllowed: firstAllowed),
+    builder: (BuildContext context) => _JalaliDatePickerDialog(
+      initial: initial,
+      firstAllowed: firstAllowed,
+      title: title,
+    ),
   );
 }
 
 class _JalaliDatePickerDialog extends StatefulWidget {
-  const _JalaliDatePickerDialog({required this.initial, this.firstAllowed});
+  const _JalaliDatePickerDialog({
+    required this.initial,
+    this.firstAllowed,
+    this.title,
+  });
 
   final DateTime initial;
 
   /// Days before this instant are shown but not selectable. Used for a due
   /// date, which may not precede its invoice's issue date.
   final DateTime? firstAllowed;
+
+  /// Overrides «انتخاب تاریخ», for the callers that open this twice in a row.
+  ///
+  /// **Persian, from the localization layer**, like every other string reaching
+  /// this dialog (§1) — passed in rather than selected here from an enum,
+  /// because the heading is copy and belongs with the screen that knows what it
+  /// is asking for. The invoice filter's custom range is the case: two
+  /// identical calendars headed «انتخاب تاریخ» give the user no way to tell
+  /// which end of the range they are on.
+  final String? title;
 
   @override
   State<_JalaliDatePickerDialog> createState() =>
@@ -87,7 +105,7 @@ class _JalaliDatePickerDialogState extends State<_JalaliDatePickerDialog> {
     final List<String> months = jalaliMonthNames(strings);
 
     return AlertDialog(
-      title: Text(strings.datePickerTitle),
+      title: Text(widget.title ?? strings.datePickerTitle),
       content: SizedBox(
         width: _dialogWidth,
         child: Column(

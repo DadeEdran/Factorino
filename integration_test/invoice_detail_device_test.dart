@@ -1,5 +1,7 @@
 import 'dart:io';
 
+import 'package:factorino/core/date/jalali_period.dart';
+import 'package:factorino/core/formatting/jalali_display.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/core/theme/app_theme.dart';
@@ -399,6 +401,35 @@ void main() {
         );
         expect(paid, afterPayment.grandTotal.rial);
         expect(afterPayment.status, InvoiceStatus.paid);
+
+        // **The recorded moment survived the round trip** (D-110). The sheet
+        // used to hand the repository the *start* of the Jalali day, so every
+        // payment ever written carried ۰۰:۰۰, and nothing noticed for as long
+        // as nothing displayed a time. This is the one place the claim can be
+        // checked end to end: through the real sheet, the real transaction and
+        // the real encrypted column, read back out.
+        final Payment written =
+            (await container
+                    .read(paymentRepositoryProvider)
+                    .findForInvoice(invoice.id))
+                .single;
+        debugPrint(
+          'paid at       : ${formatJalaliDate(written.paidAt)} '
+          '${formatJalaliTime(written.paidAt)}',
+        );
+        expect(
+          written.paidAt,
+          isNot(jalaliDayOf(written.paidAt).start),
+          reason:
+              'a payment is a moment; the column must hold the time of day it '
+              'was entered at and not that day midnight (D-110)',
+        );
+        await tester.pumpAndSettle();
+        expect(
+          find.text(formatJalaliTime(written.paidAt)),
+          findsOneWidget,
+          reason: 'and the row shows it beside the date',
+        );
 
         // And the page followed the row: the badge is the live query's, not
         // something the payments card set.

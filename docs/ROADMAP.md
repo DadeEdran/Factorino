@@ -2157,3 +2157,32 @@ and one fewer package applying the Kotlin Gradle Plugin. The manifest gains a `<
 truthfully. The Android save is now this application's own `ACTION_CREATE_DOCUMENT`: same SAF dialog,
 same destination chosen by the user, no share intent, and D-091's threat statement is unchanged. New
 data stored: none. New permissions: none.
+
+### The eighth pass — the third phone test, and two reports that were one defect
+
+| What | Where |
+|---|---|
+| «سیستم» broke inside the word: `SegmentedButton` split its width evenly and each segment spent 26 px on an icon and its gap, leaving the label **30.7 px at 320 and 45.0 of the 45.0 it needs at 400**. Icons removed; `pumpScreen` gained a `textScaler` and the labels are swept at 3 widths × Android's 4 font sizes | D-108 |
+| The same sweep found a **second** crush: the backup buttons, «پشتیبان» given 48.2 px for a word needing 62.1. Those icons carry meaning and stayed; the even split became an `OverflowBar` | D-108 |
+| «پرداخت کامل مانده» had shipped in Phase 5 (c) and the owner asked for it: on screen, above the fold, and read as helper text. It is a `FilledButton.tonal` now | D-109 |
+| A payment's time was never recorded — the sheet stored `jalaliDayOf(today).start`, so **every payment ever written carried ۰۰:۰۰**. D-092's defect one column over. Fixed the same way; old payments show no time rather than an invented one | D-110 |
+| A custom Jalali range in the invoice filters: two calendars headed «از تاریخ» / «تا تاریخ», the second floored at the first, with the inclusive last day resolved to the half-open bound. `lastJalaliDayOf` is new in `core/date/` | D-111 |
+| An Arabic-character guard over the ARB and the generated strings, banning each look-alike **named with its Persian replacement**. The census it was asked for found **one** Arabic character in the whole repository, in an English `description` field, and **none reaching a user** | D-112 |
+
+**Two of the five reports were the same defect.** The owner reported a standalone «ء» and, separately,
+«سیستم» splitting mid-word. The ARB writes the ezafe «ـهٔ» — `ه` + U+0654 — 31 times, correctly, and it
+rasterises correctly through the real production `SafeText`. But that pair is **one grapheme**, so a
+container narrower than the word breaks inside it and strands the hamza on the next line. The
+character ban is built because it was asked for and it is cheap; the fix is D-108's.
+
+**The third is a finding about evidence rather than about code.** A feature that shipped, sits above
+the fold and was asked for by the person testing it is not present in any sense that matters. The
+first instinct was to answer "it is already there".
+
+**Security note.** No new data stored, no new dependency, no new platform surface, no new permission,
+and the threat model is unchanged. One column changes *precision* rather than content: `payments.paid_at`
+now holds the time of day it was always typed to hold, which is neither more nor less personal data
+than the day it held before — and the display rule is deliberately conservative about records written
+before the change, so nothing is asserted about a customer's payment that the database does not know.
+The Arabic-character guard is a test and ships in no build. The custom range is a `WHERE` clause over
+columns already queried.

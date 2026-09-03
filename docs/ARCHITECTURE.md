@@ -39,7 +39,8 @@ Factorino/
                                                   #   + grossTotal, 2nd invariant (D-047)
       date/                                       # Jalali periods as UTC instant ranges (D-006)
         jalali_instant.dart                       #   instant <-> Jalali, offset as a parameter
-        jalali_period.dart                        #   InstantRange + day/month/year boundaries
+        jalali_period.dart                        #   InstantRange + day/month/year boundaries,
+                                                  #   and lastJalaliDayOf (the inclusive last day)
       formatting/                                 # the input boundary (§9)
         persian_text.dart                         #   THE normalizer: searchKey (D-025, D-029)
                                                   #   + keepDigitsOnly, the digit character class
@@ -369,6 +370,13 @@ Reporting queries take an `InstantRange` from `core/date/` rather than a month n
 the Jalali decision in one place instead of in every query, and aggregate in SQL (§13). The dashboard
 gets its range from `dashboardPeriodProvider`, which is `jalaliMonthOf(now)` and nothing else — the
 only place in the application that decides what "این ماه" means.
+
+**The range is half-open, and both directions of that live in `core/date/`.** `InstantRange`'s `end`
+is exclusive so adjacent periods tile the timeline exactly; `lastJalaliDayOf` (D-111) answers the
+question that goes the other way — which day is the last one *inside* a range — for the screens that
+have to show a user the day they picked rather than the bound that was stored. A widget that computed
+either by stepping back a fixed duration would be doing calendar arithmetic, which §3 keeps out of
+the presentation layer, and would be wrong on the month lengths Jalali actually has.
 
 **One reading of the clock.** "Now" is `nowProvider` (`core/utils/clock.dart`), read once per frame
 and passed down (D-041). Two independent `DateTime.now()` calls inside one frame can straddle

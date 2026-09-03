@@ -1049,6 +1049,20 @@ class AppStringsFa extends AppStrings {
   String get invoiceFilterPeriodThisYear => 'امسال';
 
   @override
+  String get invoiceFilterPeriodCustom => 'بازهٔ دلخواه';
+
+  @override
+  String invoiceFilterPeriodCustomRange(String from, String to) {
+    return '$from تا $to';
+  }
+
+  @override
+  String get invoiceFilterPeriodCustomFrom => 'از تاریخ';
+
+  @override
+  String get invoiceFilterPeriodCustomTo => 'تا تاریخ';
+
+  @override
   String invoiceFilterActiveLabel(String count) {
     return '$count فیلتر فعال';
   }

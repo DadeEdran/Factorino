@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 
-import '../../../../core/date/jalali_period.dart';
+import '../../../../core/date/jalali_instant.dart';
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/formatting/number_input.dart';
 import '../../../../core/localization/generated/app_strings.dart';
@@ -63,6 +63,9 @@ class _PaymentEditorSheet extends StatefulWidget {
 
   /// The clock, read once by the screen and passed down (D-041), so the date
   /// this sheet defaults to is the same instant the page was built against.
+  ///
+  /// **Its time of day is kept, not truncated** (D-110): a payment is recorded
+  /// as the moment it was entered, and the picker moves only its day.
   final DateTime today;
 
   @override
@@ -86,10 +89,14 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
     super.initState();
     _amount = TextEditingController();
     _note = TextEditingController();
-    // Today, in the same Jalali day the rest of the page is reckoning in
-    // (D-006, D-028): a payment is nearly always being recorded on the day it
-    // happened, and the picker is one tap away when it was not.
-    _paidAt = jalaliDayOf(widget.today).start;
+    // **The clock, not the day** (D-110). This read `jalaliDayOf(today).start`
+    // and stamped ۰۰:۰۰ on every payment ever recorded — which was invisible
+    // while nothing showed the time, and is D-092's fault one column over. A
+    // payment is a moment: money arrived at some hour, and the record should
+    // say which. The day is still today's Jalali day (D-006, D-028), because
+    // `widget.today` is the same instant the page was built against; only the
+    // time of day is no longer thrown away.
+    _paidAt = widget.today.toUtc();
     _amount.addListener(_onAmountChanged);
   }
 
@@ -146,12 +153,35 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
           ),
           validator: (String? value) => _validateAmount(value, strings),
         ),
+        // **The commonest payment is the whole balance, so it is a control and
+        // not a link** (D-109). This was a bare `TextButton` sitting directly
+        // under the amount field's helper line, and the owner tested the build
+        // and asked for the feature that was already there — which is the only
+        // evidence that matters about an affordance. Measured, it was never
+        // below the fold: 173–198 of the 545 logical pixels the keyboard
+        // leaves. It was *read as helper text*, because a flat primary-coloured
+        // run of Persian under a grey run of Persian is two lines of prose to
+        // anyone scanning for a button.
+        //
+        // Tonal, so it reads as a control against the pinned «ذخیره» without
+        // competing with it. **The figure stays in the helper above and is not
+        // repeated on the button**: at the ceiling rung of D-057's ladder
+        // «۱۰۰٬۰۰۰٬۰۰۰ تومان» on a button label is a run that cannot wrap and a
+        // sheet that cannot widen, and a button that clips its own amount is a
+        // worse fault than the one being fixed.
         if (widget.amountDue.rial > 0) ...<Widget>[
           const SizedBox(height: AppSpacing.sm),
           Align(
             alignment: AlignmentDirectional.centerStart,
-            child: TextButton(
-              onPressed: () => _amount.text = '${widget.amountDue.toman}',
+            child: FilledButton.tonal(
+              onPressed: () {
+                _amount.text = '${widget.amountDue.toman}';
+                // The caret follows the text in, so a user who wanted to round
+                // it off is typing at the end rather than in front of it.
+                _amount.selection = TextSelection.collapsed(
+                  offset: _amount.text.length,
+                );
+              },
               child: Text(strings.paymentAmountFillRemaining),
             ),
           ),
@@ -210,7 +240,14 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
       context,
       initial: _paidAt,
     );
-    if (picked != null) setState(() => _paidAt = picked);
+    if (picked == null) return;
+    // **The picker returns a day; this record is a moment** — so the day moves
+    // and the time of day is carried across, exactly as `setIssueDate` does for
+    // an invoice (D-092). Assigning the picked instant whole would reset the
+    // payment to ۰۰:۰۰ the moment a user corrected its date, which is not a
+    // missing value but a false one. The helper's own invariant is that the
+    // result never leaves the picked Jalali day, so no reporting period moves.
+    setState(() => _paidAt = jalaliDayWithTimeOf(picked, source: _paidAt));
   }
 
   void _submit() {

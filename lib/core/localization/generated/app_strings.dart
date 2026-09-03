@@ -1994,6 +1994,30 @@ abstract class AppStrings {
   /// **'امسال'**
   String get invoiceFilterPeriodThisYear;
 
+  /// Opens two Jalali calendars in turn, for a start day and an end day. The presets answer the questions a billing application is usually asked; this answers the rest, and it is a Jalali calendar rather than a Gregorian one for the reason section 5 gives about every other date in this application.
+  ///
+  /// In fa, this message translates to:
+  /// **'بازهٔ دلخواه'**
+  String get invoiceFilterPeriodCustom;
+
+  /// The chosen custom range, on the chip, replacing «بازهٔ دلخواه» once it is set. Both ends arrive already formatted by formatJalaliDate, which bidi-isolates each so the slashes cannot reorder; the word between them is copy and lives here.
+  ///
+  /// In fa, this message translates to:
+  /// **'{from} تا {to}'**
+  String invoiceFilterPeriodCustomRange(String from, String to);
+
+  /// The heading of the first of the two calendars. Two identical dialogs headed «انتخاب تاریخ» give the user no way to tell which end of the range they are on.
+  ///
+  /// In fa, this message translates to:
+  /// **'از تاریخ'**
+  String get invoiceFilterPeriodCustomFrom;
+
+  /// The heading of the second calendar. Days before the chosen start are shown but not selectable, so an empty range cannot be expressed.
+  ///
+  /// In fa, this message translates to:
+  /// **'تا تاریخ'**
+  String get invoiceFilterPeriodCustomTo;
+
   /// The badge on the filter control. A user who has narrowed the list must be able to see that they have, or an empty list reads as lost data.
   ///
   /// In fa, this message translates to:

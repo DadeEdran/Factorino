@@ -1,6 +1,8 @@
 import 'dart:io';
 
+import 'package:factorino/core/date/jalali_instant.dart';
 import 'package:factorino/core/formatting/number_display.dart';
+import 'package:factorino/core/formatting/persian_text.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/core/theme/app_theme.dart';
@@ -80,6 +82,23 @@ void main() {
   const String oldCustomer = 'شرکت مهندسی و بازرگانی نمونهٔ ایرانیان';
 
   final List<String> layoutErrors = <String>[];
+
+  /// Taps day [day] in the calendar currently open, then confirms it.
+  ///
+  /// The picker opens on the month of the date it was given, so a day inside
+  /// the current Jalali month needs no navigation.
+  Future<void> pickDay(WidgetTester tester, AppStrings strings, int day) async {
+    await tester.tap(find.text(toPersianDigits('$day')));
+    await tester.pumpAndSettle();
+    // Scoped to the dialog: the filter sheet behind it has its own «ذخیره».
+    await tester.tap(
+      find.descendant(
+        of: find.byType(AlertDialog),
+        matching: find.widgetWithText(FilledButton, strings.actionSave),
+      ),
+    );
+    await tester.pumpAndSettle();
+  }
 
   testWidgets('the list, its filters and the picker they open, on the target', (
     WidgetTester tester,
@@ -434,6 +453,57 @@ void main() {
       reason: 'and this month\'s invoices are still there',
     );
     debugPrint('by period     : this Jalali month, the year-old one excluded');
+
+    // ---- a custom Jalali range, and the day the user picked is in it ------
+    //
+    // **The one claim about D-111 that only real SQL can settle.** The range is
+    // today to today — a single day. `InstantRange` is half-open, so the bound
+    // that reaches the `WHERE` clause has to be *tomorrow's* start; store the
+    // picked instant instead and the range is empty, today's invoices vanish,
+    // and every screenshot of the sheet still looks correct. The unit tests
+    // pin the arithmetic; this pins that the arithmetic is what the database
+    // is asked with.
+    await tester.tap(find.text(activeLabel(1)));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(strings.invoiceFilterClearAll));
+    await tester.pumpAndSettle();
+
+    final int today = jalaliAt(now).day;
+    await tester.tap(
+      find.widgetWithText(ChoiceChip, strings.invoiceFilterPeriodCustom),
+    );
+    await tester.pumpAndSettle();
+    expect(
+      find.text(strings.invoiceFilterPeriodCustomFrom),
+      findsOneWidget,
+      reason:
+          'the first calendar names which end of the range it is asking for',
+    );
+    await pickDay(tester, strings, today);
+    expect(find.text(strings.invoiceFilterPeriodCustomTo), findsOneWidget);
+    await pickDay(tester, strings, today);
+    // The sheet applies live and is dismissed by its own button, like every
+    // other narrowing above.
+    await tester.tap(find.text(strings.invoiceFilterApply));
+    await tester.pumpAndSettle();
+
+    expect(find.text(activeLabel(1)), findsOneWidget);
+    await reach(tester, find.text(busyCustomer));
+    expect(
+      find.text(busyCustomer),
+      findsWidgets,
+      reason:
+          'a range of today-to-today must include today. If this is empty, the '
+          'inclusive last day the user picked was stored as the exclusive '
+          'bound and every custom range is a day short (D-111)',
+    );
+    expect(
+      find.text(oldCustomer),
+      findsNothing,
+      reason:
+          'and it must still be a range: the year-old invoice is outside it',
+    );
+    debugPrint('custom range  : today to today, inclusive, reached SQL');
 
     // ---- back to everything, and scroll the whole page --------------------
     await tester.tap(find.text(activeLabel(1)));

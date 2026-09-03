@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../../../core/date/jalali_period.dart';
 import '../../../../core/formatting/jalali_display.dart';
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/localization/generated/app_strings.dart';
@@ -230,9 +231,9 @@ class _PaymentRow extends ConsumerWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    // A `Wrap`, not a `Row`: the date and the method are two
-                    // runs that must not be truncated, and on a narrow card the
-                    // pair does not always fit on one line.
+                    // A `Wrap`, not a `Row`: the date, the time and the method
+                    // are runs that must not be truncated, and on a narrow card
+                    // they do not always fit on one line.
                     Wrap(
                       spacing: AppSpacing.md,
                       runSpacing: AppSpacing.xxs,
@@ -241,6 +242,24 @@ class _PaymentRow extends ConsumerWidget {
                           formatJalaliDate(payment.paidAt),
                           style: theme.textTheme.bodyMedium,
                         ),
+                        // **Beside the date, and only where there is one to
+                        // show** (D-110). Every payment written before this
+                        // build carries the *start* of its Jalali day, because
+                        // the sheet assigned a day rather than a moment — so
+                        // for those the column holds no time, and «۰۰:۰۰» would
+                        // not be a missing value but a specific claim about
+                        // when money arrived, on a financial record, and a
+                        // false one. D-092 kept ۰۰:۰۰ on old invoices because
+                        // there it was a genuine recorded instant that a picker
+                        // had produced; here it is the absence of one. New
+                        // payments carry a real time and show it.
+                        if (payment.paidAt != jalaliDayOf(payment.paidAt).start)
+                          Text(
+                            formatJalaliTime(payment.paidAt),
+                            style: theme.textTheme.bodyMedium?.copyWith(
+                              color: theme.colorScheme.onSurfaceVariant,
+                            ),
+                          ),
                         Text(
                           paymentMethodLabel(payment.method, strings),
                           style: theme.textTheme.bodyMedium?.copyWith(

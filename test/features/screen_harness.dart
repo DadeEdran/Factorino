@@ -32,6 +32,14 @@ import 'package:go_router/go_router.dart';
 /// Pass [viewInsets] to test a sheet in the state a phone actually opens it in
 /// (D-062); `test/core/widgets/sheet_keyboard_test.dart` is where that is done.
 ///
+/// **No text scaling either, unless one is asked for**, and that is the same
+/// omission one dimension over (D-108). A phone's font-size setting multiplies
+/// every label while the box around it stays put, so a control sized to its
+/// labels at 1.0 is a control with no margin at 1.15 — and the theme selector
+/// had **exactly 0.0 pixels of it**. Pass [textScaler] to measure a label at the
+/// size the user's device actually draws it; `theme_label_fit_test.dart` is
+/// where that is done.
+///
 /// **A router.** These screens navigate: a form calls `context.go` after a
 /// successful save, and a list row opens an edit route. Without a `GoRouter` in
 /// the tree those calls throw *"No GoRouter found in context"* at the end of an
@@ -79,6 +87,7 @@ Future<void> pumpScreen(
   Size size = kMobileSize,
   bool disableAnimations = false,
   EdgeInsets viewInsets = EdgeInsets.zero,
+  TextScaler textScaler = TextScaler.noScaling,
 }) async {
   await loadPersianFont();
   tester.view.physicalSize = size;
@@ -141,6 +150,7 @@ Future<void> pumpScreen(
               size: size,
               disableAnimations: disableAnimations,
               viewInsets: viewInsets,
+              textScaler: textScaler,
             ),
             child: Directionality(
               textDirection: TextDirection.rtl,

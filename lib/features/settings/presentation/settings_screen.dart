@@ -360,8 +360,27 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
                 // ends up unable to say what the application is currently
                 // doing. See D-087.
                 //
-                // Full width so the three Persian labels get equal room; the
-                // longest is «سیستم» and none of them wrap.
+                // **No leading icons, and that is the fix for D-108.** The
+                // comment that stood here said the three labels "get equal
+                // room and none of them wrap". They got equal room; it was
+                // not enough room. `SegmentedButton` divides its width evenly
+                // and each segment then spends 18 px on an icon and 8 px on
+                // the gap before it, and the label is `Flexible` inside what
+                // is left — so it is *crushed*, not overflowed, and nothing
+                // raises. Measured on the phone tier: «سیستم» needs 45.0 px
+                // and was handed 45.0 at 400 px wide, 44.0 at 360 and **30.7
+                // at 320**, where it breaks inside the word and renders
+                // «سیست» over «م». A Persian word split mid-letter is worse
+                // than a truncated one, and the same happens at 400 px the
+                // moment the user's text scale leaves 1.0.
+                //
+                // Dropping the icons returns 26 px per segment, which is what
+                // buys the margin. They were decoration by §10's test: three
+                // Persian words name these states completely, `showSelectedIcon`
+                // is already false, and no icon here tells the reader anything
+                // the word beside it did not. `theme_label_fit_test.dart`
+                // holds the measurement so the icons cannot come back without
+                // the numbers being looked at again.
                 SizedBox(
                   width: double.infinity,
                   child: SegmentedButton<AppThemeMode>(
@@ -369,17 +388,14 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
                       ButtonSegment<AppThemeMode>(
                         value: AppThemeMode.system,
                         label: Text(strings.settingsThemeModeSystem),
-                        icon: const Icon(Icons.brightness_auto_outlined),
                       ),
                       ButtonSegment<AppThemeMode>(
                         value: AppThemeMode.light,
                         label: Text(strings.settingsThemeModeLight),
-                        icon: const Icon(Icons.light_mode_outlined),
                       ),
                       ButtonSegment<AppThemeMode>(
                         value: AppThemeMode.dark,
                         label: Text(strings.settingsThemeModeDark),
-                        icon: const Icon(Icons.dark_mode_outlined),
                       ),
                     ],
                     selected: <AppThemeMode>{settings.themeMode},
@@ -416,22 +432,42 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
               const _RowDivider(),
               Padding(
                 padding: const EdgeInsets.all(AppSpacing.lg),
-                child: Row(
+                // **Side by side while they fit, stacked when they do not.**
+                // This was a `Row` of two `Expanded` buttons, which is the same
+                // fault as the theme selector twenty lines up and was found by
+                // the same measurement (D-108): half a 320-pixel card, less the
+                // icon and its gap, left «پشتیبان» **48.2 logical pixels** for a
+                // word needing 62.1 at the 1.15 font-size setting — crushed, so
+                // it broke inside the word, and silent, because an `Expanded`
+                // child handed too little width lays out successfully at too
+                // little width.
+                //
+                // **The icons stay here, unlike there.** These two are opposite
+                // and consequential — one writes a file, the other replaces
+                // every record on the device — and telling them apart at a
+                // glance is exactly what §10 asks an icon to earn its place by.
+                // What had to give was the even split, not the icon.
+                //
+                // `OverflowBar` is Material's own answer to this and is what
+                // `AlertDialog` lays its actions out with: the children take
+                // their natural width in a row, and it falls back to a column
+                // the moment they do not fit. Nothing here has to know the
+                // breakpoint, which matters because the trigger is not the
+                // width alone — it is the width *and* the user's font size.
+                child: OverflowBar(
+                  spacing: AppSpacing.md,
+                  overflowSpacing: AppSpacing.sm,
+                  overflowAlignment: OverflowBarAlignment.start,
                   children: <Widget>[
-                    Expanded(
-                      child: FilledButton.icon(
-                        onPressed: _busy ? null : _export,
-                        icon: const Icon(Icons.save_alt_outlined),
-                        label: Text(strings.backupExportAction),
-                      ),
+                    FilledButton.icon(
+                      onPressed: _busy ? null : _export,
+                      icon: const Icon(Icons.save_alt_outlined),
+                      label: Text(strings.backupExportAction),
                     ),
-                    const SizedBox(width: AppSpacing.md),
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: _busy ? null : _restore,
-                        icon: const Icon(Icons.settings_backup_restore),
-                        label: Text(strings.backupImportAction),
-                      ),
+                    OutlinedButton.icon(
+                      onPressed: _busy ? null : _restore,
+                      icon: const Icon(Icons.settings_backup_restore),
+                      label: Text(strings.backupImportAction),
                     ),
                   ],
                 ),

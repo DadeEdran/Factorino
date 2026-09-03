@@ -7154,3 +7154,246 @@ and does so silently, in the file least likely to be run.
 **Closing a phase means running `integration_test/` on a target.** All eleven runnable files now pass
 on Windows — the two backup-gateway probes need a human to drive a native dialog and are excluded by
 design. `CURRENT_STATE.md` records which were run and on what.
+
+---
+
+## D-108 — A label crushed inside a Persian word, and the widths that could not see it
+
+**Date:** 2026-09-04. Owner request 3, from the third phone test: *"In settings, the theme option
+«سیستم» breaks across two lines on a narrow phone — it renders as «سیست» then «م». It must stay on
+one line. Fix it properly rather than shrinking the text."*
+
+`SegmentedButton` divides its width evenly between its segments, and each of the three spent **18
+logical pixels on a leading icon and 8 on the gap before it**. The label is `Flexible` inside what
+was left. Measured on the widget harness:
+
+| width | box given to «سیستم» | «سیستم» needs |
+|---|---|---|
+| 320 | **30.7** | 45.0 |
+| 360 | **44.0** | 45.0 |
+| 400 | 45.0 | 45.0 |
+
+So it was already broken below 360 and had **exactly zero pixels of margin at 400**, which is why a
+phone with the font-size slider moved one notch shows it and every test in this repository did not.
+
+**Nothing failed, and that is the mechanism worth naming.** This is `text_fit.dart`'s crush, not an
+overflow: a `Flexible` child handed too little width lays out *successfully* at too little width, so
+`RenderFlex` has nothing to report. The comment sitting above the control asserted the opposite —
+"the longest is «سیستم» and none of them wrap" — which was a belief, never a measurement.
+
+### What was changed, and what was deliberately not
+
+**The icons are gone from the theme selector**, returning 26 pixels per segment. They were decoration
+by §10's test: three Persian words name these states completely, `showSelectedIcon` was already
+false, and no icon there told the reader anything the word beside it did not. The alternative —
+shrinking the text — was refused by the owner in the request itself and would have been wrong
+anyway: **a Persian word split mid-letter is worse than a truncated one**, because the letters change
+shape when they are separated from their neighbours, so the fragment is not even a prefix of the
+word.
+
+**The icons stayed on the backup buttons**, which the same measurement caught two cards down: «تهیهٔ
+پشتیبان» and «بازیابی از پشتیبان» sat in a `Row` of two `Expanded`, and at 320 px and the 1.15
+font-size setting «پشتیبان» was given **48.2 pixels for a word needing 62.1**. Those two icons are
+not decoration — one button writes a file and the other replaces every record on the device, and
+telling them apart at a glance is exactly what an icon is for. What had to give there was the even
+split, so the pair is an `OverflowBar`: side by side while they fit, stacked when they do not, which
+is what `AlertDialog` already lays its actions out with. Nothing has to know the breakpoint, and that
+matters because the trigger is not the width alone — it is the width **and** the user's font size.
+
+### The harness grew a dimension, for the same reason it grew `viewInsets`
+
+`pumpScreen` installed a fresh `MediaQueryData` with no `textScaler`, so **every widget test in this
+project has rendered at 1.0** — the one scale at which the 400-pixel case passes. That is D-062's
+finding in another unit: the check reproduced conditions the user is not in.
+
+`textScaler` is now a parameter, and `theme_label_fit_test.dart` sweeps 320 / 360 / 400 against
+**Android's own font-size ladder** — 0.85, 1.0, 1.15, 1.3 — rather than round numbers, in the same
+spirit as D-057's amount ladder and D-062's measured 255-pixel keyboard. It asserts the three labels
+directly and then runs `expectNoCrushedText` over the whole screen, which is what found the backup
+buttons.
+
+**The rule this earns:** a control that divides a fixed width between fixed-size ornaments and
+flexible text has no margin by construction, and the margin it does not have is invisible. Measure it
+at the narrowest width *and* the largest font size the platform offers, or do not claim it fits.
+
+---
+
+## D-109 — The feature was there; nobody could see it, which is the same as not having it
+
+**Date:** 2026-09-04. Owner request 2: *"In the payments section, when adding a payment, give me a
+way to fill in the full outstanding amount in one action rather than typing it. Most payments are the
+whole remaining balance."*
+
+**That control shipped in Phase 5 (c)** — `paymentAmountFillRemaining`, «پرداخت کامل مانده», wired to
+`InvoiceDetail.amountDue`. The owner tested the build that contained it and asked for it.
+
+It was not below the fold, and that was checked before anything was changed: with the keyboard the
+amount field's `autofocus` raises, it sits at **173.5–198.5 of the 545 logical pixels left**. It was
+read as *helper text*. It was a bare `TextButton` directly beneath the field's grey `helperText`, so
+what the eye met was a line of grey Persian followed by a line of coloured Persian — two lines of
+prose to anyone scanning for a button.
+
+So it is a `FilledButton.tonal` now: tonal rather than filled, so it reads as a control without
+competing with the pinned «ذخیره» above it, which is still the sheet's commit.
+
+**The figure stays in the helper and is not repeated on the button.** Putting «۱۰۰٬۰۰۰٬۰۰۰ تومان» —
+D-057's ceiling rung — inside a button label is a run that cannot wrap inside a sheet that cannot
+widen, and a button clipping its own amount would be a worse fault than the one being fixed. The
+balance is stated once, above; the button says what tapping it does.
+
+**A user's report that a feature is missing is evidence about the affordance, not about the
+backlog.** The first instinct here was to answer "it is already there", and that answer would have
+shipped the same defect back to the same phone.
+
+---
+
+## D-110 — A payment is a moment, and the column had been holding a day
+
+**Date:** 2026-09-04. Owner request 4: *"On an invoice that has been paid, show the payment time next
+to the payment date."*
+
+The time could not be shown, because it was never recorded. `showPaymentEditorSheet` opened with
+`_paidAt = jalaliDayOf(widget.today).start` — local midnight — so **every payment ever written
+carried ۰۰:۰۰**, and the picker then assigned what it returned whole, throwing the time away a second
+time on any correction.
+
+**This is D-092 one column over.** There the invoice's `issueDate` was being truncated by the same
+mechanism, and the write-up called it "a fault in wiring rather than in logic, which a suite of unit
+tests over correct components is structurally unable to report". It was found there because the time
+started being displayed. It was found here for exactly the same reason, two days later, in a column
+D-092 did not look at. The lesson generalises: **when a fault is found in one place, the question is
+which other columns have the same shape**, and that question was not asked.
+
+Both halves are fixed the way D-092 fixed them: the sheet defaults to the instant the page was built
+against, and `_pickDate` moves only the day (`jalaliDayWithTimeOf`), whose invariant is that the
+result never leaves the picked Jalali day — so no reporting period moves.
+
+### Old payments show no time, and this is where D-092 is deliberately *not* followed
+
+D-092 kept «۰۰:۰۰» on invoices written before it, on the grounds that it was their honest recorded
+instant. That reasoning does not carry here, and the difference is what makes it a decision:
+
+* an invoice's `issueDate` was a genuine instant that a **picker** had produced, and midnight was one
+  of the values a user could really have chosen;
+* a payment's `paidAt` was **never a moment at all** — the sheet assigned a day, always, for the whole
+  life of the column. Midnight there is not a value; it is the absence of one.
+
+Printing «۰۰:۰۰» beside every payment in an existing database would therefore be a *specific claim
+about when money arrived*, on a financial record, and a false one. So the row shows the time only
+where the instant is not the start of its Jalali day. New payments carry a real time and show it; old
+ones show the date alone and say nothing they do not know.
+
+The genuinely-at-midnight payment is the case this gets wrong, and it is accepted: it is vanishingly
+rare, and being silent about one real midnight is a far smaller fault than inventing a time for every
+record already on the owner's phone.
+
+**Proven end to end on Windows**, not only in widget tests: through the real sheet, the real
+transaction and the real encrypted column, read back out — `paid at : ۱۴۰۵/۰۶/۱۳ ۰۲:۲۴`.
+
+---
+
+## D-111 — The custom range that was "a later phase's problem"
+
+**Date:** 2026-09-04. Owner request 5: *"Invoice filters need a custom date range — open a Jalali
+calendar and let me pick the start and end days myself, alongside the existing preset periods."*
+
+`invoice_filter_sheet.dart` said, in its own words: *"A custom range is a later phase's problem, not
+a gap here."* It was a gap, and the owner found it in use. The half of that comment that stands —
+presets are what a billing application is usually asked, and «این ماه» must stay one tap — is kept;
+the prediction is deleted.
+
+**Beside the presets, as a fifth `ChoiceChip`**, not a separate control below them. The five options
+are mutually exclusive answers to «بازهٔ زمانی», and a control set apart would suggest a range could be
+combined with «این ماه», which `InvoiceFilter` cannot express.
+
+**Two sequential calendars, not a range grid.** `showJalaliDatePicker` already answers "which day"
+correctly — Jalali months, a Saturday week start, Persian digits, `firstAllowed` — and a second grid
+tracking two selections would be a second implementation of all of it. It gained one parameter, an
+optional `title`, because two identical dialogs headed «انتخاب تاریخ» give the user no way to tell
+which end of the range they are on; they now read «از تاریخ» and «تا تاریخ». The second is opened
+with `firstAllowed: first`, so the empty range `InstantRange` throws on cannot be expressed.
+
+### The inclusive day and the exclusive bound
+
+The user picks a **last day** and means the whole of it. `InstantRange` is **half-open**, so the
+bound stored is the *next* day's start — `jalaliDay(last).end`. Passing the picked instant straight
+through would silently drop the last day of every range anyone ever chose, and would look correct in
+every screenshot of the sheet.
+
+The label has the same off-by-one in the other direction, so the chip does not render `period.end`:
+`lastJalaliDayOf` is new in `core/date/`, and it asks the question directly — an end landing exactly
+on a day boundary belongs to the day before, an end part-way through a day makes that day the last
+one — rather than stepping back a millisecond and reading the day off that. Exact whatever the month
+length, no magic number, and **it lives in `core/date/` because "which day is the last one in this
+range" is calendar arithmetic and §3 keeps that out of a widget.** (The token guard is what forced
+the question, by refusing the `Duration(milliseconds: 1)` the first draft reached for — a guard
+written about design tokens catching a design mistake it was not aimed at.)
+
+**Whether the chip is selected is derived, never stored:** a period that equals none of the presets
+is a custom one. A flag recording which control produced the range would be a fact about the UI kept
+inside the query, and the two would disagree the first time somebody hand-picked the current month.
+
+**Proven against real SQL on Windows**, with the assertion that only a database can settle: a range
+of **today to today** must return today's invoices. If the inclusive last day were stored as the
+exclusive bound, that range is empty, today's invoices vanish, and the sheet still looks right.
+
+---
+
+## D-112 — A guard against Arabic characters, and the count it was asked for
+
+**Date:** 2026-09-04. Owner request 1: *"Arabic characters are appearing where Persian should be…
+Fix them at the source, and add a guard that fails the build if an Arabic-only character appears in a
+Persian string… tell me how many you found and where, since that tells us whether it was one slip or
+something systematic."*
+
+**The answer to the question asked: one, and it is not user-facing.** A full codepoint census of every
+tracked file found a single Arabic yeh (U+064A) inside an ARB **`description`** field — English
+developer documentation explaining what the search normalizer folds, a sentence that cannot be
+written without the character it is about. Every other occurrence in `lib/` is inside a comment
+saying the same thing, and the ones in `test/` and `integration_test/` are fixtures feeding Arabic
+input **on purpose**, to prove `searchKey` folds it.
+
+Zero Arabic-only characters reach a user, on any surface: not in the ARB's translation values, not in
+the generated Dart, not in the Android manifest, not in the PDF path. `git log -S` confirms the ARB
+has never contained an Arabic kaf. Not one slip, and not systematic.
+
+### What the owner saw, then, and why the fix is D-108
+
+The report named a standalone «ء» specifically. The ARB writes U+0654 — the combining hamza of the
+ezafe «ـهٔ» — **31 times**, always after `ه`, which is correct Persian; it was rendered through the
+real production `SafeText` and rasterised to be sure, and «نسخهٔ PDF» and «شمارهٔ فاکتور» come out with
+the hamza sitting on the ه exactly as they should.
+
+`ه` + U+0654 is **one grapheme**, and a container narrower than the word breaks *inside* it — leaving
+the mark alone on the next line, which is a standalone hamza on screen and comes from nothing anybody
+typed. That is the same mechanism as request 3's «سیست» / «م», found and measured under D-108. **The
+two reports are one defect wearing two costumes**, and the character ban below is the cheap half of
+the answer while `expectNoCrushedText` is the half that actually addresses it.
+
+### The guard
+
+`persian_script_test.dart`, in the shape of the existing scanners. It bans, in ARB translation values
+and in the generated strings, each look-alike **named with its Persian replacement** so a failure
+tells the reader what to type: `ك`→`ک`, `ي`→`ی`, `ى`→`ی`, `ة`→`ه`, `إ`→`ا`, tatweel (delete), the
+Arabic-Indic digits `٠`–`٩`→`۰`–`۹`, and the standalone `ء`.
+
+**It is a list, never a range**, and the reason is the whole difficulty of the rule. The Arabic block
+holds Persian's entire alphabet, its digits, its comma, its question mark and its percent, decimal
+and thousands signs — banning the block would ban the language. Four characters in the block are
+*correct* Persian and are on the allowed side deliberately: `آ` `أ` `ؤ` `ئ` and the fathatan of
+«لطفاً». A ban list that swept up `أ` or `ؤ` would demand that «متأسفانه» and «مؤثر» be misspelt to
+make a test pass, and the ARB holds both today — so a test asserts the correct spellings pass, beside
+the one asserting the wrong ones fail.
+
+**`@`-prefixed metadata is exempt**, exactly as comments are exempt in `no_hardcoded_strings_test`: a
+description never renders, and the rule about the normalizer cannot be stated without writing «علي».
+
+**The standalone hamza has an escape hatch and it is empty.** «جزء», «سوء» and «امضاء» are Persian
+words that genuinely end in one; none is in the application's copy. A future entry belongs in the
+named allowlist beside the word that needs it, so it is a decision somebody made rather than a ban
+somebody quietly removed.
+
+**Coverage is complete because of the guard that already existed**: §1 puts every user-facing string
+in the ARB and `no_hardcoded_strings_test` forbids a Persian literal anywhere else in `lib/`, so the
+two together cover the screens and the printed document alike — a document string that is not in the
+ARB cannot exist.

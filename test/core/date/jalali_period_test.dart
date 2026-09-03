@@ -351,4 +351,83 @@ void main() {
       expect(jalaliMonth(1405, 1).hashCode, jalaliMonth(1405, 1).hashCode);
     });
   });
+
+  group('lastJalaliDayOf', () {
+    // The inclusive last day of a half-open range -- the pair that is off by
+    // one and whose difference nothing on screen would reveal (D-111).
+
+    test('a day-aligned end belongs to the day before it', () {
+      // «۱ تا ۱۰», stored as [1st 00:00, 11th 00:00). The user picked the 10th.
+      final range = InstantRange(
+        startOfJalaliDayUtc(Jalali(1405, 6, 1)),
+        startOfJalaliDayUtc(Jalali(1405, 6, 11)),
+      );
+
+      expect(lastJalaliDayOf(range), startOfJalaliDayUtc(Jalali(1405, 6, 10)));
+    });
+
+    test(
+      'a whole Jalali month ends on its own last day, whatever its length',
+      () {
+        // The three lengths a Jalali month has, which is exactly what a
+        // fixed-duration step back would get wrong on one of them.
+        expect(
+          lastJalaliDayOf(jalaliMonth(1405, 1)), // Farvardin: 31
+          startOfJalaliDayUtc(Jalali(1405, 1, 31)),
+        );
+        expect(
+          lastJalaliDayOf(jalaliMonth(1405, 8)), // Aban: 30
+          startOfJalaliDayUtc(Jalali(1405, 8, 30)),
+        );
+        expect(
+          lastJalaliDayOf(jalaliMonth(1404, 12)), // Esfand, common year: 29
+          startOfJalaliDayUtc(Jalali(1404, 12, 29)),
+        );
+      },
+    );
+
+    test('and on a leap Esfand it is the 30th', () {
+      final leap = <int>[
+        for (int year = 1400; year < 1420; year++)
+          if (isJalaliLeapYear(year)) year,
+      ].first;
+
+      expect(
+        lastJalaliDayOf(jalaliMonth(leap, 12)),
+        startOfJalaliDayUtc(Jalali(leap, 12, 30)),
+      );
+    });
+
+    test('a year ends on the last day of Esfand', () {
+      expect(
+        lastJalaliDayOf(jalaliYear(1405)),
+        startOfJalaliDayUtc(Jalali(1405, 12, Jalali(1405, 12, 1).monthLength)),
+      );
+    });
+
+    test('an end part-way through a day makes that day the last one', () {
+      // Not a range this application builds, and the helper still has to be
+      // right about it rather than assuming its own callers.
+      final range = InstantRange(
+        startOfJalaliDayUtc(Jalali(1405, 6, 1)),
+        startOfJalaliDayUtc(Jalali(1405, 6, 10)).add(const Duration(hours: 5)),
+      );
+
+      expect(lastJalaliDayOf(range), startOfJalaliDayUtc(Jalali(1405, 6, 10)));
+    });
+
+    test('the result is always inside the range', () {
+      // The property that makes it safe to display: whatever day comes back,
+      // the range actually covers it.
+      for (final range in <InstantRange>[
+        jalaliMonth(1405, 1),
+        jalaliMonth(1405, 8),
+        jalaliMonth(1404, 12),
+        jalaliYear(1405),
+        jalaliDay(Jalali(1405, 6, 2)),
+      ]) {
+        expect(range.contains(lastJalaliDayOf(range)), isTrue);
+      }
+    });
+  });
 }
