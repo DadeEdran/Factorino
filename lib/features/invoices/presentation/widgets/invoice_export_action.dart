@@ -121,6 +121,13 @@ Future<void> exportInvoiceDocument(
   final ScaffoldMessengerState? messenger = ScaffoldMessenger.maybeOf(context);
   if (messenger == null) return;
 
+  // **Whatever is showing goes first** (D-101). An export leaves the
+  // application twice — the save dialog, then the viewer — and a second export
+  // started before the first message has aged out would queue behind it, so the
+  // user would read the outcome of the export before last. A confirmation about
+  // a superseded action is worse than none.
+  messenger.hideCurrentSnackBar();
+
   switch (outcome) {
     case InvoiceExportCancelled():
       return;

@@ -5,6 +5,7 @@ import '../router/back_policy.dart';
 import '../router/destinations.dart';
 import '../theme/app_dimensions.dart';
 import '../theme/app_typography.dart';
+import '../widgets/transient_message_scope.dart';
 import 'breakpoints.dart';
 
 /// The application shell: navigation chrome plus the current destination.
@@ -63,11 +64,17 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
     // **The only `BackButtonListener` in the application**, wrapping the whole
     // shell so every destination and every page inside one is covered by the
     // same rule. See [AppBackPolicy] for why there is exactly one.
-    return AppBackPolicy(
-      claims: _backClaims,
-      isHome: widget.destination == AppDestination.dashboard,
-      onGoHome: () => widget.onDestinationSelected(AppDestination.dashboard),
-      child: shell,
+    //
+    // [TransientMessageScope] sits with it for the same reason: both are
+    // application-wide behaviour about chrome rather than about any one screen,
+    // and the shell is the one place that is always mounted.
+    return TransientMessageScope(
+      child: AppBackPolicy(
+        claims: _backClaims,
+        isHome: widget.destination == AppDestination.dashboard,
+        onGoHome: () => widget.onDestinationSelected(AppDestination.dashboard),
+        child: shell,
+      ),
     );
   }
 }

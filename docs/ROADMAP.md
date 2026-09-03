@@ -2096,3 +2096,24 @@ avoid one and the `POST_NOTIFICATIONS` permission behind it. The one change to a
 that the viewer hand-off (D-091) now happens without a second tap; D-100 states plainly what that
 narrows about D-091's justification, and what it does not change: nothing is shared, no chooser is
 offered, and the destination is still one the user picked.
+
+### The fifth pass — what the first phone test of the export found
+
+| What | Where |
+|---|---|
+| The no-seller message rewritten: it led with an ambiguity and was read as a failed save | D-101 |
+| The three export outcomes now differ in their first words, not in a negation particle | D-101 |
+| A snackbar that outlived a background trip and never dismissed | D-101 |
+
+**Neither finding was a fault in what the code did.** The message was accurate; the save worked. What
+was wrong was what a person could conclude from them — which is the class of defect a test suite is
+least able to report, and the second time in three days that a phone found one (the first being
+known issue 30's real cause).
+
+**Recommended, not built:** a dashboard prompt while the seller is empty, so a first-time user meets
+the requirement before the moment they wanted a document rather than instead of one. Recorded under
+the next action in `CURRENT_STATE.md`; it is a product decision the owner asked to be consulted on.
+
+**Security note.** Nothing stored, no new dependency, no new platform surface. One behaviour narrows:
+a stale snackbar is dropped on resume, which drops the «تکمیل مشخصات» action with it — the settings
+screen carries the same prompt for the user who goes looking (D-077).

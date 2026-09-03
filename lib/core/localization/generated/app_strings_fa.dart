@@ -1299,7 +1299,8 @@ class AppStringsFa extends AppStrings {
   String get invoiceDocumentExportAction => 'ذخیرهٔ نسخهٔ PDF';
 
   @override
-  String get invoiceDocumentExportSaved => 'فایل فاکتور ذخیره شد.';
+  String get invoiceDocumentExportSaved =>
+      'فایل فاکتور ذخیره شد، ولی برنامه‌ای برای باز کردن آن پیدا نشد.';
 
   @override
   String get invoiceDocumentExportFailed =>
@@ -1307,10 +1308,10 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentExportNoSeller =>
-      'این فاکتور بدون بخش «فروشنده» ذخیره شد.';
+      'فایل فاکتور ذخیره شد. چون نام کسب‌وکارتان وارد نشده، بخش «فروشنده» روی آن چاپ نشد و فایل باز نشد.';
 
   @override
-  String get invoiceDocumentExportGoToSettings => 'تنظیمات';
+  String get invoiceDocumentExportGoToSettings => 'تکمیل مشخصات';
 
   @override
   String dateAtTime(String date, String time) {
@@ -1388,5 +1389,5 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentExportSavedAndOpened =>
-      'فایل فاکتور ذخیره و باز شد.';
+      'فاکتور در برنامهٔ PDF باز شد؛ فایل هم ذخیره شد.';
 }

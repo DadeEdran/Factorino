@@ -5,7 +5,30 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-03 (fourth pass) — discounting became a step of its own, saved documents
+> **Last updated: 2026-09-03 (fifth pass) — the first phone test of the export found two things, and
+> neither was a fault in what the code did.**
+>
+> * **A correct message was read as a broken one** (D-101). With no seller entered — the state every
+>   new database is in — D-100's exception fired: the document was not opened and «تنظیمات» was
+>   offered instead. Every word of the old sentence was true and the owner still concluded the save
+>   had failed, because a button pointing at Settings is the shape of a repair. The copy now leads
+>   with the file saving, then says why the seller block is missing, then why the document did not
+>   open; the action is labelled with the task («تکمیل مشخصات») rather than the destination.
+> * **A snackbar outlived a trip to another application and never left.** It dismisses by animating,
+>   an animation needs frames, and a paused application produces none while the timer that requests
+>   the dismissal fires anyway. `TransientMessageScope` clears it on return. **Verified to bite**:
+>   three of its six checks fail with the fix commented out.
+>
+> **The auto-open path is STILL unproven on hardware.** The seller exception fired, so it never ran.
+> The three export messages now differ in their **first words** rather than in a negation particle,
+> so the next phone test can tell which path it is on at a glance.
+>
+> **One thing is recommended and deliberately not built**: a dashboard prompt while the seller is
+> empty. Every first-time user currently meets the no-seller message before they ever see the feature
+> work, which is the wrong place to discover a required setting. It is a product decision the owner
+> asked to be consulted on — see the next action.
+>
+> Earlier the same day: **discounting became a step of its own (fourth pass) — discounting became a step of its own, saved documents
 > get unique names, and a notification was argued down rather than built.**
 >
 > * **Discounting is a screen, not a field** (D-098). Per-line and invoice-level discounts now live
@@ -395,8 +418,9 @@ Export from the menu:       PASS   phone tier, Redmi (2026-09-02): the menu item
                                    invoice, tapped, the render driven through the real providers,
                                    and D-077's no-seller notice with its «تنظیمات» action shown.
                                    0 layout errors. Gateway faked -- SAF cannot be driven by adb
-flutter test:               PASS   (1289/1289) as of 2026-09-03, after the discount screen and the
-                                   document naming (D-098, D-099, D-100). Was 1272 after the phone's
+flutter test:               PASS   (1295/1295) as of 2026-09-03, after the export copy and the
+                                   snackbar lifecycle (D-101). Was 1289 after the discount screen and
+                                   the document naming (D-098, D-099, D-100). Was 1272 after the phone's
                                    invoice form was rebuilt (D-096, D-097), 1269 after the twelve.
                                    Was 1230 after the eight phone findings, 1204 at the Phase 7
                                    close, 1194 after (d), 1189 after (c). The +38 are: the v6 theme
@@ -424,6 +448,19 @@ Rendered page, date+time:   PASS   read off PIXELS, not source, per HANDOVER §6
                                    «تاریخ صدور ۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» -- digits in order, the
                                    bidi-neutral colon not reordered, the isolates stripped at the
                                    boundary without eating the final glyph (D-070 finding 1)
+Export message, seen:       PASS   at 420 px, through the REAL Windows save dialog: «فایل فاکتور
+                                   ذخیره شد. چون نام کسب‌وکارتان وارد نشده، بخش «فروشنده» روی آن چاپ
+                                   نشد و فایل باز نشد.» with «تکمیل مشخصات» beside it
+Unique file names, proved:  PASS   **outside a test.** Two consecutive saves of INV-1405-0014
+                                   through the save dialog produced
+                                   `INV-1405-0014_1405-06-12_15-53-21.pdf` and `..._15-54-14.pdf`
+                                   (D-099). Both real PDFs at 16 KB; both removed afterwards
+Stuck snackbar:             GAP    the **symptom is Android's** and did not reproduce on Windows,
+                                   where the isolate and the frame loop behave differently. The
+                                   message was gone after minimise-and-restore, but it would have
+                                   been gone anyway, so that run proves nothing about the fix. The
+                                   proof is `transient_message_scope_test.dart`, which fails 3 of 6
+                                   with the fix commented out
 Discount screen, seen:      PASS   at 420 px, driven end to end: the «تخفیف» action beside the two
                                    commit actions; the sheet showing «مبلغ فعلی ۲٬۴۰۰٬۰۰۰» over
                                    «مبلغ پس از تخفیف»; a per-line amount of ۳٬۰۰۰٬۰۰۰ against a line
@@ -3051,14 +3088,44 @@ session starts cold at the Next Action below.
 > **Nothing is half-finished and no question is waiting on an answer.** The owner's twelve-item list
 > is delivered in full; the gate is clean at 1,269 tests and both artifacts are built.
 
-**The single specific next action: install the profile APK on the phone and check the two
-Android-only behaviours nothing here could verify.**
+**The single specific next action: decide whether the seller prompt moves to the dashboard**, and
+then install the profile APK and check what still cannot be checked here.
 
-> **These two are the first things to check, and neither is assumed working.** They are not known
+> **The recommendation, since the owner asked for one.** An empty seller block is the default state
+> of every new database (D-077 backfills nothing, deliberately), so **every first-time user meets the
+> no-seller message before they ever see the export work**. That is the wrong place to discover a
+> required setting: the user is told, at the moment they wanted a document, that the document is
+> incomplete.
+>
+> **Recommended: a dismissible prompt on the dashboard while the seller name is empty.** One line and
+> an action that opens the seller sheet. The dashboard is the first screen every user sees; it costs
+> no step in any flow; it disappears by being *satisfied* rather than by being dismissed, so it
+> cannot be waved away and forgotten; and it keeps D-077's ruling that an empty seller blocks
+> nothing — it is a prompt, not a gate.
+>
+> **Considered and rejected: an onboarding step.** This application has no first-run flow at all, and
+> building one to carry a single optional field is a larger change than the problem justifies —
+> and a wizard shown once is the easiest thing in an application to click through without reading.
+>
+> **Considered and rejected: prompting on the first invoice.** The invoice form is already the
+> screen this project has spent four decisions decluttering (D-054, D-086, D-093, D-096). Putting a
+> settings prompt on it would undo part of that for a message with nothing to do with the invoice
+> being written.
+>
+> It is not built, because it is a product decision rather than a defect fix and the owner asked to
+> be consulted. It is roughly an hour, including its test.
+
+Then: **install the profile APK on the phone and check the Android-only behaviours nothing here can
+verify.**
+
+> **These are still the first things to check, and none is assumed working.** They are not known
 > broken; they are **unproven on hardware** — Dart-tested through the real dispatcher, Kotlin
-> compiled and present in the built APK, and never once run on a device. Do not read a green suite
-> as covering them. Everything else in the owner's twelve was seen working, either on Windows or in
-> a rendered page.
+> compiled and present in the built APK, and never once run on a device. Do not read a green suite as
+> covering them.
+>
+> **The auto-open is still on this list after a phone test**, which is worth noting: the test ran,
+> the save worked, and the seller exception meant the open path was never reached. A feature can sit
+> untested behind a working test session.
 
 The APK is `build/app/outputs/flutter-apk/app-profile.apk`, and a copy is at
 `%USERPROFILE%\Desktop\Factorino-test\factorino-arm64.apk`. In this order, because the first

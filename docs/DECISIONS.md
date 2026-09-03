@@ -6718,3 +6718,119 @@ rather you push back than add a permission we don't need."*
 If a later feature genuinely runs while the user is elsewhere — a scheduled backup is the obvious
 candidate — the argument changes completely, and that is the point at which a notification
 dependency should be weighed on its own merits rather than inherited from here.
+
+---
+
+## D-101 — A correct message read as a broken one, and a snackbar that outlived the app
+
+**Date:** 2026-09-03. Two findings from the first phone test of the previous build. Neither is a
+fault in what the code *did*; both are faults in what the user was able to conclude from it.
+
+### The message was accurate and still wrong
+
+Reported: *"The PDF saves correctly — the save itself is fine. But the message afterwards takes me to
+Settings instead of opening the file… it's behaving as designed, but I read it as broken."*
+
+The seller block was empty — the state **every** database is in until the user fills it (D-077) — so
+D-100's exception fired: the document was not opened, and the message carried the «تنظیمات» action
+instead. Exactly as designed, and the design was fine. The copy was not:
+
+> این فاکتور بدون بخش «فروشنده» ذخیره شد.
+> *"This invoice was saved without the seller section."*
+
+Every word true. It says the invoice was saved. And beside it sits a button pointing at Settings,
+which is the shape of a **repair for a failure** — so the sentence was read as an apology and the
+button as a fix. The user concluded the save had gone wrong.
+
+**What copy beside a corrective action has to do.** It is not enough to be true; it has to make the
+action's purpose unmistakable, because a button is read faster than a sentence and colours how the
+sentence is read. Three things, in this order:
+
+1. **The file saved** — first, plainly, because that is what the user is anxious about;
+2. **why the seller block is missing** — their business name is not entered;
+3. **why the document did not open** — so the settings action is not read as being about the save.
+
+> فایل فاکتور ذخیره شد. چون نام کسب‌وکارتان وارد نشده، بخش «فروشنده» روی آن چاپ نشد و فایل باز نشد.
+
+And the action is labelled with the **task** rather than the destination: «تکمیل مشخصات», not
+«تنظیمات». A button naming a place says *something is wrong, go here*; a button naming a job says
+what is incomplete.
+
+### The three outcomes now differ in their first words
+
+The owner also asked that the normal case be distinguishable from this one, because the exception
+firing meant the **auto-open path never ran** and is still unproven on hardware. Distinguishable is
+not enough if the distinction is a negation particle in the middle of a sentence — «باز شد» and «باز
+نشد» differ by one glyph.
+
+So the three messages now diverge at the start, where a reader actually looks:
+
+| Outcome | Opens with |
+|---|---|
+| saved and opened | «فاکتور در برنامهٔ PDF باز شد؛ …» |
+| saved, nothing to open it | «فایل فاکتور ذخیره شد، ولی برنامه‌ای …» |
+| saved, no seller | «فایل فاکتور ذخیره شد. چون نام …» |
+
+### The snackbar that would not leave
+
+Reported: *"If I background the app and come back — backgrounded, not closed — it's still sitting
+there, and it stays."*
+
+A `SnackBar` leaves by running an animation; an animation needs frames; a paused application
+produces none and mutes every `Ticker`. The `Timer` that requests the dismissal fires anyway, in an
+isolate that keeps running — so the message ends up in a state it cannot leave: its exit has been
+requested and the animation that performs it never got a frame.
+
+**It bites hardest on precisely the flow that surfaced it.** Saving a PDF leaves the application
+twice — the system save dialog, then the viewer (D-100) — so the export's confirmation is the message
+most likely to be on screen across a lifecycle change.
+
+`TransientMessageScope`, in the shell beside `AppBackPolicy`, clears the current snackbar when the
+application returns from being hidden or paused.
+
+**Clearing rather than restarting**, and that is the substantive choice. A snackbar's contract is
+that it describes what just happened and then goes away; one that survived a trip to another
+application is no longer about what just happened. Restarting it would show a four-second
+confirmation about something the user did before they left, which is a worse answer than silence.
+Nothing is lost that is not recoverable: every message shown this way is a confirmation or a failure
+notice about an action taken moments earlier, and the state each describes is on the screen behind
+it.
+
+**The cost, stated:** the no-seller notice carries the one control that fixes it, and a resume drops
+that button. Paid because the alternative is a permanently stuck message carrying a permanently stuck
+button — and the settings screen carries the same prompt for the user who goes looking, which is what
+D-077 built it for.
+
+**`resumed` alone is not a return.** The lifecycle reports it on first launch and after transitions
+that hid nothing, and clearing on every one would race the export confirmation, which is raised in
+the same breath as coming back from the save dialog. A clear happens only when a hidden or paused
+state was seen first. `inactive` is deliberately not one of those: on desktop it fires when a window
+merely loses focus.
+
+**Verified to bite** (D-072): with the `clearSnackBars` call commented out, three of the six checks
+in `transient_message_scope_test.dart` fail.
+
+**What the Windows run does and does not prove.** The copy was read on screen at phone width, and two
+consecutive saves produced `INV-1405-0014_1405-06-12_15-53-21.pdf` and
+`…_15-54-14.pdf` through the real save dialog — D-099 confirmed outside a test. The **stuck**
+snackbar is an Android symptom and did not reproduce on Windows, where the isolate and the frames
+behave differently; the message was gone after minimising and restoring, but it would have been gone
+anyway. The proof for that half is the widget test, not the desktop run.
+
+### The empty seller is the default state, and this is the wrong place to discover it
+
+The owner's second consequence is the more important one: *"An empty seller block is the default
+state for every new user, so every first-time user meets this message before they ever see the
+feature work."*
+
+That is correct, and it is a real gap rather than a copy problem. D-077 put the prompt on the
+settings screen, which covers the user who goes looking; nothing brings it to the user who does not,
+until they print — at which point they meet an explanation instead of a document.
+
+**Not built here, because it is a product decision the owner asked to be consulted on**, and the
+recommendation is recorded in `CURRENT_STATE.md` under the next action: a dismissible prompt on the
+**dashboard** while the seller is empty. The dashboard is the first screen every user sees, it costs
+no step in any flow, it disappears by being satisfied rather than by being dismissed, and it keeps
+D-077's ruling that an empty seller blocks nothing. An onboarding step was considered and rejected:
+this application has no first-run flow at all, and adding one to carry a single optional field is a
+larger change than the problem justifies.

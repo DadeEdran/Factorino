@@ -181,6 +181,12 @@ controllers), and `domain/` where it needs one.
 * **MIUI intermittently refuses `flutter test -d <device>`** with `INSTALL_FAILED_USER_RESTRICTED`.
   Remedy: `flutter build apk --debug`, then `adb install -r` by hand once, then retry. Retrying is
   part of the remedy, not a sign it failed.
+* **A feature can sit untested behind a working test session.** The owner tested the export on a
+  phone, the save worked, and the auto-open path never ran once — because the empty-seller exception
+  (D-100) fired first and takes a different branch. The session looked like coverage of the export
+  and covered half of it. When a feature has an exception branch that is also the **default state**,
+  assume the exception is what was exercised.
+
 * **`nowProvider` is frozen for the life of the process, and that is deliberate.** It exists so
   every *figure on screen* answers against one instant — a dashboard cannot straddle midnight
   mid-frame. It is therefore the wrong clock for anything that needs to be *different* on a second
@@ -270,7 +276,9 @@ probe (proved accurate against a known 2.68:1), the source-scanning guards (each
 self-test), the gateway boundary, the width sweep (four screens fail at the old 1024 breakpoint, one
 at 1280), and the release-signing refusal (both directions: debug builds, release refuses).
 
-**Newly established (2026-09-03):** `navigation_bar_test.dart`, which failed against the first
+**Newly established (2026-09-03):** `transient_message_scope_test.dart`, proved the deliberate way —
+the `clearSnackBars` call was commented out, three of its six checks failed, and it was restored
+(D-101). And `navigation_bar_test.dart`, which failed against the first
 attempt at D-088 — a `DefaultTextStyle` placed outside the `NavigationBar`, which Material's own
 `Material` resets — measuring 36 logical pixels against the other four destinations' 18, and passed
 against the second. It was not written as a negative control; it simply caught the fix that did not
@@ -332,7 +340,7 @@ a year end and a leap-year Esfand 30.
 
 ```sh
 flutter analyze     # must be clean
-flutter test        # 1289 tests, must all pass
+flutter test        # 1295 tests, must all pass
 ```
 
 Both were clean at handover. Beyond that, a phase is not closed until its layout has been checked at

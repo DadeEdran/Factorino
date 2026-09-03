@@ -2430,10 +2430,10 @@ abstract class AppStrings {
   /// **'ذخیرهٔ نسخهٔ PDF'**
   String get invoiceDocumentExportAction;
 
-  /// Confirms a completed save. Shown only after the file has actually been delivered to the location the user picked, never after it was merely generated -- the same rule the backup reminder follows: a message that appears when the user opened the save dialog and thought better of it would say a file exists when none does.
+  /// Saved, and the automatic open found nothing to open it with -- a phone with no PDF viewer is a real phone. Says which of the two happened rather than reporting only the save, because the user is looking at the application rather than at a document and needs to know why. Carries the «باز کردن» action as a manual retry.
   ///
   /// In fa, this message translates to:
-  /// **'فایل فاکتور ذخیره شد.'**
+  /// **'فایل فاکتور ذخیره شد، ولی برنامه‌ای برای باز کردن آن پیدا نشد.'**
   String get invoiceDocumentExportSaved;
 
   /// A failed generation or save. Friendly Persian with no stack trace, no file path and no exception text, per section 7. Says what to do next rather than what went wrong internally, because the internal reason is never something the user can act on.
@@ -2442,16 +2442,16 @@ abstract class AppStrings {
   /// **'ذخیرهٔ فایل فاکتور انجام نشد. دوباره تلاش کنید.'**
   String get invoiceDocumentExportFailed;
 
-  /// The other half of D-077's obligation. The settings screen carries the prompt for the user who goes looking; this is for the user who does not, and it fires at the moment of printing. It reports what happened rather than asking permission: D-077 ruled that an empty seller blocks nothing -- not issuing, not printing -- so this must never be a dialog, never a confirmation, and never appear before the file is saved. Paired with a settings action so the fix is one tap away.
+  /// The other half of D-077's obligation, rewritten after the owner read it as a broken save (D-101). Three things in order, and the order is the point: **the file saved** (first, plainly, because that is what the user is anxious about), **why the seller block is missing** (their business name is not entered), and **why the document did not open** (so the settings action is not read as a repair for the save). The previous wording said only that the invoice had been saved without a seller section, which left «تنظیمات» looking like a fix for something that had gone wrong.
   ///
   /// In fa, this message translates to:
-  /// **'این فاکتور بدون بخش «فروشنده» ذخیره شد.'**
+  /// **'فایل فاکتور ذخیره شد. چون نام کسب‌وکارتان وارد نشده، بخش «فروشنده» روی آن چاپ نشد و فایل باز نشد.'**
   String get invoiceDocumentExportNoSeller;
 
-  /// The action beside the no-seller notice, taking the user to the settings screen where the business name is entered. Deliberately the plain section name rather than an instruction, because the notice above it has already said what is missing.
+  /// The action beside the no-seller notice. «تکمیل مشخصات» rather than the bare section name «تنظیمات» (D-101): a button labelled with a destination reads as 'something is wrong, go here', while one labelled with a task says what is incomplete. The message above it has already said which details.
   ///
   /// In fa, this message translates to:
-  /// **'تنظیمات'**
+  /// **'تکمیل مشخصات'**
   String get invoiceDocumentExportGoToSettings;
 
   /// A Jalali date with the time of day beside it, for the invoice header and the printed document. The Persian comma and the word for 'at' live here rather than in a formatter, because they are copy: a translator changes the order and the separator by editing this line. The two placeholders arrive already formatted -- the date from formatJalaliDateLong and the time from formatJalaliTime, which is bidi-isolated so the colon cannot reorder it.
@@ -2580,10 +2580,10 @@ abstract class AppStrings {
   /// **'سطر {number}، {title}'**
   String invoiceDiscountLineHeading(String number, String title);
 
-  /// Shown when the saved PDF was handed to a viewer straight away (D-100). Distinct from the plain 'saved' message because it describes what actually happened -- the user is about to be looking at another application, and a message claiming only that the file was saved would leave them wondering what opened it. No action beside it: offering to open a document that is already open is an action that does nothing visible.
+  /// The ordinary, everything-worked outcome (D-100). **It leads with the opening, not the saving**, so the three export messages differ in their first words rather than in a negation particle buried mid-sentence -- the owner tested the previous build, met the no-seller message instead, and read a working save as a failure (D-101). No action beside it: offering to open a document that is already open is an action that does nothing visible.
   ///
   /// In fa, this message translates to:
-  /// **'فایل فاکتور ذخیره و باز شد.'**
+  /// **'فاکتور در برنامهٔ PDF باز شد؛ فایل هم ذخیره شد.'**
   String get invoiceDocumentExportSavedAndOpened;
 }
 
