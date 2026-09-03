@@ -330,7 +330,6 @@ void main() {
   group('the seller block', () {
     const SellerIdentity full = SellerIdentity(
       name: 'مهندسی نوآوران فناوری پارسیان',
-      economicId: '14003456789012',
       address: 'تهران، خیابان ولی‌عصر، بالاتر از میدان ونک، پلاک ۱۲۳',
       phone: '02188776655',
     );
@@ -362,7 +361,7 @@ void main() {
       expect(view.seller, isNotNull);
       expect(view.seller!.heading.value, strings.invoiceDocumentSellerHeading);
       expect(view.seller!.name.value, full.name);
-      expect(view.seller!.fields, hasLength(3));
+      expect(view.seller!.fields, hasLength(2));
 
       final List<String> values = view.seller!.fields
           .map((DocumentField f) => f.value.value)
@@ -381,10 +380,9 @@ void main() {
       // it was looking for the wrong thing.
       expect(
         values,
-        contains(toPersianDigits('14003456789012')),
+        contains(toPersianDigits('02188776655')),
         reason: '§9: an identifier prints in Persian digits, like every figure',
       );
-      expect(values, contains(toPersianDigits('02188776655')));
       expect(values, contains(full.address));
 
       // And no isolate survived into a string the renderer will draw.
@@ -418,10 +416,7 @@ void main() {
       // arrived through a restored backup never met the form.
       final InvoiceDocumentView view = viewOf(
         _detail(toman: 1000000),
-        seller: const SellerIdentity(
-          economicId: '14003456789012',
-          phone: '02188776655',
-        ),
+        seller: const SellerIdentity(phone: '02188776655'),
       );
 
       expect(view.seller, isNull);

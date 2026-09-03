@@ -1201,11 +1201,8 @@ void main() {
     testWidgets('a draft offers deletion, and an issued invoice does not', (
       WidgetTester tester,
     ) async {
-      // **Known issue 27.** `softDeleteDraft` existed and was tested from
-      // Phase 4 and nothing called it, so a draft made by mistake could not be
-      // removed at all — the application unable to undo its own most common
-      // action. The two ways out are mutually exclusive by §6: a draft is
-      // deleted, an issued invoice is cancelled.
+      // The two ways out are mutually exclusive by D-105's gate: a draft is
+      // deleted, an issued invoice is cancelled first.
       final (AppStrings draftStrings, _) = await pumpCancellable(
         tester,
         view: detail(status: InvoiceStatus.draft),
@@ -1222,7 +1219,92 @@ void main() {
       await tester.tap(find.byIcon(Icons.more_vert));
       await tester.pumpAndSettle();
       expect(find.text(issuedStrings.invoiceDeleteDraftAction), findsNothing);
+      expect(find.text(issuedStrings.invoiceDeleteAction), findsNothing);
       expect(find.text(issuedStrings.invoiceCancelAction), findsOneWidget);
+    });
+
+    testWidgets('a cancelled invoice offers deletion, and nothing else', (
+      WidgetTester tester,
+    ) async {
+      // **D-105.** The owner could not clear test invoices, and the rule that
+      // an issued document is cancelled rather than deleted was right — so
+      // cancellation became the gate rather than the alternative. A cancelled
+      // invoice has had the accounting act performed and recorded, so what is
+      // left may go.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(status: InvoiceStatus.cancelled),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceDeleteAction), findsOneWidget);
+      expect(
+        find.text(strings.invoiceCancelAction),
+        findsNothing,
+        reason: 'there is nothing left to cancel',
+      );
+      expect(
+        find.text(strings.invoiceEditDraftAction),
+        findsNothing,
+        reason: 'a cancelled invoice is not corrected by editing (§6)',
+      );
+    });
+
+    testWidgets('the cancellation dialog says deletion becomes possible', (
+      WidgetTester tester,
+    ) async {
+      // **The half of D-105 that lives in copy.** Deletion is offered only
+      // after cancellation, so a user hunting for a way to clear a mistaken
+      // invoice sees one action, takes it, and has no reason to look again —
+      // which is exactly how "anything I create is permanent" was reached on a
+      // build that already deleted drafts.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceCancelAction));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceCancelThenDeleteNote), findsOneWidget);
+    });
+
+    testWidgets('deleting a cancelled invoice warns about its payments', (
+      WidgetTester tester,
+    ) async {
+      // Cancellation keeps the payments (D-061) and deletion does not (D-105),
+      // and the user has just read the sentence that says the opposite — so
+      // this dialog has to contradict it rather than leave it standing.
+      final (AppStrings strings, _) = await pumpCancellable(
+        tester,
+        view: detail(
+          status: InvoiceStatus.cancelled,
+          payments: <Payment>[payment(5000000)],
+        ),
+      );
+
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(strings.invoiceDeleteAction));
+      await tester.pumpAndSettle();
+
+      expect(find.text(strings.invoiceDeleteTitle), findsOneWidget);
+      expect(find.text(strings.invoiceDeleteBody), findsOneWidget);
+      expect(
+        strings.invoiceDeleteBody,
+        contains('شماره'),
+        reason:
+            'the copy must say the invoice number stays spent (D-013), or it '
+            'is a bare confirmation',
+      );
+      expect(
+        find.text(strings.invoiceDeletePaymentsNote(formatGroupedPersian(1))),
+        findsOneWidget,
+      );
     });
 
     testWidgets('the delete confirmation says what it does not cost', (
@@ -1271,7 +1353,7 @@ void main() {
       );
       await tester.pumpAndSettle();
 
-      expect(repo.deletedDrafts, <String>['i1']);
+      expect(repo.deletedIds, <String>['i1']);
       expect(find.text(strings.invoiceDeleteDraftSuccess), findsOneWidget);
       // **Unlike cancelling, which stays.** A deleted draft's page has nothing
       // left to show.
@@ -1294,7 +1376,7 @@ void main() {
       await tester.tap(find.widgetWithText(TextButton, strings.actionCancel));
       await tester.pumpAndSettle();
 
-      expect(repo.deletedDrafts, isEmpty);
+      expect(repo.deletedIds, isEmpty);
       expect(lastLocation, '/');
     });
 
@@ -1372,13 +1454,23 @@ void main() {
         view: detail(status: InvoiceStatus.cancelled),
       );
 
-      // **The menu is gone entirely, not opened onto nothing** (D-094). With
-      // the export moved out to a named button, a cancelled invoice has no
-      // action left behind this icon: it cannot be cancelled again and it is
-      // not a draft. An overflow button that opens an empty menu is the
-      // affordance-leading-nowhere D-021 rules out.
-      expect(find.byIcon(Icons.more_vert), findsNothing);
+      // **Cancellation is not offered twice.** A second cancellation would be
+      // a write that changes no fact while bumping `updatedAt` into a
+      // sync-pending row, and the repository refuses it.
+      //
+      // The menu itself **stays**, which is the change D-105 made: it used to
+      // vanish here, because with the export moved to a named button (D-094) a
+      // cancelled invoice had nothing left behind the icon. It now has
+      // deletion — see 'a cancelled invoice offers deletion, and nothing
+      // else'. What D-021 rules out is a menu that opens onto *nothing*, and
+      // that is still true.
+      await tester.tap(find.byIcon(Icons.more_vert));
+      await tester.pumpAndSettle();
       expect(find.text(strings.invoiceCancelAction), findsNothing);
+      expect(find.text(strings.invoiceDeleteAction), findsOneWidget);
+      // Back out of the menu so the export assertion below sees the page.
+      await tester.tapAt(const Offset(5, 5));
+      await tester.pumpAndSettle();
 
       expect(
         find.text(strings.invoiceDocumentExportAction),
@@ -1859,7 +1951,21 @@ void main() {
               (InvoiceStatus.draft, InvoiceStatusView.draft),
               (InvoiceStatus.cancelled, InvoiceStatusView.cancelled),
             ]) {
-          await pumpDetail(tester, view: detail(status: status));
+          // **Taller than `tallPhone`, and the reason is worth stating.** The
+          // page is a `ListView`, so a card below the build window is not in
+          // the tree to be asked about its colour — and a *cancelled* invoice
+          // is the tallest of the four: it carries two explanatory sentences
+          // the others do not (D-061), and since D-105 it has an overflow menu
+          // again, where before it had none. At 2400 the payments card fell
+          // off the end and this test read one tint instead of two, which is a
+          // fact about the viewport and not about the colours it is here to
+          // pin. Nothing about the page changed for the user: the card is
+          // below the lines by design (§10) and is reached by scrolling.
+          await pumpDetail(
+            tester,
+            view: detail(status: status),
+            size: const Size(400, 3200),
+          );
 
           final StatusPalette palette = Theme.of(
             tester.element(find.byType(InvoiceDetailScreen)),

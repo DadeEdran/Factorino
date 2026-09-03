@@ -5,9 +5,66 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-03 (sixth pass) — the seller prompt moved to the dashboard.**
+> **Last updated: 2026-09-03 (seventh pass) — the second phone test: four changes, one of them a
+> package bug that had never once let the hand-off run.**
 >
-> Approved from the fifth pass's recommendation. An empty seller is the default state of every
+> The owner tested the sixth-pass build and returned with four items. All four are done, plus a
+> fifth nobody asked for. `flutter analyze` is clean and **1,318 tests pass** (1,311 before this
+> pass's own migration suite, 1,269 two passes ago). Both artifacts rebuilt.
+>
+> **1. «باز کردن» did nothing, and none of the three suspected causes was it** (D-103). The owner
+> named the likely candidates precisely — a missing `FLAG_GRANT_READ_URI_PERMISSION`, a URI needing
+> re-resolution, a channel never reached — and the answer was none of them. `flutter_file_dialog`
+> 3.3.2 returns `destinationFileUri.**path**` from its save: the *path component* of the SAF URI,
+> with the scheme and the authority discarded. Dart received
+> `/document/primary:Download/factor-….pdf`, `MainActivity` found `uri.scheme == null`, and the
+> guard that refuses anything but a `content:` or `file:` URI refused the application's own file.
+> **`ACTION_VIEW` had never been constructed on a real device**, so the read grant — which was
+> already correct — was never in question.
+>
+> The URI cannot be rebuilt once the authority is gone, so `ACTION_CREATE_DOCUMENT` is first-party
+> now, in `MainActivity`, returning `uri.toString()`; `flutter_file_dialog` is removed. **The
+> owner's own fallback was declined and the reason is §7**: app-external storage with a
+> `FileProvider` leaves a second unencrypted PDF carrying a customer's کد ملی outside app-private
+> storage, contradicting the one promise `InvoiceDocumentController` makes about artifacts.
+>
+> **2. کد اقتصادی is gone** (D-106) — both forms, both screens, the PDF, and three columns, in
+> **schema v7**. This is the first migration in the project that *destroys* data rather than adding
+> or copying, which is why it has its own version and a test built around the half a destructive
+> migration gets wrong quietly: the fixture fills the doomed columns **and every neighbour**, because
+> a `DROP` aimed one column left would look exactly like success.
+>
+> **3. Invoices can be deleted, with cancellation as the gate** (D-105) — proposed and approved
+> before building, per the owner's instruction. The rule and the need were never in conflict: a draft
+> deletes because nobody has seen it, a *cancelled* invoice deletes because the accounting act has
+> already happened and is on record, and everything between must be cancelled first. Nothing leaves
+> the books uncancelled; nothing is permanent. **Half of it lives in copy** — the cancellation dialog
+> now says deletion becomes possible, because the owner's *"anything I create is permanent"* was said
+> about a build that had deleted drafts for a session already.
+>
+> **4. Back moves within a destination before it leaves one** (D-104). D-095's single rule was one
+> rule too coarse: an invoice returns to فاکتورها now, and only a destination already at its root
+> hands the press on to the dashboard.
+>
+> **5. Three on-device proofs had rotted, and nobody could have noticed** (D-107). Found while
+> verifying the above on Windows, not asked for. `integration_test/` is **not in `flutter test`** —
+> it needs `-d <device>` — so three files had been asserting `expect(version, 3/4/5)` through every
+> migration since, and `invoice_detail_device_test.dart` was still tapping «⋮» to reach a PDF export
+> that D-094 moved to a named button *because nobody found it in the menu*. All fixed. **All eleven
+> runnable on-device files now pass on Windows**, including the v1 → v7 ladder on a real encrypted
+> file.
+>
+> **What is unverified: everything Android.** No phone was connected, by the owner's own arrangement.
+> The Kotlin is the most ordinary Android there is and its copy loop is the same shape as the one it
+> replaces, but that is an argument rather than a test. The Android back **gesture** is likewise still
+> untested on hardware, as it has been since D-095.
+>
+> **One thing the Windows verification could not have caught, and the APK build did.** The manifest's
+> new `<queries>` comment contained `--`, which XML forbids inside a comment;
+> `flutter build windows` never reads that file and reported nothing. The Gradle manifest merger
+> failed on it. A green Windows gate is not an Android gate.
+>
+> Earlier the same day: **the seller prompt moved to the dashboard (sixth pass).** Approved from the fifth pass's recommendation. An empty seller is the default state of every
 > database (the v5 migration invents nothing, deliberately), so **every first-time user met the
 > requirement at the moment they saved their first PDF** — and got an explanation instead of a
 > document. The gap was timing, not information: D-077's prompt on the settings screen reaches only
@@ -245,13 +302,18 @@ the phase. **Nothing is awaiting review.**
 
 **Phase 6 — Backup and Restore · `COMPLETED`** (2026-09-01) — all four increments delivered at
 D-068's reduced standards. **Nothing unfinished, nothing deferred out of it.**
-**Phase 7 — PDF Generation · `IN_PROGRESS`** — the last phase in the plan.
-**(a) delivered** 2026-09-02 (D-074): the dependency, `core/pdf/`, the guards, the entry-gate
-measurement. **(b) delivered** 2026-09-02 (D-075, D-076): the view model, the generator interface
-and the one template. **(c) delivered** 2026-09-02 (D-077): **schema v5**, the seller block, and the
-two rulings about what an empty seller prints and what it blocks. **(d) is all that remains**:
-save/share, the device pass, the two measurements the gate still owes, the Android leg of the v5
-proof, and known issue 24.
+**Phase 7 — PDF Generation · `COMPLETED`** (2026-09-02) — the last phase in the plan. All four
+increments delivered on both targets: (a) the dependency and `core/pdf/` (D-074), (b) the view model
+and the template (D-075, D-076), (c) **schema v5** and the seller block (D-077), (d) the save, the
+device pass and the gate's two measurements.
+
+**After Phase 7 — seven owner passes from real use, 2026-09-03 · `COMPLETED`.** Recorded in
+`ROADMAP.md` rather than folded into a phase, because several reverse or narrow earlier decisions.
+The twelve (D-086 – D-095), the phone form rebuild (D-096, D-097), discounting and the document
+hand-off (D-098 – D-100), the copy the first phone test found wrong (D-101), the dashboard seller
+prompt (D-102), and **the second phone test's four plus one** (D-103 – D-107): the Android save
+becoming first-party, back moving within a destination, deletion gated on cancellation,
+**schema v7** removing کد اقتصادی, and the on-device proofs that had rotted unrun.
 **Phases 8–15 · `DEFERRED_INDEFINITELY`** (D-068). Not next, not later, not scheduled. Two items
 inside them are called out in `ROADMAP.md` as minutes of work that gate distribution rather than
 phase-sized work: the Android manifest's `allowBackup="false"` (known issue 15) and release
@@ -419,6 +481,46 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
+flutter analyze:            PASS   (No issues found) as of 2026-09-03, SEVENTH pass
+flutter test:               PASS   (1318/1318) as of 2026-09-03, seventh pass. +7 for
+                                   `economic_id_removal_migration_test.dart` (schema v7, D-106).
+                                   Was 1311 after the Android hand-off, the back rule and the
+                                   deletion gate (D-103 - D-105); 1304 after the dashboard seller
+                                   prompt (D-102); 1295 after the export copy (D-101)
+On-device, WINDOWS:         PASS   **11 of 15 `integration_test/` files, all green** (D-107) --
+                                   seller_migration_proof (v1->v7 AND v6->v7 on a real ENCRYPTED
+                                   file, foreign keys on), customer_snapshot_migration_proof,
+                                   invoice_figures_migration_proof, invoice_number_migration_proof,
+                                   invoice_export (a real 18,386-byte PDF written, cancel path,
+                                   empty-seller path), invoice_detail_device, invoice_list_device,
+                                   invoice_form_device, settings_device (0 layout errors on each),
+                                   startup, d020_encryption_proof, backup_container_proof.
+                                   EXCLUDED BY DESIGN: the two backup-gateway probes need a human
+                                   to drive a native save dialog.
+                                   **THREE of these were rotted before this pass and had been for
+                                   several sessions** -- `integration_test/` is not in
+                                   `flutter test`, so nothing reported it. See D-107
+Windows build:              PASS   **release, after `flutter clean`**: builds, and the release
+                                   binary was LAUNCHED and held for 12 s, creating and opening a
+                                   fresh encrypted v7 database under %APPDATA%. Sizes below
+Android build:              PASS   arm64 PROFILE APK (needs no keystore; D-083's release refusal is
+                                   untouched and still fires). **The first attempt FAILED** and the
+                                   failure is worth keeping: the new `<queries>` comment contained
+                                   `--`, which XML forbids inside a comment, and the Gradle manifest
+                                   merger rejected it. `flutter build windows` never reads that file
+                                   and had reported nothing. Sizes below
+Schema migration:           PASS   v7 (D-106). Unit suite: v6->v7 and v1->v7 against the drift
+                                   dumps, plus the production path on a real encrypted file --
+                                   columns gone, every neighbouring field intact, tables still
+                                   writable, single settings row still single. On-device on
+                                   Windows as above
+Web build:                  NOT_TESTED
+Android on hardware:        NOT_TESTED  **by arrangement** -- the owner is testing this build. The
+                                   two behaviours that have never run on a phone: the document
+                                   hand-off (D-103) and the back GESTURE (D-095, D-104)
+
+--------- earlier passes, kept for the detail they carry ---------------------
+
 flutter analyze:            PASS   (No issues found)                    as of 2026-09-03, twelve
 Width sweep (D-081):        PASS   width_sweep_test.dart -- 10 screens x every width from 328 to
                                    1600, each inside the REAL AdaptiveScaffold, failing on any
@@ -2322,6 +2424,9 @@ repositories and driving the real sheets.
 | 28 | **There is no app lock** | the project spec specifies an optional PIN and biometric unlock with an idle timeout; `lib/core/security/` contains only the logger and the key manager, and `local_auth` is not a dependency. Encryption at rest protects the file, not a running app on an unlocked device — so of §7's two headline threats, "lost or stolen device" is only half covered. Nominally Phase 9/10, both `DEFERRED_INDEFINITELY` (D-068). Stated here because the threat model claims more than the build delivers, and §7 requires that gap to be written down rather than implied. |
 
 | 29 | ~~A saved draft cannot be edited~~ | **Resolved 2026-09-03** (D-084). «ویرایش پیش‌نویس» in the draft's menu reopens it at `/invoices/:id/edit`; `save` calls `updateDraft` rather than `create`. The editing id is carried on `InvoiceEditorState` rather than in the provider's family key, so it survives the rebuild a settings change causes — which would otherwise have turned an edit into a second invoice silently. Four tests against the real database. Editing an *issued* invoice remains impossible, which is §6, not a gap. |
+| 30 | ~~Issued invoices cannot be removed at all, so test data and mistakes are permanent~~ | **Resolved 2026-09-03** (D-105), proposed to the owner and approved before it was built. Cancellation becomes the **gate** rather than the alternative: a draft deletes, a *cancelled* invoice deletes, and everything between must be cancelled first — so §6's rule that an issued document never disappears silently is intact, and nothing is permanent. Soft delete, the number is never released (D-013), and the payments go with the document, which is the one place this points the opposite way from D-061 and says so in the confirmation. **Half the fix is copy**: the cancellation dialog now states that deletion becomes possible, because the owner reported permanence on a build that had deleted drafts for a session already. |
+| 31 | ~~«باز کردن» does nothing on Android, and a saved PDF cannot be reached~~ | **Resolved 2026-09-03** (D-103) — **unverified on hardware**, which is the whole of what is left of it. The cause was a dependency: `flutter_file_dialog` 3.3.2 returns `destinationFileUri.path`, so the scheme and authority were gone before Dart saw the handle and `MainActivity`'s guard refused the application's own file. `ACTION_VIEW` had never been constructed on a device, so the read grant — the first thing everyone suspected — was never in question. The save is first-party now. |
+| 32 | **`integration_test/` is not in `flutter test`, and rots unnoticed** | Found 2026-09-03 (D-107) while verifying this pass on Windows. Three files had been asserting `expect(version, 3/4/5)` through every migration since, and `invoice_detail_device_test.dart` still tapped «⋮» for a PDF export that D-094 had moved to a named button *because nobody found it in the menu*. All are fixed and all eleven runnable files pass on Windows. **The condition is not fixed and cannot be**: these need `-d <device>`, so a session that runs the default suite and calls itself green has run none of them. The remedy is procedural — run them on a target before closing a pass — and a version assertion must read `db.schemaVersion`, never a literal. |
 
 | ~~30~~ | **DONE 2026-09-03 — and re-opened and closed properly the same day (D-096).** The D-093 fix below was the third of three that moved this control without taking it out of the scroll; it is now pinned above the scroll and cannot move again. Historical record follows. **(D-093.)** Adding a line on the new-invoice screen competed with the pinned bar and left the widget tree once the details section was opened. D-086 took the smallest of its three candidates and measured the rest; **candidate 1 is now taken**: on the phone the lines section sits **above** the details section, which is §10's own rule (a variable-height block above the thing the page is for belongs below it) applied a fourth time. Above the fields, add-line cannot leave the first screen, because the section that grows is the one underneath it. The customer stays visible in the collapsed details heading, so «مشتری را انتخاب کنید» still points at something reachable. Kept in this table struck through rather than deleted, so the history of the three attempts reads straight. |
 
@@ -2555,7 +2660,60 @@ and the row renders a Jalali date, with a test.
 
 ## Recently changed files
 
-### Phase 7 increment (c) — schema v5 and the seller block, the newest work
+### The seventh pass — D-103 to D-107, the newest work
+
+```
+android/app/src/main/kotlin/.../MainActivity.kt   REWRITTEN  saveDocument + openUri on one channel;
+                                                             ACTION_CREATE_DOCUMENT is ours now, and
+                                                             answers with uri.toString() (D-103)
+android/app/src/main/AndroidManifest.xml          MOD  <queries> for VIEW+application/pdf. NOTE: an
+                                                      XML comment may not contain `--`; the first
+                                                      APK build failed on exactly that
+pubspec.yaml / pubspec.lock                       MOD  flutter_file_dialog REMOVED; file_selector
+                                                      gains the justification note §2 requires
+lib/data/backup/backup_file_gateway.dart          MOD  kDocumentsChannel declared here; the Android
+                                                      deliver() branch calls saveDocument
+lib/data/backup/saved_file_opener.dart            MOD  uses that channel instead of its own
+test/data/backup/gateway_boundary_test.dart       MOD  confines the CHANNEL NAME as it confined the
+                                                      package; the opener is the one exemption
+
+lib/core/router/back_policy.dart                  MOD  onPopSection runs before the go-home rule
+lib/core/router/app_router.dart                   MOD  supplies it from GoRouter.canPop/pop
+lib/core/responsive/adaptive_scaffold.dart        MOD  passes it through; go_router stays out of here
+test/core/router/back_policy_test.dart            MOD  +2 tests: the section step, and that a
+                                                      screen's claim still outranks it (D-104)
+
+lib/data/models/invoice.dart                      MOD  isDeletable, the complement of isCancellable
+lib/data/repositories/invoice_repository.dart     MOD  softDeleteDraft -> softDelete;
+                                                      InvoiceNotDeletable (D-105)
+lib/data/repositories/drift/drift_invoice_repository.dart  MOD  one transaction; payments go too
+lib/features/invoices/application/invoice_cancellation.dart MOD  deleteDraft -> delete
+lib/features/invoices/presentation/widgets/invoice_cancel_action.dart  MOD  two labels, two
+                                                      confirmations, and the then-delete line on the
+                                                      cancellation dialog
+
+lib/data/database/app_database.dart               MOD  schemaVersion 7, migrateV6ToV7,
+                                                      _dropColumnIfPresent, _addRetiredColumnIfAbsent
+lib/data/database/tables/{customers,settings,invoices}.dart  MOD  the three columns removed
+lib/data/models/{customer,customer_snapshot,seller_identity,field_limits}.dart  MOD  same (D-106)
+lib/features/{customers,settings,invoices}/...    MOD  the field removed from both forms, both
+                                                      screens and the PDF builder
+drift_schemas/drift_schema_v7.json                NEW  schema dump
+test/data/database/generated/schema_v7.dart       NEW  drift_dev schema generate output
+test/data/database/economic_id_removal_migration_test.dart  NEW  7 tests; the fixture fills every
+                                                      NEIGHBOURING field, which is the point
+
+integration_test/seller_migration_proof_test.dart          MOD  expect(version, 5) -> schemaVersion
+integration_test/customer_snapshot_migration_proof_test.dart  MOD  same, was 3
+integration_test/invoice_figures_migration_proof_test.dart    MOD  same, was 4
+integration_test/invoice_detail_device_test.dart           MOD  taps the NAMED export button; it had
+                                                      tapped the menu since before D-094 (D-107)
+
+lib/core/localization/arb/app_fa.arb              MOD  +7 entries for deletion; -2 for کد اقتصادی
+lib/core/localization/generated/                  GEN  flutter gen-l10n
+```
+
+### Phase 7 increment (c) — schema v5 and the seller block
 
 ```
 lib/data/models/seller_identity.dart                     NEW  the value object, and why it is one
@@ -2972,6 +3130,24 @@ docs/*                                        D-043..D-045; ROADMAP phases 2 and
 
 ## Last completed action
 
+**The owner's second phone test: four requested changes and one found while verifying them
+(D-103 - D-107), delivered, gated and both artifacts rebuilt.**
+
+- **The Android document hand-off was diagnosed, and the cause was in a dependency** (D-103).
+  `flutter_file_dialog` returned the SAF URI's path component with scheme and authority stripped, so
+  `ACTION_VIEW` had never once been constructed on a device. `ACTION_CREATE_DOCUMENT` is now
+  first-party in `MainActivity` and the package is removed; the owner's FileProvider fallback was
+  declined on §7 grounds and the reasoning is recorded.
+- **Back moves within a destination before leaving it** (D-104), so an invoice returns to فاکتورها.
+- **Invoices can be deleted, gated on cancellation** (D-105) — proposed and approved before building,
+  with the discoverability half of it written into the cancellation dialog's copy.
+- **کد اقتصادی removed everywhere, in schema v7** (D-106) — the first migration here that destroys
+  data, tested against the failure a destructive migration hides: a `DROP` aimed one column wide.
+- **Three on-device proofs had rotted unrun** (D-107), found while verifying the rest on Windows. All
+  eleven runnable `integration_test/` files now pass there.
+
+*Before it:*
+
 **Two visual defects reported off the Windows build, fixed with the checks that would have caught
 them (D-065, D-066, D-067).**
 
@@ -3106,57 +3282,64 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-> **Nothing is half-finished and no question is waiting on an answer.** Six passes of owner feedback
-> are delivered in full, including the seller prompt the fifth pass asked to be consulted on; the
-> gate is clean at **1,304** tests and both artifacts are built.
+> **Nothing is half-finished and no question is waiting on an answer.** Seven passes of owner
+> feedback are delivered in full, including the deletion rule the owner asked to approve before it
+> was built; the gate is clean at **1,318** tests, **11 on-device files pass on Windows**, and both
+> artifacts are rebuilt from the committed tree.
 
-**The single specific next action: install the profile APK on the phone and check what cannot be
-checked here.**
+**The single specific next action: install `factorino-arm64.apk` on the phone and check the document
+hand-off first — it is the one thing on this list that has never once executed on a device.**
 
-> **The seller prompt is DONE** (D-102), which was the other half of this action. What is left is
-> the hardware.
+> **Read D-103 before concluding anything about it.** The previous two phone tests both reported
+> «باز کردن» doing nothing, and the cause was not in this application's logic at all: the package
+> that ran the save returned a URI with its scheme and authority stripped, so the guard in
+> `MainActivity` refused the application's own file and `ACTION_VIEW` was never built. That package
+> is gone and the save is first-party now. **If it still does nothing, the diagnosis was wrong and
+> that is the most valuable thing the next session can be told.**
 
-> **These are still the first things to check, and none is assumed working.** They are not known
-> broken; they are **unproven on hardware** — Dart-tested through the real dispatcher, Kotlin
-> compiled and present in the built APK, and never once run on a device. Do not read a green suite as
-> covering them.
->
-> **The auto-open is still on this list after a phone test**, which is worth noting: the test ran,
-> the save worked, and the seller exception meant the open path was never reached. A feature can sit
-> untested behind a working test session.
+The APK is `build/app/outputs/flutter-apk/app-profile.apk`, copied to
+`%USERPROFILE%\Desktop\Factorino-test\factorino-arm64.apk`. In this order:
 
-The APK is `build/app/outputs/flutter-apk/app-profile.apk`, and a copy is at
-`%USERPROFILE%\Desktop\Factorino-test\factorino-arm64.apk`. In this order, because the first
-is the one that can make the whole application feel broken:
+1. **The PDF hand-off (D-103).** Save an invoice **with the business name filled in** — without it,
+   D-100's exception fires and the document deliberately does not open, which is the state the fifth
+   pass mistook for a failure. Expected: the file saves and the device's PDF reader opens it with no
+   second tap, and the message starts «فاکتور در برنامهٔ PDF باز شد». «باز کردن» remains on the
+   message for a retry. On a phone with no PDF reader,
+   «برنامه‌ای برای باز کردن فایل PDF پیدا نشد» is correct and is not a fault — `resolveActivity` can
+   now answer that truthfully because the manifest declares the query. **Silence is the failure
+   signal**, and it now means something different from before.
+2. **The back gesture (D-095, D-104).** Still never run on hardware. Inside an invoice, back should
+   return to **فاکتورها**, not to the dashboard — that is new this pass. From the top of any
+   destination, back goes to the dashboard. From the dashboard, one press shows «برای خروج، دوباره
+   بازگشت را بزنید» and a second within 2.5 s leaves. From the invoice form with a customer or a line
+   entered, it must ask before discarding — that claim outranks everything and is the one worth
+   trying deliberately.
+3. **Deleting invoices (D-105).** Cancel an issued invoice; the dialog should end with «پس از ابطال،
+   می‌توانید این فاکتور را به‌کلی حذف کنید». Then «حذف فاکتور» in the ⋮ menu, which leaves for the
+   list. A draft still offers «حذف پیش‌نویس» directly. An issued, uncancelled invoice offers neither
+   — that is the gate, not a bug.
+4. **کد اقتصادی is gone (D-106).** It should be absent from the customer form, the customer record,
+   the invoice's party block, the seller sheet, the settings list and the printed PDF. **On an
+   existing phone database this is a one-way migration**: whatever was typed into those fields is
+   dropped on first launch of this build.
 
-1. **The back gesture.** From the dashboard, one press should show «برای خروج، دوباره بازگشت را
-   بزنید» and a second within 2.5 s should leave. From anywhere else it should return to the
-   dashboard. From the invoice form with a customer or a line entered, it should ask before
-   discarding. `back_policy_test.dart` drives the real `BackButtonListener` through the platform's
-   own `popRoute` message, so the plumbing is tested — the **gesture** on hardware is not, and
-   D-095 records why nested listeners were rejected in case the behaviour surprises.
-2. **«باز کردن» on the PDF message.** Save an invoice, then tap the action on the confirmation. It
-   goes through a method channel in this application's own `MainActivity` (D-091) — no package, no
-   `FileProvider` — and issues `ACTION_VIEW` on the SAF URI with a read grant. If nothing happens,
-   the Persian line «برنامه‌ای برای باز کردن فایل PDF پیدا نشد» is the expected answer on a phone
-   with no PDF viewer; silence is not, and would mean the intent did not resolve.
-
-Then, still on the phone, the three that were designed against measurements taken there but built
-without one: the invoice form's new order (issue 30 / D-093), the navigation bar's five labels at
-the real Persian widths (D-088), and whether the tab-switch flash is actually gone (D-089 diagnosed
-it from the mechanism, not from a captured frame).
+Then the three designed against phone measurements but built without one: the invoice form's order
+(D-096), the navigation bar's five labels at real Persian widths (D-088), and whether the tab-switch
+flash is gone (D-089 diagnosed it from the mechanism, not a captured frame).
 
 After that, the standing list is unchanged:
 
 1. **Create a release keystore and sign a build** — `docs/RELEASE.md` has the exact commands. Still
    the only irreversible decision left, and still ahead of anyone installing anything they intend to
-   keep. (A **profile** APK needs no keystore, which is why this session could produce one.)
+   keep. (A **profile** APK needs no keystore, which is why these sessions can produce one.)
 2. **Decide about the app lock (known issue 28).** The difference between "the data is encrypted"
    and "the data is safe on a lost phone".
 3. **Known issue 26** (crushed Persian at two width bands) and **25** (the lines-table header on a
-   second page), in that order. Note that 26's first band — the `/invoices/:id` title at 328–376 —
-   was **not made worse** by this session: D-094 deliberately put the PDF button in the header row
-   rather than the title row for exactly that reason.
+   second page), in that order.
+
+**And one rule this pass earned, which costs nothing to keep** (D-107): before declaring a pass
+verified, run `integration_test/` on a target. It is not in `flutter test`, and three of its files
+had been asserting a schema version the application left behind two migrations earlier.
 
 Read `docs/HANDOVER.md` before any of it.
 

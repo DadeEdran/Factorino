@@ -110,7 +110,6 @@ void main() {
             fullName: 'مریم احمدی‌نژاد',
             companyName: 'کارگاه نمونهٔ تهران',
             nationalId: '0079542311',
-            economicId: '411123456789',
             address: 'تهران، خیابان ولیعصر، بالاتر از میدان ونک، پلاک ۱۲۳',
             mobile: '09121234567',
           ),
@@ -173,7 +172,6 @@ void main() {
         confirm: true,
         seller: const SellerIdentity(
           name: 'مهندسی نوآوران فناوری پارسیان',
-          economicId: '140034567890',
           phone: '02188776655',
           address: 'تهران، خیابان شریعتی، پلاک ۴۵۶، واحد ۲',
         ),

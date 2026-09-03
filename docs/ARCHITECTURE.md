@@ -58,7 +58,7 @@ Factorino/
       database/
         encrypted_database.dart                   # THE single database opener (D-020)
         database_bootstrap.dart                   # key -> open -> migrate -> assert encrypted
-        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 6, migrations
+        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 7, migrations
         invoice_figures_backfill.dart             #   the v3 -> v4 backfill (D-056)
         soft_delete.dart                          # selectAlive / selectOnlyAlive / countAlive
         tables/                                   # six tables + SyncColumns mixin
@@ -440,7 +440,8 @@ migration note below.
 
 **Snapshots:** `invoice_items` copies product title, unit, unit price and resolved tax rate at
 creation time and never joins to the live product row for pricing (D-004). `invoices` copies the
-**party** the same way from schema v3 — name, company, کد ملی, کد اقتصادی and address — written by
+**party** the same way from schema v3 — name, company, کد ملی and address (کد اقتصادی until v7,
+D-106) — written by
 `issue()` inside the transaction that allocates the number, so a correction to a customer record
 cannot rewrite a document that has been sent (D-052). The mobile is deliberately not part of it and
 still resolves live. A draft has no snapshot, and neither has anything issued before v3; both read
@@ -463,10 +464,18 @@ dead after the user has visited the invoice form once.
 
 `SavedFileOpener` (D-091) sits beside `BackupFileGateway` in `data/backup/` and is deliberately a
 second interface rather than a method on the first. The gateway moves a file *out* of app-private
-storage and now returns a `DeliveredFile` — a filesystem path on Windows, a SAF `content://` URI on
+storage and returns a `DeliveredFile` — a filesystem path on Windows, a SAF `content://` URI on
 Android; the opener acts only on one the gateway produced, so there is no path parameter through
-which anything else could be reached. Android goes through a four-line method channel in this
-application's own `MainActivity`, which refuses any scheme but `content:` and `file:`.
+which anything else could be reached.
+
+**Both halves of Android are first-party since D-103**, on one channel declared in
+`backup_file_gateway.dart` and implemented in this application's own `MainActivity`: `saveDocument`
+runs `ACTION_CREATE_DOCUMENT` and answers with `uri.toString()`, and `openUri` runs `ACTION_VIEW`
+with `FLAG_GRANT_READ_URI_PERMISSION` and refuses any scheme but `content:`. `flutter_file_dialog`
+was removed because it returned the URI's *path component* with the scheme and authority stripped,
+which is a handle nothing can act on — the defect that made «باز کردن» do nothing on every phone.
+`gateway_boundary_test.dart` confines the channel name to the gateway exactly as it confines
+`file_selector`, so a widget cannot reach the platform directly.
 
 **Indexes:** invoice issue date, customer reference, status, invoice number (unique), and
 `deleted_at`.
@@ -484,7 +493,16 @@ until it is issued. **v2 → v3** (D-052) adds the five party-snapshot columns t
 `payment_term_days` to `settings`. **v3 → v4** (D-055, D-056) adds the three printed-figure columns
 and, unlike either step before it, **backfills** them. **v4 → v5** (D-077) adds the four nullable
 `seller_*` columns and deliberately writes nothing into them. **v5 → v6** (D-087) adds
-`settings.theme_mode`, defaulted to `AppThemeMode.system`.
+`settings.theme_mode`, defaulted to `AppThemeMode.system`. **v6 → v7** (D-106) is the first step
+that **removes** anything: three `DROP COLUMN`s taking کد اقتصادی out of `customers`, `settings` and
+the `invoices` snapshot.
+
+> **v7 destroys data, and the ladder is deliberately left inconsistent-looking because of §6.**
+> `migrateV2ToV3` and `migrateV4ToV5` still *create* two of the columns v7 removes — by literal DDL
+> now that the Dart declarations are gone — because editing a shipped migration to skip them would
+> make a database that arrived at v3 a different shape from the v3 dump. A v1 upgrade therefore adds
+> two columns and drops three in one open. The intermediate schema comparisons are the only thing
+> that proves the two halves agree, which is why they exist.
 
 > **v6's default is a statement, not a convenience.** Every database reaching it has been following
 > the device, and `system` records exactly that — so the update repaints nobody's application. A

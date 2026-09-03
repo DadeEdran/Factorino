@@ -53,7 +53,6 @@ abstract final class CustomerLimits {
   /// identity (D-030).
   static const int nationalId = 10;
 
-  static const int economicId = 20;
   static const int notes = 2000;
 
   /// The denormalized search column (D-025). Not a form field — it is written
@@ -184,9 +183,6 @@ abstract final class SellerLimits {
   /// [CustomerLimits.fullName]: this is a letterhead line, and a sole trader
   /// who puts their own name here still fits inside the longer of the two.
   static const int name = 160;
-
-  /// Same as [CustomerLimits.economicId].
-  static const int economicId = 20;
 
   /// Same as [CustomerLimits.address].
   static const int address = 500;

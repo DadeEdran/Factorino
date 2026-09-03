@@ -115,7 +115,6 @@ void main() {
       expect(byId['invoice-issued']!.customerNameSnapshot, isNull);
       expect(byId['invoice-issued']!.customerCompanySnapshot, isNull);
       expect(byId['invoice-issued']!.customerNationalIdSnapshot, isNull);
-      expect(byId['invoice-issued']!.customerEconomicIdSnapshot, isNull);
       expect(byId['invoice-issued']!.customerAddressSnapshot, isNull);
     });
 
@@ -244,11 +243,15 @@ void main() {
       // the migration: drop exactly the columns the step adds. `ALTER TABLE
       // DROP COLUMN` rewrites rows in place and drops no table, so it is safe
       // here — and it is test setup, not something the application does.
+      //
+      // `customer_economic_id_snapshot` is **not** in this list: v7 dropped it
+      // (D-106), so a database created at the current version never has it.
+      // The step still creates it, which is what keeps a migrated v3 the same
+      // shape as the v3 dump — see `_addRetiredColumnIfAbsent`.
       for (final String column in <String>[
         'customer_name_snapshot',
         'customer_company_snapshot',
         'customer_national_id_snapshot',
-        'customer_economic_id_snapshot',
         'customer_address_snapshot',
       ]) {
         await db.customStatement('alter table invoices drop column $column');

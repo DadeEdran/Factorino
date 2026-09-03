@@ -114,8 +114,13 @@ is RTL-first.
 - Money is stored as integer Rial; percentages as basis points; quantities scaled by 1000.
 - Invoice totals follow one authoritative calculation order, with invoice-level discount allocated
   proportionally by line net using the largest-remainder method.
-- Only `draft` invoices are editable or deletable. Issued invoices are corrected by cancellation,
-  never by silent edit.
+- Only `draft` invoices are editable. Issued invoices are corrected by cancellation, never by
+  silent edit.
+- **Cancellation is the gate on deletion, not the alternative to it** (D-105). A draft deletes
+  because nobody has seen it; a *cancelled* invoice deletes because the accounting act has already
+  happened and is on record; everything between must be cancelled first. So nothing leaves the books
+  without having been cancelled, and no mistake or test document is permanent. The delete is soft,
+  the invoice number is never released, and the payments go with the document.
 - Payment status (`partiallyPaid` / `paid`) is derived from payments and persisted for fast querying;
   `draft` and `cancelled` are set manually.
 - The VAT rate is configurable and snapshotted onto each invoice item; changing it must not alter

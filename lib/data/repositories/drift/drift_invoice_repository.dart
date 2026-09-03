@@ -349,7 +349,6 @@ class DriftInvoiceRepository implements InvoiceRepository {
               customerNameSnapshot: Value(snapshot?.fullName),
               customerCompanySnapshot: Value(snapshot?.companyName),
               customerNationalIdSnapshot: Value(snapshot?.nationalId),
-              customerEconomicIdSnapshot: Value(snapshot?.economicId),
               customerAddressSnapshot: Value(snapshot?.address),
               issueDate: millisFromInstant(draft.issueDate),
               status: status,
@@ -477,7 +476,6 @@ class DriftInvoiceRepository implements InvoiceRepository {
           customerNameSnapshot: Value<String?>(snapshot.fullName),
           customerCompanySnapshot: Value<String?>(snapshot.companyName),
           customerNationalIdSnapshot: Value<String?>(snapshot.nationalId),
-          customerEconomicIdSnapshot: Value<String?>(snapshot.economicId),
           customerAddressSnapshot: Value<String?>(snapshot.address),
           status: const Value(InvoiceStatus.unpaid),
           updatedAt: Value(nowMillis()),
@@ -513,14 +511,41 @@ class DriftInvoiceRepository implements InvoiceRepository {
   }
 
   @override
-  Future<void> softDeleteDraft(String id) async {
-    await _requireEditable(id);
-    await (_db.update(_db.invoices)..where((r) => r.id.equals(id))).write(
-      InvoicesCompanion(
-        deletedAt: Value(nowMillis()),
-        updatedAt: Value(nowMillis()),
-      ),
-    );
+  Future<void> softDelete(String id) async {
+    // **Read and write in one transaction**, exactly as `cancel` is and for the
+    // same reason: the status decides whether this is allowed at all, so a
+    // check made outside the write is a check a second window can invalidate
+    // between the two statements.
+    await _db.transaction(() async {
+      final row = await _findRow(id);
+      if (row == null) throw StateError('no invoice with id $id');
+      if (row.status != InvoiceStatus.draft &&
+          row.status != InvoiceStatus.cancelled) {
+        throw InvoiceNotDeletable(id, row.status);
+      }
+
+      final int now = nowMillis();
+      await (_db.update(_db.invoices)..where((r) => r.id.equals(id))).write(
+        InvoicesCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+      );
+
+      // **The payments go with it** (D-105), unlike cancellation, which
+      // deliberately leaves them standing (D-061). A cancelled invoice is a
+      // void claim against cash that really did change hands; a *deleted* one
+      // is a document that was never a transaction, so a receipt recorded
+      // against it is a mis-entry too. A draft has none -- `acceptsPayments` is
+      // false for one -- so this writes nothing on that path.
+      //
+      // No figure on screen changes either way: every aggregate here reaches
+      // payments through a correlated subquery from a live invoice row. They
+      // are deleted so that a row whose parent is gone does not outlive it into
+      // the sync phase, where it would arrive as a payment for no invoice.
+      await (_db.update(
+        _db.payments,
+      )..where((r) => r.invoiceId.equals(id) & r.deletedAt.isNull())).write(
+        PaymentsCompanion(deletedAt: Value(now), updatedAt: Value(now)),
+      );
+    });
   }
 
   // ---- internals ----------------------------------------------------------

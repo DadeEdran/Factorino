@@ -82,7 +82,6 @@ class _SellerEditorSheet extends StatefulWidget {
 class _SellerEditorSheetState extends State<_SellerEditorSheet> {
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   late final TextEditingController _name;
-  late final TextEditingController _economicId;
   late final TextEditingController _address;
   late final TextEditingController _phone;
 
@@ -90,7 +89,6 @@ class _SellerEditorSheetState extends State<_SellerEditorSheet> {
   void initState() {
     super.initState();
     _name = TextEditingController(text: widget.seller.name ?? '');
-    _economicId = TextEditingController(text: widget.seller.economicId ?? '');
     _address = TextEditingController(text: widget.seller.address ?? '');
     _phone = TextEditingController(text: widget.seller.phone ?? '');
   }
@@ -98,7 +96,6 @@ class _SellerEditorSheetState extends State<_SellerEditorSheet> {
   @override
   void dispose() {
     _name.dispose();
-    _economicId.dispose();
     _address.dispose();
     _phone.dispose();
     super.dispose();
@@ -106,12 +103,11 @@ class _SellerEditorSheetState extends State<_SellerEditorSheet> {
 
   /// The value as typed, with blanks folded away.
   ///
-  /// Built through [SellerIdentity.normalized] rather than by trimming at four
-  /// call sites, so the sheet and the repository agree on what "empty" means
-  /// by construction rather than by both remembering to trim.
+  /// Built through [SellerIdentity.normalized] rather than by trimming at each
+  /// call site, so the sheet and the repository agree on what "empty" means by
+  /// construction rather than by both remembering to trim.
   SellerIdentity get _edited => SellerIdentity(
     name: _name.text,
-    economicId: _economicId.text,
     address: _address.text,
     phone: _phone.text,
   ).normalized();
@@ -147,13 +143,6 @@ class _SellerEditorSheetState extends State<_SellerEditorSheet> {
             }
             return null;
           },
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        AppTextField(
-          controller: _economicId,
-          label: strings.settingsSellerFieldEconomicId,
-          maxLength: SellerLimits.economicId,
-          keyboardType: TextInputType.number,
         ),
         const SizedBox(height: AppSpacing.lg),
         AppTextField(

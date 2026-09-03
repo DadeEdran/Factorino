@@ -6915,3 +6915,242 @@ At 420 px on Windows: the prompt above the tiles, «تکمیل مشخصات» op
 saved, and the prompt gone with the tiles moved up to fill the space — the disappears-by-being-
 satisfied property, observed rather than argued. The dev database's seller was cleared again
 afterwards, so it is back in the state every new database is in.
+
+---
+
+## D-103 — The Android save dialog becomes first-party, because the package threw the URI away
+
+**Date:** 2026-09-03. Owner report, second phone test: *"the PDF still doesn't open from inside the
+app... after saving, the user has no way to reach the file — they don't know where it went, and
+«باز کردن» does nothing."*
+
+### The cause, which was not where any of the three hypotheses pointed
+
+The owner's first suspicion was the SAF grant — that a URI from `ACTION_CREATE_DOCUMENT` is not
+readable by another application without `FLAG_GRANT_READ_URI_PERMISSION`. That flag was already on
+the intent and is correct. The second was that the method channel was never reached. It was reached,
+every time.
+
+`flutter_file_dialog` 3.3.2, `FileDialog.kt:454`:
+
+```kotlin
+private fun saveFile(sourceFile: File, destinationFileUri: Uri): String {
+...
+    return destinationFileUri.path!!   // .path, not .toString()
+}
+```
+
+It returns the **path component** of the SAF URI, with the scheme and the authority discarded. What
+reached Dart was `/document/primary:Download/factor-….pdf` — not a content URI, not a filesystem
+path, and nothing an authority can be reconstructed from. `MainActivity` parsed it, found
+`uri.scheme == null`, and took the guard that refuses anything which is not a `content` or `file`
+URI. `openSaved` returned false, `InvoiceExportSaved.opened` was false, and «باز کردن» did precisely
+nothing — correctly, given what it was handed. **`ACTION_VIEW` had never once been constructed on a
+real device.**
+
+The same broken value flows out of the backup export, where nothing reads it. That is the only
+reason it went unnoticed for two phases.
+
+### The remedy: do not throw it away
+
+The URI is unrecoverable after the fact, so the fix is at the source. `ACTION_CREATE_DOCUMENT` moves
+into this application's own `MainActivity`, returning `uri.toString()`, and `flutter_file_dialog` is
+removed. It was reachable from exactly one file — `gateway_boundary_test.dart` enforces that — so the
+replacement was the one-file change D-071 promised it would be, plus the Kotlin.
+
+**The owner's fallback was declined, and the reason is §7.** The suggestion was app-external storage
+with a `FileProvider`, or a copy in Downloads. Both work, and both leave a **second, unencrypted PDF
+carrying the customer's کد ملی** outside app-private storage — which contradicts the promise
+`InvoiceDocumentController` documents in as many words, that the application leaves no copy behind. A
+file that can be opened is not worth a file that cannot be deleted.
+
+**D-091 needs no revision.** The save is still SAF, there is still no share intent, and the document
+still leaves only on an explicit tap on a destination the user chose. The only thing that changed is
+that the handle is now real.
+
+### What is unverified
+
+**Everything Android here.** No phone was connected. Windows is untouched (`explorer.exe`), and its
+export path is re-run green on the real target. The Kotlin is the most ordinary Android there is and
+the copy loop is the same shape as the one it replaces, which did work — but that is an argument, not
+a test, and the owner is testing it.
+
+### Three details worth keeping
+
+`<queries>` gains a `VIEW`+`application/pdf` entry. Starting an implicit intent is not filtered by
+package visibility, but **resolving** one is, so without it `resolveActivity` returns null on API 30+
+even where a reader is installed, which would report "you have no PDF viewer" to a user who does.
+
+`FLAG_ACTIVITY_NEW_TASK` is dropped. Launched from an activity the viewer joins this task, so the
+back gesture returns to the invoice instead of stranding the user in a separate task.
+
+The copy runs on an executor, not the main thread. A PDF is small; a backup is the whole database,
+and a freeze during it reads as a crash.
+
+---
+
+## D-104 — Back moves within a destination before it leaves one
+
+**Date:** 2026-09-03. Owner request 4: *"If I'm inside an invoice, back should take me back within
+the invoice section. If I'm already at the top of that section, back goes to the dashboard."*
+
+D-095 gave the application one rule — anywhere but the dashboard, back returns to the dashboard — and
+it was one rule too coarse. Opening an invoice and pressing back abandoned فاکتورها rather than
+returning to it, which is not what the press means to anyone who has just opened something.
+
+So a step goes in **before** the application-wide rule and after a screen's own claim: if the current
+destination has a page stacked in it, unwind that. `StatefulShellRoute` gives each destination its
+own navigator and `GoRouter.canPop`/`pop` walk into it, so "within the section" is a question the
+router already answers — the shell cannot, which is why `AppBackPolicy` takes the answer as a
+callback rather than reading it. That also keeps `go_router` out of `core/responsive/` and lets
+`back_policy_test.dart` pin the ordering of all four outcomes without standing a router up.
+
+**The order against a screen's claim is load-bearing and is tested.** The invoice *form* is itself a
+page inside فاکتورها, so popping it is exactly the discard `BackClaims` exists to ask about first. A
+claim still outranks everything.
+
+The dashboard has no sub-routes, so this never answers a press there and D-095's exit confirmation is
+untouched. Like D-095, it is unverified on an Android back **gesture**: no phone was connected.
+
+---
+
+## D-105 — Deletion is gated on cancellation, not offered instead of it
+
+**Date:** 2026-09-03. Owner request 3: *"I need to be able to delete invoices. Right now anything I
+create is permanent and I can't clear out the test invoices I made... I know the rule has been that
+an issued invoice is cancelled, not deleted, and that rule is right for real accounting. But a user
+also has to be able to clear mistakes and test data. Work out how both can be true."*
+
+They can both be true because they are about different acts. **Cancelling is an accounting statement
+about a document that exists. Deleting is removing a record that should not be in the books at all.**
+The rule only breaks if deletion can substitute for cancellation — so it does not: cancellation
+becomes the **gate**.
+
+| Status | Way out |
+|---|---|
+| `draft` | delete — nobody has seen it, and no number was ever allocated |
+| `unpaid` / `partiallyPaid` / `paid` | **cancel first**; deletion appears afterwards |
+| `cancelled` | delete — the accounting act has happened and is on record |
+
+`Invoice.isDeletable` is exactly the complement of `isCancellable`, which is the property rather than
+a coincidence: an issued invoice has one way out and it is the one that leaves a record. Nothing can
+leave the books without having been cancelled, and no mistake is permanent. Proposed to the owner
+against a one-act alternative — delete anything, guarded by typing the invoice number — and chosen.
+
+### Three consequences, each deliberate
+
+**Soft, like every delete in this schema** (§6) — a hard delete cannot be propagated to another
+device. **The number is not released** (D-013): a deleted invoice leaves a gap rather than letting a
+later document take an identity a customer may already hold on paper. And **the payments go with
+it**, which is where this points the opposite way from D-061 and has to. Cancelling keeps them
+because the cash really did change hands against a document that stands; deleting says the document
+was never a transaction at all, so a receipt recorded against it is a mis-entry too. No figure on
+screen moves either way — every aggregate reaches payments through a correlated subquery from a live
+invoice row — so they are deleted for the sync phase, where a payment whose invoice is gone would
+arrive as a payment for no invoice.
+
+`InvoiceNotDeletable` is a third exception beside `InvoiceNotEditable` and `InvoiceNotCancellable`,
+on the precedent those two set: each leaves the user with a different next step, and this one's is
+*cancel it first* — the deletion is not refused, only its order.
+
+### The half that lives in copy
+
+The owner's sentence was *"anything I create is permanent"* — said about a build that had deleted
+drafts since the previous session. The capability existed and the belief was still reasonable,
+because deletion is offered only after cancellation and nothing said so. So the **cancellation dialog
+carries one unconditional line**: «پس از ابطال، می‌توانید این فاکتور را به‌کلی حذف کنید.» That is the
+one place the user is standing when the question is live. A gate nobody knows about is
+indistinguishable from a refusal.
+
+The two confirmations say opposite reassuring things and both are right. A draft's says why deleting
+is safe — no number spent (D-048), nothing reached the customer. A cancelled invoice's says the
+reverse: the number stays spent, and, where there are payments, that they go too — stated explicitly
+because the user has just read the cancellation dialog promising the opposite.
+
+### One thing this cost, recorded rather than discovered
+
+The overflow menu **returns** to a cancelled invoice, which D-094 had emptied. That makes the
+cancelled invoice detail page the tallest of the four states, and the payments card fell outside the
+2400-pixel surface `invoice_detail_screen_test.dart` builds — so the tint test read one card instead
+of two. Nothing changed for a user (the card is below the lines by design, §10, and is reached by
+scrolling); the test surface grew to 3200 and says why.
+
+---
+
+## D-106 — کد اقتصادی leaves the schema, in the first migration that destroys data
+
+**Date:** 2026-09-03. Owner request 2: *"Remove کد اقتصادی entirely — from the seller details and
+from the customer record, everywhere it appears including the PDF. I don't need it."*
+
+Three columns go: `customers.economic_id`, `settings.seller_economic_id`, and
+`invoices.customer_economic_id_snapshot`. A field nobody fills is not free — it is a box on two
+forms, a labelled empty row on two screens and a printed line on the document, and it is a
+third-party national identifier §7 counts as a liability rather than a feature. Removing it is a
+small security improvement as well as a smaller form.
+
+**Schema v7, and it is the first step here that destroys data.** Every earlier migration added a
+column, or rebuilt a table while copying every value across; the worst any of them could do was fail.
+This one throws away whatever the user typed into those three fields and no later step brings it
+back. That is why it gets its own version and this entry rather than riding along with something
+else.
+
+`ALTER TABLE ... DROP COLUMN`, not a 12-step rebuild — so `assertForeignKeysCanBeDisabled` is not
+called, for the reason D-052 sets out at length: that guard checks a precondition of a `DROP TABLE`,
+and this drops no table. SQLite has supported the statement since 3.35 and this application ships
+3.53.
+
+### The awkward part: a shipped migration still creates what v7 removes
+
+`migrateV2ToV3` and `migrateV4ToV5` add two of these columns, and §6 forbids editing a shipped
+migration. Editing them to skip the column would make a database that *arrived* at v3 a different
+shape from the v3 dump, and every intermediate comparison in the suite would fail — correctly,
+because the two shapes really would have diverged. So the historical steps keep creating them, by
+literal `TEXT NULL` DDL now that the Dart declarations are gone (`_addRetiredColumnIfAbsent`, which
+says why at the call site), and v7 drops them. A single v1 upgrade therefore creates two columns and
+removes three in one open. The wasted `ADD` costs one statement once;
+`economic_id_removal_migration_test.dart` migrates v1 → v7 and compares against the dump, which is
+the only thing that proves the two halves agree.
+
+Dropped **only if present**, for the same reason columns are added only if absent: `DROP COLUMN` on a
+column that is not there is an error, and it would be an error for exactly one population of users.
+
+### What the test had to be, given that it destroys
+
+The claim splits in two, and the second half is the one a destructive migration gets wrong quietly.
+`DROP COLUMN` rewrites every row of the table, so a step naming the wrong column — or running on the
+wrong table — produces a database that opens, reports the right version, and has silently emptied a
+field nobody looks at until they open a record. So the fixture fills the doomed columns **and every
+neighbour**, and the assertions name کد ملی specifically: it sits beside the dropped column in the
+same table and is what a mis-aimed `DROP` would have taken instead.
+
+Run on the real target too: the on-device proof migrates an encrypted file all the way to v7 on
+Windows, with foreign keys on.
+
+---
+
+## D-107 — An on-device proof that is never run is not a test
+
+**Date:** 2026-09-03. Found while verifying D-103 through D-106 on Windows, not asked for.
+
+`integration_test/` is **not in `flutter test`**. It needs `-d <device>`, so a session that runs the
+default suite and declares itself green has not run any of it. Three of the fifteen files there had
+rotted, silently, across several sessions:
+
+* `seller_migration_proof_test.dart` asserted `expect(version, 5)`. The schema had been at 6 since
+  D-087 and reached 7 in this pass, so the one assertion that says *"the ladder finished"* had been
+  pinned to a version the application left behind twice.
+* `customer_snapshot_migration_proof_test.dart` and `invoice_figures_migration_proof_test.dart` did
+  the same at 3 and 4. `invoice_number_migration_proof_test.dart` already read
+  `migrated.schemaVersion` — so the correct pattern was in the same directory the whole time.
+* `invoice_detail_device_test.dart` still tapped «⋮» to reach the PDF export. **D-094 moved that to a
+  named button precisely because nobody found it in the menu**, and the test that walks the user's
+  path went on asserting the menu that no longer held it.
+
+Every one is now fixed and every one now passes on Windows. Two rules follow.
+
+**A version assertion is `db.schemaVersion`, never a literal.** A literal rots on the next migration
+and does so silently, in the file least likely to be run.
+
+**Closing a phase means running `integration_test/` on a target.** All eleven runnable files now pass
+on Windows — the two backup-gateway probes need a human to drive a native dialog and are excluded by
+design. `CURRENT_STATE.md` records which were run and on what.

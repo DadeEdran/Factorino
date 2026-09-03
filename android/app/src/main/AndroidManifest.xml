@@ -55,5 +55,16 @@
             <action android:name="android.intent.action.PROCESS_TEXT"/>
             <data android:mimeType="text/plain"/>
         </intent>
+        <!-- So MainActivity can ask whether anything on this device reads a
+             PDF before it tries (D-103). Starting an implicit intent is not
+             filtered by package visibility, but *resolving* one is, and
+             without this `resolveActivity` returns null on API 30 and above
+             even where a reader is installed, which would report "you have
+             no PDF viewer" to a user who does. Declaring the query does not
+             grant any new capability; it only makes the answer truthful. -->
+        <intent>
+            <action android:name="android.intent.action.VIEW"/>
+            <data android:mimeType="application/pdf"/>
+        </intent>
     </queries>
 </manifest>

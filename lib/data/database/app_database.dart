@@ -68,8 +68,15 @@ class AppDatabase extends _$AppDatabase {
   /// [AppThemeMode.system] — which is what every existing database was already
   /// doing, so the migration adds a column and changes no behaviour for anyone
   /// who never opens the control.
+  ///
+  /// v7 (D-106): کد اقتصادی leaves the schema — `customers.economic_id`,
+  /// `settings.seller_economic_id` and `invoices.customer_economic_id_snapshot`
+  /// are dropped. **The first migration in this application that removes
+  /// data**, and the only one whose effect on a user's records cannot be
+  /// undone by a later step; it is a deliberate product decision, requested
+  /// after use.
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 7;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -108,10 +115,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 6 && to >= 6) {
         await migrateV5ToV6(m);
       }
+      if (from < 7 && to >= 7) {
+        await migrateV6ToV7(m);
+      }
 
       // Fail loud on a version this ladder does not cover, rather than
       // opening a database whose shape is not the one the code expects.
-      if (from < 1 || to > 6) {
+      if (from < 1 || to > 7) {
         throw StateError('no migration defined from v$from to v$to');
       }
     },
@@ -336,11 +346,20 @@ Future<void> migrateV2ToV3(Migrator m) async {
     db.invoices.customerNameSnapshot,
     db.invoices.customerCompanySnapshot,
     db.invoices.customerNationalIdSnapshot,
-    db.invoices.customerEconomicIdSnapshot,
     db.invoices.customerAddressSnapshot,
   ]) {
     await _addColumnIfAbsent(m, db, db.invoices, column);
   }
+
+  // The fifth snapshot column, which v7 later drops (D-106). Still created
+  // here, and by literal DDL because the Dart declaration is gone -- see
+  // [_addRetiredColumnIfAbsent] for why the step is not simply edited to omit
+  // it.
+  await _addRetiredColumnIfAbsent(
+    db,
+    'invoices',
+    'customer_economic_id_snapshot',
+  );
 
   await _addColumnIfAbsent(m, db, db.settings, db.settings.paymentTermDays);
 
@@ -456,9 +475,12 @@ Future<void> migrateV4ToV5(Migrator m) async {
   final db = m.database as AppDatabase;
 
   await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerName);
-  await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerEconomicId);
   await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerAddress);
   await _addColumnIfAbsent(m, db, db.settings, db.settings.sellerPhone);
+
+  // The seller's کد اقتصادی, which v7 later drops (D-106). Literal DDL for the
+  // reason [_addRetiredColumnIfAbsent] gives.
+  await _addRetiredColumnIfAbsent(db, 'settings', 'seller_economic_id');
 
   // As in the two steps before it: nothing here can create a dangling
   // reference, but the check costs one pragma while we can still refuse to
@@ -503,6 +525,116 @@ Future<void> migrateV5ToV6(Migrator m) async {
       'foreign-key violation(s); refusing to open. See D-087.',
     );
   }
+}
+
+/// v6 -> v7 (D-106): کد اقتصادی leaves the schema.
+///
+/// Three `DROP COLUMN`s: the field on the customer record, the seller's copy of
+/// it in `settings`, and the snapshot of the customer's on `invoices`. The
+/// owner does not use it, and a field nobody fills is not free — it is a
+/// mandatory-looking box on two forms, a labelled empty row on two screens, and
+/// a third-party national identifier this application had no reason to be
+/// storing (§7 counts every one of those as a liability rather than a feature).
+///
+/// **This is the first migration here that destroys data, and saying so is the
+/// point.** Every earlier step added a column, or rebuilt a table while copying
+/// every value across; the worst any of them could do was fail. This one throws
+/// away whatever the user had typed into those three fields, and no later step
+/// can bring it back. It is a product decision taken after use rather than a
+/// schema tidy-up, which is why it gets its own version and its own entry
+/// rather than riding along with something else.
+///
+/// **`DROP COLUMN`, not a 12-step rebuild**, and therefore
+/// [assertForeignKeysCanBeDisabled] is not called — the same reasoning
+/// [migrateV2ToV3] sets out at length. `ALTER TABLE ... DROP COLUMN` drops no
+/// table, so `ON DELETE CASCADE` is never armed and there is no precondition to
+/// check; invoking the guard anyway would teach the next reader it is a rite
+/// rather than a check on a property. SQLite has supported the statement since
+/// 3.35 and this application ships 3.53.
+///
+/// **Dropped only if present.** `customers.economic_id` exists on every
+/// database created before this version and on none created after, and the two
+/// snapshot columns are added by earlier steps in this same ladder — so a
+/// single upgrade can reach here having just created a column it is about to
+/// remove. That is deliberate: the alternative is editing [migrateV2ToV3] and
+/// [migrateV4ToV5] to skip them, which would make a migrated database a
+/// different shape from a freshly created one at v3 and v5 and break the
+/// intermediate schema comparisons — the exact "never mutate a shipped
+/// migration" failure §6 warns about. The wasted `ADD` costs one statement on
+/// one upgrade.
+Future<void> migrateV6ToV7(Migrator m) async {
+  final db = m.database as AppDatabase;
+
+  await _dropColumnIfPresent(m, db, db.customers, 'economic_id');
+  await _dropColumnIfPresent(m, db, db.settings, 'seller_economic_id');
+  await _dropColumnIfPresent(
+    m,
+    db,
+    db.invoices,
+    'customer_economic_id_snapshot',
+  );
+
+  // As in every step before it: nothing here can create a dangling reference —
+  // no key is touched — but the check costs one pragma while we can still
+  // refuse to open.
+  // soft-delete-exempt: an integrity pragma, not a read of user rows.
+  final violations = await db.customSelect('pragma foreign_key_check').get();
+  if (violations.isNotEmpty) {
+    throw StateError(
+      'the v6 -> v7 economic-id migration left ${violations.length} '
+      'foreign-key violation(s); refusing to open. See D-106.',
+    );
+  }
+}
+
+/// Creates a column that a shipped migration adds but this file no longer
+/// declares, so that the historical step still produces its historical shape.
+///
+/// **The alternative is editing the shipped step to omit the column**, and that
+/// is what §6 forbids: a v3 database reached by migration would then differ
+/// from the v3 schema dump the migration tests compare against, and every
+/// intermediate comparison in `*_migration_test.dart` would fail — correctly,
+/// because the two shapes really would have diverged. The column has to exist
+/// at v3 and at v5 because it did; [migrateV6ToV7] is where it stops existing.
+///
+/// Literal DDL, since there is no [GeneratedColumn] left to hand
+/// [Migrator.addColumn]. Both retired columns were plain nullable text with no
+/// SQL constraint — `withLength` is a Dart-side check that drift emits nothing
+/// for — so `TEXT NULL` is exactly what the generator produced. Verified
+/// against `drift_schemas/drift_schema_v5.json` rather than assumed.
+///
+/// The identifiers are interpolated because they name a column that cannot be
+/// bound as a parameter in DDL. D-018 forbids user input in SQL strings; the
+/// only values that reach here are the two compile-time literals at the call
+/// sites in this file, and none can come from anywhere else.
+Future<void> _addRetiredColumnIfAbsent(
+  AppDatabase db,
+  String table,
+  String column,
+) async {
+  final Set<String> present = await _columnNames(db, table);
+  if (present.contains(column)) return;
+
+  await db.customStatement('alter table $table add column $column text null');
+}
+
+/// Drops [column] from [table] if the table still has it.
+///
+/// Asks the database rather than reasoning about which earlier steps ran, for
+/// the reason [_addColumnIfAbsent] does: a column may be absent because this
+/// database was created after it was retired, or present because it was created
+/// before — and `DROP COLUMN` on a column that is not there is an error that
+/// would leave the database unopenable for exactly one of those populations.
+Future<void> _dropColumnIfPresent(
+  Migrator m,
+  AppDatabase db,
+  TableInfo<Table, dynamic> table,
+  String column,
+) async {
+  final Set<String> present = await _columnNames(db, table.actualTableName);
+  if (!present.contains(column)) return;
+
+  await m.dropColumn(table, column);
 }
 
 /// Adds [column] to [table] unless the table already has it.

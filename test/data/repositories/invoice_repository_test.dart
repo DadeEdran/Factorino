@@ -61,7 +61,7 @@ void main() {
       final abandoned = await harness.invoices.create(
         harness.draft(customerId),
       );
-      await harness.invoices.softDeleteDraft(abandoned.invoice.id);
+      await harness.invoices.softDelete(abandoned.invoice.id);
 
       final kept = await harness.invoices.create(harness.draft(customerId));
       final issued = await harness.invoices.issue(kept.invoice.id);
@@ -469,11 +469,17 @@ void main() {
           throwsA(isA<InvoiceNotEditable>()),
           reason: 'updateDraft must refuse a $status invoice',
         );
-        await expectLater(
-          harness.invoices.softDeleteDraft(id),
-          throwsA(isA<InvoiceNotEditable>()),
-          reason: 'softDeleteDraft must refuse a $status invoice',
-        );
+        // **Deletion refuses a narrower set than editing does** (D-105):
+        // cancellation is the gate, so a cancelled invoice is deletable and is
+        // covered by its own test below. Everything else in this loop is a
+        // live document that must be cancelled before it can go.
+        if (status != InvoiceStatus.cancelled) {
+          await expectLater(
+            harness.invoices.softDelete(id),
+            throwsA(isA<InvoiceNotDeletable>()),
+            reason: 'softDelete must refuse a $status invoice',
+          );
+        }
 
         // And the refusal left nothing behind. A guard that throws after
         // writing half the change is worse than no guard: the invoice would
@@ -525,15 +531,76 @@ void main() {
       );
     });
 
-    test('an issued invoice cannot be deleted', () async {
+    test('an issued invoice cannot be deleted until it is cancelled', () async {
+      // **D-105's gate, in one test.** The rule §6 protects is that an issued
+      // document does not silently disappear; the need it has to coexist with
+      // is that a mistake must be clearable. Both hold exactly because the only
+      // route from here to gone runs through `cancel`.
       final created = await harness.invoices.create(harness.draft(customerId));
       await harness.invoices.issue(created.invoice.id);
 
-      expect(
-        () => harness.invoices.softDeleteDraft(created.invoice.id),
-        throwsA(isA<InvoiceNotEditable>()),
+      await expectLater(
+        harness.invoices.softDelete(created.invoice.id),
+        throwsA(isA<InvoiceNotDeletable>()),
       );
       expect(await harness.invoices.findById(created.invoice.id), isNotNull);
+
+      await harness.invoices.cancel(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
+      expect(await harness.invoices.findById(created.invoice.id), isNull);
+    });
+
+    test('deleting a cancelled invoice takes its payments with it', () async {
+      // The one place D-105 and D-061 point opposite ways, and it is deliberate
+      // (see `InvoiceRepository.softDelete`): cancelling keeps the payments
+      // because the cash moved, deleting removes them because the document was
+      // never a transaction at all. A payment row whose invoice is gone would
+      // otherwise outlive it into the sync phase.
+      final created = await harness.invoices.create(harness.draft(customerId));
+      await harness.invoices.issue(created.invoice.id);
+      final Invoice issued = (await harness.invoices.findById(
+        created.invoice.id,
+      ))!;
+      await harness.payments.record(
+        created.invoice.id,
+        PaymentDraft(
+          amount: issued.grandTotal,
+          paidAt: DateTime.utc(2026, 8, 25),
+          method: PaymentMethod.cash,
+        ),
+      );
+
+      await harness.invoices.cancel(created.invoice.id);
+      // Cancellation leaves them, which is the fact this test is contrasted
+      // against rather than an incidental step.
+      expect(
+        (await harness.invoices.findDetail(created.invoice.id))!.payments,
+        hasLength(1),
+      );
+
+      await harness.invoices.softDelete(created.invoice.id);
+
+      expect(await harness.invoices.findDetail(created.invoice.id), isNull);
+      expect(
+        await harness.payments.watchForInvoice(created.invoice.id).first,
+        isEmpty,
+        reason: 'the payments went with the document',
+      );
+    });
+
+    test('a deleted invoice does not release its number', () async {
+      // D-013 survives deletion. The sequence keeps a gap rather than letting a
+      // later document take an identity a customer may already have seen.
+      final created = await harness.invoices.create(harness.draft(customerId));
+      final Invoice issued = await harness.invoices.issue(created.invoice.id);
+      await harness.invoices.cancel(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
+
+      final next = await harness.invoices.create(harness.draft(customerId));
+      final Invoice reissued = await harness.invoices.issue(next.invoice.id);
+
+      expect(reissued.number, isNot(issued.number));
+      expect(reissued.numberSequence, issued.numberSequence! + 1);
     });
 
     test('cancellation keeps the number', () async {
@@ -793,7 +860,7 @@ void main() {
       final created = await harness.invoices.create(harness.draft(customerId));
       expect(await harness.invoices.watchCount().first, 1);
 
-      await harness.invoices.softDeleteDraft(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
       expect(await harness.invoices.watchCount().first, 0);
     });
   });
@@ -983,7 +1050,7 @@ void main() {
       final created = await harness.invoices.create(
         harness.draft(customerId, unitPriceRial: 1000000),
       );
-      await harness.invoices.softDeleteDraft(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
 
       final totals = await harness.invoices
           .watchCustomerTotals(customerId)
@@ -1267,7 +1334,7 @@ void main() {
     test('a soft-deleted invoice stays out of every filter', () async {
       // The filter narrows the alive set; it does not replace it.
       final created = await harness.invoices.create(harness.draft(customerId));
-      await harness.invoices.softDeleteDraft(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
 
       expect(
         await listed(
@@ -1440,7 +1507,7 @@ void main() {
 
     test('a soft-deleted invoice leaves the list', () async {
       final created = await harness.invoices.create(harness.draft(customerId));
-      await harness.invoices.softDeleteDraft(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
 
       expect(await harness.invoices.watchList().first, isEmpty);
     });
@@ -1502,7 +1569,7 @@ void main() {
       expect(await harness.invoices.findDetail('no-such-id'), isNull);
 
       final created = await harness.invoices.create(harness.draft(customerId));
-      await harness.invoices.softDeleteDraft(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
       expect(await harness.invoices.findDetail(created.invoice.id), isNull);
     });
 

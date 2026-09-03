@@ -47,7 +47,6 @@ void main() {
         fullName: 'مریم احمدی',
         companyName: 'کارگاه نمونه',
         nationalId: '0079542311',
-        economicId: '411111111111',
         address: 'تهران، خیابان ولیعصر، پلاک ۱۰',
         mobile: '09123456789',
       ),
@@ -77,7 +76,6 @@ void main() {
       expect(snapshot!.fullName, 'مریم احمدی');
       expect(snapshot.companyName, 'کارگاه نمونه');
       expect(snapshot.nationalId, '0079542311');
-      expect(snapshot.economicId, '411111111111');
       expect(snapshot.address, 'تهران، خیابان ولیعصر، پلاک ۱۰');
     });
 
@@ -129,7 +127,6 @@ void main() {
           fullName: 'مریم احمدی‌نژاد',
           companyName: 'کارگاه تازه',
           nationalId: '0084575948',
-          economicId: '422222222222',
           address: 'تهران، خیابان انقلاب، پلاک ۲۰',
         ),
       );
@@ -142,7 +139,6 @@ void main() {
       expect(detail.party.fullName, 'مریم احمدی');
       expect(detail.party.companyName, 'کارگاه نمونه');
       expect(detail.party.nationalId, '0079542311');
-      expect(detail.party.economicId, '411111111111');
       expect(detail.party.address, 'تهران، خیابان ولیعصر، پلاک ۱۰');
 
       // And the live record is still available beside it, unchanged in the

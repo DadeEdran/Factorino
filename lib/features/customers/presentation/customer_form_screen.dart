@@ -119,9 +119,6 @@ class _CustomerFormState extends ConsumerState<_CustomerForm> {
   late final TextEditingController _nationalId = TextEditingController(
     text: widget.existing?.nationalId ?? '',
   );
-  late final TextEditingController _economicId = TextEditingController(
-    text: widget.existing?.economicId ?? '',
-  );
   late final TextEditingController _address = TextEditingController(
     text: widget.existing?.address ?? '',
   );
@@ -136,7 +133,6 @@ class _CustomerFormState extends ConsumerState<_CustomerForm> {
       _companyName,
       _mobile,
       _nationalId,
-      _economicId,
       _address,
       _notes,
     ]) {
@@ -249,16 +245,6 @@ class _CustomerFormState extends ConsumerState<_CustomerForm> {
             ),
             const SizedBox(height: AppSpacing.lg),
             AppTextField(
-              controller: _economicId,
-              label: strings.customerFieldEconomicId,
-              maxLength: CustomerLimits.economicId,
-              helperText: strings.fieldOptional,
-              keyboardType: TextInputType.number,
-              textInputAction: TextInputAction.next,
-              digitsOnly: true,
-            ),
-            const SizedBox(height: AppSpacing.lg),
-            AppTextField(
               controller: _address,
               label: strings.customerFieldAddress,
               maxLength: CustomerLimits.address,
@@ -289,7 +275,6 @@ class _CustomerFormState extends ConsumerState<_CustomerForm> {
       companyName: _emptyToNull(_companyName.text),
       mobile: _emptyToNull(_mobile.text),
       nationalId: _emptyToNull(_nationalId.text),
-      economicId: _emptyToNull(_economicId.text),
       address: _emptyToNull(_address.text),
       notes: _emptyToNull(_notes.text),
     );

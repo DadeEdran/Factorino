@@ -379,14 +379,6 @@ class _RecordCardState extends State<_RecordCard> {
         strings: strings,
       ),
       RecordField(
-        label: strings.customerFieldEconomicId,
-        value: customer.economicId == null
-            ? null
-            : formatIdentifierForDisplay(customer.economicId!),
-        isIdentifier: true,
-        strings: strings,
-      ),
-      RecordField(
         label: strings.customerFieldAddress,
         value: customer.address,
         strings: strings,

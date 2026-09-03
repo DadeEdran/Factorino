@@ -128,7 +128,13 @@ void main() {
     );
     debugPrint('file state    : ${inspectDatabaseFile(file).name}');
 
-    expect(version, 4);
+    // **`migrated.schemaVersion`, not a literal**, as
+    // `invoice_number_migration_proof_test.dart` already had it. This one read
+    // the version it was written for and kept reading it through every later
+    // step, because an on-device proof is not in `flutter test` and nobody
+    // re-ran it — so the assertion that says "the ladder finished" was pinned
+    // to a version the application had long left behind.
+    expect(version, migrated.schemaVersion);
     expect(fk, 1, reason: 'the migration must leave foreign keys on');
 
     // The children. `ADD COLUMN` drops nothing and neither does an `UPDATE` —

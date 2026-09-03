@@ -406,12 +406,6 @@ abstract class AppStrings {
   /// **'همان‌گونه که باید روی فاکتور چاپ شود.'**
   String get settingsSellerFieldNameHint;
 
-  /// The seller economic ID. Same label as the customer one, because it is the same thing on the other side of the invoice.
-  ///
-  /// In fa, this message translates to:
-  /// **'کد اقتصادی'**
-  String get settingsSellerFieldEconomicId;
-
   /// No description provided for @settingsSellerFieldAddress.
   ///
   /// In fa, this message translates to:
@@ -723,12 +717,6 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'کد ملی'**
   String get customerFieldNationalId;
-
-  /// No description provided for @customerFieldEconomicId.
-  ///
-  /// In fa, this message translates to:
-  /// **'کد اقتصادی'**
-  String get customerFieldEconomicId;
 
   /// No description provided for @customerFieldNotes.
   ///
@@ -1910,6 +1898,12 @@ abstract class AppStrings {
   /// **'{amount} تومان پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.'**
   String invoiceCancelPaymentsNote(String amount);
 
+  /// Shown on every cancellation dialog. Closes the discoverability half of D-105: deletion is offered only after cancellation, so a user looking for a way to clear a mistaken or test invoice would otherwise see only the cancel action and conclude the document is permanent -- which is what was reported from the phone. This is the one place they are standing when the answer is relevant.
+  ///
+  /// In fa, this message translates to:
+  /// **'پس از ابطال، می‌توانید این فاکتور را به‌کلی حذف کنید.'**
+  String get invoiceCancelThenDeleteNote;
+
   /// Restates the half of the outcome that is easiest to doubt afterwards. Where there are no payments the sentence is still true and still harmless.
   ///
   /// In fa, this message translates to:
@@ -2423,6 +2417,42 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'حذف پیش‌نویس انجام نشد. دوباره تلاش کنید.'**
   String get invoiceDeleteDraftFailed;
+
+  /// Deletes a cancelled invoice outright (D-105). Says 'delete the invoice' rather than 'delete the draft' because this one is a real numbered document that was issued and then cancelled. Offered only on a cancelled invoice; an issued one must be cancelled first, and a draft gets invoiceDeleteDraftAction instead.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف فاکتور'**
+  String get invoiceDeleteAction;
+
+  /// The confirmation dialog title. A question, because the action cannot be undone from the user's point of view.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف این فاکتور؟'**
+  String get invoiceDeleteTitle;
+
+  /// Says what deleting costs and the one thing it does not change, the way the cancellation dialog does rather than decaying into 'are you sure?'. The fact the user cannot see and would otherwise ask about afterwards is that the invoice number stays spent (D-013): the sequence keeps a gap rather than reusing the identity on a later document. The deletion is a soft delete in the schema, but that is a sync concern the user cannot act on, so the copy says it cannot be brought back -- which is true of every route they have.
+  ///
+  /// In fa, this message translates to:
+  /// **'این فاکتور و سطرهای آن از فهرست‌ها و جمع‌ها حذف می‌شود و برگرداندن آن ممکن نیست. شماره‌ای که به این فاکتور داده شده آزاد نمی‌شود و دوباره به فاکتور دیگری داده نخواهد شد.'**
+  String get invoiceDeleteBody;
+
+  /// Shown only where the cancelled invoice actually carries payments, on D-060's rule that a warning printed on every deletion is one nobody reads on the deletion where it matters. It states the difference from cancellation explicitly (D-061 keeps payments, D-105 does not) because a user who has just read the cancellation dialog has been told the opposite and would otherwise carry that expectation into this one. The count arrives already in Persian digits.
+  ///
+  /// In fa, this message translates to:
+  /// **'{count} پرداخت ثبت‌شده روی این فاکتور همراه آن حذف می‌شود. ابطال پرداخت‌ها را نگه می‌دارد، اما حذف نگه نمی‌دارد.'**
+  String invoiceDeletePaymentsNote(String count);
+
+  /// No description provided for @invoiceDeleteSuccess.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتور حذف شد.'**
+  String get invoiceDeleteSuccess;
+
+  /// No description provided for @invoiceDeleteFailed.
+  ///
+  /// In fa, this message translates to:
+  /// **'حذف این فاکتور ممکن نشد.'**
+  String get invoiceDeleteFailed;
 
   /// The menu item on the invoice detail screen that generates the PDF and offers it to the user to save. In the title row menu beside cancellation, per the project spec: an actions card here would be the fourth block added above the invoice lines on this family of screens. Says 'save a PDF copy' rather than 'print' -- nothing is sent to a printer, a file is written where the user chooses.
   ///

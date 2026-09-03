@@ -26,12 +26,22 @@ class AdaptiveScaffold extends StatefulWidget {
   const AdaptiveScaffold({
     required this.destination,
     required this.onDestinationSelected,
+    required this.onPopSection,
     required this.child,
     super.key,
   });
 
   final AppDestination destination;
   final ValueChanged<AppDestination> onDestinationSelected;
+
+  /// Pops one page inside the destination on screen, reporting whether it had
+  /// one to pop. Passed straight to [AppBackPolicy]; see D-104.
+  ///
+  /// The shell does not answer this itself because only the router knows, and
+  /// keeping `go_router` out of `core/responsive/` is what makes this file a
+  /// layout concern and nothing else.
+  final bool Function() onPopSection;
+
   final Widget child;
 
   @override
@@ -72,6 +82,7 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
       child: AppBackPolicy(
         claims: _backClaims,
         isHome: widget.destination == AppDestination.dashboard,
+        onPopSection: widget.onPopSection,
         onGoHome: () => widget.onDestinationSelected(AppDestination.dashboard),
         child: shell,
       ),

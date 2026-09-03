@@ -136,18 +136,6 @@ class $CustomersTable extends Customers
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _economicIdMeta = const VerificationMeta(
-    'economicId',
-  );
-  @override
-  late final GeneratedColumn<String> economicId = GeneratedColumn<String>(
-    'economic_id',
-    aliasedName,
-    true,
-    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _notesMeta = const VerificationMeta('notes');
   @override
   late final GeneratedColumn<String> notes = GeneratedColumn<String>(
@@ -184,7 +172,6 @@ class $CustomersTable extends Customers
     companyName,
     address,
     nationalId,
-    economicId,
     notes,
     searchName,
   ];
@@ -265,12 +252,6 @@ class $CustomersTable extends Customers
         nationalId.isAcceptableOrUnknown(data['national_id']!, _nationalIdMeta),
       );
     }
-    if (data.containsKey('economic_id')) {
-      context.handle(
-        _economicIdMeta,
-        economicId.isAcceptableOrUnknown(data['economic_id']!, _economicIdMeta),
-      );
-    }
     if (data.containsKey('notes')) {
       context.handle(
         _notesMeta,
@@ -338,10 +319,6 @@ class $CustomersTable extends Customers
         DriftSqlType.string,
         data['${effectivePrefix}national_id'],
       ),
-      economicId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}economic_id'],
-      ),
       notes: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}notes'],
@@ -401,9 +378,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
 
   /// کد ملی — optional, and checksum-validated at the boundary when present.
   final String? nationalId;
-
-  /// کد اقتصادی
-  final String? economicId;
   final String? notes;
 
   /// [fullName] and [companyName] run through the Persian text normalizer,
@@ -425,7 +399,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
     this.companyName,
     this.address,
     this.nationalId,
-    this.economicId,
     this.notes,
     required this.searchName,
   });
@@ -459,9 +432,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
     if (!nullToAbsent || nationalId != null) {
       map['national_id'] = Variable<String>(nationalId);
     }
-    if (!nullToAbsent || economicId != null) {
-      map['economic_id'] = Variable<String>(economicId);
-    }
     if (!nullToAbsent || notes != null) {
       map['notes'] = Variable<String>(notes);
     }
@@ -494,9 +464,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
       nationalId: nationalId == null && nullToAbsent
           ? const Value.absent()
 : Value(nationalId),
-      economicId: economicId == null && nullToAbsent
-          ? const Value.absent()
-: Value(economicId),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
 : Value(notes),
@@ -523,7 +490,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
       companyName: serializer.fromJson<String?>(json['companyName']),
       address: serializer.fromJson<String?>(json['address']),
       nationalId: serializer.fromJson<String?>(json['nationalId']),
-      economicId: serializer.fromJson<String?>(json['economicId']),
       notes: serializer.fromJson<String?>(json['notes']),
       searchName: serializer.fromJson<String>(json['searchName']),
     );
@@ -545,7 +511,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
       'companyName': serializer.toJson<String?>(companyName),
       'address': serializer.toJson<String?>(address),
       'nationalId': serializer.toJson<String?>(nationalId),
-      'economicId': serializer.toJson<String?>(economicId),
       'notes': serializer.toJson<String?>(notes),
       'searchName': serializer.toJson<String>(searchName),
     };
@@ -563,7 +528,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
     Value<String?> companyName = const Value.absent(),
     Value<String?> address = const Value.absent(),
     Value<String?> nationalId = const Value.absent(),
-    Value<String?> economicId = const Value.absent(),
     Value<String?> notes = const Value.absent(),
     String? searchName,
   }) => CustomerRow(
@@ -578,7 +542,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
     companyName: companyName.present ? companyName.value : this.companyName,
     address: address.present ? address.value : this.address,
     nationalId: nationalId.present ? nationalId.value : this.nationalId,
-    economicId: economicId.present ? economicId.value : this.economicId,
     notes: notes.present ? notes.value : this.notes,
     searchName: searchName ?? this.searchName,
   );
@@ -603,9 +566,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
       nationalId: data.nationalId.present
           ? data.nationalId.value
 : this.nationalId,
-      economicId: data.economicId.present
-          ? data.economicId.value
-: this.economicId,
       notes: data.notes.present ? data.notes.value : this.notes,
       searchName: data.searchName.present
           ? data.searchName.value
@@ -627,7 +587,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
 ..write('companyName: $companyName, ')
 ..write('address: $address, ')
 ..write('nationalId: $nationalId, ')
-..write('economicId: $economicId, ')
 ..write('notes: $notes, ')
 ..write('searchName: $searchName')
 ..write(')'))
@@ -647,7 +606,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
     companyName,
     address,
     nationalId,
-    economicId,
     notes,
     searchName,
   );
@@ -666,7 +624,6 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
           other.companyName == this.companyName &&
           other.address == this.address &&
           other.nationalId == this.nationalId &&
-          other.economicId == this.economicId &&
           other.notes == this.notes &&
           other.searchName == this.searchName);
 }
@@ -683,7 +640,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
   final Value<String?> companyName;
   final Value<String?> address;
   final Value<String?> nationalId;
-  final Value<String?> economicId;
   final Value<String?> notes;
   final Value<String> searchName;
   final Value<int> rowid;
@@ -699,7 +655,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
     this.companyName = const Value.absent(),
     this.address = const Value.absent(),
     this.nationalId = const Value.absent(),
-    this.economicId = const Value.absent(),
     this.notes = const Value.absent(),
     this.searchName = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -716,7 +671,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
     this.companyName = const Value.absent(),
     this.address = const Value.absent(),
     this.nationalId = const Value.absent(),
-    this.economicId = const Value.absent(),
     this.notes = const Value.absent(),
     this.searchName = const Value.absent(),
     this.rowid = const Value.absent(),
@@ -733,7 +687,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
     Expression<String>? companyName,
     Expression<String>? address,
     Expression<String>? nationalId,
-    Expression<String>? economicId,
     Expression<String>? notes,
     Expression<String>? searchName,
     Expression<int>? rowid,
@@ -750,7 +703,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
       if (companyName != null) 'company_name': companyName,
       if (address != null) 'address': address,
       if (nationalId != null) 'national_id': nationalId,
-      if (economicId != null) 'economic_id': economicId,
       if (notes != null) 'notes': notes,
       if (searchName != null) 'search_name': searchName,
       if (rowid != null) 'rowid': rowid,
@@ -769,7 +721,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
     Value<String?>? companyName,
     Value<String?>? address,
     Value<String?>? nationalId,
-    Value<String?>? economicId,
     Value<String?>? notes,
     Value<String>? searchName,
     Value<int>? rowid,
@@ -786,7 +737,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
       companyName: companyName ?? this.companyName,
       address: address ?? this.address,
       nationalId: nationalId ?? this.nationalId,
-      economicId: economicId ?? this.economicId,
       notes: notes ?? this.notes,
       searchName: searchName ?? this.searchName,
       rowid: rowid ?? this.rowid,
@@ -831,9 +781,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
     if (nationalId.present) {
       map['national_id'] = Variable<String>(nationalId.value);
     }
-    if (economicId.present) {
-      map['economic_id'] = Variable<String>(economicId.value);
-    }
     if (notes.present) {
       map['notes'] = Variable<String>(notes.value);
     }
@@ -860,7 +807,6 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
 ..write('companyName: $companyName, ')
 ..write('address: $address, ')
 ..write('nationalId: $nationalId, ')
-..write('economicId: $economicId, ')
 ..write('notes: $notes, ')
 ..write('searchName: $searchName, ')
 ..write('rowid: $rowid')
@@ -1841,18 +1787,6 @@ class $InvoicesTable extends Invoices
         type: DriftSqlType.string,
         requiredDuringInsert: false,
       );
-  static const VerificationMeta _customerEconomicIdSnapshotMeta =
-      const VerificationMeta('customerEconomicIdSnapshot');
-  @override
-  late final GeneratedColumn<String> customerEconomicIdSnapshot =
-      GeneratedColumn<String>(
-        'customer_economic_id_snapshot',
-        aliasedName,
-        true,
-        additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
   static const VerificationMeta _customerAddressSnapshotMeta =
       const VerificationMeta('customerAddressSnapshot');
   @override
@@ -1965,7 +1899,6 @@ class $InvoicesTable extends Invoices
     customerNameSnapshot,
     customerCompanySnapshot,
     customerNationalIdSnapshot,
-    customerEconomicIdSnapshot,
     customerAddressSnapshot,
     status,
     grossTotalRial,
@@ -2114,15 +2047,6 @@ class $InvoicesTable extends Invoices
         customerNationalIdSnapshot.isAcceptableOrUnknown(
           data['customer_national_id_snapshot']!,
           _customerNationalIdSnapshotMeta,
-        ),
-      );
-    }
-    if (data.containsKey('customer_economic_id_snapshot')) {
-      context.handle(
-        _customerEconomicIdSnapshotMeta,
-        customerEconomicIdSnapshot.isAcceptableOrUnknown(
-          data['customer_economic_id_snapshot']!,
-          _customerEconomicIdSnapshotMeta,
         ),
       );
     }
@@ -2276,10 +2200,6 @@ class $InvoicesTable extends Invoices
         DriftSqlType.string,
         data['${effectivePrefix}customer_national_id_snapshot'],
       ),
-      customerEconomicIdSnapshot: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}customer_economic_id_snapshot'],
-      ),
       customerAddressSnapshot: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}customer_address_snapshot'],
@@ -2399,12 +2319,12 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
   final String? customerNameSnapshot;
   final String? customerCompanySnapshot;
 
-  /// کد ملی and کد اقتصادی as they stood at issue. These are the fields with
-  /// legal weight on an Iranian invoice and the ones a correction changes, so
-  /// a snapshot that omitted them would protect the least consequential field
-  /// (D-052).
+  /// کد ملی as it stood at issue. The field with legal weight on an Iranian
+  /// invoice and the one a correction changes, so a snapshot that omitted it
+  /// would protect the least consequential field (D-052).
+  ///
+  /// It was two fields until v7 dropped کد اقتصادی everywhere (D-106).
   final String? customerNationalIdSnapshot;
-  final String? customerEconomicIdSnapshot;
   final String? customerAddressSnapshot;
   final InvoiceStatus status;
 
@@ -2452,7 +2372,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     this.customerNameSnapshot,
     this.customerCompanySnapshot,
     this.customerNationalIdSnapshot,
-    this.customerEconomicIdSnapshot,
     this.customerAddressSnapshot,
     required this.status,
     this.grossTotalRial,
@@ -2514,11 +2433,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     if (!nullToAbsent || customerNationalIdSnapshot != null) {
       map['customer_national_id_snapshot'] = Variable<String>(
         customerNationalIdSnapshot,
-      );
-    }
-    if (!nullToAbsent || customerEconomicIdSnapshot != null) {
-      map['customer_economic_id_snapshot'] = Variable<String>(
-        customerEconomicIdSnapshot,
       );
     }
     if (!nullToAbsent || customerAddressSnapshot != null) {
@@ -2588,10 +2502,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           customerNationalIdSnapshot == null && nullToAbsent
           ? const Value.absent()
 : Value(customerNationalIdSnapshot),
-      customerEconomicIdSnapshot:
-          customerEconomicIdSnapshot == null && nullToAbsent
-          ? const Value.absent()
-: Value(customerEconomicIdSnapshot),
       customerAddressSnapshot: customerAddressSnapshot == null && nullToAbsent
           ? const Value.absent()
 : Value(customerAddressSnapshot),
@@ -2640,9 +2550,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       customerNationalIdSnapshot: serializer.fromJson<String?>(
         json['customerNationalIdSnapshot'],
       ),
-      customerEconomicIdSnapshot: serializer.fromJson<String?>(
-        json['customerEconomicIdSnapshot'],
-      ),
       customerAddressSnapshot: serializer.fromJson<String?>(
         json['customerAddressSnapshot'],
       ),
@@ -2688,9 +2595,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       'customerNationalIdSnapshot': serializer.toJson<String?>(
         customerNationalIdSnapshot,
       ),
-      'customerEconomicIdSnapshot': serializer.toJson<String?>(
-        customerEconomicIdSnapshot,
-      ),
       'customerAddressSnapshot': serializer.toJson<String?>(
         customerAddressSnapshot,
       ),
@@ -2726,7 +2630,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     Value<String?> customerNameSnapshot = const Value.absent(),
     Value<String?> customerCompanySnapshot = const Value.absent(),
     Value<String?> customerNationalIdSnapshot = const Value.absent(),
-    Value<String?> customerEconomicIdSnapshot = const Value.absent(),
     Value<String?> customerAddressSnapshot = const Value.absent(),
     InvoiceStatus? status,
     Value<int?> grossTotalRial = const Value.absent(),
@@ -2765,9 +2668,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     customerNationalIdSnapshot: customerNationalIdSnapshot.present
         ? customerNationalIdSnapshot.value
 : this.customerNationalIdSnapshot,
-    customerEconomicIdSnapshot: customerEconomicIdSnapshot.present
-        ? customerEconomicIdSnapshot.value
-: this.customerEconomicIdSnapshot,
     customerAddressSnapshot: customerAddressSnapshot.present
         ? customerAddressSnapshot.value
 : this.customerAddressSnapshot,
@@ -2823,9 +2723,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       customerNationalIdSnapshot: data.customerNationalIdSnapshot.present
           ? data.customerNationalIdSnapshot.value
 : this.customerNationalIdSnapshot,
-      customerEconomicIdSnapshot: data.customerEconomicIdSnapshot.present
-          ? data.customerEconomicIdSnapshot.value
-: this.customerEconomicIdSnapshot,
       customerAddressSnapshot: data.customerAddressSnapshot.present
           ? data.customerAddressSnapshot.value
 : this.customerAddressSnapshot,
@@ -2873,7 +2770,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
 ..write('customerNameSnapshot: $customerNameSnapshot, ')
 ..write('customerCompanySnapshot: $customerCompanySnapshot, ')
 ..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
-..write('customerEconomicIdSnapshot: $customerEconomicIdSnapshot, ')
 ..write('customerAddressSnapshot: $customerAddressSnapshot, ')
 ..write('status: $status, ')
 ..write('grossTotalRial: $grossTotalRial, ')
@@ -2907,7 +2803,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     customerNameSnapshot,
     customerCompanySnapshot,
     customerNationalIdSnapshot,
-    customerEconomicIdSnapshot,
     customerAddressSnapshot,
     status,
     grossTotalRial,
@@ -2940,7 +2835,6 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
           other.customerNameSnapshot == this.customerNameSnapshot &&
           other.customerCompanySnapshot == this.customerCompanySnapshot &&
           other.customerNationalIdSnapshot == this.customerNationalIdSnapshot &&
-          other.customerEconomicIdSnapshot == this.customerEconomicIdSnapshot &&
           other.customerAddressSnapshot == this.customerAddressSnapshot &&
           other.status == this.status &&
           other.grossTotalRial == this.grossTotalRial &&
@@ -2971,7 +2865,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   final Value<String?> customerNameSnapshot;
   final Value<String?> customerCompanySnapshot;
   final Value<String?> customerNationalIdSnapshot;
-  final Value<String?> customerEconomicIdSnapshot;
   final Value<String?> customerAddressSnapshot;
   final Value<InvoiceStatus> status;
   final Value<int?> grossTotalRial;
@@ -3001,7 +2894,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.customerNameSnapshot = const Value.absent(),
     this.customerCompanySnapshot = const Value.absent(),
     this.customerNationalIdSnapshot = const Value.absent(),
-    this.customerEconomicIdSnapshot = const Value.absent(),
     this.customerAddressSnapshot = const Value.absent(),
     this.status = const Value.absent(),
     this.grossTotalRial = const Value.absent(),
@@ -3032,7 +2924,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     this.customerNameSnapshot = const Value.absent(),
     this.customerCompanySnapshot = const Value.absent(),
     this.customerNationalIdSnapshot = const Value.absent(),
-    this.customerEconomicIdSnapshot = const Value.absent(),
     this.customerAddressSnapshot = const Value.absent(),
     required InvoiceStatus status,
     this.grossTotalRial = const Value.absent(),
@@ -3065,7 +2956,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Expression<String>? customerNameSnapshot,
     Expression<String>? customerCompanySnapshot,
     Expression<String>? customerNationalIdSnapshot,
-    Expression<String>? customerEconomicIdSnapshot,
     Expression<String>? customerAddressSnapshot,
     Expression<int>? status,
     Expression<int>? grossTotalRial,
@@ -3099,8 +2989,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
         'customer_company_snapshot': customerCompanySnapshot,
       if (customerNationalIdSnapshot != null)
         'customer_national_id_snapshot': customerNationalIdSnapshot,
-      if (customerEconomicIdSnapshot != null)
-        'customer_economic_id_snapshot': customerEconomicIdSnapshot,
       if (customerAddressSnapshot != null)
         'customer_address_snapshot': customerAddressSnapshot,
       if (status != null) 'status': status,
@@ -3135,7 +3023,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
     Value<String?>? customerNameSnapshot,
     Value<String?>? customerCompanySnapshot,
     Value<String?>? customerNationalIdSnapshot,
-    Value<String?>? customerEconomicIdSnapshot,
     Value<String?>? customerAddressSnapshot,
     Value<InvoiceStatus>? status,
     Value<int?>? grossTotalRial,
@@ -3168,8 +3055,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
           customerCompanySnapshot ?? this.customerCompanySnapshot,
       customerNationalIdSnapshot:
           customerNationalIdSnapshot ?? this.customerNationalIdSnapshot,
-      customerEconomicIdSnapshot:
-          customerEconomicIdSnapshot ?? this.customerEconomicIdSnapshot,
       customerAddressSnapshot:
           customerAddressSnapshot ?? this.customerAddressSnapshot,
       status: status ?? this.status,
@@ -3252,11 +3137,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
         customerNationalIdSnapshot.value,
       );
     }
-    if (customerEconomicIdSnapshot.present) {
-      map['customer_economic_id_snapshot'] = Variable<String>(
-        customerEconomicIdSnapshot.value,
-      );
-    }
     if (customerAddressSnapshot.present) {
       map['customer_address_snapshot'] = Variable<String>(
         customerAddressSnapshot.value,
@@ -3315,7 +3195,6 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
 ..write('customerNameSnapshot: $customerNameSnapshot, ')
 ..write('customerCompanySnapshot: $customerCompanySnapshot, ')
 ..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
-..write('customerEconomicIdSnapshot: $customerEconomicIdSnapshot, ')
 ..write('customerAddressSnapshot: $customerAddressSnapshot, ')
 ..write('status: $status, ')
 ..write('grossTotalRial: $grossTotalRial, ')
@@ -5465,18 +5344,6 @@ class $SettingsTable extends Settings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _sellerEconomicIdMeta = const VerificationMeta(
-    'sellerEconomicId',
-  );
-  @override
-  late final GeneratedColumn<String> sellerEconomicId = GeneratedColumn<String>(
-    'seller_economic_id',
-    aliasedName,
-    true,
-    additionalChecks: GeneratedColumn.checkTextLength(maxTextLength: 20),
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
   static const VerificationMeta _sellerAddressMeta = const VerificationMeta(
     'sellerAddress',
   );
@@ -5527,7 +5394,6 @@ class $SettingsTable extends Settings
     devicePrefix,
     lastBackupAt,
     sellerName,
-    sellerEconomicId,
     sellerAddress,
     sellerPhone,
     themeMode,
@@ -5640,15 +5506,6 @@ class $SettingsTable extends Settings
         sellerName.isAcceptableOrUnknown(data['seller_name']!, _sellerNameMeta),
       );
     }
-    if (data.containsKey('seller_economic_id')) {
-      context.handle(
-        _sellerEconomicIdMeta,
-        sellerEconomicId.isAcceptableOrUnknown(
-          data['seller_economic_id']!,
-          _sellerEconomicIdMeta,
-        ),
-      );
-    }
     if (data.containsKey('seller_address')) {
       context.handle(
         _sellerAddressMeta,
@@ -5733,10 +5590,6 @@ class $SettingsTable extends Settings
       sellerName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}seller_name'],
-      ),
-      sellerEconomicId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}seller_economic_id'],
       ),
       sellerAddress: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -5827,10 +5680,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   /// the form requires it as soon as any other seller field is filled, and the
   /// document prints no block without it (D-077).
   final String? sellerName;
-
-  /// کد اقتصادی of the issuing business. Optional -- plenty of the businesses
-  /// this application is for do not have one.
-  final String? sellerEconomicId;
   final String? sellerAddress;
 
   /// Kept as typed, deliberately not normalized to the `09xxxxxxxxx` mobile
@@ -5870,7 +5719,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     this.devicePrefix,
     this.lastBackupAt,
     this.sellerName,
-    this.sellerEconomicId,
     this.sellerAddress,
     this.sellerPhone,
     required this.themeMode,
@@ -5905,9 +5753,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     }
     if (!nullToAbsent || sellerName != null) {
       map['seller_name'] = Variable<String>(sellerName);
-    }
-    if (!nullToAbsent || sellerEconomicId != null) {
-      map['seller_economic_id'] = Variable<String>(sellerEconomicId);
     }
     if (!nullToAbsent || sellerAddress != null) {
       map['seller_address'] = Variable<String>(sellerAddress);
@@ -5949,9 +5794,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       sellerName: sellerName == null && nullToAbsent
           ? const Value.absent()
 : Value(sellerName),
-      sellerEconomicId: sellerEconomicId == null && nullToAbsent
-          ? const Value.absent()
-: Value(sellerEconomicId),
       sellerAddress: sellerAddress == null && nullToAbsent
           ? const Value.absent()
 : Value(sellerAddress),
@@ -5986,7 +5828,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       devicePrefix: serializer.fromJson<String?>(json['devicePrefix']),
       lastBackupAt: serializer.fromJson<int?>(json['lastBackupAt']),
       sellerName: serializer.fromJson<String?>(json['sellerName']),
-      sellerEconomicId: serializer.fromJson<String?>(json['sellerEconomicId']),
       sellerAddress: serializer.fromJson<String?>(json['sellerAddress']),
       sellerPhone: serializer.fromJson<String?>(json['sellerPhone']),
       themeMode: $SettingsTable.$converterthemeMode.fromJson(
@@ -6014,7 +5855,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'devicePrefix': serializer.toJson<String?>(devicePrefix),
       'lastBackupAt': serializer.toJson<int?>(lastBackupAt),
       'sellerName': serializer.toJson<String?>(sellerName),
-      'sellerEconomicId': serializer.toJson<String?>(sellerEconomicId),
       'sellerAddress': serializer.toJson<String?>(sellerAddress),
       'sellerPhone': serializer.toJson<String?>(sellerPhone),
       'themeMode': serializer.toJson<int>(
@@ -6038,7 +5878,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     Value<String?> devicePrefix = const Value.absent(),
     Value<int?> lastBackupAt = const Value.absent(),
     Value<String?> sellerName = const Value.absent(),
-    Value<String?> sellerEconomicId = const Value.absent(),
     Value<String?> sellerAddress = const Value.absent(),
     Value<String?> sellerPhone = const Value.absent(),
     AppThemeMode? themeMode,
@@ -6057,9 +5896,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     devicePrefix: devicePrefix.present ? devicePrefix.value : this.devicePrefix,
     lastBackupAt: lastBackupAt.present ? lastBackupAt.value : this.lastBackupAt,
     sellerName: sellerName.present ? sellerName.value : this.sellerName,
-    sellerEconomicId: sellerEconomicId.present
-        ? sellerEconomicId.value
-: this.sellerEconomicId,
     sellerAddress: sellerAddress.present
         ? sellerAddress.value
 : this.sellerAddress,
@@ -6100,9 +5936,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       sellerName: data.sellerName.present
           ? data.sellerName.value
 : this.sellerName,
-      sellerEconomicId: data.sellerEconomicId.present
-          ? data.sellerEconomicId.value
-: this.sellerEconomicId,
       sellerAddress: data.sellerAddress.present
           ? data.sellerAddress.value
 : this.sellerAddress,
@@ -6130,7 +5963,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
 ..write('devicePrefix: $devicePrefix, ')
 ..write('lastBackupAt: $lastBackupAt, ')
 ..write('sellerName: $sellerName, ')
-..write('sellerEconomicId: $sellerEconomicId, ')
 ..write('sellerAddress: $sellerAddress, ')
 ..write('sellerPhone: $sellerPhone, ')
 ..write('themeMode: $themeMode')
@@ -6154,7 +5986,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     devicePrefix,
     lastBackupAt,
     sellerName,
-    sellerEconomicId,
     sellerAddress,
     sellerPhone,
     themeMode,
@@ -6177,7 +6008,6 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.devicePrefix == this.devicePrefix &&
           other.lastBackupAt == this.lastBackupAt &&
           other.sellerName == this.sellerName &&
-          other.sellerEconomicId == this.sellerEconomicId &&
           other.sellerAddress == this.sellerAddress &&
           other.sellerPhone == this.sellerPhone &&
           other.themeMode == this.themeMode);
@@ -6198,7 +6028,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String?> devicePrefix;
   final Value<int?> lastBackupAt;
   final Value<String?> sellerName;
-  final Value<String?> sellerEconomicId;
   final Value<String?> sellerAddress;
   final Value<String?> sellerPhone;
   final Value<AppThemeMode> themeMode;
@@ -6218,7 +6047,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.devicePrefix = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
     this.sellerName = const Value.absent(),
-    this.sellerEconomicId = const Value.absent(),
     this.sellerAddress = const Value.absent(),
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
@@ -6239,7 +6067,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.devicePrefix = const Value.absent(),
     this.lastBackupAt = const Value.absent(),
     this.sellerName = const Value.absent(),
-    this.sellerEconomicId = const Value.absent(),
     this.sellerAddress = const Value.absent(),
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
@@ -6260,7 +6087,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? devicePrefix,
     Expression<int>? lastBackupAt,
     Expression<String>? sellerName,
-    Expression<String>? sellerEconomicId,
     Expression<String>? sellerAddress,
     Expression<String>? sellerPhone,
     Expression<int>? themeMode,
@@ -6282,7 +6108,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       if (devicePrefix != null) 'device_prefix': devicePrefix,
       if (lastBackupAt != null) 'last_backup_at': lastBackupAt,
       if (sellerName != null) 'seller_name': sellerName,
-      if (sellerEconomicId != null) 'seller_economic_id': sellerEconomicId,
       if (sellerAddress != null) 'seller_address': sellerAddress,
       if (sellerPhone != null) 'seller_phone': sellerPhone,
       if (themeMode != null) 'theme_mode': themeMode,
@@ -6305,7 +6130,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String?>? devicePrefix,
     Value<int?>? lastBackupAt,
     Value<String?>? sellerName,
-    Value<String?>? sellerEconomicId,
     Value<String?>? sellerAddress,
     Value<String?>? sellerPhone,
     Value<AppThemeMode>? themeMode,
@@ -6326,7 +6150,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       devicePrefix: devicePrefix ?? this.devicePrefix,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
       sellerName: sellerName ?? this.sellerName,
-      sellerEconomicId: sellerEconomicId ?? this.sellerEconomicId,
       sellerAddress: sellerAddress ?? this.sellerAddress,
       sellerPhone: sellerPhone ?? this.sellerPhone,
       themeMode: themeMode ?? this.themeMode,
@@ -6383,9 +6206,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     if (sellerName.present) {
       map['seller_name'] = Variable<String>(sellerName.value);
     }
-    if (sellerEconomicId.present) {
-      map['seller_economic_id'] = Variable<String>(sellerEconomicId.value);
-    }
     if (sellerAddress.present) {
       map['seller_address'] = Variable<String>(sellerAddress.value);
     }
@@ -6420,7 +6240,6 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
 ..write('devicePrefix: $devicePrefix, ')
 ..write('lastBackupAt: $lastBackupAt, ')
 ..write('sellerName: $sellerName, ')
-..write('sellerEconomicId: $sellerEconomicId, ')
 ..write('sellerAddress: $sellerAddress, ')
 ..write('sellerPhone: $sellerPhone, ')
 ..write('themeMode: $themeMode, ')
@@ -6557,7 +6376,6 @@ typedef $$CustomersTableCreateCompanionBuilder = CustomersCompanion Function({
   Value<String?> companyName,
   Value<String?> address,
   Value<String?> nationalId,
-  Value<String?> economicId,
   Value<String?> notes,
   Value<String> searchName,
   Value<int> rowid,
@@ -6574,7 +6392,6 @@ typedef $$CustomersTableUpdateCompanionBuilder = CustomersCompanion Function({
   Value<String?> companyName,
   Value<String?> address,
   Value<String?> nationalId,
-  Value<String?> economicId,
   Value<String?> notes,
   Value<String> searchName,
   Value<int> rowid,
@@ -6665,11 +6482,6 @@ class $$CustomersTableFilterComposer
 
   ColumnFilters<String> get nationalId => $composableBuilder(
     column: $table.nationalId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get economicId => $composableBuilder(
-    column: $table.economicId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -6773,11 +6585,6 @@ class $$CustomersTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get economicId => $composableBuilder(
-    column: $table.economicId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get notes => $composableBuilder(
     column: $table.notes,
     builder: (column) => ColumnOrderings(column),
@@ -6837,11 +6644,6 @@ class $$CustomersTableAnnotationComposer
 
   GeneratedColumn<String> get nationalId => $composableBuilder(
     column: $table.nationalId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get economicId => $composableBuilder(
-    column: $table.economicId,
     builder: (column) => column,
   );
 
@@ -6918,7 +6720,6 @@ class $$CustomersTableTableManager
                 Value<String?> companyName = const Value.absent(),
                 Value<String?> address = const Value.absent(),
                 Value<String?> nationalId = const Value.absent(),
-                Value<String?> economicId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String> searchName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -6934,7 +6735,6 @@ class $$CustomersTableTableManager
                 companyName: companyName,
                 address: address,
                 nationalId: nationalId,
-                economicId: economicId,
                 notes: notes,
                 searchName: searchName,
                 rowid: rowid,
@@ -6952,7 +6752,6 @@ class $$CustomersTableTableManager
                 Value<String?> companyName = const Value.absent(),
                 Value<String?> address = const Value.absent(),
                 Value<String?> nationalId = const Value.absent(),
-                Value<String?> economicId = const Value.absent(),
                 Value<String?> notes = const Value.absent(),
                 Value<String> searchName = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
@@ -6968,7 +6767,6 @@ class $$CustomersTableTableManager
                 companyName: companyName,
                 address: address,
                 nationalId: nationalId,
-                economicId: economicId,
                 notes: notes,
                 searchName: searchName,
                 rowid: rowid,
@@ -7491,7 +7289,6 @@ typedef $$InvoicesTableCreateCompanionBuilder = InvoicesCompanion Function({
   Value<String?> customerNameSnapshot,
   Value<String?> customerCompanySnapshot,
   Value<String?> customerNationalIdSnapshot,
-  Value<String?> customerEconomicIdSnapshot,
   Value<String?> customerAddressSnapshot,
   required InvoiceStatus status,
   Value<int?> grossTotalRial,
@@ -7522,7 +7319,6 @@ typedef $$InvoicesTableUpdateCompanionBuilder = InvoicesCompanion Function({
   Value<String?> customerNameSnapshot,
   Value<String?> customerCompanySnapshot,
   Value<String?> customerNationalIdSnapshot,
-  Value<String?> customerEconomicIdSnapshot,
   Value<String?> customerAddressSnapshot,
   Value<InvoiceStatus> status,
   Value<int?> grossTotalRial,
@@ -7689,11 +7485,6 @@ class $$InvoicesTableFilterComposer
 
   ColumnFilters<String> get customerNationalIdSnapshot => $composableBuilder(
     column: $table.customerNationalIdSnapshot,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get customerEconomicIdSnapshot => $composableBuilder(
-    column: $table.customerEconomicIdSnapshot,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -7911,11 +7702,6 @@ class $$InvoicesTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get customerEconomicIdSnapshot => $composableBuilder(
-    column: $table.customerEconomicIdSnapshot,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get customerAddressSnapshot => $composableBuilder(
     column: $table.customerAddressSnapshot,
     builder: (column) => ColumnOrderings(column),
@@ -8059,11 +7845,6 @@ class $$InvoicesTableAnnotationComposer
 
   GeneratedColumn<String> get customerNationalIdSnapshot => $composableBuilder(
     column: $table.customerNationalIdSnapshot,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get customerEconomicIdSnapshot => $composableBuilder(
-    column: $table.customerEconomicIdSnapshot,
     builder: (column) => column,
   );
 
@@ -8231,8 +8012,6 @@ class $$InvoicesTableTableManager
                 Value<String?> customerCompanySnapshot = const Value.absent(),
                 Value<String?> customerNationalIdSnapshot =
                     const Value.absent(),
-                Value<String?> customerEconomicIdSnapshot =
-                    const Value.absent(),
                 Value<String?> customerAddressSnapshot = const Value.absent(),
                 Value<InvoiceStatus> status = const Value.absent(),
                 Value<int?> grossTotalRial = const Value.absent(),
@@ -8262,7 +8041,6 @@ class $$InvoicesTableTableManager
                 customerNameSnapshot: customerNameSnapshot,
                 customerCompanySnapshot: customerCompanySnapshot,
                 customerNationalIdSnapshot: customerNationalIdSnapshot,
-                customerEconomicIdSnapshot: customerEconomicIdSnapshot,
                 customerAddressSnapshot: customerAddressSnapshot,
                 status: status,
                 grossTotalRial: grossTotalRial,
@@ -8295,8 +8073,6 @@ class $$InvoicesTableTableManager
                 Value<String?> customerCompanySnapshot = const Value.absent(),
                 Value<String?> customerNationalIdSnapshot =
                     const Value.absent(),
-                Value<String?> customerEconomicIdSnapshot =
-                    const Value.absent(),
                 Value<String?> customerAddressSnapshot = const Value.absent(),
                 required InvoiceStatus status,
                 Value<int?> grossTotalRial = const Value.absent(),
@@ -8326,7 +8102,6 @@ class $$InvoicesTableTableManager
                 customerNameSnapshot: customerNameSnapshot,
                 customerCompanySnapshot: customerCompanySnapshot,
                 customerNationalIdSnapshot: customerNationalIdSnapshot,
-                customerEconomicIdSnapshot: customerEconomicIdSnapshot,
                 customerAddressSnapshot: customerAddressSnapshot,
                 status: status,
                 grossTotalRial: grossTotalRial,
@@ -9641,7 +9416,6 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<String?> devicePrefix,
   Value<int?> lastBackupAt,
   Value<String?> sellerName,
-  Value<String?> sellerEconomicId,
   Value<String?> sellerAddress,
   Value<String?> sellerPhone,
   Value<AppThemeMode> themeMode,
@@ -9662,7 +9436,6 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<String?> devicePrefix,
   Value<int?> lastBackupAt,
   Value<String?> sellerName,
-  Value<String?> sellerEconomicId,
   Value<String?> sellerAddress,
   Value<String?> sellerPhone,
   Value<AppThemeMode> themeMode,
@@ -9746,11 +9519,6 @@ class $$SettingsTableFilterComposer
 
   ColumnFilters<String> get sellerName => $composableBuilder(
     column: $table.sellerName,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get sellerEconomicId => $composableBuilder(
-    column: $table.sellerEconomicId,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -9850,11 +9618,6 @@ class $$SettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get sellerEconomicId => $composableBuilder(
-    column: $table.sellerEconomicId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
   ColumnOrderings<String> get sellerAddress => $composableBuilder(
     column: $table.sellerAddress,
     builder: (column) => ColumnOrderings(column),
@@ -9941,11 +9704,6 @@ class $$SettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get sellerEconomicId => $composableBuilder(
-    column: $table.sellerEconomicId,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get sellerAddress => $composableBuilder(
     column: $table.sellerAddress,
     builder: (column) => column,
@@ -10005,7 +9763,6 @@ class $$SettingsTableTableManager
                 Value<String?> devicePrefix = const Value.absent(),
                 Value<int?> lastBackupAt = const Value.absent(),
                 Value<String?> sellerName = const Value.absent(),
-                Value<String?> sellerEconomicId = const Value.absent(),
                 Value<String?> sellerAddress = const Value.absent(),
                 Value<String?> sellerPhone = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
@@ -10025,7 +9782,6 @@ class $$SettingsTableTableManager
                 devicePrefix: devicePrefix,
                 lastBackupAt: lastBackupAt,
                 sellerName: sellerName,
-                sellerEconomicId: sellerEconomicId,
                 sellerAddress: sellerAddress,
                 sellerPhone: sellerPhone,
                 themeMode: themeMode,
@@ -10047,7 +9803,6 @@ class $$SettingsTableTableManager
                 Value<String?> devicePrefix = const Value.absent(),
                 Value<int?> lastBackupAt = const Value.absent(),
                 Value<String?> sellerName = const Value.absent(),
-                Value<String?> sellerEconomicId = const Value.absent(),
                 Value<String?> sellerAddress = const Value.absent(),
                 Value<String?> sellerPhone = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
@@ -10067,7 +9822,6 @@ class $$SettingsTableTableManager
                 devicePrefix: devicePrefix,
                 lastBackupAt: lastBackupAt,
                 sellerName: sellerName,
-                sellerEconomicId: sellerEconomicId,
                 sellerAddress: sellerAddress,
                 sellerPhone: sellerPhone,
                 themeMode: themeMode,

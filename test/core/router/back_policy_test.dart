@@ -9,13 +9,20 @@ import '../../features/screen_harness.dart';
 
 /// The system back rule (D-095).
 ///
-/// Three behaviours, and the third is the one that would otherwise be found by
+/// Four behaviours, and the last is the one that would otherwise be found by
 /// a user losing a half-typed invoice:
 ///
+/// * inside a destination that has a page stacked in it, back unwinds that
+///   destination's own stack (D-104);
+/// * at the top of a destination, back returns home rather than exiting;
 /// * on the home destination, the first press says how to leave and the second
 ///   one leaves;
-/// * anywhere else, back returns home rather than exiting;
 /// * a screen holding unsaved work decides for itself.
+///
+/// **The order between the first two is the whole of D-104** and is pinned
+/// below: before it, every press anywhere but the dashboard jumped straight to
+/// the dashboard, so opening an invoice and pressing back abandoned فاکتورها
+/// rather than returning to it.
 ///
 /// **Driven through the real `BackButtonListener`**, not by calling the state's
 /// method: the whole reason this file exists rather than a comment is that the
@@ -36,18 +43,30 @@ void main() {
   /// dispatcher from one — which is itself worth pinning: without a router in
   /// the tree the listener silently does nothing, and that is a failure mode
   /// that would look exactly like a working application in a widget test.
+  ///
+  /// [sectionPages] is how many pages the current destination has stacked in
+  /// it: the stub pops one per press and reports whether it had one, which is
+  /// exactly the contract `app_router.dart` implements over `GoRouter.canPop`.
   Future<({BackClaims claims, List<String> log})> pump(
     WidgetTester tester, {
     required bool isHome,
+    int sectionPages = 0,
   }) async {
     final BackClaims claims = BackClaims();
     final List<String> log = <String>[];
+    int stacked = sectionPages;
 
     await pumpScreen(
       tester,
       AppBackPolicy(
         claims: claims,
         isHome: isHome,
+        onPopSection: () {
+          if (stacked == 0) return false;
+          stacked--;
+          log.add('pop');
+          return true;
+        },
         onGoHome: () => log.add('home'),
         child: const Scaffold(body: SizedBox.expand()),
       ),
@@ -55,6 +74,44 @@ void main() {
     await tester.pumpAndSettle();
     return (claims: claims, log: log);
   }
+
+  testWidgets('inside a destination, back unwinds that destination first', (
+    WidgetTester tester,
+  ) async {
+    // An invoice open over the invoice list. The press that follows undoes the
+    // opening; it does not abandon فاکتورها for the dashboard (D-104).
+    final ({BackClaims claims, List<String> log}) it = await pump(
+      tester,
+      isHome: false,
+      sectionPages: 1,
+    );
+
+    await pressBack(tester);
+    expect(it.log, <String>['pop']);
+
+    // And once the destination is back at its root, the next press applies the
+    // application-wide rule — which is the half that was already true.
+    await pressBack(tester);
+    expect(it.log, <String>['pop', 'home']);
+  });
+
+  testWidgets('a claim outranks the destination stack', (
+    WidgetTester tester,
+  ) async {
+    // The invoice **form**, which is itself a page inside فاکتورها: popping it
+    // is exactly the discard the claim exists to ask about first, so the order
+    // between these two is load-bearing rather than incidental.
+    final ({BackClaims claims, List<String> log}) it = await pump(
+      tester,
+      isHome: false,
+      sectionPages: 1,
+    );
+
+    it.claims.claim(() async => true);
+    await pressBack(tester);
+
+    expect(it.log, isEmpty);
+  });
 
   testWidgets('away from home, back goes home and does not exit', (
     WidgetTester tester,

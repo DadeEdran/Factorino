@@ -498,14 +498,6 @@ class _PartyCard extends StatelessWidget {
             strings: strings,
           ),
           RecordField(
-            label: strings.customerFieldEconomicId,
-            value: party.economicId == null
-                ? null
-                : formatIdentifierForDisplay(party.economicId!),
-            isIdentifier: true,
-            strings: strings,
-          ),
-          RecordField(
             label: strings.customerFieldAddress,
             value: party.address,
             strings: strings,

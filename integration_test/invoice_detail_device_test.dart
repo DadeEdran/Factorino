@@ -126,7 +126,6 @@ void main() {
             fullName: 'مریم احمدی',
             companyName: 'کارگاه نمونهٔ تهران',
             nationalId: '0079542311',
-            economicId: '411123456789',
             address: 'تهران، خیابان ولیعصر، پلاک ۱۲۰، واحد ۴',
             mobile: '09121234567',
           ),
@@ -203,7 +202,6 @@ void main() {
             fullName: 'مریم احمدی‌نژاد',
             companyName: 'کارگاه نمونهٔ تهران',
             nationalId: '0079542311',
-            economicId: '411123456789',
             address: 'تهران، خیابان ولیعصر، پلاک ۱۲۰، واحد ۴',
             mobile: '09121234567',
           ),
@@ -554,21 +552,26 @@ void main() {
         debugPrint('correction    : status ${afterCorrection.status.name}');
         expect(afterCorrection.status, InvoiceStatus.cancelled);
 
-        // ---- the export, from the menu (Phase 7 d) ------------------------
+        // ---- the export, from its named button ----------------------------
         //
         // **What this adds over `invoice_export_test.dart`**, which already
-        // drives the controller on both targets: the *user's* path. The menu
-        // item rendered in Vazirmatn at the device's own metrics, the tap, and
-        // the snackbar that reports the result — none of which the controller
-        // test touches, and all of which are layout.
+        // drives the controller on both targets: the *user's* path. The control
+        // rendered in Vazirmatn at the device's own metrics, the tap, and the
+        // snackbar that reports the result — none of which the controller test
+        // touches, and all of which are layout.
+        //
+        // **A named button in the header, not a menu item.** It was a menu item
+        // when this block was written and D-094 moved it, because nobody found
+        // it there; this test kept tapping «⋮» and was never re-run, so it went
+        // on asserting a menu that no longer held it. On-device tests are not
+        // in `flutter test` — that is the whole failure mode, and it is the
+        // second one this pass found in this directory.
         //
         // Deliberately on the **cancelled** invoice this block has just
         // produced: D-061 says a cancelled invoice is still a document, and
-        // (d) decided the export is offered on every invoice. If the menu were
-        // still gated on cancellability this would find nothing.
-        await tester.tap(find.byIcon(Icons.more_vert));
-        await tester.pumpAndSettle();
-
+        // every invoice is printable. If the control were gated on
+        // cancellability this would find nothing.
+        await reach(tester, find.text(strings.invoiceDocumentExportAction));
         expect(
           find.text(strings.invoiceDocumentExportAction),
           findsOneWidget,
@@ -603,7 +606,7 @@ void main() {
           reason: 'and the fix must be one tap away, or it is a nag',
         );
         expectNoCrushedText(tester, where: 'the export snackbar');
-        debugPrint('export        : menu tapped, no-seller notice shown');
+        debugPrint('export        : button tapped, no-seller notice shown');
 
         // Let the snackbar go before the page is scrolled below, so its
         // timer does not outlive the test.

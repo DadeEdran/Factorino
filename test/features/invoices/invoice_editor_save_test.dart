@@ -155,7 +155,7 @@ void main() {
     // The defect D-048 was written against, at the level the user meets it.
     fillComplete();
     final InvoiceCreationResult? abandoned = await editor().save();
-    await harness.invoices.softDeleteDraft(abandoned!.invoice.id);
+    await harness.invoices.softDelete(abandoned!.invoice.id);
 
     final InvoiceCreationResult next = await harness.invoices.create(
       harness.draft(customerId),

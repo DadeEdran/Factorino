@@ -1,7 +1,7 @@
 import 'dart:io';
 
 import 'package:file_selector/file_selector.dart';
-import 'package:flutter_file_dialog/flutter_file_dialog.dart';
+import 'package:flutter/services.dart';
 
 /// Moves a finished backup file between app-private storage and a location the
 /// user chose (D-071).
@@ -70,6 +70,27 @@ class DeliveredFile {
 /// picker filter sensibly.
 const String kBackupFileExtension = 'factorino';
 
+/// The application's own platform channel for documents, on Android.
+///
+/// Declared here rather than in `MainActivity`'s Dart counterpart because both
+/// halves of one act are on it — saving a document and opening the one just
+/// saved — and confining it to this file is the same rule the file-picking
+/// packages are held to (see `gateway_boundary_test.dart`).
+// l10n-exempt: a platform channel name, not user-facing copy.
+const MethodChannel kDocumentsChannel = MethodChannel(
+  'io.github.erysaw.factorino/documents',
+);
+
+/// The MIME type SAF should create [suggestedName] as.
+///
+/// A backup is deliberately **not** given a type that invites another
+/// application to open it: it is an encrypted container, and the only thing
+/// that can read one is this application.
+String _mimeTypeFor(String suggestedName) =>
+    suggestedName.toLowerCase().endsWith('.pdf')
+    ? 'application/pdf'
+    : 'application/octet-stream';
+
 class PlatformBackupFileGateway implements BackupFileGateway {
   const PlatformBackupFileGateway();
 
@@ -80,18 +101,27 @@ class PlatformBackupFileGateway implements BackupFileGateway {
   }) async {
     if (Platform.isAndroid) {
       // `file_selector_android` implements no `getSaveLocation` (D-071,
-      // verified in its source), so the save side of Android is this package
-      // and only this package. It opens SAF's ACTION_CREATE_DOCUMENT, so the
-      // file goes where the user picked **on the device** -- no share intent,
-      // and therefore no third-party application receiving the entire customer
-      // and invoice database.
+      // verified in its source), so the save side of Android is ours. It opens
+      // SAF's ACTION_CREATE_DOCUMENT, so the file goes where the user picked
+      // **on the device** -- no share intent, and therefore no third-party
+      // application receiving the entire customer and invoice database.
+      //
+      // **First-party rather than `flutter_file_dialog` since D-103.** That
+      // package returned the SAF URI's *path component* with the scheme and
+      // authority stripped, so what came back could not be handed to a viewer,
+      // could not be re-resolved, and was silently rejected by the opener on
+      // every Android save. `MainActivity` returns `uri.toString()`.
+      //
       // The SAF content URI of the document the user created, or null if they
-      // backed out of the dialog.
-      final String? saved = await FlutterFileDialog.saveFile(
-        params: SaveFileDialogParams(
-          sourceFilePath: source.path,
-          fileName: suggestedName,
-        ),
+      // backed out of the dialog -- a cancellation is an ordinary outcome and
+      // arrives here as null rather than as an error.
+      final String? saved = await kDocumentsChannel.invokeMethod<String>(
+        'saveDocument',
+        <String, String>{
+          'sourcePath': source.path,
+          'fileName': suggestedName,
+          'mimeType': _mimeTypeFor(suggestedName),
+        },
       );
       return saved == null ? null : DeliveredFile(saved);
     }

@@ -132,7 +132,6 @@ void main() {
 
       final SettingsRow row = await _settings(db);
       expect(row.sellerName, isNull);
-      expect(row.sellerEconomicId, isNull);
       expect(row.sellerAddress, isNull);
       expect(row.sellerPhone, isNull);
 
@@ -184,7 +183,6 @@ void main() {
         before.copyWith(
           seller: const SellerIdentity(
             name: 'کارگاه صنعتی نمونه پارس',
-            economicId: '14003456789012',
             address: 'تهران، خیابان ولی‌عصر، پلاک ۱۲۳',
             phone: '02188776655',
           ),
@@ -193,7 +191,6 @@ void main() {
 
       final AppSettings after = await repository.read();
       expect(after.seller.name, 'کارگاه صنعتی نمونه پارس');
-      expect(after.seller.economicId, '14003456789012');
       expect(after.seller.address, 'تهران، خیابان ولی‌عصر، پلاک ۱۲۳');
       expect(after.seller.phone, '02188776655');
       expect(after.seller.isPrintable, isTrue);
@@ -296,7 +293,6 @@ void main() {
 
       final SettingsRow row = await _settings(db);
       expect(row.sellerName, isNull);
-      expect(row.sellerEconomicId, isNull);
       expect(row.sellerAddress, isNull);
       expect(row.sellerPhone, isNull);
 

@@ -169,10 +169,6 @@
   },
   "settingsSellerFieldNameHint": "همان‌گونه که باید روی فاکتور چاپ شود.",
   "@settingsSellerFieldNameHint": {},
-  "settingsSellerFieldEconomicId": "کد اقتصادی",
-  "@settingsSellerFieldEconomicId": {
-    "description": "The seller economic ID. Same label as the customer one, because it is the same thing on the other side of the invoice."
-  },
   "settingsSellerFieldAddress": "نشانی",
   "@settingsSellerFieldAddress": {},
   "settingsSellerFieldPhone": "تلفن",
@@ -316,8 +312,6 @@
   "@customerFieldAddress": {},
   "customerFieldNationalId": "کد ملی",
   "@customerFieldNationalId": {},
-  "customerFieldEconomicId": "کد اقتصادی",
-  "@customerFieldEconomicId": {},
   "customerFieldNotes": "یادداشت",
   "@customerFieldNotes": {},
   "customerNoMobile": "شماره‌ای ثبت نشده",
@@ -904,6 +898,11 @@
     "description": "Shown only when the invoice actually carries payments (D-060's rule). Cancelling never touches the payments table (D-061), and a user cancelling a part-paid invoice must be told that before committing, not discover it afterwards.",
     "placeholders": { "amount": { "type": "String" } }
   },
+  "invoiceCancelThenDeleteNote": "پس از ابطال، می‌توانید این فاکتور را به‌کلی حذف کنید.",
+  "@invoiceCancelThenDeleteNote": {
+    "description": "Shown on every cancellation dialog. Closes the discoverability half of D-105: deletion is offered only after cancellation, so a user looking for a way to clear a mistaken or test invoice would otherwise see only the cancel action and conclude the document is permanent -- which is what was reported from the phone. This is the one place they are standing when the answer is relevant."
+  },
+
   "invoiceCancelSuccess": "فاکتور باطل شد. پرداخت‌های ثبت‌شده دست‌نخورده ماند.",
   "@invoiceCancelSuccess": {
     "description": "Restates the half of the outcome that is easiest to doubt afterwards. Where there are no payments the sentence is still true and still harmless."
@@ -1169,6 +1168,28 @@
   "@invoiceDeleteDraftFailed": {
     "description": "Friendly Persian, no exception text and no identifier (section 7)."
   },
+
+  "invoiceDeleteAction": "حذف فاکتور",
+  "@invoiceDeleteAction": {
+    "description": "Deletes a cancelled invoice outright (D-105). Says 'delete the invoice' rather than 'delete the draft' because this one is a real numbered document that was issued and then cancelled. Offered only on a cancelled invoice; an issued one must be cancelled first, and a draft gets invoiceDeleteDraftAction instead."
+  },
+  "invoiceDeleteTitle": "حذف این فاکتور؟",
+  "@invoiceDeleteTitle": {
+    "description": "The confirmation dialog title. A question, because the action cannot be undone from the user's point of view."
+  },
+  "invoiceDeleteBody": "این فاکتور و سطرهای آن از فهرست‌ها و جمع‌ها حذف می‌شود و برگرداندن آن ممکن نیست. شماره‌ای که به این فاکتور داده شده آزاد نمی‌شود و دوباره به فاکتور دیگری داده نخواهد شد.",
+  "@invoiceDeleteBody": {
+    "description": "Says what deleting costs and the one thing it does not change, the way the cancellation dialog does rather than decaying into 'are you sure?'. The fact the user cannot see and would otherwise ask about afterwards is that the invoice number stays spent (D-013): the sequence keeps a gap rather than reusing the identity on a later document. The deletion is a soft delete in the schema, but that is a sync concern the user cannot act on, so the copy says it cannot be brought back -- which is true of every route they have."
+  },
+  "invoiceDeletePaymentsNote": "{count} پرداخت ثبت‌شده روی این فاکتور همراه آن حذف می‌شود. ابطال پرداخت‌ها را نگه می‌دارد، اما حذف نگه نمی‌دارد.",
+  "@invoiceDeletePaymentsNote": {
+    "description": "Shown only where the cancelled invoice actually carries payments, on D-060's rule that a warning printed on every deletion is one nobody reads on the deletion where it matters. It states the difference from cancellation explicitly (D-061 keeps payments, D-105 does not) because a user who has just read the cancellation dialog has been told the opposite and would otherwise carry that expectation into this one. The count arrives already in Persian digits.",
+    "placeholders": { "count": { "type": "String" } }
+  },
+  "invoiceDeleteSuccess": "فاکتور حذف شد.",
+  "@invoiceDeleteSuccess": {},
+  "invoiceDeleteFailed": "حذف این فاکتور ممکن نشد.",
+  "@invoiceDeleteFailed": {},
   "invoiceDocumentExportAction": "ذخیرهٔ نسخهٔ PDF",
   "@invoiceDocumentExportAction": {
     "description": "The menu item on the invoice detail screen that generates the PDF and offers it to the user to save. In the title row menu beside cancellation, per the project spec: an actions card here would be the fourth block added above the invoice lines on this family of screens. Says 'save a PDF copy' rather than 'print' -- nothing is sent to a printer, a file is written where the user chooses."

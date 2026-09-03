@@ -35,9 +35,6 @@ class Customers extends Table with SyncColumns {
   /// کد ملی — optional, and checksum-validated at the boundary when present.
   TextColumn get nationalId => text().withLength(max: 10).nullable()();
 
-  /// کد اقتصادی
-  TextColumn get economicId => text().withLength(max: 20).nullable()();
-
   TextColumn get notes => text().withLength(max: 2000).nullable()();
 
   /// [fullName] and [companyName] run through the Persian text normalizer,

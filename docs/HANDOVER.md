@@ -12,7 +12,8 @@ Written 2026-09-02; updated 2026-09-03 after the owner's twelve changes.
 
 A user can:
 
-* **Keep customers** — full name, company, mobile, نشانی, کد ملی (checksum-validated), کد اقتصادی.
+* **Keep customers** — full name, company, mobile, نشانی, کد ملی (checksum-validated). کد اقتصادی
+  was removed at the owner's request in schema v7 (D-106).
   Search finds them regardless of which Persian or Arabic digits and letter forms were typed:
   a customer saved as «علي» is found by typing «علی».
 * **Keep products and services** — name, type, unit, price.
@@ -31,7 +32,9 @@ A user can:
 * **Issue a saved draft** from its detail page, or **edit** it — change a line, a price, the
   customer — and save it back. Only drafts are editable (§6).
 * **Cancel** an issued invoice — never edit it. Cancelling keeps its recorded payments and says so.
-* **Delete a draft** — the only kind of invoice that can be deleted.
+* **Delete an invoice** — a draft directly, an issued one only after cancelling it. Cancellation
+  is the gate, not the alternative (D-105): nothing leaves the books uncancelled, and nothing is
+  permanent.
 * **Save a PDF** of any invoice — from a named button on the invoice page, not a menu — in Persian,
   RTL, with both parties, a lines table, and totals that reconcile by hand. The confirmation offers
   to open the file that was just saved. The document states where it stands: a draft and a cancelled invoice each carry
@@ -77,7 +80,7 @@ user hits it**, which is not the same as severity.
 
 | # | What | Impact |
 |---|---|---|
-| — | **Two Android behaviours have never run on a device.** The system back gesture (D-095) and the intent behind «باز کردن» on a saved PDF (D-091). | Not known-broken — **unverified**, which is a different and more honest word. Both were built and tested as far as a Windows machine and a widget test can go; no phone was connected. They are step 1 of the Next Action, and the first thing to try on the profile APK. |
+| — | **Two Android behaviours have never run on a device.** The system back gesture (D-095, extended by D-104) and the document hand-off after a save (D-091, D-103). | Not known-broken — **unverified**, which is a different and more honest word. Both were built and tested as far as a Windows machine and a widget test can go; no phone was connected. They are step 1 of the Next Action, and the first thing to try on the profile APK. **The hand-off is unverified for the third time and for a new reason each time**: D-103 found that the package running the save had been returning a URI with its scheme stripped, so the intent had never once been constructed. |
 | **26** | Crushed Persian at two width bands: the `/invoices/:id` title at 328–376 px, and «پیش‌فرض فاکتور» in the invoice editor at 616–688 px. | Text laid out narrower than its longest word renders one glyph per row. **616–688 is a reachable desktop window**, so this is not hypothetical. Both strings and bands are pinned; the reproduction is two lines. |
 | **25** | An invoice long enough to span a page loses its lines-table header on page 2. | Only bites on a long invoice — but when it does, it is on the customer's copy. Untested in both directions: no fixture has ever actually spanned. Fix the fixture first, then the flag. |
 
@@ -122,7 +125,7 @@ signing key.
 
 1. **Install the profile APK and check the two Android-only behaviours** —
    `build/app/outputs/flutter-apk/app-profile.apk`, built 2026-09-03. The back gesture (D-095) and
-   «باز کردن» on a saved PDF (D-091) are the only two things in the build that no test and no
+   the document hand-off after a save (D-091, D-103) are the only two things in the build that no test and no
    Windows run could reach. A profile build needs no keystore, which is why one exists.
 2. **Create a release keystore and sign a build.** `docs/RELEASE.md` has the exact commands. The
    release build currently *fails* without `android/key.properties`, deliberately — a debug-signed

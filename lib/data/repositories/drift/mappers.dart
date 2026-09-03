@@ -46,7 +46,6 @@ Customer customerFromRow(CustomerRow row) => Customer(
   companyName: row.companyName,
   address: row.address,
   nationalId: row.nationalId,
-  economicId: row.economicId,
   notes: row.notes,
   createdAt: instantFromMillis(row.createdAt),
   updatedAt: instantFromMillis(row.updatedAt),
@@ -80,7 +79,6 @@ CustomerSnapshot? customerSnapshotFromRow(InvoiceRow row) {
     fullName: fullName,
     companyName: row.customerCompanySnapshot,
     nationalId: row.customerNationalIdSnapshot,
-    economicId: row.customerEconomicIdSnapshot,
     address: row.customerAddressSnapshot,
   );
 }

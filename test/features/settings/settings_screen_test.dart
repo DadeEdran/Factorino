@@ -32,7 +32,6 @@ void main() {
   /// Iranian data reaches -- `PersianFixtures`' rule applied to this screen.
   const SellerIdentity filledSeller = SellerIdentity(
     name: 'مهندسی نوآوران فناوری پارسیان',
-    economicId: '14003456789012',
     address: 'تهران، خیابان ولی‌عصر، بالاتر از میدان ونک، پلاک ۱۲۳',
     phone: '02188776655',
   );
@@ -171,7 +170,7 @@ void main() {
       expect(find.text(strings.settingsSellerConsequence), findsOneWidget);
       expect(
         find.text(strings.settingsSellerEmpty),
-        findsNWidgets(4),
+        findsNWidgets(3),
         reason:
             'every unfilled seller row states that it was never given, rather '
             'than leaving a blank that reads as a value which failed to load',
@@ -205,10 +204,7 @@ void main() {
       final AppStrings strings = await pumpSettings(
         tester,
         value: settings.copyWith(
-          seller: const SellerIdentity(
-            economicId: '14003456789012',
-            phone: '02188776655',
-          ),
+          seller: const SellerIdentity(phone: '02188776655'),
         ),
       );
 

@@ -81,7 +81,6 @@ void main() {
       expectLimit(db.customers.companyName, CustomerLimits.companyName);
       expectLimit(db.customers.address, CustomerLimits.address);
       expectLimit(db.customers.nationalId, CustomerLimits.nationalId);
-      expectLimit(db.customers.economicId, CustomerLimits.economicId);
       expectLimit(db.customers.notes, CustomerLimits.notes);
       expectLimit(db.customers.searchName, CustomerLimits.searchName);
     });
@@ -137,10 +136,6 @@ void main() {
       expectLimit(
         db.invoices.customerNationalIdSnapshot,
         CustomerLimits.nationalId,
-      );
-      expectLimit(
-        db.invoices.customerEconomicIdSnapshot,
-        CustomerLimits.economicId,
       );
       expectLimit(db.invoices.customerAddressSnapshot, CustomerLimits.address);
     });

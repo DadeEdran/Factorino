@@ -74,8 +74,13 @@ class BackPolicyScope extends InheritedWidget {
 ///   leaves. A financial application that exits on a single stray back press
 ///   is one the user loses their place in constantly, and on Android the back
 ///   gesture is an edge swipe that is easy to trigger by accident.
-/// * Anywhere else, back returns to the dashboard rather than exiting — so
-///   there is exactly one place in the application where the back press can
+/// * Inside a destination, back moves **within that destination** first: from
+///   an invoice to the invoice list, from a customer to the customer list. A
+///   user who opened a document expects the press that follows to undo the
+///   opening, not to abandon the section it was opened from (D-104).
+/// * At the top of a destination, back returns to the dashboard rather than
+///   exiting — so there is exactly one place in the application where the press
+///   can
 ///   close it, and the user can always find it.
 /// * A screen holding unsaved work claims the press instead ([BackClaims]),
 ///   because "return to the dashboard" must not be a way to discard a typed
@@ -90,6 +95,7 @@ class AppBackPolicy extends StatefulWidget {
   const AppBackPolicy({
     required this.claims,
     required this.isHome,
+    required this.onPopSection,
     required this.onGoHome,
     required this.child,
     super.key,
@@ -100,7 +106,20 @@ class AppBackPolicy extends StatefulWidget {
   /// Whether the shell is currently showing the destination back leads to.
   final bool isHome;
 
-  /// Switches to that destination.
+  /// Pops one page inside the current destination, if it has one to pop.
+  ///
+  /// Returns whether it did, which is what decides between "back within the
+  /// section" and "back to the dashboard" — the caller owns the question
+  /// because only the router can answer it, and a `bool` rather than a
+  /// `canPop` getter so the check and the act cannot disagree between frames.
+  ///
+  /// **Supplied rather than read from the router here**, so that this file
+  /// stays a rule about back presses and not a second place that knows the
+  /// navigation library. It is also what lets `back_policy_test.dart` pin the
+  /// ordering of the three outcomes without standing a whole `GoRouter` up.
+  final bool Function() onPopSection;
+
+  /// Switches to the destination back leads to.
   final VoidCallback onGoHome;
 
   final Widget child;
@@ -126,6 +145,16 @@ class _AppBackPolicyState extends State<AppBackPolicy> {
     // The claim may have navigated, and a claim that returns false may still
     // have awaited a dialog. Either way the press is answered.
     if (!mounted) return true;
+
+    // **Within the section before out of it** (D-104). A destination with its
+    // own stack — an invoice open over the invoice list — unwinds that stack
+    // first; only a destination already at its root hands the press on to the
+    // application-wide rule below. The dashboard has no sub-routes, so this is
+    // never what answers a press there and the exit prompt is unaffected.
+    if (widget.onPopSection()) {
+      _disarm();
+      return true;
+    }
 
     if (!widget.isHome) {
       _disarm();

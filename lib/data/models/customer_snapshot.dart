@@ -25,7 +25,6 @@ class CustomerSnapshot {
     required this.fullName,
     this.companyName,
     this.nationalId,
-    this.economicId,
     this.address,
   });
 
@@ -34,7 +33,6 @@ class CustomerSnapshot {
     fullName: customer.fullName,
     companyName: customer.companyName,
     nationalId: customer.nationalId,
-    economicId: customer.economicId,
     address: customer.address,
   );
 
@@ -42,12 +40,13 @@ class CustomerSnapshot {
 
   final String? companyName;
 
-  /// کد ملی and کد اقتصادی as they stood when the document was issued. These
-  /// carry the legal weight on an Iranian invoice and are exactly the fields a
-  /// correction to a customer record changes, which is why a snapshot of the
-  /// name alone would have protected the least consequential field (D-052).
+  /// کد ملی as it stood when the document was issued. It carries the legal
+  /// weight on an Iranian invoice and is exactly the field a correction to a
+  /// customer record changes, which is why a snapshot of the name alone would
+  /// have protected the least consequential field (D-052).
+  ///
+  /// It was joined by کد اقتصادی until D-106 removed that field everywhere.
   final String? nationalId;
-  final String? economicId;
 
   final String? address;
 
@@ -63,12 +62,10 @@ class CustomerSnapshot {
       other.fullName == fullName &&
       other.companyName == companyName &&
       other.nationalId == nationalId &&
-      other.economicId == economicId &&
       other.address == address;
 
   @override
-  int get hashCode =>
-      Object.hash(fullName, companyName, nationalId, economicId, address);
+  int get hashCode => Object.hash(fullName, companyName, nationalId, address);
 
   /// Deliberately identifier-free, for the reason [Customer.toString] is:
   /// every field on this class is something §7 forbids reaching a log line.

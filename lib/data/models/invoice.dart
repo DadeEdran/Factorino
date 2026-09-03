@@ -149,6 +149,24 @@ class Invoice {
   bool get isCancellable =>
       status != InvoiceStatus.draft && status != InvoiceStatus.cancelled;
 
+  /// Whether the record may be removed outright (D-105).
+  ///
+  /// **Exactly the two states cancellation is not offered in, and that is the
+  /// point rather than a coincidence.** §6's rule is that an issued document is
+  /// corrected by cancellation and never by a silent disappearance; it is not a
+  /// rule that a mistake must be lived with forever. The two survive together
+  /// by making cancellation the *gate*: a draft is deletable because nobody has
+  /// seen it, a cancelled invoice because the accounting act has already been
+  /// performed and recorded, and everything in between must be cancelled first.
+  /// So nothing can leave the books without having been cancelled, and no
+  /// mistake or test document is permanent.
+  ///
+  /// The invoice **number is not released** either way (D-013). A deleted
+  /// invoice leaves a gap in the sequence rather than letting a later document
+  /// take its identity.
+  bool get isDeletable =>
+      status == InvoiceStatus.draft || status == InvoiceStatus.cancelled;
+
   @override
   bool operator ==(Object other) =>
       other is Invoice && other.id == id && other.updatedAt == updatedAt;

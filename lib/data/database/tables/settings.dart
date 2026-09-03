@@ -86,10 +86,6 @@ class Settings extends Table with SyncColumns {
   /// document prints no block without it (D-077).
   TextColumn get sellerName => text().withLength(max: 160).nullable()();
 
-  /// کد اقتصادی of the issuing business. Optional -- plenty of the businesses
-  /// this application is for do not have one.
-  TextColumn get sellerEconomicId => text().withLength(max: 20).nullable()();
-
   TextColumn get sellerAddress => text().withLength(max: 500).nullable()();
 
   /// Kept as typed, deliberately not normalized to the `09xxxxxxxxx` mobile

@@ -21,7 +21,7 @@
 /// means for the document is [isEmpty]'s business and the renderer's; see
 /// D-077.
 class SellerIdentity {
-  const SellerIdentity({this.name, this.economicId, this.address, this.phone});
+  const SellerIdentity({this.name, this.address, this.phone});
 
   /// No identity at all — what every pre-v5 database carries after the
   /// migration, because the migration invents nothing.
@@ -36,10 +36,6 @@ class SellerIdentity {
   /// one as soon as any other is filled — reported, never clamped (D-027) —
   /// and [isPrintable] is what the document asks.
   final String? name;
-
-  /// کد اقتصادی. Optional for the same reason it is optional on a customer:
-  /// plenty of the businesses this application is for do not have one.
-  final String? economicId;
 
   final String? address;
 
@@ -56,8 +52,7 @@ class SellerIdentity {
   ///
   /// The state every existing database is in, and the state the settings
   /// screen exists to get them out of.
-  bool get isEmpty =>
-      _blank(name) && _blank(economicId) && _blank(address) && _blank(phone);
+  bool get isEmpty => _blank(name) && _blank(address) && _blank(phone);
 
   bool get isNotEmpty => !isEmpty;
 
@@ -80,7 +75,6 @@ class SellerIdentity {
   /// has to remember to.
   SellerIdentity normalized() => SellerIdentity(
     name: _orNull(name),
-    economicId: _orNull(economicId),
     address: _orNull(address),
     phone: _orNull(phone),
   );
@@ -96,12 +90,11 @@ class SellerIdentity {
   bool operator ==(Object other) =>
       other is SellerIdentity &&
       other.name == name &&
-      other.economicId == economicId &&
       other.address == address &&
       other.phone == phone;
 
   @override
-  int get hashCode => Object.hash(name, economicId, address, phone);
+  int get hashCode => Object.hash(name, address, phone);
 
   /// Deliberately says only whether an identity is set, never what it is: a
   /// business name and telephone number are the user's own identifiers and §7

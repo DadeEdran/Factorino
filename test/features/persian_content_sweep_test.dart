@@ -73,7 +73,6 @@ void main() {
         companyName: PersianFixtures.longCompanyName,
         address: PersianFixtures.longAddress,
         nationalId: '0079542311',
-        economicId: '411123456789',
         mobile: '09121234567',
         notes: PersianFixtures.longNote,
       ),

@@ -99,15 +99,13 @@ class Invoices extends Table with SyncColumns {
   TextColumn get customerCompanySnapshot =>
       text().withLength(max: 160).nullable()();
 
-  /// کد ملی and کد اقتصادی as they stood at issue. These are the fields with
-  /// legal weight on an Iranian invoice and the ones a correction changes, so
-  /// a snapshot that omitted them would protect the least consequential field
-  /// (D-052).
+  /// کد ملی as it stood at issue. The field with legal weight on an Iranian
+  /// invoice and the one a correction changes, so a snapshot that omitted it
+  /// would protect the least consequential field (D-052).
+  ///
+  /// It was two fields until v7 dropped کد اقتصادی everywhere (D-106).
   TextColumn get customerNationalIdSnapshot =>
       text().withLength(max: 10).nullable()();
-
-  TextColumn get customerEconomicIdSnapshot =>
-      text().withLength(max: 20).nullable()();
 
   TextColumn get customerAddressSnapshot =>
       text().withLength(max: 500).nullable()();

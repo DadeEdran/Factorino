@@ -2130,3 +2130,30 @@ they saved their first PDF rather than before it.
 
 **Security note.** Nothing stored, no new dependency, no new platform surface. **D-077 is untouched**
 — an empty seller still blocks nothing, and this widget has no power to refuse anything.
+
+### The seventh pass — the second phone test, and a package that threw a URI away
+
+| What | Where |
+|---|---|
+| «باز کردن» did nothing on every Android save: `flutter_file_dialog` returned the SAF URI's *path component*, scheme and authority stripped. `ACTION_CREATE_DOCUMENT` is first-party now and the package is gone | D-103 |
+| Back moves **within** a destination before it leaves one — an invoice returns to فاکتورها, not to the dashboard | D-104 |
+| Invoices can be deleted, with **cancellation as the gate** rather than the alternative: draft or cancelled deletes, anything between must be cancelled first | D-105 |
+| کد اقتصادی removed everywhere — both forms, both screens, the PDF, and three columns — in **schema v7**, the first migration here that destroys data | D-106 |
+| Three on-device proofs had rotted unnoticed because `integration_test/` is not in `flutter test`; all fixed, all eleven runnable files now pass on Windows | D-107 |
+
+**The diagnosis is the interesting part of the first one.** All three of the owner's hypotheses were
+reasonable and none was the cause: the read grant was already correct, the channel was reached every
+time, and the URI could not be re-resolved because the scheme and the authority no longer existed.
+The remedy is at the source rather than the owner's suggested fallback — app-external storage with a
+`FileProvider` would leave a second unencrypted PDF carrying a customer's کد ملی outside app-private
+storage, which is the one thing `InvoiceDocumentController` promises it does not do.
+
+**Security note.** **One field of third-party personal data stops being stored at all** (D-106):
+کد اقتصادی leaves `customers`, `settings` and the invoice snapshot, so the application holds strictly
+less about a customer than it did — a reduction in what a lost device exposes and what a backup
+carries. One dependency is removed (`flutter_file_dialog`), which is one fewer supply-chain surface
+and one fewer package applying the Kotlin Gradle Plugin. The manifest gains a `<queries>` entry for
+`VIEW`+`application/pdf`, which grants no capability and only lets `resolveActivity` answer
+truthfully. The Android save is now this application's own `ACTION_CREATE_DOCUMENT`: same SAF dialog,
+same destination chosen by the user, no share intent, and D-091's threat statement is unchanged. New
+data stored: none. New permissions: none.

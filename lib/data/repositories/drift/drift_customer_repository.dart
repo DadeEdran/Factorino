@@ -80,7 +80,6 @@ class DriftCustomerRepository implements CustomerRepository {
             companyName: Value(_trimToNull(draft.companyName)),
             address: Value(_trimToNull(draft.address)),
             nationalId: Value(_trimToNull(draft.nationalId)),
-            economicId: Value(_trimToNull(draft.economicId)),
             notes: Value(_trimToNull(draft.notes)),
             searchName: Value(_searchNameFor(draft)),
           ),
@@ -98,7 +97,6 @@ class DriftCustomerRepository implements CustomerRepository {
             companyName: Value(_trimToNull(draft.companyName)),
             address: Value(_trimToNull(draft.address)),
             nationalId: Value(_trimToNull(draft.nationalId)),
-            economicId: Value(_trimToNull(draft.economicId)),
             notes: Value(_trimToNull(draft.notes)),
             // Rewritten from the new name, in the same statement as the name
             // itself, so the two cannot diverge even for an instant.

@@ -267,10 +267,6 @@ void main() {
         limitOf(strings.customerFieldNationalId),
         CustomerLimits.nationalId,
       );
-      expect(
-        limitOf(strings.customerFieldEconomicId),
-        CustomerLimits.economicId,
-      );
       expect(limitOf(strings.customerFieldAddress), CustomerLimits.address);
       expect(limitOf(strings.customerFieldNotes), CustomerLimits.notes);
     });
@@ -343,7 +339,6 @@ class _RecordingCustomerRepository implements CustomerRepository {
       mobile: draft.mobile,
       companyName: draft.companyName,
       nationalId: draft.nationalId,
-      economicId: draft.economicId,
       address: draft.address,
       notes: draft.notes,
       createdAt: DateTime.utc(2026, 8, 24),

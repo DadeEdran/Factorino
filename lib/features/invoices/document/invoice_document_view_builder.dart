@@ -184,17 +184,12 @@ InvoiceDocumentParty? _seller(
     heading: text(strings.invoiceDocumentSellerHeading),
     name: text(identity.name!),
     fields: <DocumentField>[
-      if (identity.economicId != null)
-        DocumentField(
-          label: text(strings.settingsSellerFieldEconomicId),
-          // The same isolating helper the buyer identifiers go through: a
-          // code printed unisolated inside RTL text scrambles, and the
-          // boundary is what makes reusing the screen helper safe here.
-          value: text(formatIdentifierForDisplay(identity.economicId!)),
-        ),
       if (identity.phone != null)
         DocumentField(
           label: text(strings.invoiceDocumentSellerPhoneLabel),
+          // The same isolating helper the buyer identifiers go through: a
+          // number printed unisolated inside RTL text scrambles, and the
+          // boundary is what makes reusing the screen helper safe here.
           value: text(formatIdentifierForDisplay(identity.phone!)),
         ),
       if (identity.address != null)
@@ -227,11 +222,6 @@ InvoiceDocumentParty _party(
         DocumentField(
           label: text(strings.customerFieldNationalId),
           value: text(formatIdentifierForDisplay(party.nationalId!)),
-        ),
-      if (party.economicId != null && party.economicId!.isNotEmpty)
-        DocumentField(
-          label: text(strings.customerFieldEconomicId),
-          value: text(formatIdentifierForDisplay(party.economicId!)),
         ),
       if (party.address != null && party.address!.isNotEmpty)
         DocumentField(

@@ -92,8 +92,17 @@ dependencies:
   # does not change, and `core/date/` wraps it behind our own types -- so a
   # replacement is a single-file swap, checked by the existing boundary tests.
   shamsi_date: 1.1.1
+
+  # The desktop save dialog and both open dialogs (D-071). **Not the Android
+  # save dialog** -- `file_selector_android` implements no `getSaveLocation`,
+  # and its former stand-in `flutter_file_dialog` was removed in D-103 for
+  # discarding the scheme and authority of the SAF URI it returned. Android's
+  # ACTION_CREATE_DOCUMENT is first-party now, in `MainActivity`.
+  #
+  # If it becomes unmaintained: every call site is confined to
+  # `backup_file_gateway.dart`, which `gateway_boundary_test.dart` enforces, so
+  # a replacement is a one-file change.
   file_selector: 1.1.0
-  flutter_file_dialog: 3.3.2
 
   # PDF generation (Phase 7, D-070 and D-073). Builds the page model and writes
   # the file in pure Dart -- no platform renderer, so one implementation serves

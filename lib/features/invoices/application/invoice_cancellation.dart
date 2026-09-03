@@ -26,7 +26,8 @@ part 'invoice_cancellation.g.dart';
 /// The screen omits the action for both, so a user cannot reach the refusal
 /// through the UI; a deep link, a second window or a future sync path can, and
 /// when they do the write fails cleanly rather than being prevented by a widget
-/// that happened to be on screen.
+/// that happened to be on screen. `InvoiceNotDeletable` and [delete] stand in
+/// the same relation (D-105).
 @riverpod
 class InvoiceCancellation extends _$InvoiceCancellation {
   @override
@@ -89,30 +90,31 @@ class InvoiceCancellation extends _$InvoiceCancellation {
     }
   }
 
-  /// Soft-deletes this invoice, which must be a draft. Returns whether it was
-  /// written.
+  /// Soft-deletes this invoice, which must be a draft or already cancelled.
+  /// Returns whether it was written.
   ///
-  /// **The other way a document is withdrawn**, and the one this file's own
-  /// header has described since Phase 5 (d) without anything calling it: a
-  /// draft is not cancelled, it is deleted, because cancellation marks a
-  /// document somebody has seen and a draft is one nobody has. §6 makes only
-  /// drafts deletable and the repository enforces it — `softDeleteDraft` throws
-  /// `InvoiceNotEditable` for anything else — so this stays a thin pass-through
-  /// for the same reason [cancel] does.
+  /// **The other way a document is withdrawn.** A draft is not cancelled, it is
+  /// deleted, because cancellation marks a document somebody has seen and a
+  /// draft is one nobody has. A **cancelled** invoice is deletable for the
+  /// opposite reason: the act §6 insists on has already happened and is on
+  /// record, so removing what is left destroys no accounting fact (D-105).
+  /// Everything between the two must be cancelled first, and the repository is
+  /// the authority — `softDelete` throws `InvoiceNotDeletable` otherwise — so
+  /// this stays a thin pass-through for the same reason [cancel] does.
   ///
   /// **Soft**, like every delete in this schema (§6). The row keeps its
   /// `deleted_at` so a future sync can propagate the deletion; a hard delete
   /// cannot be told to another device.
-  Future<bool> deleteDraft() async {
+  Future<bool> delete() async {
     // Outlives the widget for the same reason as `cancel`: the confirmation
     // dialog is gone, and on success so is the whole screen.
     final link = ref.keepAlive();
     try {
-      await ref.read(invoiceRepositoryProvider).softDeleteDraft(invoiceId);
+      await ref.read(invoiceRepositoryProvider).softDelete(invoiceId);
       return true;
     } on Object catch (error, stackTrace) {
       AppLog.error(
-        () => 'deleting a draft invoice failed',
+        () => 'deleting an invoice failed',
         error: error,
         stackTrace: stackTrace,
         scope: 'invoice-cancellation',

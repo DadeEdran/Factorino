@@ -1,7 +1,5 @@
 import 'dart:io';
 
-import 'package:flutter/services.dart';
-
 import '../../core/security/app_log.dart';
 import 'backup_file_gateway.dart';
 
@@ -47,24 +45,21 @@ abstract interface class SavedFileOpener {
 class PlatformSavedFileOpener implements SavedFileOpener {
   const PlatformSavedFileOpener();
 
-  /// The channel the Android half is answered on.
-  ///
   /// A method channel implemented in this application's own `MainActivity`
   /// rather than a package, and that is a dependency decision rather than
   /// laziness: every package that opens a file wants a `FileProvider` and a
   /// path, and what SAF hands back is a URI the application already holds a
-  /// grant for. `ACTION_VIEW` on that URI is four lines of Kotlin and pulls in
-  /// nothing. See D-091.
-  // l10n-exempt: a platform channel name, not user-facing copy.
-  static const MethodChannel _channel = MethodChannel(
-    'io.github.erysaw.factorino/open_file',
-  );
-
+  /// grant for. `ACTION_VIEW` on that URI is a dozen lines of Kotlin and pulls
+  /// in nothing. See D-091.
+  ///
+  /// [kDocumentsChannel] is the same channel the save goes out on, and they are
+  /// deliberately one: since D-103 the save is first-party too, and nothing on
+  /// this channel can be asked to open a file it did not itself write.
   @override
   Future<bool> open(DeliveredFile file) async {
     try {
       if (Platform.isAndroid) {
-        final bool? opened = await _channel.invokeMethod<bool>(
+        final bool? opened = await kDocumentsChannel.invokeMethod<bool>(
           'openUri',
           <String, String>{'uri': file.location},
         );

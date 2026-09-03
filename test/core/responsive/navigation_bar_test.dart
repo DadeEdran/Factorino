@@ -32,6 +32,9 @@ void main() {
     await pumpScreen(
       tester,
       AdaptiveScaffold(
+        // Nothing is stacked over a destination here, so there is never a
+        // page inside one to pop (D-104).
+        onPopSection: () => false,
         destination: selected,
         onDestinationSelected: (_) {},
         child: const SizedBox.expand(),

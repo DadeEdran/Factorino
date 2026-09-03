@@ -28,7 +28,8 @@ part of 'invoice_cancellation.dart';
 /// The screen omits the action for both, so a user cannot reach the refusal
 /// through the UI; a deep link, a second window or a future sync path can, and
 /// when they do the write fails cleanly rather than being prevented by a widget
-/// that happened to be on screen.
+/// that happened to be on screen. `InvoiceNotDeletable` and [delete] stand in
+/// the same relation (D-105).
 
 @ProviderFor(InvoiceCancellation)
 final invoiceCancellationProvider = InvoiceCancellationFamily._();
@@ -53,7 +54,8 @@ final invoiceCancellationProvider = InvoiceCancellationFamily._();
 /// The screen omits the action for both, so a user cannot reach the refusal
 /// through the UI; a deep link, a second window or a future sync path can, and
 /// when they do the write fails cleanly rather than being prevented by a widget
-/// that happened to be on screen.
+/// that happened to be on screen. `InvoiceNotDeletable` and [delete] stand in
+/// the same relation (D-105).
 final class InvoiceCancellationProvider
     extends $NotifierProvider<InvoiceCancellation, void> {
   /// The one write cancellation needs, and nothing else.
@@ -76,7 +78,8 @@ final class InvoiceCancellationProvider
   /// The screen omits the action for both, so a user cannot reach the refusal
   /// through the UI; a deep link, a second window or a future sync path can, and
   /// when they do the write fails cleanly rather than being prevented by a widget
-  /// that happened to be on screen.
+  /// that happened to be on screen. `InvoiceNotDeletable` and [delete] stand in
+  /// the same relation (D-105).
   InvoiceCancellationProvider._({
     required InvoiceCancellationFamily super.from,
     required String super.argument,
@@ -122,7 +125,7 @@ final class InvoiceCancellationProvider
 }
 
 String _$invoiceCancellationHash() =>
-    r'c0501774a1147945c994368451466c933c7d95ba';
+    r'f354bb2ebf97e96cae48830eccd647c949b08fe5';
 
 /// The one write cancellation needs, and nothing else.
 ///
@@ -144,7 +147,8 @@ String _$invoiceCancellationHash() =>
 /// The screen omits the action for both, so a user cannot reach the refusal
 /// through the UI; a deep link, a second window or a future sync path can, and
 /// when they do the write fails cleanly rather than being prevented by a widget
-/// that happened to be on screen.
+/// that happened to be on screen. `InvoiceNotDeletable` and [delete] stand in
+/// the same relation (D-105).
 
 final class InvoiceCancellationFamily extends $Family
     with $ClassFamilyOverride<InvoiceCancellation, void, void, void, String> {
@@ -177,7 +181,8 @@ final class InvoiceCancellationFamily extends $Family
   /// The screen omits the action for both, so a user cannot reach the refusal
   /// through the UI; a deep link, a second window or a future sync path can, and
   /// when they do the write fails cleanly rather than being prevented by a widget
-  /// that happened to be on screen.
+  /// that happened to be on screen. `InvoiceNotDeletable` and [delete] stand in
+  /// the same relation (D-105).
 
   InvoiceCancellationProvider call(String invoiceId) =>
       InvoiceCancellationProvider._(argument: invoiceId, from: this);
@@ -206,7 +211,8 @@ final class InvoiceCancellationFamily extends $Family
 /// The screen omits the action for both, so a user cannot reach the refusal
 /// through the UI; a deep link, a second window or a future sync path can, and
 /// when they do the write fails cleanly rather than being prevented by a widget
-/// that happened to be on screen.
+/// that happened to be on screen. `InvoiceNotDeletable` and [delete] stand in
+/// the same relation (D-105).
 
 abstract class _$InvoiceCancellation extends $Notifier<void> {
   late final _$args = ref.$arg as String;

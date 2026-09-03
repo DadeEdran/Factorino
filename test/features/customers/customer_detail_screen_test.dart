@@ -39,7 +39,6 @@ void main() {
     String? mobile,
     String? company,
     String? nationalId,
-    String? economicId,
     String? address,
     String? notes,
   }) {
@@ -49,7 +48,6 @@ void main() {
       mobile: mobile,
       companyName: company,
       nationalId: nationalId,
-      economicId: economicId,
       address: address,
       notes: notes,
       createdAt: now,
@@ -286,11 +284,7 @@ void main() {
       await pumpDetail(
         tester,
         customers: FakeCustomerRepository(<Customer>[
-          customer(
-            mobile: '09123456789',
-            nationalId: '0079542311',
-            economicId: '411111111111',
-          ),
+          customer(mobile: '09123456789', nationalId: '0079542311'),
         ]),
         invoices: FakeInvoiceRepository(const <InvoiceListItem>[]),
       );
@@ -300,7 +294,6 @@ void main() {
       // The national ID is deliberately *not* grouped: it is quoted as an
       // unbroken ten-digit string on every official document.
       expect(find.text('\u2068۰۰۷۹۵۴۲۳۱۱\u2069'), findsOneWidget);
-      expect(find.text('\u2068۴۱۱۱۱۱۱۱۱۱۱۱\u2069'), findsOneWidget);
     });
 
     testWidgets('says a field is not recorded rather than showing blank', (
@@ -318,7 +311,7 @@ void main() {
       // Every optional field is empty on this fixture, and each says so. A
       // record that hid what was missing would look complete, and the user
       // could not tell "no company" from "companies are not shown here".
-      expect(find.text(strings.fieldNotRecorded), findsNWidgets(6));
+      expect(find.text(strings.fieldNotRecorded), findsNWidgets(5));
     });
 
     testWidgets('never presents the national ID as verified (D-030)', (

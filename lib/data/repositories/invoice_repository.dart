@@ -153,7 +153,7 @@ abstract interface class InvoiceRepository {
   /// documents sharing one identity (D-013).
   ///
   /// Throws [InvoiceNotCancellable] for a draft — which is withdrawn with
-  /// [softDeleteDraft] instead — and for an invoice that is already cancelled.
+  /// [softDelete] instead — and for an invoice that is already cancelled.
   ///
   /// **Payments already recorded are left exactly where they are** (D-061).
   /// The money did change hands, and a cancelled document is a statement about
@@ -164,12 +164,30 @@ abstract interface class InvoiceRepository {
   /// must be correctable whether or not the document still stands.
   Future<Invoice> cancel(String id);
 
-  /// Soft-deletes a **draft** invoice. Throws [InvoiceNotEditable] otherwise.
-  Future<void> softDeleteDraft(String id);
+  /// Soft-deletes a **draft or cancelled** invoice, and the payments recorded
+  /// against it. Throws [InvoiceNotDeletable] for anything else.
+  ///
+  /// **Cancellation is the gate, not the alternative** (D-105). §6 keeps an
+  /// issued document from disappearing silently, and this keeps a mistake from
+  /// being permanent; both hold because the only route from `unpaid` to gone
+  /// runs through [cancel], which is the accounting act the rule is really
+  /// about. A draft needs no such act because nobody has seen it.
+  ///
+  /// **The payments go with it**, unlike cancellation, which deliberately
+  /// leaves them (D-061). The two are not in tension: cancelling says the claim
+  /// is void while the cash record stands, and deleting says the whole document
+  /// was never a real transaction — a test invoice, a mis-entry — so a payment
+  /// recorded against it is a mis-entry too. Every aggregate in this repository
+  /// reaches payments through a correlated subquery from a live invoice row, so
+  /// leaving them alive would change no figure today; they are deleted because
+  /// a row whose parent is gone is one a later phase would surface.
+  ///
+  /// The invoice **number is not released** (D-013): a gap in the sequence is
+  /// far better than two documents sharing one identity.
+  Future<void> softDelete(String id);
 }
 
-/// Raised when an edit or delete is attempted on an invoice that is no longer
-/// a draft.
+/// Raised when an edit is attempted on an invoice that is no longer a draft.
 ///
 /// A domain rule, not a database constraint, so it is expressed as a domain
 /// exception. The UI maps it to a Persian message; it never surfaces raw (§7).
@@ -182,7 +200,26 @@ class InvoiceNotEditable implements Exception {
   @override
   String toString() =>
       'InvoiceNotEditable: invoice $invoiceId is ${status.name}; only a draft '
-      'may be edited or deleted.';
+      'may be edited.';
+}
+
+/// Raised when deletion is attempted on an invoice that has not been cancelled.
+///
+/// **The third refusal, and separate from the other two for the reason they are
+/// separate from each other** (D-105): each one leaves the user with a
+/// different next step, and an exception that cannot say which would leave the
+/// UI unable to name it. This one's answer is *cancel it first* — the deletion
+/// is not being refused, only its order.
+class InvoiceNotDeletable implements Exception {
+  const InvoiceNotDeletable(this.invoiceId, this.status);
+
+  final String invoiceId;
+  final InvoiceStatus status;
+
+  @override
+  String toString() =>
+      'InvoiceNotDeletable: invoice $invoiceId is ${status.name}; only a draft '
+      'or a cancelled invoice may be deleted, so cancel it first (D-105).';
 }
 
 /// Raised when cancellation is attempted on an invoice that has nothing to

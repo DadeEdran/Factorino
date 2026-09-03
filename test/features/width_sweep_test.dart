@@ -64,7 +64,6 @@ void main() {
         fullName: 'مریم احمدی‌نژاد',
         companyName: 'شرکت مهندسی پیش‌رو صنعت پارس',
         nationalId: '0079542311',
-        economicId: '411123456789',
         address: 'تهران، خیابان ولیعصر، بالاتر از میدان ونک، پلاک ۱۲۳',
         mobile: '09121234567',
       ),
@@ -117,6 +116,7 @@ void main() {
           await pumpScreen(
             tester,
             AdaptiveScaffold(
+              onPopSection: () => false,
               destination: AppDestination.invoices,
               onDestinationSelected: (_) {},
               child: entry.value(),

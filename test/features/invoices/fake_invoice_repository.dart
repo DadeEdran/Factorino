@@ -280,18 +280,18 @@ class FakeInvoiceRepository implements InvoiceRepository {
     return _invoice(status: InvoiceStatus.cancelled, number: issuedNumber);
   }
 
-  /// Records the deletion rather than performing one. Whether the write
-  /// **refuses** a non-draft is the repository's claim and is pinned against a
-  /// real database in `invoice_repository_test.dart`; what the screen owes is
-  /// that it asked (known issue 27).
-  final List<String> deletedDrafts = <String>[];
+  /// Records the deletion rather than performing one. Which statuses the write
+  /// **refuses** is the repository's claim and is pinned against a real
+  /// database in `invoice_repository_test.dart` (D-105); what the screen owes
+  /// is that it asked.
+  final List<String> deletedIds = <String>[];
 
   /// Set to make the delete fail, so the screen's failure path is reachable.
   bool failDelete = false;
 
   @override
-  Future<void> softDeleteDraft(String id) async {
+  Future<void> softDelete(String id) async {
     if (failDelete) throw StateError('delete refused');
-    deletedDrafts.add(id);
+    deletedIds.add(id);
   }
 }

@@ -49,7 +49,6 @@ void main() {
   /// was clipping mid-word on the printed page until (c) caught it, so the
   /// value used here is a full two-line نشانی rather than a token.
   const String sellerName = 'صنایع چوب و دکوراسیون آرمان‌فر';
-  const String sellerEconomicId = '۴۱۱۳۸۷۶۵۴۳۲۱';
   const String sellerPhone = '۰۲۱-۸۸۷۴۵۶۹۰';
   const String sellerAddress =
       'تهران، خیابان شهید بهشتی، نبش کوچهٔ اندیشهٔ سوم، '
@@ -180,11 +179,6 @@ void main() {
     await tester.enterText(sellerNameField, sellerName);
     await tester.pump();
     await tester.enterText(
-      find.widgetWithText(TextFormField, strings.settingsSellerFieldEconomicId),
-      sellerEconomicId,
-    );
-    await tester.pump();
-    await tester.enterText(
       find.widgetWithText(TextFormField, strings.settingsSellerFieldPhone),
       sellerPhone,
     );
@@ -201,7 +195,6 @@ void main() {
     final SellerIdentity storedSeller =
         (await container.read(settingsRepositoryProvider).read()).seller;
     expect(storedSeller.name, sellerName);
-    expect(storedSeller.economicId, sellerEconomicId);
     expect(storedSeller.phone, sellerPhone);
     expect(storedSeller.address, sellerAddress);
     expect(

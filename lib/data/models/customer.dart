@@ -17,7 +17,6 @@ class Customer {
     this.companyName,
     this.address,
     this.nationalId,
-    this.economicId,
     this.notes,
   });
 
@@ -36,9 +35,6 @@ class Customer {
   /// کد ملی. Optional, and checksum-validated when present -- but a passing
   /// checksum confirms a **format**, never an identity (D-030).
   final String? nationalId;
-
-  /// کد اقتصادی.
-  final String? economicId;
 
   final String? notes;
 
@@ -77,7 +73,6 @@ class CustomerDraft {
     this.companyName,
     this.address,
     this.nationalId,
-    this.economicId,
     this.notes,
   });
 
@@ -86,7 +81,6 @@ class CustomerDraft {
   final String? companyName;
   final String? address;
   final String? nationalId;
-  final String? economicId;
   final String? notes;
 
   /// A draft pre-filled from an existing customer, for an edit form.
@@ -96,7 +90,6 @@ class CustomerDraft {
     companyName: customer.companyName,
     address: customer.address,
     nationalId: customer.nationalId,
-    economicId: customer.economicId,
     notes: customer.notes,
   );
 }

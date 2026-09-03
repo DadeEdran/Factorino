@@ -175,9 +175,6 @@ class AppStringsFa extends AppStrings {
       'همان‌گونه که باید روی فاکتور چاپ شود.';
 
   @override
-  String get settingsSellerFieldEconomicId => 'کد اقتصادی';
-
-  @override
   String get settingsSellerFieldAddress => 'نشانی';
 
   @override
@@ -337,9 +334,6 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get customerFieldNationalId => 'کد ملی';
-
-  @override
-  String get customerFieldEconomicId => 'کد اقتصادی';
 
   @override
   String get customerFieldNotes => 'یادداشت';
@@ -1005,6 +999,10 @@ class AppStringsFa extends AppStrings {
   }
 
   @override
+  String get invoiceCancelThenDeleteNote =>
+      'پس از ابطال، می‌توانید این فاکتور را به‌کلی حذف کنید.';
+
+  @override
   String get invoiceCancelSuccess =>
       'فاکتور باطل شد. پرداخت‌های ثبت‌شده دست‌نخورده ماند.';
 
@@ -1294,6 +1292,27 @@ class AppStringsFa extends AppStrings {
   @override
   String get invoiceDeleteDraftFailed =>
       'حذف پیش‌نویس انجام نشد. دوباره تلاش کنید.';
+
+  @override
+  String get invoiceDeleteAction => 'حذف فاکتور';
+
+  @override
+  String get invoiceDeleteTitle => 'حذف این فاکتور؟';
+
+  @override
+  String get invoiceDeleteBody =>
+      'این فاکتور و سطرهای آن از فهرست‌ها و جمع‌ها حذف می‌شود و برگرداندن آن ممکن نیست. شماره‌ای که به این فاکتور داده شده آزاد نمی‌شود و دوباره به فاکتور دیگری داده نخواهد شد.';
+
+  @override
+  String invoiceDeletePaymentsNote(String count) {
+    return '$count پرداخت ثبت‌شده روی این فاکتور همراه آن حذف می‌شود. ابطال پرداخت‌ها را نگه می‌دارد، اما حذف نگه نمی‌دارد.';
+  }
+
+  @override
+  String get invoiceDeleteSuccess => 'فاکتور حذف شد.';
+
+  @override
+  String get invoiceDeleteFailed => 'حذف این فاکتور ممکن نشد.';
 
   @override
   String get invoiceDocumentExportAction => 'ذخیرهٔ نسخهٔ PDF';

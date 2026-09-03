@@ -100,13 +100,11 @@ void main() {
     debugPrint('settings rows : ${await count(migrated, "settings")}');
     debugPrint('customers     : ${await count(migrated, "customers")}');
     debugPrint('invoices      : ${await count(migrated, "invoices")}');
-    // The four columns, by presence rather than by content: a business name is
-    // a user identifier and §7 keeps those out of any log, in any build.
+    // The three columns, by presence rather than by content: a business name
+    // is a user identifier and §7 keeps those out of any log, in any build.
+    // There were four until v7 dropped کد اقتصادی (D-106).
     debugPrint(
       'seller_name   : ${row.sellerName == null ? "<null>" : "<set>"}',
-    );
-    debugPrint(
-      'seller_ecoid  : ${row.sellerEconomicId == null ? "<null>" : "<set>"}',
     );
     debugPrint(
       'seller_addr   : ${row.sellerAddress == null ? "<null>" : "<set>"}',
@@ -119,7 +117,13 @@ void main() {
     debugPrint('payment term  : ${row.paymentTermDays}');
     debugPrint('file state    : ${inspectDatabaseFile(file).name}');
 
-    expect(version, 5);
+    // **`migrated.schemaVersion`, not a literal.** This read `5` and went on
+    // reading it through the v6 theme column and the v7 economic-id removal,
+    // because an on-device proof is not in `flutter test` and nobody re-ran it
+    // — so the one assertion that says "the ladder finished" was pinned to a
+    // version the application had left behind twice. A literal here rots
+    // silently every time the schema moves.
+    expect(version, migrated.schemaVersion);
     expect(fk, 1, reason: 'the migration must leave foreign keys on');
 
     // **The single row is still single.** `settings` carries
@@ -130,11 +134,10 @@ void main() {
     expect(await count(migrated, 'customers'), 1);
     expect(await count(migrated, 'invoices'), 1);
 
-    // **Four nulls, on the device.** Not "the columns exist" — a default would
-    // satisfy that and would print an invented seller on a customer-facing
-    // page.
+    // **Three nulls, on the device.** Not "the columns exist" — a default
+    // would satisfy that and would print an invented seller on a
+    // customer-facing page.
     expect(row.sellerName, isNull);
-    expect(row.sellerEconomicId, isNull);
     expect(row.sellerAddress, isNull);
     expect(row.sellerPhone, isNull);
 
@@ -158,7 +161,6 @@ void main() {
       (await repository.read()).copyWith(
         seller: const SellerIdentity(
           name: 'کارگاه صنعتی نمونه پارس',
-          economicId: '14003456789012',
           address: 'تهران، خیابان ولی‌عصر، پلاک ۱۲۳',
           phone: '02188776655',
         ),
@@ -167,7 +169,6 @@ void main() {
 
     final AppSettings after = await repository.read();
     expect(after.seller.name, 'کارگاه صنعتی نمونه پارس');
-    expect(after.seller.economicId, '14003456789012');
     expect(after.seller.address, 'تهران، خیابان ولی‌عصر، پلاک ۱۲۳');
     expect(after.seller.phone, '02188776655');
     expect(after.seller.isPrintable, isTrue);
@@ -187,12 +188,10 @@ void main() {
         .getSingle();
     expect(cleared.sellerName, isNull);
     expect(cleared.sellerPhone, isNull);
-    debugPrint('clear-back    : OK, all four null again');
+    debugPrint('clear-back    : OK, all three null again');
   }
 
-  testWidgets('a v4 database upgrades to v5 with four empty columns', (
-    _,
-  ) async {
+  testWidgets('a v4 database upgrades with an empty seller', (_) async {
     final File file = await freshProbe('seller_probe_v4.db');
     final DatabaseEncryptionKey key =
         await const SecureStorageDatabaseKeyStore().obtain();
@@ -260,10 +259,10 @@ void main() {
     }
   });
 
-  testWidgets('a v1 database reaches v5 through all four steps', (_) async {
+  testWidgets('a v1 database reaches the current version', (_) async {
     // The device that has not been updated since the first release: a table
-    // rebuild, nine column additions and a backfill, then these four, all in
-    // one open on an encrypted file with foreign keys on.
+    // rebuild, every column addition, a backfill and the v7 drops, all in one
+    // open on an encrypted file with foreign keys on.
     final File file = await freshProbe('seller_probe_v1.db');
     final DatabaseEncryptionKey key =
         await const SecureStorageDatabaseKeyStore().obtain();

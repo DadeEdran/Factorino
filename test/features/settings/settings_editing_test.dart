@@ -254,18 +254,20 @@ void main() {
   ///
   /// **One rule, and it is reported rather than clamped** (D-027): the
   /// business name is required as soon as any other seller field carries a
-  /// value, because a block headed «فروشنده» over a کد اقتصادی and no name
-  /// identifies nobody. Emptying all four is always allowed, and has to be —
-  /// it is the only way for a user who wants no seller block to get rid of
-  /// one.
+  /// value, because a block headed «فروشنده» over a telephone number and no
+  /// name identifies nobody. Emptying all three is always allowed, and has to
+  /// be — it is the only way for a user who wants no seller block to get rid
+  /// of one.
   group('the seller editor', () {
     testWidgets('it opens with what is stored', (WidgetTester tester) async {
       final AppStrings strings = await openSellerEditor(
         tester,
         initial: settings.copyWith(
+          // Two fields, so this pins that the sheet arrives filled rather
+          // than that one controller happens to be wired.
           seller: const SellerIdentity(
             name: 'مهندسی نوآوران فناوری پارسیان',
-            economicId: '14003456789012',
+            phone: '02188776655',
           ),
         ),
       );
@@ -279,10 +281,7 @@ void main() {
         find.widgetWithText(TextFormField, 'مهندسی نوآوران فناوری پارسیان'),
         findsOneWidget,
       );
-      expect(
-        find.widgetWithText(TextFormField, '14003456789012'),
-        findsOneWidget,
-      );
+      expect(find.widgetWithText(TextFormField, '02188776655'), findsOneWidget);
     });
 
     testWidgets('a name alone is enough, and is written', (
@@ -306,10 +305,12 @@ void main() {
       // behind**: a guard that reports after writing is worse than none
       // (D-060).
       final AppStrings strings = await openSellerEditor(tester);
+      // نشانی rather than the name: any field but the name reaches the same
+      // rule, and this was کد اقتصادی until D-106 removed that field.
       await enter(
         tester,
-        strings.settingsSellerFieldEconomicId,
-        '14003456789012',
+        strings.settingsSellerFieldAddress,
+        'تهران، خیابان ولی‌عصر، پلاک ۱۲۳',
       );
       await save(tester, strings);
 

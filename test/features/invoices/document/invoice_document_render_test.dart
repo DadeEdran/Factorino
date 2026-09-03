@@ -254,7 +254,7 @@ void main() {
       seller: _seller,
     );
     expect(view.seller, isNotNull);
-    expect(view.seller!.fields, hasLength(3));
+    expect(view.seller!.fields, hasLength(2));
 
     expect(
       await render('seller_ceiling', _detail(toman: 100000000)),
@@ -284,7 +284,6 @@ const String _fontDir = 'assets/fonts';
 /// that would wrap first if the block were too narrow.
 const SellerIdentity _seller = SellerIdentity(
   name: 'مهندسی نوآوران فناوری پارسیان',
-  economicId: '14003456789012',
   address: 'تهران، خیابان شریعتی، نرسیده به پل صدر، پلاک ۴۵۶، واحد ۲',
   phone: '02188776655',
 );
@@ -316,7 +315,6 @@ InvoiceDetail _detail({
     companyName: 'پیش‌رو صنعت',
     mobile: '09121234567',
     nationalId: '0069543210',
-    economicId: '14003456789012',
     address:
         'تهران، خیابان ولی‌عصر، بالاتر از میدان ونک، پلاک ۱۲۳، طبقهٔ چهارم',
     createdAt: issued,

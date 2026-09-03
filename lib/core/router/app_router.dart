@@ -50,6 +50,18 @@ GoRouter createRouter() {
             ) {
               return AdaptiveScaffold(
                 destination: AppDestination.values[shell.currentIndex],
+                // **Back moves inside the destination before it leaves it**
+                // (D-104). `GoRouter.canPop` and `pop` both walk into the
+                // branch navigator a `StatefulShellRoute` gives each
+                // destination, so this is the current section's own stack and
+                // not the shell's -- which is exactly the distinction the rule
+                // is about, and the reason the shell cannot answer it.
+                onPopSection: () {
+                  final GoRouter router = GoRouter.of(context);
+                  if (!router.canPop()) return false;
+                  router.pop();
+                  return true;
+                },
                 onDestinationSelected: (AppDestination destination) {
                   shell.goBranch(
                     AppDestination.values.indexOf(destination),

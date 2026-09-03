@@ -276,11 +276,6 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
               ),
               const _RowDivider(),
               _SettingRow(
-                label: strings.settingsSellerFieldEconomicId,
-                value: seller.economicId ?? strings.settingsSellerEmpty,
-              ),
-              const _RowDivider(),
-              _SettingRow(
                 label: strings.settingsSellerFieldPhone,
                 value: seller.phone ?? strings.settingsSellerEmpty,
               ),

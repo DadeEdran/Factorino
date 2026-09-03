@@ -22,11 +22,12 @@ import '../../application/invoice_cancellation.dart';
 /// space at any tier, and is where the customer and product screens already put
 /// exactly this pair of actions.
 ///
-/// **A menu of one item is deliberate.** The alternative — a bare icon in the
-/// title row — would put an irreversible, destructive action behind a glyph
-/// nobody can name. A menu item is a Persian sentence fragment the user reads
-/// before they commit to anything, and it is the slot the rest of the
-/// document's actions (a draft's deletion) joined.
+/// **A menu rather than bare icons is deliberate**, and was so when it held a
+/// single item. The alternative — an icon in the title row — would put an
+/// irreversible, destructive action behind a glyph nobody can name. A menu item
+/// is a Persian sentence fragment the user reads before they commit to
+/// anything, and it is the slot every one of the document's remaining actions
+/// has joined.
 ///
 /// **The PDF export is no longer among them** (D-094). It was, and nobody
 /// found it: a menu is the right home for an action the user arrives already
@@ -35,18 +36,26 @@ import '../../application/invoice_cancellation.dart';
 /// header row now; see [InvoiceExportButton]. What is left here is what belongs
 /// behind a menu: the two irreversible ones, and editing a draft.
 ///
-/// **The page stays where it is afterwards**, unlike the customer screen's
-/// delete, which leaves for the list. A cancelled invoice is still a document,
-/// still numbered and still the thing the user was looking at — and the state
-/// they have just created is precisely the one that needs explaining, so hiding
-/// it behind a navigation would undo half the point of the increment.
+/// **Cancelling stays on the page; deleting leaves it.** A cancelled invoice is
+/// still a document, still numbered and still the thing the user was looking at
+/// — and the state they have just created is precisely the one that needs
+/// explaining, so hiding it behind a navigation would undo half the point. A
+/// deleted one has nothing left to show, so that path returns to the list, the
+/// same shape the customer screen's delete already uses.
 ///
 /// **Absent, not disabled, where it does not apply.** `Invoice.isCancellable`
 /// is false for a draft and for an invoice already cancelled; the repository
 /// refuses both (`InvoiceNotCancellable`), and a disabled control that never
-/// explains itself is the affordance-leading-nowhere D-021 rules out. What a
-/// draft *should* offer instead is deletion, which is not this increment's —
-/// so the menu itself disappears rather than offering the wrong way out.
+/// explains itself is the affordance-leading-nowhere D-021 rules out.
+///
+/// **Deletion sits beside it, on exactly the states cancellation is not offered
+/// in** (D-105). A draft deletes because nobody has seen it; a *cancelled*
+/// invoice deletes because the accounting act §6 insists on has already
+/// happened and is on record. Everything between the two shows «لغو فاکتور» and
+/// nothing else — which is the ordering, not a refusal, and the cancellation
+/// dialog says so in one line rather than leaving the user to conclude that a
+/// mistaken invoice is permanent. That conclusion is what was reported from the
+/// phone, and it is the half of D-105 that lives in copy rather than in code.
 class InvoiceCancelAction extends ConsumerWidget {
   const InvoiceCancelAction({
     required this.detail,
@@ -61,20 +70,24 @@ class InvoiceCancelAction extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final bool cancellable = detail.invoice.isCancellable;
     final bool isDraft = detail.invoice.isEditable;
+    final bool deletable = detail.invoice.isDeletable;
 
     // **Absent entirely when it would be empty.** With the export gone
     // (D-094), a cancelled invoice has nothing behind this button: it cannot be
     // cancelled again and it is not a draft. An overflow menu that opens onto
     // nothing is the affordance-leading-nowhere D-021 rules out, and it used to
     // be impossible only because one item was always there.
-    if (!cancellable && !isDraft) return const SizedBox.shrink();
+    // `isDeletable` covers `isEditable`, so this is empty only for an issued
+    // invoice that is somehow neither — which no status produces today, and
+    // which would still be right to render as nothing if one ever did.
+    if (!cancellable && !deletable) return const SizedBox.shrink();
 
     return PopupMenuButton<_InvoiceAction>(
       tooltip: strings.actionMore,
       icon: const Icon(Icons.more_vert, size: AppIconSize.md),
       onSelected: (_InvoiceAction action) => switch (action) {
         _InvoiceAction.cancel => _cancel(context, ref),
-        _InvoiceAction.deleteDraft => _deleteDraft(context, ref),
+        _InvoiceAction.delete => _delete(context, ref),
         _InvoiceAction.editDraft => context.go(
           AppRoutes.invoiceEditFor(detail.invoice.id),
         ),
@@ -85,24 +98,32 @@ class InvoiceCancelAction extends ConsumerWidget {
             value: _InvoiceAction.cancel,
             child: Text(strings.invoiceCancelAction),
           ),
-        // **The two are mutually exclusive by construction**, since
-        // `isCancellable` is false exactly where `isEditable` is true. That is
-        // §6's rule rather than a UI choice: a draft is withdrawn by deleting
-        // it, an issued invoice by cancelling it, and offering both would be
-        // offering two ways out of one state.
+        // **Cancelling and deleting are never both offered**, since
+        // `isCancellable` and `isDeletable` partition the statuses between
+        // them. That is D-105's gate rather than a UI choice: an issued invoice
+        // has exactly one way out, and it is the one that leaves a record.
+        //
         // Editing comes before deleting: correcting a typo is the ordinary
         // reason to open this menu on a draft, and destroying it is the
-        // exception. Both are draft-only -- §6 makes only a draft editable,
-        // and an issued invoice is corrected by cancellation instead.
+        // exception. Editing stays draft-only -- §6 makes only a draft
+        // editable, and an issued invoice is corrected by cancellation.
         if (isDraft)
           PopupMenuItem<_InvoiceAction>(
             value: _InvoiceAction.editDraft,
             child: Text(strings.invoiceEditDraftAction),
           ),
-        if (isDraft)
+        // Two labels for one action, because they name two different things:
+        // «حذف پیش‌نویس» removes something that was never a document, and
+        // «حذف فاکتور» removes a numbered one that was issued and then
+        // cancelled. A single label would have to be wrong about one of them.
+        if (deletable)
           PopupMenuItem<_InvoiceAction>(
-            value: _InvoiceAction.deleteDraft,
-            child: Text(strings.invoiceDeleteDraftAction),
+            value: _InvoiceAction.delete,
+            child: Text(
+              isDraft
+                  ? strings.invoiceDeleteDraftAction
+: strings.invoiceDeleteAction,
+            ),
           ),
       ],
     );
@@ -128,56 +149,87 @@ class InvoiceCancelAction extends ConsumerWidget {
     );
   }
 
-  /// Deletes the draft, after saying what that costs.
-  ///
-  /// **Known issue 27, and it was a gap rather than a decision.**
-  /// `softDeleteDraft` has existed and been tested since Phase 4; nothing ever
-  /// called it, so a draft created by mistake could not be removed at all. This
-  /// widget's own header has said since Phase 5 (d) that deletion is what a
-  /// draft should be offered instead of cancellation — *"which is not this
-  /// increment's"* — and then no increment took it.
+  /// Deletes the invoice, after saying what that costs.
   ///
   /// **This one leaves the page, unlike cancelling.** A cancelled invoice is
   /// still a document and the state it has just entered is the one that needs
-  /// explaining, so that screen stays put. A deleted draft is not a document
-  /// and its page no longer has anything to show, so the user goes back to the
-  /// list — the same shape the customer screen's delete already uses.
-  Future<void> _deleteDraft(BuildContext context, WidgetRef ref) async {
-    final bool confirmed = await _confirmDelete(context);
+  /// explaining, so that screen stays put. A *deleted* one has nothing left to
+  /// show, so the user goes back to the list — the same shape the customer
+  /// screen's delete already uses.
+  Future<void> _delete(BuildContext context, WidgetRef ref) async {
+    final bool isDraft = detail.invoice.isEditable;
+    final bool confirmed = await _confirmDelete(context, isDraft: isDraft);
     if (!confirmed || !context.mounted) return;
 
     final bool deleted = await ref
 .read(invoiceCancellationProvider(detail.invoice.id).notifier)
-.deleteDraft();
+.delete();
     if (!context.mounted) return;
 
     // The message is shown either way, but only a success navigates: leaving a
     // failed delete on the page it failed on is what lets the user try again.
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
       SnackBar(
-        content: Text(
-          deleted
-              ? strings.invoiceDeleteDraftSuccess
-: strings.invoiceDeleteDraftFailed,
-        ),
+        content: Text(switch ((deleted, isDraft)) {
+          (true, true) => strings.invoiceDeleteDraftSuccess,
+          (true, false) => strings.invoiceDeleteSuccess,
+          (false, true) => strings.invoiceDeleteDraftFailed,
+          (false, false) => strings.invoiceDeleteFailed,
+        }),
       ),
     );
     if (deleted) context.go(AppDestination.invoices.path);
   }
 
-  /// Says what deleting a draft costs, and the two things it does not cost.
+  /// Says what deleting costs, in the terms that apply to *this* document.
   ///
-  /// The two facts the user cannot see and would otherwise wonder about
-  /// afterwards: **no invoice number was spent** (a draft never allocates one,
-  /// D-048) and **nothing reached the customer**. Both are reasons this is safe,
-  /// which is what a confirmation should say when the action really is safe —
-  /// rather than «مطمئن هستید؟», which teaches people to dismiss dialogs.
-  Future<bool> _confirmDelete(BuildContext context) async {
+  /// **Two dialogs, because the reassuring facts are opposites.** Deleting a
+  /// draft is safe and the copy says why: no invoice number was spent (a draft
+  /// never allocates one, D-048) and nothing reached the customer. Deleting a
+  /// cancelled invoice is not safe in that sense at all — a number *was* spent
+  /// and stays spent (D-013), and any payments recorded against it go with the
+  /// document, which is precisely where cancellation behaves the other way
+  /// (D-061). A user who has just read the cancellation dialog has been told
+  /// payments are kept, so this one contradicts it explicitly rather than
+  /// leaving the earlier sentence standing.
+  ///
+  /// The payments line is shown **only where there are payments**, on D-060's
+  /// rule: a warning printed on every deletion is one nobody reads on the
+  /// deletion where it matters. Neither dialog says «مطمئن هستید؟», which
+  /// teaches people to dismiss dialogs.
+  Future<bool> _confirmDelete(
+    BuildContext context, {
+    required bool isDraft,
+  }) async {
+    final int payments = detail.payments.length;
+
     final bool? confirmed = await showDialog<bool>(
       context: context,
       builder: (BuildContext context) => AlertDialog(
-        title: Text(strings.invoiceDeleteDraftTitle),
-        content: Text(strings.invoiceDeleteDraftBody),
+        title: Text(
+          isDraft
+              ? strings.invoiceDeleteDraftTitle
+: strings.invoiceDeleteTitle,
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              isDraft
+                  ? strings.invoiceDeleteDraftBody
+: strings.invoiceDeleteBody,
+            ),
+            if (payments > 0) ...<Widget>[
+              const SizedBox(height: AppSpacing.md),
+              Text(
+                strings.invoiceDeletePaymentsNote(
+                  formatGroupedPersian(payments),
+                ),
+              ),
+            ],
+          ],
+        ),
         actions: <Widget>[
           TextButton(
             onPressed: () => Navigator.of(context).pop(false),
@@ -185,7 +237,11 @@ class InvoiceCancelAction extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () => Navigator.of(context).pop(true),
-            child: Text(strings.invoiceDeleteDraftAction),
+            child: Text(
+              isDraft
+                  ? strings.invoiceDeleteDraftAction
+: strings.invoiceDeleteAction,
+            ),
           ),
         ],
       ),
@@ -226,6 +282,15 @@ class InvoiceCancelAction extends ConsumerWidget {
                 ),
               ),
             ],
+            // **The half of D-105 that lives in copy.** Deletion is offered
+            // only after cancellation, so without this line a user looking for
+            // a way to clear a mistaken or test invoice sees one action, takes
+            // it, and has no reason to look again — which is how "anything I
+            // create is permanent" was reached on a build that already deleted
+            // drafts. Unconditional, because it is true of every cancellation
+            // and it answers the question this dialog raises.
+            const SizedBox(height: AppSpacing.md),
+            Text(strings.invoiceCancelThenDeleteNote),
           ],
         ),
         actions: <Widget>[
@@ -244,4 +309,4 @@ class InvoiceCancelAction extends ConsumerWidget {
   }
 }
 
-enum _InvoiceAction { cancel, editDraft, deleteDraft }
+enum _InvoiceAction { cancel, editDraft, delete }
