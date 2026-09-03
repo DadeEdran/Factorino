@@ -32,10 +32,12 @@ import 'widgets/invoice_totals_summary.dart';
 ///
 /// **Three layouts, not one stretched three ways** (§10):
 ///
-/// * **Mobile** — one column, one field per row, everything reached by
-///   scrolling; the summary and both actions live in a bar pinned to the bottom
-///   of the screen, so the figure the user is deciding about stays visible while
-///   they edit the lines that change it.
+/// * **Mobile** — the two things an invoice cannot exist without, **pinned at
+///   the top**: who it is for, and how to add a line (D-096). The lines and the
+///   optional details scroll between that and a bar pinned to the bottom
+///   carrying the payable figure and both actions. Nothing the user must do is
+///   ever more than zero scrolls away, and the figure they are deciding about
+///   stays visible while they edit the lines that change it.
 /// * **Tablet** — two panes side by side. The document's own fields sit in the
 ///   left pane and its lines in the right, each scrolling independently, which
 ///   is the arrangement that suits the tier's shape: a tablet in portrait and a
@@ -454,12 +456,32 @@ class _EditorActions extends StatelessWidget {
   }
 }
 
-/// One column, and a bar pinned to the bottom.
+/// The phone: two pinned edges and a scroll between them.
 ///
-/// The bar is what makes this a phone layout rather than a narrow desktop one:
-/// the grand total and the two actions stay on screen while the user scrolls
-/// through the lines that change it, so the figure being decided about is never
-/// the one thing that has scrolled away.
+/// **What is pinned is what the user must do** (D-096). Creating an invoice is
+/// two acts — say who it is for, and say what is on it — and until this both
+/// were inside the scroll, one of them behind a fold. Known issue 30 was three
+/// separate attempts at keeping the add-line control reachable (D-054, D-086,
+/// D-093), each of which moved it somewhere better and left it scrolling. This
+/// takes it out of the scroll entirely, and takes the customer with it, because
+/// the customer had the same problem and a worse one: it was a field inside a
+/// collapsed section called «جزئیات فاکتور», which is exactly where a user would
+/// not look for the one thing a save cannot do without.
+///
+/// **What scrolls is what varies**: the lines, however many there are, and the
+/// optional detail — dates, discount, rate, note — that most invoices never
+/// touch.
+///
+/// **The breakdown moved into the scroll, and that is what pays for the header**
+/// (D-053, applied to this tier). The bar used to carry the whole
+/// reconciliation — gross, discount, tax, then the payable total — roughly 190
+/// logical pixels of it. The desktop tier already decided this question the
+/// other way and recorded why: the *decision* is what has to stay in front of
+/// the user, and the breakdown belongs with the fields that explain it.
+/// Repeating it in the bar was two answers to one question a scroll apart. So
+/// the bar now carries the payable figure and the two actions, the breakdown
+/// sits under the lines it sums, and the room that frees is roughly what the
+/// pinned header costs.
 class _MobileLayout extends StatelessWidget {
   const _MobileLayout({
     required this.openedAt,
@@ -477,47 +499,30 @@ class _MobileLayout extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       children: <Widget>[
+        _PinnedHeader(openedAt: openedAt, state: state, strings: strings),
         Expanded(
           child: ListView(
-            // Room above the first field for its floating label, and room
-            // below the last for the bar -- the same clearance a floating
-            // action button needs, and for the same reason.
             padding: const EdgeInsets.only(
-              top: AppSpacing.sm,
+              top: AppSpacing.lg,
               bottom: AppSpacing.xl,
             ),
             children: <Widget>[
-              // **The lines come first on the phone, and the details fold
-              // below them** (known issue 30, D-086 candidate 1). This is §10's
-              // own rule applied a fourth time: a variable-height block above
-              // the thing the page is for belongs below it.
-              //
-              // The number D-086 measured is what made it candidate 1 rather
-              // than a preference. With the details section open — setting a
-              // date, a discount, a rate, all ordinary things to do — the
-              // add-line control left the rendered tree entirely, about 400
-              // logical pixels of scrolling away, and a first-time user handed
-              // the application never found how to add a line at all. Folding
-              // the details (D-054) and withdrawing «صدور» until a line exists
-              // (D-086) each bought room and neither fixed the unfolded case,
-              // because both were rearranging around the wrong order.
-              //
-              // Above the fields, add-line cannot leave the first screen: the
-              // section that grows is the one underneath it.
-              //
-              // **The customer is still reachable and still required.** It
-              // lives in the details section's own heading, which shows it
-              // while collapsed — so the sentence in the pinned bar that says
-              // «مشتری را انتخاب کنید» points at something one scroll away
-              // rather than at something hidden.
-              InvoiceLinesSection(openedAt: openedAt),
+              // Without its add buttons: they are in the header above, and two
+              // controls doing one thing is one too many (§10).
+              InvoiceLinesSection(openedAt: openedAt, showAddActions: false),
+              const SizedBox(height: AppSpacing.xl),
+              // Directly under the lines it sums.
+              _TotalOrEmpty(state: state, strings: strings, dense: true),
               const SizedBox(height: AppSpacing.xxl),
-              // **Collapsible here and nowhere else.** On a phone these fields
-              // fill a whole viewport — measured on the device (D-054). The two
-              // wider tiers have room for both at once and gain nothing from a
-              // fold, and they lay the two out side by side rather than
-              // stacked, so the order question does not arise there.
-              InvoiceDetailsSection(openedAt: openedAt, collapsible: true),
+              // **Collapsible here and nowhere else** (D-054), and without the
+              // customer, which is pinned above. What is left behind the fold
+              // is genuinely optional: a date most invoices take as offered, a
+              // discount and a rate most never set, and a note.
+              InvoiceDetailsSection(
+                openedAt: openedAt,
+                collapsible: true,
+                showCustomer: false,
+              ),
             ],
           ),
         ),
@@ -526,13 +531,76 @@ class _MobileLayout extends StatelessWidget {
             mainAxisSize: MainAxisSize.min,
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
-              _TotalOrEmpty(state: state, strings: strings, dense: true),
+              _PinnedGrandTotal(
+                key: kPinnedGrandTotalKey,
+                state: state,
+                strings: strings,
+              ),
               const SizedBox(height: AppSpacing.md),
               actions.stacked(context),
             ],
           ),
         ),
       ],
+    );
+  }
+}
+
+/// The two acts an invoice cannot exist without, held above the scroll.
+///
+/// A hairline beneath rather than a card: this is chrome, not content, and it
+/// has to read as the edge of the scrolling region rather than as the first
+/// thing in it.
+class _PinnedHeader extends ConsumerWidget {
+  const _PinnedHeader({
+    required this.openedAt,
+    required this.state,
+    required this.strings,
+  });
+
+  final DateTime openedAt;
+  final InvoiceEditorState state;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final ThemeData theme = Theme.of(context);
+    final InvoiceEditor editor = ref.read(
+      invoiceEditorProvider(openedAt).notifier,
+    );
+
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: theme.colorScheme.surface,
+        border: Border(
+          bottom: BorderSide(
+            color: theme.colorScheme.outlineVariant,
+            width: AppBorders.hairline,
+          ),
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.only(bottom: AppSpacing.md),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            InvoiceCustomerField(
+              strings: strings,
+              customerId: state.customerId,
+              onPick: () => pickInvoiceCustomer(context, editor),
+              onClear: () => editor.selectCustomer(null),
+            ),
+            const SizedBox(height: AppSpacing.md),
+            InvoiceAddLineActions(
+              strings: strings,
+              onAddFromCatalogue: () =>
+                  addInvoiceLineFromCatalogue(context, ref, openedAt),
+              onAddCustom: () => addCustomInvoiceLine(context, ref, openedAt),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
@@ -673,7 +741,11 @@ class _DesktopLayout extends StatelessWidget {
             crossAxisAlignment: CrossAxisAlignment.end,
             children: <Widget>[
               Expanded(
-                child: _PinnedGrandTotal(state: state, strings: strings),
+                child: _PinnedGrandTotal(
+                  key: kPinnedGrandTotalKey,
+                  state: state,
+                  strings: strings,
+                ),
               ),
               const SizedBox(width: AppSpacing.xxl),
               SizedBox(width: AppLayout.detailPanelWidth, child: actions),
@@ -685,13 +757,34 @@ class _DesktopLayout extends StatelessWidget {
   }
 }
 
+/// Identifies the **pinned** payable figure.
+///
+/// The same label «مبلغ قابل پرداخت» appears twice on a phone since D-096 —
+/// once in the breakdown inside the scroll, and once in the bar — and that is
+/// correct: they are the same figure answering two questions, "what does this
+/// add up to" and "what am I agreeing to". A test that measured whether the bar
+/// stays put has to be able to say which one it means, and matching on the text
+/// cannot. Public and named rather than a bare string at the call site, so the
+/// two ends cannot drift apart.
+const Key kPinnedGrandTotalKey = Key('invoice-editor.pinned-grand-total');
+
 /// The one figure that stays on screen: what this invoice comes to.
 ///
-/// Not the whole breakdown — that is in the panel above, and repeating it in
-/// the bar would be two answers to the same question a scroll apart. Silent
-/// until there is a line, for the reason [_TotalOrEmpty] gives.
+/// Not the whole breakdown — that is in the panel or the scroll above, and
+/// repeating it in the bar would be two answers to the same question a scroll
+/// apart. Silent until there is a line, for the reason [_TotalOrEmpty] gives.
+///
+/// **Used by the phone as well as the desktop since D-096.** The size steps
+/// down where the width does not allow the large style: `AppLayout` records
+/// that an [AmountSize.large] figure needs 376 logical pixels at the top of the
+/// ladder, and a 328-pixel phone does not have them. A figure is never clipped
+/// to keep a type size (D-057).
 class _PinnedGrandTotal extends StatelessWidget {
-  const _PinnedGrandTotal({required this.state, required this.strings});
+  const _PinnedGrandTotal({
+    required this.state,
+    required this.strings,
+    super.key,
+  });
 
   final InvoiceEditorState state;
   final AppStrings strings;
@@ -713,7 +806,7 @@ class _PinnedGrandTotal extends StatelessWidget {
           child: AmountText(
             state.totals.grandTotal,
             unitLabel: strings.unitToman,
-            size: AmountSize.large,
+            size: context.tier.isMobile ? AmountSize.medium : AmountSize.large,
           ),
         ),
       ],

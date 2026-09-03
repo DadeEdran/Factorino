@@ -1354,4 +1354,7 @@ class AppStringsFa extends AppStrings {
   @override
   String get invoiceDocumentExportOpenFailed =>
       'برنامه‌ای برای باز کردن فایل PDF پیدا نشد. فایل ذخیره شده است.';
+
+  @override
+  String get invoiceDetailsCollapsedSummary => 'تاریخ، تخفیف، مالیات و یادداشت';
 }

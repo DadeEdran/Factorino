@@ -16,8 +16,10 @@ A user can:
   Search finds them regardless of which Persian or Arabic digits and letter forms were typed:
   a customer saved as «علي» is found by typing «علی».
 * **Keep products and services** — name, type, unit, price.
-* **Write an invoice** — pick a customer, add lines with fractional quantities, per-line and
-  invoice-level discounts, a tax rate, notes, a Jalali issue date and due date. Save it as a draft,
+* **Write an invoice** — pick a customer, add lines with fractional quantities, an invoice-level
+  discount, a tax rate, notes, a Jalali issue date and due date. A line taken from the catalogue
+  asks only how many; its title and price are the product record's (D-097). A free line — «سطر
+  آزاد» — collects everything, including a per-line discount, because no record stands behind it. Save it as a draft,
   then **issue** it, which allocates its number (`INV-1405-0001`, the prefix being configurable) and snapshots the customer's
   details onto it.
 * **Record payments** against it, in part or in full. Status (`paid` / `partiallyPaid` / `unpaid`)
@@ -88,13 +90,18 @@ user hits it**, which is not the same as severity.
 27 (a draft could not be deleted), 29 (a draft could not be edited), and the issuing gap — all three
 were the same shape: **a repository method with no call site.** See §6b.
 
-**30 (2026-09-03).** «افزودن از فهرست» left the widget tree once the details section was opened,
-~400 px of scrolling away, and a first-time user never found how to add a line at all. Three attempts:
-folding the details (D-054), withdrawing «صدور» from the pinned bar until a line exists (D-086), and
-finally the one that worked — **putting the lines section above the details section on the phone**
-(D-093). The first two bought room; only the third changed the order, and above the fields the
-add-line control cannot leave the first screen because the section that grows is the one underneath
-it.
+**30 (2026-09-03), and it took four attempts — three of which were fixes to the symptom.**
+«افزودن از فهرست» left the widget tree once the details section was opened, ~400 px away, and a
+first-time user never found how to add a line at all. Folding the details (D-054), withdrawing
+«صدور» from the pinned bar (D-086) and putting the lines above the fields (D-093) each measured
+something real and each moved the control somewhere better **inside the scroll** — where the next
+thing added above it moves it again.
+
+**Three fixes to one symptom is the signal that the symptom was not the fault.** The fault was that
+the screen was arranged by what the data model calls things: one of the two acts that create an
+invoice was a control at the foot of a scrolling section, and the other — the customer — was a field
+inside a collapsed section called «جزئیات فاکتور». D-096 pins both above the scroll. Worth reading
+before rearranging any screen in this application by moving one control.
 
 **Nothing known is wrong with any figure.** The money engine, the tax and discount allocation, the
 Jalali period boundaries and the invoice numbering are the most heavily tested parts of the codebase
@@ -314,7 +321,7 @@ a year end and a leap-year Esfand 30.
 
 ```sh
 flutter analyze     # must be clean
-flutter test        # 1269 tests, must all pass
+flutter test        # 1272 tests, must all pass
 ```
 
 Both were clean at handover. Beyond that, a phase is not closed until its layout has been checked at

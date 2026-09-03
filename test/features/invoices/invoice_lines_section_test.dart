@@ -432,6 +432,96 @@ void main() {
     expect(strings.invoiceLineActionRemove, isNotEmpty);
   });
 
+  testWidgets('a line picked from the catalogue asks only how many', (
+    WidgetTester tester,
+  ) async {
+    // **D-097, and it is the same rule D-090 stated one case of.** Whether the
+    // line is new or reopened is not the question; whether a product record
+    // stands behind it is. A price typed over the catalogue's own matches no
+    // record anybody can look up six months later, and the invoice line still
+    // points at the product it no longer agrees with.
+    final ProviderContainer container = await pumpSection(tester);
+    final AppStrings strings = stringsOf(tester, InvoiceLinesSection);
+
+    await tester.tap(find.text(strings.invoiceLineAddFromCatalogue));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(catalogueEntry.name));
+    await tester.pumpAndSettle();
+
+    // The sheet opened on the product, and asks one question.
+    expect(
+      find.widgetWithText(TextFormField, strings.invoiceLineFieldQuantity),
+      findsOneWidget,
+    );
+    for (final String label in <String>[
+      strings.invoiceLineFieldTitle,
+      strings.invoiceLineFieldUnitPrice,
+      strings.productFieldUnit,
+    ]) {
+      expect(
+        find.widgetWithText(TextFormField, label),
+        findsNothing,
+        reason: 'the product record owns «\$label», not this sheet',
+      );
+    }
+    // The values are stated rather than merely withheld, so the user can see
+    // what they are agreeing to add.
+    expect(find.text(catalogueEntry.name), findsWidgets);
+    expect(find.text(strings.invoiceLineFixedNote), findsOneWidget);
+
+    await submitSheet(tester, strings, quantity: '3');
+
+    // The snapshot is the catalogue's, exactly (D-004), and the one figure the
+    // user gave is theirs.
+    final InvoiceLineEntry added = stateOf(container).lines.single;
+    expect(added.quantityMilli, 3000);
+    expect(added.title, catalogueEntry.name);
+    expect(added.unit, catalogueEntry.unit);
+    expect(added.unitPrice, catalogueEntry.price);
+    expect(added.productId, catalogueEntry.id);
+  });
+
+  testWidgets('a free line still collects everything, because nothing backs it', (
+    WidgetTester tester,
+  ) async {
+    // **The exception that keeps the rule honest.** There is no product record
+    // behind «سطر آزاد», so a title and a price typed there duplicate nothing —
+    // they are the only statement of what is being billed. For a workshop
+    // billing one-off jobs this is the ordinary case, not a fallback.
+    final ProviderContainer container = await pumpSection(tester);
+    final AppStrings strings = stringsOf(tester, InvoiceLinesSection);
+
+    await tester.tap(find.text(strings.invoiceLineAddCustom));
+    await tester.pumpAndSettle();
+
+    for (final String label in <String>[
+      strings.invoiceLineFieldTitle,
+      strings.invoiceLineFieldQuantity,
+      strings.invoiceLineFieldUnitPrice,
+      strings.productFieldUnit,
+    ]) {
+      expect(find.widgetWithText(TextFormField, label), findsOneWidget);
+    }
+
+    await submitSheet(
+      tester,
+      strings,
+      title: 'تعمیر موردی',
+      quantity: '1',
+      unit: 'عدد',
+      unitPrice: '450000',
+    );
+
+    final InvoiceLineEntry added = stateOf(container).lines.single;
+    expect(added.title, 'تعمیر موردی');
+    expect(added.unitPrice, Money.toman(450000));
+    expect(
+      added.productId,
+      isNull,
+      reason: 'a free line points at no product, which is why it may be typed',
+    );
+  });
+
   testWidgets('editing a row changes its quantity and nothing else', (
     WidgetTester tester,
   ) async {

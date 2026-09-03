@@ -32,7 +32,21 @@ import 'product_picker_sheet.dart';
 /// [_Warnings] states both figures. Printing the requested amount beside a
 /// total that does not include it is how a document stops reconciling.
 class InvoiceLinesSection extends ConsumerWidget {
-  const InvoiceLinesSection({required this.openedAt, super.key});
+  const InvoiceLinesSection({
+    required this.openedAt,
+    this.showAddActions = true,
+    super.key,
+  });
+
+  /// Whether the two add-a-line buttons sit at the foot of this section.
+  ///
+  /// **False on the phone, where they are pinned above the scroll** (D-096).
+  /// Known issue 30 was three attempts at keeping this control reachable —
+  /// folding the details (D-054), withdrawing «صدور» from the bar (D-086), and
+  /// putting the lines first (D-093) — and each moved it somewhere better while
+  /// leaving it in the scroll. Pinning it ends the question: it cannot scroll
+  /// away from anywhere, on an invoice of any length.
+  final bool showAddActions;
 
   /// The editor's family key. Held by the screen and passed down — never a
   /// fresh `DateTime.now()`, which would address a new, empty editor on every
@@ -55,8 +69,12 @@ class InvoiceLinesSection extends ConsumerWidget {
       // owns that error surface, so this stays quiet rather than showing a
       // second one.
       error: (Object error, StackTrace stack) => const SizedBox.shrink(),
-      data: (InvoiceEditorState state) =>
-          _Lines(openedAt: openedAt, state: state, strings: strings),
+      data: (InvoiceEditorState state) => _Lines(
+        openedAt: openedAt,
+        state: state,
+        strings: strings,
+        showAddActions: showAddActions,
+      ),
     );
   }
 }
@@ -66,11 +84,13 @@ class _Lines extends ConsumerWidget {
     required this.openedAt,
     required this.state,
     required this.strings,
+    required this.showAddActions,
   });
 
   final DateTime openedAt;
   final InvoiceEditorState state;
   final AppStrings strings;
+  final bool showAddActions;
 
   InvoiceEditor _editor(WidgetRef ref) =>
       ref.read(invoiceEditorProvider(openedAt).notifier);
@@ -106,44 +126,21 @@ class _Lines extends ConsumerWidget {
             onRemove: (int index) => _editor(ref).removeLine(index),
             onMove: (int from, int to) => _editor(ref).moveLine(from, to),
           ),
-        const SizedBox(height: AppSpacing.md),
-        _AddActions(
-          strings: strings,
-          onAddFromCatalogue: () => _addFromCatalogue(context, ref),
-          onAddCustom: () => _addCustom(context, ref),
-        ),
+        if (showAddActions) ...<Widget>[
+          const SizedBox(height: AppSpacing.md),
+          InvoiceAddLineActions(
+            strings: strings,
+            onAddFromCatalogue: () =>
+                addInvoiceLineFromCatalogue(context, ref, openedAt),
+            onAddCustom: () => addCustomInvoiceLine(context, ref, openedAt),
+          ),
+        ],
         if (state.hasWarnings) ...<Widget>[
           const SizedBox(height: AppSpacing.lg),
           _Warnings(state: state, strings: strings),
         ],
       ],
     );
-  }
-
-  /// Picks a catalogue entry, then opens the line editor pre-filled from it.
-  ///
-  /// Two steps rather than one because the copy is not the end of it: a picked
-  /// product still needs a quantity, and it may need a discount or a rate. The
-  /// sheet is where the user sees what was copied and can change it before the
-  /// line exists — which is the honest reading of "the price is a snapshot".
-  Future<void> _addFromCatalogue(BuildContext context, WidgetRef ref) async {
-    final Product? product = await showProductPickerSheet(context);
-    if (product == null || !context.mounted) return;
-
-    final InvoiceLineEntry? line = await showInvoiceLineEditorSheet(
-      context,
-      product: product,
-      resolvedTaxRateBp: _inheritedRateBp,
-    );
-    if (line != null) _editor(ref).addLine(line);
-  }
-
-  Future<void> _addCustom(BuildContext context, WidgetRef ref) async {
-    final InvoiceLineEntry? line = await showInvoiceLineEditorSheet(
-      context,
-      resolvedTaxRateBp: _inheritedRateBp,
-    );
-    if (line != null) _editor(ref).addLine(line);
   }
 
   Future<void> _edit(BuildContext context, WidgetRef ref, int index) async {
@@ -159,17 +156,70 @@ class _Lines extends ConsumerWidget {
     );
     if (line != null) _editor(ref).replaceLine(index, line);
   }
+}
 
-  /// What a **new** line would inherit.
-  ///
-  /// Taken from an existing calculated line where there is one, because that is
-  /// the engine's own answer for this invoice under these settings. With no
-  /// lines yet there is nothing calculated to read, and this widget may not
-  /// resolve the chain itself — so it says nothing rather than guessing, and
-  /// the sheet omits the note.
-  int? get _inheritedRateBp => state.totals.lines.isEmpty
-      ? null
-      : state.totals.lines.first.resolvedTaxRateBp;
+/// Picks a catalogue entry, then opens the line editor for its quantity.
+///
+/// **Top-level, because two placements call it** (D-096): the buttons at the
+/// foot of [InvoiceLinesSection] on the wider tiers, and the pinned header on
+/// the phone. One function rather than two closures, so the two entry points
+/// cannot come to add a line differently.
+///
+/// Two steps rather than one, and since D-097 the second step asks one
+/// question: how many. Title, unit and price are the catalogue's, copied in as
+/// a snapshot (D-004) and not offered for editing here — a price typed over the
+/// product's own is a figure that matches no record anybody can look up.
+Future<void> addInvoiceLineFromCatalogue(
+  BuildContext context,
+  WidgetRef ref,
+  DateTime openedAt,
+) async {
+  final Product? product = await showProductPickerSheet(context);
+  if (product == null || !context.mounted) return;
+
+  final InvoiceLineEntry? line = await showInvoiceLineEditorSheet(
+    context,
+    product: product,
+    resolvedTaxRateBp: _inheritedRateBp(ref, openedAt),
+  );
+  if (line == null) return;
+  ref.read(invoiceEditorProvider(openedAt).notifier).addLine(line);
+}
+
+/// Opens the line editor with nothing filled in: the free line.
+///
+/// **The one route that still collects everything**, and it has to. There is no
+/// product record behind a free line, so a title and a price typed here are not
+/// duplicating anything — they are the only statement of what is being billed.
+/// For a workshop billing one-off jobs this is the ordinary case, not a
+/// fallback (D-097).
+Future<void> addCustomInvoiceLine(
+  BuildContext context,
+  WidgetRef ref,
+  DateTime openedAt,
+) async {
+  final InvoiceLineEntry? line = await showInvoiceLineEditorSheet(
+    context,
+    resolvedTaxRateBp: _inheritedRateBp(ref, openedAt),
+  );
+  if (line == null) return;
+  ref.read(invoiceEditorProvider(openedAt).notifier).addLine(line);
+}
+
+/// What a **new** line would inherit.
+///
+/// Taken from an existing calculated line where there is one, because that is
+/// the engine's own answer for this invoice under these settings. With no lines
+/// yet there is nothing calculated to read, and this may not resolve the chain
+/// itself — so it says nothing rather than guessing, and the sheet omits the
+/// note.
+int? _inheritedRateBp(WidgetRef ref, DateTime openedAt) {
+  final InvoiceEditorState? state = ref
+      .read(invoiceEditorProvider(openedAt))
+      .value;
+  final List<CalculatedLine> lines =
+      state?.totals.lines ?? const <CalculatedLine>[];
+  return lines.isEmpty ? null : lines.first.resolvedTaxRateBp;
 }
 
 /// Cards on mobile and tablet: a squeezed table is not a table (§10).
@@ -433,11 +483,17 @@ class _RowActions extends StatelessWidget {
   }
 }
 
-class _AddActions extends StatelessWidget {
-  const _AddActions({
+/// The two ways to add a line.
+///
+/// **Public, because the phone pins it above the scroll** (D-096) while the
+/// wider tiers keep it at the foot of [InvoiceLinesSection]. One widget either
+/// way, so the two placements cannot drift apart.
+class InvoiceAddLineActions extends StatelessWidget {
+  const InvoiceAddLineActions({
     required this.strings,
     required this.onAddFromCatalogue,
     required this.onAddCustom,
+    super.key,
   });
 
   final AppStrings strings;

@@ -1238,5 +1238,9 @@
   "invoiceDocumentExportOpenFailed": "\u0628\u0631\u0646\u0627\u0645\u0647\u200c\u0627\u06cc \u0628\u0631\u0627\u06cc \u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0641\u0627\u06cc\u0644 PDF \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f. \u0641\u0627\u06cc\u0644 \u0630\u062e\u06cc\u0631\u0647 \u0634\u062f\u0647 \u0627\u0633\u062a.",
   "@invoiceDocumentExportOpenFailed": {
     "description": "A device with nothing that reads PDFs is a real device, so this is a fact rather than an error. It repeats that the file was saved, because the user's worry on seeing a failure message is that the save failed too."
+  },
+  "invoiceDetailsCollapsedSummary": "تاریخ، تخفیف، مالیات و یادداشت",
+  "@invoiceDetailsCollapsedSummary": {
+    "description": "The subtitle of the collapsed invoice-details heading on the phone, once the customer picker has moved out of that section and been pinned above the scroll (D-096). It lists what is actually behind the fold, so the heading answers 'what is in here' rather than repeating the customer -- which it used to show only because the fold would otherwise have hidden the one field a save cannot do without, and which is no longer true."
   }
 }

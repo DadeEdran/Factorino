@@ -5,7 +5,34 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-03 (second session) — twelve changes from real use are delivered.** The
+> **Last updated: 2026-09-03 (third pass) — the phone's invoice form was rebuilt around what the
+> user has to do, and the catalogue line asks one question.** The owner tested the previous build
+> and reported the new-invoice screen as still hard to use. It was: **known issue 30 had been closed
+> and the problem had not.**
+>
+> Three separate fixes had aimed at the add-line control — fold the details (D-054), withdraw «صدور»
+> from the bar (D-086), put the lines first (D-093) — and each measured something real, moved it
+> somewhere better, and **left it inside the scroll**. Three fixes to one symptom is the signal that
+> the symptom was not the fault. The fault was that the screen was arranged by what the data model
+> calls things: one of the two acts that create an invoice was a control at the foot of a scrolling
+> section, and the other was a **field inside a collapsed section called «جزئیات فاکتور»** — exactly
+> where nobody would look for the one thing a save cannot do without.
+>
+> **The phone now pins what the user must do and scrolls what varies** (D-096): the customer picker
+> and both add-line buttons above, the lines and the folded detail between, the payable figure and
+> the two actions below. The arrangement was chosen by the owner from three drawn alternatives. What
+> pays for the header is the breakdown leaving the bar for the scroll — D-053's ruling, applied to a
+> second tier.
+>
+> **And a line picked from the catalogue now collects only the quantity** (D-097). D-090 made that
+> true when *reopening* a line and stopped there, which was half a rule: the question is not whether
+> the line is new but whether a product record stands behind it. The free line still collects
+> everything, because nothing backs it. **One capability was removed and is recorded rather than
+> discovered:** a per-line discount can no longer be set on a catalogued line.
+>
+> Both were seen working on the real application at phone width before the build was cut.
+>
+> Earlier the same day: **twelve changes from real use are delivered.** The
 > owner returned from testing with a list of twelve; all twelve are done, `flutter analyze` is
 > clean and **1,269 tests pass** (1,231 before, +38). Two artifacts were produced: a Windows release
 > build and an **arm64 profile APK**.
@@ -344,7 +371,8 @@ Export from the menu:       PASS   phone tier, Redmi (2026-09-02): the menu item
                                    invoice, tapped, the render driven through the real providers,
                                    and D-077's no-seller notice with its «تنظیمات» action shown.
                                    0 layout errors. Gateway faked -- SAF cannot be driven by adb
-flutter test:               PASS   (1269/1269) as of 2026-09-03, after the owner's twelve.
+flutter test:               PASS   (1272/1272) as of 2026-09-03, after the phone's invoice form
+                                   was rebuilt (D-096, D-097). Was 1269 after the owner's twelve.
                                    Was 1230 after the eight phone findings, 1204 at the Phase 7
                                    close, 1194 after (d), 1189 after (c). The +38 are: the v6 theme
                                    migration (7), the back rule (8), the navigation bar (5), the
@@ -371,6 +399,16 @@ Rendered page, date+time:   PASS   read off PIXELS, not source, per HANDOVER §6
                                    «تاریخ صدور ۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» -- digits in order, the
                                    bidi-neutral colon not reordered, the isolates stripped at the
                                    boundary without eating the final glyph (D-070 finding 1)
+Phone tier, seen not argued: PASS  the Windows window narrowed to 420 px -- under the 600 px
+                                   tablet breakpoint, so the real mobile layout -- and driven:
+                                   the pinned header carries the customer picker and both add
+                                   buttons on one line; the lines, the breakdown and the folded
+                                   details scroll under it; the disabled draft button and its
+                                   reason sit in the pinned bar. Picking «پشتیبانی ماهانه» from the
+                                   catalogue opened a sheet with «تعداد» focused and unit, price and
+                                   tax stated beneath it. The five navigation destinations sit at
+                                   one height with «محصولات و خ…» abbreviated, which is D-088 seen
+                                   rather than measured
 Windows, run not just built: PASS  built debug, LAUNCHED, and driven: the v5->v6 migration ran
                                    against the real dev database (12 demo invoices) and the app
                                    opened on it; the redesigned invoice screen, the status tint,
@@ -2195,7 +2233,7 @@ repositories and driving the real sheets.
 
 | 29 | ~~A saved draft cannot be edited~~ | **Resolved 2026-09-03** (D-084). «ویرایش پیش‌نویس» in the draft's menu reopens it at `/invoices/:id/edit`; `save` calls `updateDraft` rather than `create`. The editing id is carried on `InvoiceEditorState` rather than in the provider's family key, so it survives the rebuild a settings change causes — which would otherwise have turned an edit into a second invoice silently. Four tests against the real database. Editing an *issued* invoice remains impossible, which is §6, not a gap. |
 
-| ~~30~~ | **DONE 2026-09-03 (D-093).** Adding a line on the new-invoice screen competed with the pinned bar and left the widget tree once the details section was opened. D-086 took the smallest of its three candidates and measured the rest; **candidate 1 is now taken**: on the phone the lines section sits **above** the details section, which is §10's own rule (a variable-height block above the thing the page is for belongs below it) applied a fourth time. Above the fields, add-line cannot leave the first screen, because the section that grows is the one underneath it. The customer stays visible in the collapsed details heading, so «مشتری را انتخاب کنید» still points at something reachable. Kept in this table struck through rather than deleted, so the history of the three attempts reads straight. |
+| ~~30~~ | **DONE 2026-09-03 — and re-opened and closed properly the same day (D-096).** The D-093 fix below was the third of three that moved this control without taking it out of the scroll; it is now pinned above the scroll and cannot move again. Historical record follows. **(D-093.)** Adding a line on the new-invoice screen competed with the pinned bar and left the widget tree once the details section was opened. D-086 took the smallest of its three candidates and measured the rest; **candidate 1 is now taken**: on the phone the lines section sits **above** the details section, which is §10's own rule (a variable-height block above the thing the page is for belongs below it) applied a fourth time. Above the fields, add-line cannot leave the first screen, because the section that grows is the one underneath it. The customer stays visible in the collapsed details heading, so «مشتری را انتخاب کنید» still points at something reachable. Kept in this table struck through rather than deleted, so the history of the three attempts reads straight. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 

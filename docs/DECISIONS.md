@@ -6401,3 +6401,119 @@ it describes.
 message and watches `SystemNavigator.pop` on the platform channel, so the plumbing is tested rather
 than the callback. But an Android back **gesture** on a real device was not: no phone was connected.
 This is the item on the list most likely to behave differently on hardware.
+
+---
+
+## D-096 — The phone pins what the user must do, and scrolls what varies
+
+**Date:** 2026-09-03. Reported after testing the previous build: *"the ux and ui in phone of the
+factor section is still bad — when you add new factor you should see add customer and add the
+product… it's complicated for people who use it."*
+
+**Known issue 30 was closed and the problem was not.** D-054 folded the details, D-086 withdrew
+«صدور» from the pinned bar, D-093 put the lines above the fields. Each measured something real and
+each moved the add-line control somewhere better — and all three left it **inside the scroll**, where
+the next thing added above it moves it again. Three fixes to one symptom is the signal that the
+symptom was not the fault.
+
+### The fault, stated
+
+Creating an invoice is **two acts**: say who it is for, and say what is on it. Everything else — the
+date, a discount, a rate, a note — is optional detail that most invoices never touch.
+
+Before this, one of those two acts was a control at the foot of a scrolling section, and the other
+was a **field inside a collapsed section called «جزئیات فاکتور»** — which is exactly where a user
+would not look for the one thing without which the invoice cannot be saved. The screen was arranged
+by what the data model calls things, not by what the user has to do.
+
+### The shape
+
+| Region | Holds | Why |
+|---|---|---|
+| **Pinned top** | the customer picker, and both ways to add a line | the two acts. Neither can scroll away from anywhere, on an invoice of any length |
+| **Scroll** | the lines, the breakdown, the folded details | what varies: however many lines there are, and the detail most invoices skip |
+| **Pinned bottom** | the payable figure, «صدور» and «ذخیرهٔ پیش‌نویس» | the decision, and §10's requirement that the figure being agreed to stays visible |
+
+The owner chose this arrangement from three, against drawn alternatives — the other two moved the
+bottom bar into the scroll, or left the two acts as the first things in it.
+
+### What pays for the header
+
+The bar used to carry the **whole reconciliation** — gross, discount, tax, then the payable total —
+roughly 190 logical pixels of a phone's height. The breakdown now sits in the scroll, directly under
+the lines it sums, and the bar carries the payable figure and the two actions.
+
+**This is D-053's ruling applied to a second tier rather than a new idea.** The desktop tier already
+split the summary by purpose for exactly this reason: the *decision* is what must stay in front of
+the user, and the breakdown belongs with the fields that explain it. Keeping both in the phone's bar
+was two answers to one question a scroll apart. The room that frees is approximately what the pinned
+header costs, so the scrolling region is no smaller than before.
+
+`_PinnedGrandTotal` now serves both tiers, stepping down to [AmountSize.medium] on the phone —
+`AppLayout` records that a large figure needs 376 logical pixels at the top of the ladder and a
+328-pixel phone does not have them. A figure is never clipped to keep a type size (D-057).
+
+### Two widgets became public, and two functions with them
+
+`InvoiceCustomerField` and `InvoiceAddLineActions`, plus `pickInvoiceCustomer` and
+`addInvoiceLineFromCatalogue` / `addCustomInvoiceLine`. **One widget and one function per act**, so
+the phone's pinned placement and the wider tiers' inline placement cannot come to look or behave
+differently — the same reason `recordPayment` is top-level on the detail screen (D-060).
+
+The wider tiers are unchanged. They lay the fields out **beside** the lines rather than under them,
+so nothing there is folded and nothing is buried, and a pinned header would be chrome solving a
+problem that tier does not have.
+
+### The collapsed heading stopped repeating the customer
+
+It showed it only because the fold would otherwise have hidden the one field a save cannot do
+without. With the field pinned above, the heading says what is actually behind the fold —
+«تاریخ، تخفیف، مالیات و یادداشت» — so it answers *what is in here* rather than a question that is
+already answered two rows up.
+
+### A test that would have stopped testing
+
+`scrollForm` scrolled until the lines section was visible. The lines are the **first** thing in the
+phone's scroll now, so it would have scrolled nothing, and every "this is pinned" assertion made
+after it would have passed vacuously — §6c's exact failure, in a test written to catch the opposite.
+It now takes a target, and the phone's tests name the details section, which is genuinely at the far
+end.
+
+---
+
+## D-097 — A line from the catalogue collects one thing: how many
+
+**Date:** 2026-09-03. Reported with D-096: *"in add product in same factors tab only thing that i can
+change is quantity because i can change it in product tab — i should not be able to change the price
+or so in factor tab, only quantity."*
+
+D-090 made this true when **reopening** a line and stopped there, so a line picked from the catalogue
+still opened a form with the price in an editable field. That was half a rule.
+
+**The question is not whether the line is new. It is whether a product record stands behind it.** A
+fresh pick and a reopened line are the same situation: the figures belong to a record, and this sheet
+is not where a record is edited. So the sheet's shape is decided by `productId != null`.
+
+* **Catalogue pick, or reopened catalogued line** — the quantity, and the rest stated.
+* **The free line, «سطر آزاد»** — everything, and it has to be. There is no record behind it, so a
+  title and a price typed there duplicate nothing; they are the only statement of what is being
+  billed. For a workshop billing one-off jobs that is the ordinary case, not a fallback.
+
+A reopened **free** line also opens in the full shape, which is the same rule and not an exception:
+there is still no record to take its title and price from, and refusing to let someone correct a typo
+in a line only they ever wrote would be a rule with nothing behind it.
+
+### What it costs, recorded rather than discovered
+
+**A per-line discount can no longer be set on a catalogued line.** The invoice-level discount is
+untouched and still on the form, and a genuinely discounted one-off is what the free line is for —
+but this is a real capability removed, not a tidy-up, and it was asked for in those terms. If it
+turns out a per-line discount on a catalogued item is wanted, the discount control returns to the
+quantity-only shape and nothing else changes.
+
+### Why the rule is worth more than the keystrokes it saves
+
+A price typed over the catalogue's own is a figure that **matches no record anybody can look up**.
+The line still carries `product_id` for traceability (D-004), so the invoice would point at a product
+it no longer agrees with — and six months later, when a customer queries the amount, there is nothing
+to reconcile it against. The catalogue is the one place a price is a fact rather than a keystroke.

@@ -2059,6 +2059,26 @@ party and the page carries a customer's کد ملی. No new permission is reques
 added. The release-signing refusal (D-083) is untouched; the APK produced this session is a **profile**
 build, which needs no keystore.
 
+### The follow-up, the same day
+
+The owner tested the build and reported the new-invoice screen as **still** hard to use. Two further
+changes, and the first of them says something about the three that preceded it:
+
+| What | Where |
+|---|---|
+| The phone pins the customer picker and both add-line buttons above the scroll; the breakdown moves out of the bar to pay for the room | D-096 |
+| A line picked from the catalogue collects only its quantity, as a reopened one already did | D-097 |
+
+**Known issue 30 had been closed and the problem had not.** D-054, D-086 and D-093 each measured
+something real and each moved the add-line control somewhere better inside the scroll. Three fixes to
+one symptom is the signal that the symptom was not the fault, and the fault was that the screen was
+arranged by what the data model calls things rather than by what the user has to do.
+
+**Security note.** Nothing stored, nothing new accepted, no new platform surface. D-097 *narrows*
+what the interface accepts: a catalogued line's price and title can no longer be typed over. One
+capability is removed and recorded — a per-line discount on a catalogued line — which is a product
+decision, not a security one.
+
 **Known issues touched.** 30 is closed. 26 was deliberately not made worse: D-094 put the PDF button
 in the document header rather than the title row, because that row at 328–376 px is 26's first band.
 25 and 28 are unchanged.

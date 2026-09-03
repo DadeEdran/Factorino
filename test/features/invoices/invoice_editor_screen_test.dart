@@ -122,13 +122,19 @@ void main() {
 
   /// Scrolls the form's own scroll view to the end.
   ///
-  /// Needed more often than it looks: the fields alone are taller than a phone,
-  /// and a `ListView` does not build what is off screen — so the lines section
-  /// genuinely does not exist in the tree until the user has scrolled to it,
-  /// which is also true of the user.
-  Future<void> scrollForm(WidgetTester tester) async {
+  /// [target] is what to scroll to, and **the phone has to name one** (D-096).
+  /// The lines are the first thing in that tier's scroll now, so the default
+  /// would move nothing and every "this is pinned" assertion made afterwards
+  /// would be vacuous — a check reporting success about a state nobody is in,
+  /// which is §6c's whole subject. The phone's tests pass the details section,
+  /// which is genuinely at the far end; the wider tiers keep the default,
+  /// where the lines are what sits below the fold.
+  ///
+  /// A `ListView` does not build what is far off screen, so this is also how
+  /// the target gets into the tree at all — equally true of the user.
+  Future<void> scrollForm(WidgetTester tester, {Finder? target}) async {
     await tester.scrollUntilVisible(
-      find.byType(InvoiceLinesSection),
+      target ?? find.byType(InvoiceLinesSection),
       400,
       // The form's own scroll view. On desktop there is a second one behind
       // the summary panel, and it is deliberately *not* this one -- that the
@@ -139,47 +145,107 @@ void main() {
   }
 
   group('the three layouts are three arrangements', () {
-    testWidgets('a phone puts the total and both actions in a pinned bar', (
+    testWidgets('a phone pins the two acts on top and the decision below', (
       WidgetTester tester,
     ) async {
+      // **The shape of the phone screen, stated as three claims** (D-096).
+      // Creating an invoice is two acts -- say who it is for, and say what is
+      // on it -- and both are now above the scroll; the payable figure and the
+      // actions are below it; the lines and the optional details are what
+      // moves between them.
       final ProviderContainer container = await pumpEditor(tester);
       await fill(tester, container);
 
       final AppStrings strings = stringsOf(tester, InvoiceEditorScreen);
 
-      // One column, with the invoice-level fields folded (D-054): the lines —
-      // the substance of the invoice — are what the first screen shows.
-      expect(find.byType(InvoiceDetailsSection), findsOneWidget);
       expect(find.byType(InvoiceLinesSection), findsOneWidget);
       expect(
         find.text(strings.invoiceFieldIssueDate),
         findsNothing,
-        reason: 'the fields start folded on a phone',
+        reason: 'the optional fields start folded on a phone',
       );
-      // But not the customer: it is the one field a save cannot do without, so
-      // the heading states it whether the section is open or shut.
+
+      // Act one, pinned: the customer, as a field rather than as a line of
+      // text inside a collapsed heading.
+      expect(find.byType(InvoiceCustomerField), findsOneWidget);
       expect(find.text(customer.fullName), findsOneWidget);
 
-      final double barTop = tester
-          .getTopLeft(find.byType(InvoiceTotalsSummary))
+      // Act two, pinned: both ways to add a line.
+      expect(find.byType(InvoiceAddLineActions), findsOneWidget);
+      expect(find.text(strings.invoiceLineAddFromCatalogue), findsOneWidget);
+      expect(find.text(strings.invoiceLineAddCustom), findsOneWidget);
+
+      final double customerTop = tester
+          .getTopLeft(find.byType(InvoiceCustomerField))
           .dy;
+      final double addTop = tester
+          .getTopLeft(find.byType(InvoiceAddLineActions))
+          .dy;
+      // **By key, not by label.** The same words appear in the breakdown inside
+      // the scroll; see [kPinnedGrandTotalKey].
+      final double totalTop = tester
+          .getTopLeft(find.byKey(kPinnedGrandTotalKey))
+          .dy;
+
       expect(
         tester.getTopLeft(find.text(strings.invoiceActionIssue)).dy,
-        greaterThan(barTop),
+        greaterThan(totalTop),
         reason: 'the actions sit under the total, inside the same bar',
       );
 
-      // **The claim this layout makes.** Scroll the form and the bar has not
-      // moved: the figure the user is deciding about stays on screen while
-      // they edit the lines that change it, which is the whole reason a phone
-      // gets a bar rather than a panel.
-      await scrollForm(tester);
+      // **The claim this layout makes.** Scroll the form and neither edge has
+      // moved: what the user must do stays on top, what they are agreeing to
+      // stays at the bottom, and only the lines between them travel.
+      await scrollForm(tester, target: find.byType(InvoiceDetailsSection));
+
       expect(
-        tester.getTopLeft(find.byType(InvoiceTotalsSummary)).dy,
-        barTop,
+        tester.getTopLeft(find.byType(InvoiceCustomerField)).dy,
+        customerTop,
+        reason: 'the customer is pinned; if it scrolled it would be a field',
+      );
+      expect(
+        tester.getTopLeft(find.byType(InvoiceAddLineActions)).dy,
+        addTop,
+        reason:
+            'add-line is pinned. Known issue 30 was three attempts at keeping '
+            'this reachable while it was still inside the scroll',
+      );
+      expect(
+        tester.getTopLeft(find.byKey(kPinnedGrandTotalKey)).dy,
+        totalTop,
         reason: 'the bar is pinned; if it scrolled it would be a footer',
       );
     });
+
+    testWidgets(
+      'the breakdown left the bar for the scroll, and pays for the header',
+      (WidgetTester tester) async {
+        // D-053's reasoning, applied to this tier (D-096): the *decision* stays
+        // in front of the user and the breakdown belongs with the lines it sums.
+        // Keeping both in the bar was two answers to one question a scroll
+        // apart, and it was ~190 logical pixels of the phone's height.
+        final ProviderContainer container = await pumpEditor(tester);
+        await fill(tester, container);
+
+        // The breakdown is in the scroll, under the lines.
+        expect(find.byType(InvoiceTotalsSummary), findsOneWidget);
+        expect(
+          tester.getTopLeft(find.byType(InvoiceTotalsSummary)).dy,
+          greaterThan(tester.getTopLeft(find.byType(InvoiceLinesSection)).dy),
+        );
+
+        final double before = tester
+            .getTopLeft(find.byType(InvoiceTotalsSummary))
+            .dy;
+        await scrollForm(tester);
+        expect(
+          tester.getTopLeft(find.byType(InvoiceTotalsSummary)).dy,
+          isNot(before),
+          reason:
+              'the breakdown scrolls now; only the payable figure is pinned',
+        );
+      },
+    );
 
     testWidgets('the phone folds the invoice-level fields, and unfolds them', (
       WidgetTester tester,
@@ -192,14 +258,13 @@ void main() {
       expect(find.text(strings.invoiceFieldIssueDate), findsNothing);
       expect(find.text(strings.invoiceFieldNotes), findsNothing);
 
-      // **Scrolled to first**, which is new and is the point of the reorder
-      // (known issue 30, D-086): the lines section is above the fields on the
-      // phone now, so the details heading is below the first viewport while
-      // the add-line control is inside it. A tap on an off-screen heading
-      // lands on whatever is at those coordinates, which is how this test
-      // would quietly stop testing the fold.
-      await tester.ensureVisible(find.text(strings.invoiceDetailsTitle));
-      await tester.pumpAndSettle();
+      // **Scrolled to first, and it is a real scroll now.** The details
+      // heading sits past the end of the first viewport -- the lines are above
+      // it (D-093) and the two acts are pinned above them (D-096) -- so it is
+      // not even built until the list is scrolled, and a tap on coordinates
+      // where it is not would land on whatever is. That is how this test would
+      // quietly stop testing the fold.
+      await scrollForm(tester, target: find.byType(InvoiceDetailsSection));
 
       // The whole heading is the target, not the chevron alone.
       await tester.tap(find.text(strings.invoiceDetailsTitle));
@@ -213,20 +278,40 @@ void main() {
       expect(find.text(strings.invoiceFieldIssueDate), findsNothing);
     });
 
-    testWidgets('folded with no customer, the heading says so', (
+    testWidgets('with no customer, the pinned field says so and is reachable', (
       WidgetTester tester,
     ) async {
-      // The fold may never hide the state of the one field a save needs. With
-      // no customer the heading says «مشتری انتخاب نشده», so the notice under
-      // the disabled buttons points at something the user can see and reach.
+      // **The rule this replaces an older test with, unchanged in substance**
+      // (D-096). The state of the one field a save cannot do without must
+      // never be hidden -- so the notice under the disabled buttons always
+      // points at something the user can see and reach.
+      //
+      // It used to be met by the collapsed heading repeating the customer,
+      // because the field was folded inside «جزئیات فاکتور». Now the field
+      // itself is pinned above the scroll, which meets the same rule more
+      // directly: the thing the notice points at is the control that fixes it.
       await pumpEditor(tester);
       final AppStrings strings = stringsOf(tester, InvoiceEditorScreen);
 
+      expect(find.byType(InvoiceCustomerField), findsOneWidget);
+      expect(find.text(strings.invoiceFieldCustomerEmpty), findsOneWidget);
+      expect(find.text(strings.invoiceIncompleteCustomer), findsOneWidget);
+
+      // Reachable without scrolling: the whole point of pinning it.
+      final Rect field = tester.getRect(find.byType(InvoiceCustomerField));
+      expect(
+        field.bottom,
+        lessThan(kMobileSize.height),
+        reason: 'the customer picker is inside the first screen',
+      );
+
+      // And the heading below now says what is actually behind the fold,
+      // rather than repeating a customer it no longer owns.
+      expect(find.text(strings.invoiceDetailsCollapsedSummary), findsOneWidget);
       expect(
         find.text(strings.invoiceDetailsCollapsedNoCustomer),
-        findsOneWidget,
+        findsNothing,
       );
-      expect(find.text(strings.invoiceIncompleteCustomer), findsOneWidget);
     });
 
     testWidgets('the wider tiers do not fold anything', (

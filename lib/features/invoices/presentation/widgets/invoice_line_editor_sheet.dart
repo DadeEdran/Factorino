@@ -42,11 +42,12 @@ enum _TaxMode { inherit, custom }
 /// typed input and hands it over. `single_calculation_path_test.dart` fails the
 /// build if that ever stops being true.
 ///
-/// ## Adding a line and editing one are different jobs (D-090)
+/// ## A line that comes from the catalogue collects one thing: how many
 ///
-/// **On an existing line, the quantity is the only editable field.** Title,
-/// unit, unit price, discount and tax rate are shown as the line states them
-/// and cannot be typed into.
+/// **Whenever the line has a product behind it — picked from the catalogue now,
+/// or reopened later — the quantity is the only editable field** (D-090,
+/// widened by D-097). Title, unit, unit price, discount and tax rate are shown
+/// as the product or the line states them, and cannot be typed into.
 ///
 /// The reason is not that editing them is hard, it is that it is the wrong
 /// place. A price on an invoice line is a **snapshot of the catalogue** at the
@@ -58,15 +59,28 @@ enum _TaxMode { inherit, custom }
 /// price is a fact rather than a keystroke — and a genuinely one-off amount is
 /// what «سطر آزاد» is for, on a new line.
 ///
-/// So the sheet keeps both jobs and narrows one of them. Adding a line — with
-/// [product] or freehand — is unchanged and collects everything. Reopening a
-/// line collects the quantity, which is the field that legitimately changes
-/// after the fact: three of something instead of two is the same agreement at
-/// a different size, and it is what a user actually reopens a line to do.
+/// So the sheet has two shapes, and which one it takes is decided by **whether
+/// a product record stands behind the line** rather than by whether the line
+/// already exists:
 ///
-/// A line that is wrong in any other way is removed and added again, which is
-/// two taps and leaves nothing behind that claims to be a snapshot of
-/// something it is not.
+/// * **[product] picked, or [existing] reopened** — the quantity, and the rest
+///   stated. Three of something instead of two is the same agreement at a
+///   different size, and it is the only thing that legitimately changes about a
+///   catalogued item after it has been chosen.
+/// * **Neither — the free line** — everything, because there is no record to
+///   take it from. A title and a price typed there duplicate nothing; they are
+///   the only statement of what is being billed, and for a workshop billing
+///   one-off jobs that is the ordinary case rather than a fallback.
+///
+/// **What this costs, stated rather than discovered:** a per-line discount can
+/// no longer be set on a catalogued line. The invoice-level discount is
+/// unaffected and is still on the form, and a genuinely discounted one-off is
+/// what «سطر آزاد» is for. That is the trade D-097 records; it was asked for in
+/// those terms.
+///
+/// A line wrong in any other way is removed and added again, which is two taps
+/// and leaves nothing behind that claims to be a snapshot of something it is
+/// not.
 Future<InvoiceLineEntry?> showInvoiceLineEditorSheet(
   BuildContext context, {
   InvoiceLineEntry? existing,
@@ -200,9 +214,13 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
       // -- it stops the shape being a habit that the next sheet can miss, which
       // is exactly what the payment sheet did in (c) (known issue 21, D-062).
       action: FilledButton(onPressed: _submit, child: Text(strings.actionSave)),
-      children: widget.existing == null
-          ? _composeFields(context, strings)
-          : _quantityOnlyFields(context, strings),
+      // **Decided by whether a product stands behind the line**, not by whether
+      // the line is new (D-097). A catalogue pick and a reopened line are the
+      // same situation: the figures belong to a record, and this sheet is not
+      // where a record is edited.
+      children: _hasProductBehindIt
+          ? _quantityOnlyFields(context, strings)
+          : _composeFields(context, strings),
     );
   }
 
@@ -336,54 +354,72 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     ];
   }
 
-  /// An existing line: the quantity, and the rest as the line states it.
+  /// Whether a catalogue record stands behind this line.
+  ///
+  /// True for a fresh pick and for a reopened line alike. A reopened **free**
+  /// line has no `productId`, so it opens in the full shape — which is right:
+  /// there is still no record to take its title and price from, and refusing to
+  /// let the user correct a typo in a line only they ever wrote would be a rule
+  /// with nothing behind it.
+  bool get _hasProductBehindIt => _productId != null;
+
+  /// A line with a record behind it: the quantity, and the rest as stated.
   ///
   /// **The controllers still hold every value**, untouched since [initState],
-  /// so [_submit] builds the same entry it always did -- the line comes back
-  /// with its title, unit, price, discount and rate exactly as they went in.
-  /// Not collecting a field and not carrying it are different things, and only
-  /// the first is intended here.
+  /// so [_submit] builds the same entry it always did — the line carries its
+  /// title, unit, price, discount and rate exactly as they went in. Not
+  /// collecting a field and not carrying it are different things, and only the
+  /// first is intended here.
   ///
   /// The fields that are gone are not disabled inputs either. A greyed-out text
   /// field is an invitation the screen then refuses (D-021's rule, one level
   /// down); a stated value with a sentence explaining it is the same
   /// information without the invitation.
   List<Widget> _quantityOnlyFields(BuildContext context, AppStrings strings) {
-    final InvoiceLineEntry existing = widget.existing!;
     final ThemeData theme = Theme.of(context);
+    final InvoiceLineEntry? existing = widget.existing;
 
-    final int? discountPercent = existing.discountPercentBp;
+    // Read from the controllers rather than from `existing`, because this shape
+    // now serves a fresh catalogue pick too — where there is no entry yet and
+    // the values came from the product (D-097).
+    final String title = _title.text;
+    final String unit = _unit.text;
+    final int? unitPriceToman = tryParseIntInput(_unitPrice.text);
+
+    final int? discountPercent = existing?.discountPercentBp;
     final bool hasDiscount =
-        discountPercent != null || existing.discount != Money.zero;
+        discountPercent != null ||
+        (existing != null && existing.discount != Money.zero);
 
     return <Widget>[
       // The title identifies the line rather than labelling a field, so it
       // takes a heading weight and carries no label of its own.
-      Text(existing.title, style: theme.textTheme.titleMedium),
+      Text(title, style: theme.textTheme.titleMedium),
       const SizedBox(height: AppSpacing.lg),
       _quantityField(strings),
       const SizedBox(height: AppSpacing.xl),
-      _FixedValue(label: strings.productFieldUnit, value: existing.unit),
-      _FixedValue(
-        label: strings.invoiceLineFieldUnitPrice,
-        value: strings.amountWithUnit(
-          formatGroupedPersian(existing.unitPrice.toman),
-          strings.unitToman,
+      _FixedValue(label: strings.productFieldUnit, value: unit),
+      if (unitPriceToman != null)
+        _FixedValue(
+          label: strings.invoiceLineFieldUnitPrice,
+          value: strings.amountWithUnit(
+            formatGroupedPersian(unitPriceToman),
+            strings.unitToman,
+          ),
         ),
-      ),
       if (hasDiscount)
         _FixedValue(
           label: strings.invoiceLineDiscountSection,
           value: discountPercent != null
               ? formatPercentFromBasisPoints(discountPercent)
               : strings.amountWithUnit(
-                  formatGroupedPersian(existing.discount.toman),
+                  formatGroupedPersian(existing!.discount.toman),
                   strings.unitToman,
                 ),
         ),
       _FixedValue(
         label: strings.invoiceLineTaxSection,
-        value: switch ((existing.taxRateBp, widget.resolvedTaxRateBp)) {
+        value: switch ((existing?.taxRateBp, widget.resolvedTaxRateBp)) {
           (final int rate, _) => formatPercentFromBasisPoints(rate),
           // Inheriting: say which rate it inherits, exactly as the compose
           // form does, rather than printing the word "default" on its own.
@@ -406,8 +442,8 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
 
   /// The one field both shapes share.
   ///
-  /// Autofocused when it is the only field, which is the state the user opened
-  /// the sheet to change; on a new line the title comes first and takes it.
+  /// Autofocused when it is the only field, which is the whole reason the sheet
+  /// opened; on a free line the title comes first and takes it.
   Widget _quantityField(AppStrings strings) {
     return AppTextField(
       controller: _quantity,
@@ -417,7 +453,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
       // and this one is far past any real quantity.
       maxLength: AmountLimits.tomanDigits,
       helperText: strings.invoiceLineFieldQuantityHelper,
-      autofocus: widget.existing != null,
+      autofocus: _hasProductBehindIt,
       // NOT digitsOnly: the decimal separator is
       // meaningful here (section 4 allows three places), and a
       // formatter that ate it would make a fractional

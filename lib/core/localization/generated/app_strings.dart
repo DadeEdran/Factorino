@@ -2525,6 +2525,12 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'برنامه‌ای برای باز کردن فایل PDF پیدا نشد. فایل ذخیره شده است.'**
   String get invoiceDocumentExportOpenFailed;
+
+  /// The subtitle of the collapsed invoice-details heading on the phone, once the customer picker has moved out of that section and been pinned above the scroll (D-096). It lists what is actually behind the fold, so the heading answers 'what is in here' rather than repeating the customer -- which it used to show only because the fold would otherwise have hidden the one field a save cannot do without, and which is no longer true.
+  ///
+  /// In fa, this message translates to:
+  /// **'تاریخ، تخفیف، مالیات و یادداشت'**
+  String get invoiceDetailsCollapsedSummary;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {

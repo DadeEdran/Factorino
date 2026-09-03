@@ -33,6 +33,7 @@ class InvoiceDetailsSection extends ConsumerStatefulWidget {
   const InvoiceDetailsSection({
     required this.openedAt,
     this.collapsible = false,
+    this.showCustomer = true,
     super.key,
   });
 
@@ -53,6 +54,19 @@ class InvoiceDetailsSection extends ConsumerStatefulWidget {
   /// that hid a required field would make the «مشتری را انتخاب کنید» notice
   /// point at something the user cannot see.
   final bool collapsible;
+
+  /// Whether the customer picker is one of these fields.
+  ///
+  /// **False on the phone, where it is pinned above instead** (D-096). The
+  /// customer is not an invoice *detail* in the sense the rest of this section
+  /// is — a date, a discount, a rate and a note are things an invoice may or
+  /// may not carry, and the customer is the one field without which there is no
+  /// invoice at all. Folding it behind a heading, alongside four optional
+  /// fields, is what made picking one feel like an advanced step.
+  ///
+  /// The two wider tiers keep it here: they lay the fields out beside the lines
+  /// rather than under them, so nothing is folded and nothing is buried.
+  final bool showCustomer;
 
   @override
   ConsumerState<InvoiceDetailsSection> createState() =>
@@ -124,20 +138,26 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
           _DetailsHeader(
             strings: strings,
             expanded: _expanded,
-            customerId: state.customerId,
+            // Null once the picker is pinned above: the heading showed the
+            // customer only because the fold would otherwise have hidden the
+            // one field a save cannot do without, and that is no longer true.
+            customerId: widget.showCustomer ? state.customerId : null,
+            showCustomer: widget.showCustomer,
             onTap: () => setState(() => _expanded = !_expanded),
           )
         else
           SectionHeader(title: strings.invoiceDetailsTitle),
         if (showFields) ...<Widget>[
           const SizedBox(height: AppSpacing.md),
-          _CustomerField(
-            strings: strings,
-            customerId: state.customerId,
-            onPick: () => _pickCustomer(context),
-            onClear: () => _editor.selectCustomer(null),
-          ),
-          const SizedBox(height: AppSpacing.lg),
+          if (widget.showCustomer) ...<Widget>[
+            InvoiceCustomerField(
+              strings: strings,
+              customerId: state.customerId,
+              onPick: () => pickInvoiceCustomer(context, _editor),
+              onClear: () => _editor.selectCustomer(null),
+            ),
+            const SizedBox(height: AppSpacing.lg),
+          ],
           JalaliDateField(
             label: strings.invoiceFieldIssueDate,
             value: state.issueDate,
@@ -298,11 +318,6 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
     _editor.setTaxRate(bp);
   }
 
-  Future<void> _pickCustomer(BuildContext context) async {
-    final Customer? customer = await showCustomerPickerSheet(context);
-    if (customer != null) _editor.selectCustomer(customer.id);
-  }
-
   Future<void> _pickIssueDate(
     BuildContext context,
     InvoiceEditorState state,
@@ -334,12 +349,32 @@ class _InvoiceDetailsSectionState extends ConsumerState<InvoiceDetailsSection> {
 ///
 /// A dropdown over thousands of customers is unusable and would have to load
 /// them all; the picker sheet searches at the query level instead (§13).
-class _CustomerField extends ConsumerWidget {
-  const _CustomerField({
+/// Opens the customer picker and records what it returns.
+///
+/// **Top-level, because two placements call it** (D-096): the field inside
+/// [InvoiceDetailsSection] on the wider tiers, and the pinned header on the
+/// phone. One function rather than two closures, so the two entry points cannot
+/// come to select a customer differently.
+Future<void> pickInvoiceCustomer(
+  BuildContext context,
+  InvoiceEditor editor,
+) async {
+  final Customer? customer = await showCustomerPickerSheet(context);
+  if (customer != null) editor.selectCustomer(customer.id);
+}
+
+/// The customer picker.
+///
+/// **Public, because the phone pins it above the scroll** (D-096) while the
+/// wider tiers keep it inside [InvoiceDetailsSection]. One widget either way, so
+/// the two placements cannot come to look or behave differently.
+class InvoiceCustomerField extends ConsumerWidget {
+  const InvoiceCustomerField({
     required this.strings,
     required this.customerId,
     required this.onPick,
     required this.onClear,
+    super.key,
   });
 
   final AppStrings strings;
@@ -419,12 +454,19 @@ class _DetailsHeader extends StatelessWidget {
     required this.strings,
     required this.expanded,
     required this.customerId,
+    required this.showCustomer,
     required this.onTap,
   });
 
   final AppStrings strings;
   final bool expanded;
   final String? customerId;
+
+  /// Whether this section owns the customer at all. When false the heading says
+  /// what the section holds rather than who the invoice is for, because the
+  /// answer to the second question is pinned above it.
+  final bool showCustomer;
+
   final VoidCallback onTap;
 
   @override
@@ -451,7 +493,14 @@ class _DetailsHeader extends StatelessWidget {
                       style: theme.textTheme.titleMedium,
                     ),
                     const SizedBox(height: AppSpacing.xxs),
-                    if (id == null)
+                    if (!showCustomer)
+                      Text(
+                        strings.invoiceDetailsCollapsedSummary,
+                        style: theme.textTheme.bodySmall?.copyWith(
+                          color: theme.colorScheme.onSurfaceVariant,
+                        ),
+                      )
+                    else if (id == null)
                       Text(
                         strings.invoiceDetailsCollapsedNoCustomer,
                         style: theme.textTheme.bodySmall?.copyWith(
