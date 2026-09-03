@@ -7,6 +7,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/pdf/document_typeface.dart';
 import '../../../core/security/app_log.dart';
+import '../../../data/backup/backup_file_gateway.dart';
 import '../../../data/models/app_settings.dart';
 import '../../../data/models/invoice_detail.dart';
 import '../../../data/providers.dart';
@@ -33,9 +34,18 @@ sealed class InvoiceExportOutcome {
 /// settings could change between the render and the message, and the sentence
 /// the user reads has to be true of the file they now hold (D-077).
 class InvoiceExportSaved extends InvoiceExportOutcome {
-  const InvoiceExportSaved({required this.hadSeller});
+  const InvoiceExportSaved({required this.hadSeller, required this.file});
 
   final bool hadSeller;
+
+  /// Where the user put it, so the message about it can offer to open it.
+  ///
+  /// Carried rather than re-derived for the same reason [hadSeller] is: it is a
+  /// fact about **this** delivery. There is no second way to find it out — on
+  /// Android the destination is a SAF URI that exists nowhere else — and a
+  /// screen that had to ask the gateway again would be asking a question the
+  /// save dialog answered and threw away.
+  final DeliveredFile file;
 }
 
 /// The user closed the save dialog. Nothing to report and nothing to fix.
@@ -158,13 +168,16 @@ class InvoiceDocumentController extends _$InvoiceDocumentController {
       working = await _workingFile();
       await working.writeAsBytes(bytes, flush: true);
 
-      final bool delivered = await ref
+      final DeliveredFile? delivered = await ref
           .read(backupFileGatewayProvider)
           .deliver(source: working, suggestedName: _fileNameFor(detail));
 
-      if (!delivered) return const InvoiceExportCancelled();
+      if (delivered == null) return const InvoiceExportCancelled();
 
-      return InvoiceExportSaved(hadSeller: view.seller != null);
+      return InvoiceExportSaved(
+        hadSeller: view.seller != null,
+        file: delivered,
+      );
     } on Object catch (error, stackTrace) {
       // No invoice number, no customer, no amount, no path: §7 keeps all of it
       // out of logs. The scope is enough to find the call site.
@@ -192,6 +205,18 @@ class InvoiceDocumentController extends _$InvoiceDocumentController {
     final String? number = detail.invoice.number;
     return '${number ?? 'draft'}.pdf';
   }
+
+  /// Asks the platform to open a document this controller delivered.
+  ///
+  /// **Here rather than in the widget**, because it is the data layer that
+  /// [DeliveredFile] belongs to and §3 keeps a screen away from it — the same
+  /// reason the export itself is here. The screen holds the outcome and taps
+  /// the action; what a content URI is remains this side of the boundary.
+  ///
+  /// Returns whether it opened. A phone with nothing that reads PDFs is a real
+  /// phone, and the screen says so in Persian rather than failing.
+  Future<bool> openSaved(DeliveredFile file) =>
+      ref.read(savedFileOpenerProvider).open(file);
 
   Future<File> _workingFile() async {
     final Directory support = await getApplicationSupportDirectory();

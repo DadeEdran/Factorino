@@ -211,6 +211,53 @@ void main() {
     });
   });
 
+  group('the issue date carries its time (D-092)', () {
+    test('the value is the date and the time, as one answer', () {
+      // «۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» is one answer to "when was this issued",
+      // so it is one value with one label -- not a second labelled field for
+      // half of it.
+      final InvoiceDocumentView view = viewOf(_detail(toman: 1000000));
+
+      expect(view.issueDate.value.value, contains('۲ شهریور ۱۴۰۵'));
+      expect(view.issueDate.value.value, contains('۱۰:۰۰'));
+    });
+
+    test('the isolates the screen adds do not reach the renderer', () {
+      // **The reason this is safe rather than reckless.** `formatJalaliTime`
+      // wraps its result in U+2068/U+2069, which is right on screen -- a colon
+      // is bidi-neutral and would otherwise reorder -- and fatal on the page,
+      // where Vazirmatn has no glyph for either and the shaper drops the last
+      // character of the run containing them (D-070 finding 1). The boundary
+      // strips them, so the one formatter serves both surfaces.
+      final InvoiceDocumentView view = viewOf(_detail(toman: 1000000));
+
+      expect(view.issueDate.value.value, isNot(contains(kFirstStrongIsolate)));
+      expect(
+        view.issueDate.value.value,
+        isNot(contains(kPopDirectionalIsolate)),
+      );
+      // And nothing was eaten on the way: the last character of the run is
+      // still the last digit of the time.
+      expect(view.issueDate.value.value.endsWith('۰۰'), isTrue);
+    });
+
+    test('a due date is a day and is given no time', () {
+      // A due date is the day money is expected by, not a moment. «۰۰:۰۰»
+      // beside it would be an invention on a document a customer keeps.
+      //
+      // The fixture is asked for one explicitly, because it has none by
+      // default -- otherwise this would be a check running in a state the
+      // claim is not about, which is §6c's whole subject.
+      final InvoiceDocumentView view = viewOf(
+        _detail(toman: 1000000, withDueDate: true),
+      );
+
+      expect(view.dueDate, isNotNull);
+      expect(view.dueDate!.value.value, isNot(contains(':')));
+      expect(view.issueDate.value.value, contains(':'));
+    });
+  });
+
   group('rule 2 -- a label and a value are never one string', () {
     test('no value contains its own label', () {
       final InvoiceDocumentView view = viewOf(_detail(toman: 1000000));
@@ -501,6 +548,7 @@ InvoiceDetail _detail({
   bool renamedSince = false,
   bool lineGrossRecorded = true,
   int discountToman = 0,
+  bool withDueDate = false,
 }) {
   final DateTime issued = DateTime.utc(2026, 8, 24, 6, 30);
   final Money grand = Money.toman(toman);
@@ -528,6 +576,7 @@ InvoiceDetail _detail({
       numberSequence: status == InvoiceStatus.draft ? null : 1,
       customerId: 'c1',
       issueDate: issued,
+      dueDate: withDueDate ? issued.add(const Duration(days: 30)) : null,
       status: status,
       discount: Money.toman(discountToman),
       grossTotal: grand,

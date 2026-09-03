@@ -1,10 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import 'core/localization/generated/app_strings.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'data/models/app_settings.dart';
+import 'data/models/app_theme_mode.dart';
+import 'features/settings/application/settings_providers.dart';
 
 /// The application root.
 ///
@@ -19,22 +23,40 @@ import 'core/theme/app_theme.dart';
 ///   [Directionality] below makes it true for anything that renders outside
 ///   that subtree — overlays, dialogs and route transitions built from the
 ///   navigator — so no widget ever has to fight direction locally.
-/// * **`themeMode` follows the system.** Both themes are designed (§10), so
-///   either is a first-class result rather than a fallback.
-class FactorinoApp extends StatefulWidget {
+/// * **`themeMode` is the user's, and follows the system until they say
+///   otherwise** (D-087). Both themes are designed (§10), so either is a
+///   first-class result rather than a fallback — and so is following the
+///   device, which is why that is a stored value rather than the absence of
+///   one. This is the only screen-level widget that watches the settings row
+///   for it; the setting is written by the settings screen and reaches here as
+///   a live query, so the theme changes under the user's finger.
+///
+///   **While the row is loading, the system's choice stands.** A first frame
+///   painted in the wrong theme and corrected a frame later is a flash on every
+///   cold start, and the system value is what the application did for its whole
+///   life before this setting existed — so it is the honest default rather than
+///   a guess.
+class FactorinoApp extends ConsumerStatefulWidget {
   const FactorinoApp({super.key});
 
   @override
-  State<FactorinoApp> createState() => _FactorinoAppState();
+  ConsumerState<FactorinoApp> createState() => _FactorinoAppState();
 }
 
-class _FactorinoAppState extends State<FactorinoApp> {
+class _FactorinoAppState extends ConsumerState<FactorinoApp> {
   /// Built once and kept: a router rebuilt on every frame would discard the
   /// navigation state it exists to hold.
   late final GoRouter _router = createRouter();
 
   @override
   Widget build(BuildContext context) {
+    final AppThemeMode mode = ref
+        .watch(appSettingsProvider)
+        .maybeWhen(
+          data: (AppSettings settings) => settings.themeMode,
+          orElse: () => AppThemeMode.system,
+        );
+
     return MaterialApp.router(
       onGenerateTitle: (BuildContext context) =>
           AppStrings.of(context).appTitle,
@@ -42,7 +64,11 @@ class _FactorinoAppState extends State<FactorinoApp> {
 
       theme: AppTheme.light,
       darkTheme: AppTheme.dark,
-      themeMode: ThemeMode.system,
+      themeMode: switch (mode) {
+        AppThemeMode.system => ThemeMode.system,
+        AppThemeMode.light => ThemeMode.light,
+        AppThemeMode.dark => ThemeMode.dark,
+      },
 
       locale: const Locale('fa'),
       supportedLocales: AppStrings.supportedLocales,

@@ -54,16 +54,18 @@ void main() {
     // No `await tester.pumpAndSettle()` around this: the picker is another
     // activity, and settling would time out waiting for frames that are not
     // being produced while it is in front.
-    final bool delivered = await gateway.deliver(
+    final DeliveredFile? delivered = await gateway.deliver(
       source: source,
       suggestedName: 'factorino-probe.$kBackupFileExtension',
     );
 
-    debugPrint('DIALOG-CLOSED delivered=$delivered');
+    // The handle itself is never printed: it is a path or a SAF URI, and §7
+    // keeps both out of any output. Whether there is one is the whole result.
+    debugPrint('DIALOG-CLOSED delivered=${delivered != null}');
 
     expect(
       delivered,
-      isFalse,
+      isNull,
       reason:
           'the host sent BACK, so this must report a cancellation -- if it is '
           'true, something saved without the user choosing a location',

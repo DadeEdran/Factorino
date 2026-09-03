@@ -12,7 +12,6 @@ import '../../features/products/presentation/product_form_screen.dart';
 import '../../features/products/presentation/products_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
 import '../responsive/adaptive_scaffold.dart';
-import '../theme/app_dimensions.dart';
 import 'destinations.dart';
 
 /// The router (D-009).
@@ -148,7 +147,24 @@ GoRouter createRouter() {
   );
 }
 
-/// One destination's branch, with a transition that is subtle and fast (§10).
+/// One destination's branch.
+///
+/// **No page transition, and that is the fix for the flash the owner saw when
+/// switching tabs** (D-089). A branch root inside a
+/// [StatefulShellRoute.indexedStack] is not pushed over anything: the shell
+/// keeps every visited branch mounted and swaps which one is painted, so a
+/// destination switch is an index change and not a navigation. Giving those
+/// roots a `CustomTransitionPage` meant the incoming destination was drawn at
+/// **zero opacity on its first frame** and faded up over 220 ms, while the
+/// stack it sits in was already showing the new index — one frame of a page
+/// that is not yet there, over a shell that has already moved, which is the
+/// glitch. It is invisible on a desktop at 120 Hz and unmissable on a phone.
+///
+/// The transition was never buying anything here either. Bottom-bar and rail
+/// navigation is not a push and every platform renders it instantly; the fade
+/// existed because `_branch` was written before there were sub-routes to move
+/// between. The sub-routes — `/invoices/:id`, the forms — keep the platform's
+/// own transition, which is where a transition actually says something.
 StatefulShellBranch _branch(
   AppDestination destination,
   Widget screen, {
@@ -159,42 +175,8 @@ StatefulShellBranch _branch(
       GoRoute(
         path: destination.path,
         routes: children,
-        pageBuilder: (BuildContext context, GoRouterState state) {
-          return CustomTransitionPage<void>(
-            key: state.pageKey,
-            transitionDuration: AppDuration.medium,
-            reverseTransitionDuration: AppDuration.fast,
-            child: screen,
-            transitionsBuilder:
-                (
-                  BuildContext context,
-                  Animation<double> animation,
-                  Animation<double> secondary,
-                  Widget child,
-                ) {
-                  // A short fade with a few pixels of rise. No horizontal
-                  // slide: in an RTL layout a slide has to be mirrored to feel
-                  // right, and a vertical motion sidesteps the question while
-                  // reading as "this replaced that" just as clearly.
-                  return FadeTransition(
-                    opacity: animation,
-                    child: SlideTransition(
-                      position:
-                          Tween<Offset>(
-                            begin: const Offset(0, 0.012),
-                            end: Offset.zero,
-                          ).animate(
-                            CurvedAnimation(
-                              parent: animation,
-                              curve: Curves.easeOutCubic,
-                            ),
-                          ),
-                      child: child,
-                    ),
-                  );
-                },
-          );
-        },
+        pageBuilder: (BuildContext context, GoRouterState state) =>
+            NoTransitionPage<void>(key: state.pageKey, child: screen),
       ),
     ],
   );

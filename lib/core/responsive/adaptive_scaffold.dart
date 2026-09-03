@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../localization/generated/app_strings.dart';
+import '../router/back_policy.dart';
 import '../router/destinations.dart';
 import '../theme/app_dimensions.dart';
 import '../theme/app_typography.dart';
@@ -20,7 +21,7 @@ import 'breakpoints.dart';
 /// its children against the ambient `Directionality`, so the first child is the
 /// leading edge, which in Persian is the right. Positioning it explicitly would
 /// be fighting the framework, which §9 warns against.
-class AdaptiveScaffold extends StatelessWidget {
+class AdaptiveScaffold extends StatefulWidget {
   const AdaptiveScaffold({
     required this.destination,
     required this.onDestinationSelected,
@@ -33,22 +34,41 @@ class AdaptiveScaffold extends StatelessWidget {
   final Widget child;
 
   @override
+  State<AdaptiveScaffold> createState() => _AdaptiveScaffoldState();
+}
+
+class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
+  /// Held by the shell rather than rebuilt, so a screen's claim survives the
+  /// rebuilds a destination switch causes. See [BackClaims].
+  final BackClaims _backClaims = BackClaims();
+
+  @override
   Widget build(BuildContext context) {
     final LayoutTier tier = context.tier;
 
-    return switch (tier) {
+    final Widget shell = switch (tier) {
       LayoutTier.mobile => _MobileShell(
-        destination: destination,
-        onDestinationSelected: onDestinationSelected,
-        child: child,
+        destination: widget.destination,
+        onDestinationSelected: widget.onDestinationSelected,
+        child: widget.child,
       ),
       LayoutTier.tablet || LayoutTier.desktop => _RailShell(
-        destination: destination,
-        onDestinationSelected: onDestinationSelected,
+        destination: widget.destination,
+        onDestinationSelected: widget.onDestinationSelected,
         extended: tier.isDesktop,
-        child: child,
+        child: widget.child,
       ),
     };
+
+    // **The only `BackButtonListener` in the application**, wrapping the whole
+    // shell so every destination and every page inside one is covered by the
+    // same rule. See [AppBackPolicy] for why there is exactly one.
+    return AppBackPolicy(
+      claims: _backClaims,
+      isHome: widget.destination == AppDestination.dashboard,
+      onGoHome: () => widget.onDestinationSelected(AppDestination.dashboard),
+      child: shell,
+    );
   }
 }
 
@@ -79,16 +99,54 @@ class _MobileShell extends StatelessWidget {
             ),
           ),
         ),
+        // **Every destination's label is one line, and that is a fix rather
+        // than a preference.** `NavigationDestination.label` is a `String`
+        // that Material renders as a bare `Text` with no line limit, and
+        // «محصولات و خدمات» is long enough to wrap where the other four do
+        // not. That is not merely untidy: the destination's icon and label are
+        // placed by `_NavigationDestinationLayoutDelegate`, whose selected-state
+        // icon offset is `halfHeight(icon) + halfHeight(label)` — so the one
+        // two-line label lifted its icon half a line above the other four and
+        // made that button visibly a different size, which is exactly what was
+        // reported from the phone.
+        //
+        // `Text` falls back to the ambient `DefaultTextStyle` for `maxLines`
+        // and `overflow` when it is given neither, which is the only seam
+        // Material leaves open here — a merge rather than a replacement, so the
+        // theme's label style still decides everything about how it looks.
+        //
+        // **Around each destination, not around the bar**, and that is a
+        // measured detail rather than a stylistic one: `NavigationBar` builds
+        // its own `Material`, whose `AnimatedDefaultTextStyle` replaces the
+        // ambient one — so a merge outside the bar is discarded before the
+        // label is built, and the destination goes on wrapping. `destinations`
+        // is a `List<Widget>` and each entry becomes the child of the bar's
+        // per-destination info widget, which is below that `Material`, so this
+        // is the innermost point the application can reach. Found by
+        // `navigation_bar_test.dart`, which measured 36 logical pixels against
+        // the other four destinations' 18 with the wrapper on the outside.
+        //
+        // **The cost is stated rather than hidden:** on a narrow phone the
+        // longest label ellipsises, because five equal shares of 328 logical
+        // pixels is 65 each and the Persian phrase does not fit in that at any
+        // size worth reading. It is not lost — `NavigationDestination` uses the
+        // label as its own tooltip, and the full phrase is what the tablet and
+        // desktop rails show. Five identical buttons with one abbreviated word
+        // beats four aligned buttons and one that is not. See D-088.
         child: NavigationBar(
           selectedIndex: destinations.indexOf(destination),
           onDestinationSelected: (int index) =>
               onDestinationSelected(destinations[index]),
           destinations: <Widget>[
             for (final AppDestination item in destinations)
-              NavigationDestination(
-                icon: Icon(item.icon),
-                selectedIcon: Icon(item.selectedIcon),
-                label: item.label(strings),
+              DefaultTextStyle.merge(
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                child: NavigationDestination(
+                  icon: Icon(item.icon),
+                  selectedIcon: Icon(item.selectedIcon),
+                  label: item.label(strings),
+                ),
               ),
           ],
         ),

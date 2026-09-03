@@ -126,10 +126,49 @@ void main() {
     await tester.pumpAndSettle();
 
     final InvoiceEditorState state = stateOf(container);
-    expect(state.issueDate, moved);
+
+    // **The picked day, at the time of day the invoice already had** (D-092).
+    // The picker returns a day and the invoice's issue date is a moment, now
+    // printed with its time beside it; assigning the day whole would stamp
+    // ۰۰:۰۰ on every invoice whose date was ever corrected. So the Jalali day
+    // is the picked one and the clock reading is the form's own.
+    final DateTime expected = jalaliDayWithTimeOf(moved, source: openedAt);
+    expect(state.issueDate, expected);
+    expect(jalaliAt(state.issueDate).day, 1);
+    expect(jalaliAt(state.issueDate).month, 9);
+
     // A due date the user never chose is a statement about the payment term.
     // Leaving it behind would produce a document due before it was issued.
-    expect(state.dueDate, defaultDueDate(moved, kDefaultPaymentTermDays));
+    expect(state.dueDate, defaultDueDate(expected, kDefaultPaymentTermDays));
+  });
+
+  testWidgets('a picked issue date does not move the invoice to another day', (
+    WidgetTester tester,
+  ) async {
+    // The property the reporting periods depend on (§5): whatever time of day
+    // is carried over, the instant stays inside the Jalali day that was picked.
+    // A carry that could overflow would file an invoice under the wrong month
+    // on the dashboard, which is the failure D-006 exists to prevent.
+    final ProviderContainer container = await pumpSection(tester);
+    final InvoiceEditor editor = container.read(
+      invoiceEditorProvider(openedAt).notifier,
+    );
+
+    for (final Jalali day in <Jalali>[
+      Jalali(1405, 1, 1),
+      Jalali(1405, 6, 31),
+      Jalali(1405, 12, 29),
+    ]) {
+      editor.setIssueDate(startOfJalaliDayUtc(day));
+      await tester.pumpAndSettle();
+
+      final Jalali landed = jalaliAt(stateOf(container).issueDate);
+      expect(
+        <int>[landed.year, landed.month, landed.day],
+        <int>[day.year, day.month, day.day],
+        reason: 'carrying the time of day must never cross a day boundary',
+      );
+    }
   });
 
   testWidgets('a due date the user chose is not dragged by the issue date', (

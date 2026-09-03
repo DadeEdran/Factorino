@@ -80,12 +80,26 @@ InvoiceDocumentView buildInvoiceDocumentView({
       // safe rather than reckless.
       value: text(invoiceNumberFor(invoice, strings)),
     ),
+    // **The date and its time, as one value** (D-092). Not two fields: «۲
+    // شهریور ۱۴۰۵، ساعت ۱۴:۳۰» is one answer to "when was this issued", and
+    // splitting it would put a second label on the page for half of it.
+    //
+    // D-070's contract rule 2 is untouched by this -- that rule forbids joining
+    // a **label** to its value, because the neutral characters between them
+    // resolve against whichever side happens to be adjacent. Here both halves
+    // are the value, the joining copy is Persian (strong RTL), and the time is
+    // bidi-isolated by its own formatter before it arrives. The isolates are
+    // stripped again at the boundary below, where they would otherwise cost a
+    // character (D-070 finding 1).
     issueDate: DocumentField(
       label: text(strings.invoiceDetailIssueDate),
       value: text(
-        formatJalaliDateLong(
-          invoice.issueDate,
-          monthNames: jalaliMonthNames(strings),
+        strings.dateAtTime(
+          formatJalaliDateLong(
+            invoice.issueDate,
+            monthNames: jalaliMonthNames(strings),
+          ),
+          formatJalaliTime(invoice.issueDate),
         ),
       ),
     ),

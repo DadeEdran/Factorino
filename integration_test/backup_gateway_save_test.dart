@@ -61,16 +61,17 @@ void main() {
 
     const BackupFileGateway gateway = PlatformBackupFileGateway();
 
-    final bool delivered = await gateway.deliver(
+    final DeliveredFile? delivered = await gateway.deliver(
       source: source,
       suggestedName: _probeName,
     );
 
-    debugPrint('SAVE-RESULT delivered=$delivered');
+    // See the probe test: the handle is not printed, only whether there is one.
+    debugPrint('SAVE-RESULT delivered=${delivered != null}');
 
     expect(
       delivered,
-      isTrue,
+      isNotNull,
       reason:
           'the save was cancelled or failed. If you cancelled deliberately, '
           'this failure is correct and the run proved nothing -- re-run it and '

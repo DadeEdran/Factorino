@@ -1311,4 +1311,47 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentExportGoToSettings => 'تنظیمات';
+
+  @override
+  String dateAtTime(String date, String time) {
+    return '$date، ساعت $time';
+  }
+
+  @override
+  String amountWithUnit(String amount, String unit) {
+    return '$amount $unit';
+  }
+
+  @override
+  String get invoiceLineFixedNote =>
+      'عنوان، قیمت، تخفیف و مالیات این سطر ثابت است. برای تغییر قیمت، محصول را در فهرست محصولات ویرایش کنید؛ برای مبلغی موردی، این سطر را حذف کنید و سطر آزاد تازه‌ای بیفزایید.';
+
+  @override
+  String get exitConfirmPrompt => 'برای خروج، دوباره بازگشت را بزنید.';
+
+  @override
+  String get settingsAppearanceSection => 'نمایش';
+
+  @override
+  String get settingsThemeMode => 'پوستهٔ روشن و تیره';
+
+  @override
+  String get settingsThemeModeHint =>
+      'با انتخاب «سیستم»، برنامه از تنظیم دستگاه پیروی می‌کند.';
+
+  @override
+  String get settingsThemeModeSystem => 'سیستم';
+
+  @override
+  String get settingsThemeModeLight => 'روشن';
+
+  @override
+  String get settingsThemeModeDark => 'تیره';
+
+  @override
+  String get invoiceDocumentExportOpenAction => 'باز کردن';
+
+  @override
+  String get invoiceDocumentExportOpenFailed =>
+      'برنامه‌ای برای باز کردن فایل PDF پیدا نشد. فایل ذخیره شده است.';
 }

@@ -122,7 +122,7 @@ final class InvoiceCancellationProvider
 }
 
 String _$invoiceCancellationHash() =>
-    r'e6b7ab57a53d818f2cc53445f2a950396821880a';
+    r'c0501774a1147945c994368451466c933c7d95ba';
 
 /// The one write cancellation needs, and nothing else.
 ///

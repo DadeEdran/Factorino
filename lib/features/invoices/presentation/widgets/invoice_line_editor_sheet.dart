@@ -41,6 +41,32 @@ enum _TaxMode { inherit, custom }
 /// from `InvoiceEditorState.totals` on the screen behind; this sheet produces
 /// typed input and hands it over. `single_calculation_path_test.dart` fails the
 /// build if that ever stops being true.
+///
+/// ## Adding a line and editing one are different jobs (D-090)
+///
+/// **On an existing line, the quantity is the only editable field.** Title,
+/// unit, unit price, discount and tax rate are shown as the line states them
+/// and cannot be typed into.
+///
+/// The reason is not that editing them is hard, it is that it is the wrong
+/// place. A price on an invoice line is a **snapshot of the catalogue** at the
+/// moment the line was added (D-004), and the whole value of a snapshot is
+/// that one can say where it came from. A price changed here comes from
+/// nowhere: it matches no product record, no other invoice, and nothing the
+/// user can look up six months later when a customer queries it. Changing what
+/// something costs belongs in the product record, which is the one place a
+/// price is a fact rather than a keystroke — and a genuinely one-off amount is
+/// what «سطر آزاد» is for, on a new line.
+///
+/// So the sheet keeps both jobs and narrows one of them. Adding a line — with
+/// [product] or freehand — is unchanged and collects everything. Reopening a
+/// line collects the quantity, which is the field that legitimately changes
+/// after the fact: three of something instead of two is the same agreement at
+/// a different size, and it is what a user actually reopens a line to do.
+///
+/// A line that is wrong in any other way is removed and added again, which is
+/// two taps and leaves nothing behind that claims to be a snapshot of
+/// something it is not.
 Future<InvoiceLineEntry?> showInvoiceLineEditorSheet(
   BuildContext context, {
   InvoiceLineEntry? existing,
@@ -162,7 +188,6 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
   @override
   Widget build(BuildContext context) {
     final AppStrings strings = AppStrings.of(context);
-    final ThemeData theme = Theme.of(context);
 
     return EditorSheet(
       title: widget.existing == null
@@ -175,150 +200,232 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
       // -- it stops the shape being a habit that the next sheet can miss, which
       // is exactly what the payment sheet did in (c) (known issue 21, D-062).
       action: FilledButton(onPressed: _submit, child: Text(strings.actionSave)),
-      children: <Widget>[
-        AppTextField(
-          controller: _title,
-          label: strings.invoiceLineFieldTitle,
-          maxLength: InvoiceLimits.lineTitle,
-          autofocus: widget.product == null,
-          textInputAction: TextInputAction.next,
-          validator: _requiredField(strings),
-        ),
-        const SizedBox(height: AppSpacing.lg),
-        Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Expanded(
-              child: AppTextField(
-                controller: _quantity,
-                label: strings.invoiceLineFieldQuantity,
-                // A quantity has no column length — it is stored as
-                // an integer — but the field still needs a bound,
-                // and this one is far past any real quantity.
-                maxLength: AmountLimits.tomanDigits,
-                helperText: strings.invoiceLineFieldQuantityHelper,
-                // NOT digitsOnly: the decimal separator is
-                // meaningful here (§4 allows three places), and a
-                // formatter that ate it would make a fractional
-                // quantity impossible to type rather than merely
-                // invalid.
-                keyboardType: const TextInputType.numberWithOptions(
-                  decimal: true,
-                ),
-                textInputAction: TextInputAction.next,
-                validator: (String? value) => _validateQuantity(value, strings),
-              ),
+      children: widget.existing == null
+          ? _composeFields(context, strings)
+          : _quantityOnlyFields(context, strings),
+    );
+  }
+
+  /// A new line: everything is collected, exactly as it always was.
+  List<Widget> _composeFields(BuildContext context, AppStrings strings) {
+    final ThemeData theme = Theme.of(context);
+
+    return <Widget>[
+      AppTextField(
+        controller: _title,
+        label: strings.invoiceLineFieldTitle,
+        maxLength: InvoiceLimits.lineTitle,
+        autofocus: widget.product == null,
+        textInputAction: TextInputAction.next,
+        validator: _requiredField(strings),
+      ),
+      const SizedBox(height: AppSpacing.lg),
+      Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Expanded(child: _quantityField(strings)),
+          const SizedBox(width: AppSpacing.md),
+          Expanded(
+            child: AppTextField(
+              controller: _unit,
+              label: strings.productFieldUnit,
+              maxLength: InvoiceLimits.lineUnit,
+              hintText: strings.productFieldUnitHint,
+              textInputAction: TextInputAction.next,
+              validator: _requiredField(strings),
             ),
-            const SizedBox(width: AppSpacing.md),
-            Expanded(
-              child: AppTextField(
-                controller: _unit,
-                label: strings.productFieldUnit,
-                maxLength: InvoiceLimits.lineUnit,
-                hintText: strings.productFieldUnitHint,
-                textInputAction: TextInputAction.next,
-                validator: _requiredField(strings),
-              ),
-            ),
-          ],
+          ),
+        ],
+      ),
+      const SizedBox(height: AppSpacing.lg),
+      AppTextField(
+        controller: _unitPrice,
+        label: strings.invoiceLineFieldUnitPrice,
+        maxLength: AmountLimits.tomanDigits,
+        suffixText: strings.unitToman,
+        keyboardType: const TextInputType.numberWithOptions(decimal: false),
+        textInputAction: TextInputAction.next,
+        digitsOnly: true,
+        validator: (String? value) =>
+            _validateAmount(value, strings, required: true),
+      ),
+      const SizedBox(height: AppSpacing.xl),
+      _SectionLabel(strings.invoiceLineDiscountSection),
+      const SizedBox(height: AppSpacing.sm),
+      SegmentedButton<_DiscountMode>(
+        segments: <ButtonSegment<_DiscountMode>>[
+          ButtonSegment<_DiscountMode>(
+            value: _DiscountMode.amount,
+            label: Text(strings.invoiceLineDiscountModeAmount),
+          ),
+          ButtonSegment<_DiscountMode>(
+            value: _DiscountMode.percent,
+            label: Text(strings.invoiceLineDiscountModePercent),
+          ),
+        ],
+        selected: <_DiscountMode>{_discountMode},
+        onSelectionChanged: (Set<_DiscountMode> selection) => setState(() {
+          _discountMode = selection.first;
+          // The two are alternatives, not two views of one
+          // number: `10` means ten Toman in one mode and ten
+          // percent in the other. Carrying the text across
+          // would silently change what the user entered.
+          _discount.clear();
+        }),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      AppTextField(
+        controller: _discount,
+        label: _discountMode == _DiscountMode.amount
+            ? strings.invoiceLineDiscountModeAmount
+            : strings.invoiceLineDiscountModePercent,
+        maxLength: AmountLimits.tomanDigits,
+        suffixText: _discountMode == _DiscountMode.amount
+            ? strings.unitToman
+            : kPersianPercentSign,
+        helperText: strings.fieldOptional,
+        keyboardType: TextInputType.numberWithOptions(
+          decimal: _discountMode == _DiscountMode.percent,
         ),
-        const SizedBox(height: AppSpacing.lg),
+        digitsOnly: _discountMode == _DiscountMode.amount,
+        validator: (String? value) => _discountMode == _DiscountMode.amount
+            ? _validateAmount(value, strings, required: false)
+            : _validatePercent(value, strings, required: false),
+      ),
+      const SizedBox(height: AppSpacing.xl),
+      _SectionLabel(strings.invoiceLineTaxSection),
+      const SizedBox(height: AppSpacing.sm),
+      SegmentedButton<_TaxMode>(
+        segments: <ButtonSegment<_TaxMode>>[
+          ButtonSegment<_TaxMode>(
+            value: _TaxMode.inherit,
+            label: Text(strings.invoiceLineTaxInherit),
+          ),
+          ButtonSegment<_TaxMode>(
+            value: _TaxMode.custom,
+            label: Text(strings.invoiceLineTaxCustom),
+          ),
+        ],
+        selected: <_TaxMode>{_taxMode},
+        onSelectionChanged: (Set<_TaxMode> selection) =>
+            setState(() => _taxMode = selection.first),
+      ),
+      const SizedBox(height: AppSpacing.md),
+      if (_taxMode == _TaxMode.custom)
         AppTextField(
-          controller: _unitPrice,
-          label: strings.invoiceLineFieldUnitPrice,
+          controller: _taxRate,
+          label: strings.invoiceLineTaxCustom,
           maxLength: AmountLimits.tomanDigits,
-          suffixText: strings.unitToman,
-          keyboardType: const TextInputType.numberWithOptions(decimal: false),
-          textInputAction: TextInputAction.next,
-          digitsOnly: true,
+          suffixText: kPersianPercentSign,
+          keyboardType: const TextInputType.numberWithOptions(decimal: true),
+          // Required in this mode, and `0` passes: an explicit
+          // zero is the entire point of the mode (D-026).
           validator: (String? value) =>
-              _validateAmount(value, strings, required: true),
-        ),
-        const SizedBox(height: AppSpacing.xl),
-        _SectionLabel(strings.invoiceLineDiscountSection),
-        const SizedBox(height: AppSpacing.sm),
-        SegmentedButton<_DiscountMode>(
-          segments: <ButtonSegment<_DiscountMode>>[
-            ButtonSegment<_DiscountMode>(
-              value: _DiscountMode.amount,
-              label: Text(strings.invoiceLineDiscountModeAmount),
-            ),
-            ButtonSegment<_DiscountMode>(
-              value: _DiscountMode.percent,
-              label: Text(strings.invoiceLineDiscountModePercent),
-            ),
-          ],
-          selected: <_DiscountMode>{_discountMode},
-          onSelectionChanged: (Set<_DiscountMode> selection) => setState(() {
-            _discountMode = selection.first;
-            // The two are alternatives, not two views of one
-            // number: `10` means ten Toman in one mode and ten
-            // percent in the other. Carrying the text across
-            // would silently change what the user entered.
-            _discount.clear();
-          }),
-        ),
-        const SizedBox(height: AppSpacing.md),
-        AppTextField(
-          controller: _discount,
-          label: _discountMode == _DiscountMode.amount
-              ? strings.invoiceLineDiscountModeAmount
-              : strings.invoiceLineDiscountModePercent,
-          maxLength: AmountLimits.tomanDigits,
-          suffixText: _discountMode == _DiscountMode.amount
-              ? strings.unitToman
-              : kPersianPercentSign,
-          helperText: strings.fieldOptional,
-          keyboardType: TextInputType.numberWithOptions(
-            decimal: _discountMode == _DiscountMode.percent,
+              _validatePercent(value, strings, required: true),
+        )
+      else if (widget.resolvedTaxRateBp != null)
+        // "Default" is only reassuring if it says which default.
+        // The figure is the engine's, read off the calculated
+        // line -- this widget resolves nothing.
+        Text(
+          strings.invoiceLineTaxInheritedNote(
+            formatPercentFromBasisPoints(widget.resolvedTaxRateBp!),
           ),
-          digitsOnly: _discountMode == _DiscountMode.amount,
-          validator: (String? value) => _discountMode == _DiscountMode.amount
-              ? _validateAmount(value, strings, required: false)
-              : _validatePercent(value, strings, required: false),
+          style: theme.textTheme.bodySmall,
         ),
-        const SizedBox(height: AppSpacing.xl),
-        _SectionLabel(strings.invoiceLineTaxSection),
-        const SizedBox(height: AppSpacing.sm),
-        SegmentedButton<_TaxMode>(
-          segments: <ButtonSegment<_TaxMode>>[
-            ButtonSegment<_TaxMode>(
-              value: _TaxMode.inherit,
-              label: Text(strings.invoiceLineTaxInherit),
-            ),
-            ButtonSegment<_TaxMode>(
-              value: _TaxMode.custom,
-              label: Text(strings.invoiceLineTaxCustom),
-            ),
-          ],
-          selected: <_TaxMode>{_taxMode},
-          onSelectionChanged: (Set<_TaxMode> selection) =>
-              setState(() => _taxMode = selection.first),
+    ];
+  }
+
+  /// An existing line: the quantity, and the rest as the line states it.
+  ///
+  /// **The controllers still hold every value**, untouched since [initState],
+  /// so [_submit] builds the same entry it always did -- the line comes back
+  /// with its title, unit, price, discount and rate exactly as they went in.
+  /// Not collecting a field and not carrying it are different things, and only
+  /// the first is intended here.
+  ///
+  /// The fields that are gone are not disabled inputs either. A greyed-out text
+  /// field is an invitation the screen then refuses (D-021's rule, one level
+  /// down); a stated value with a sentence explaining it is the same
+  /// information without the invitation.
+  List<Widget> _quantityOnlyFields(BuildContext context, AppStrings strings) {
+    final InvoiceLineEntry existing = widget.existing!;
+    final ThemeData theme = Theme.of(context);
+
+    final int? discountPercent = existing.discountPercentBp;
+    final bool hasDiscount =
+        discountPercent != null || existing.discount != Money.zero;
+
+    return <Widget>[
+      // The title identifies the line rather than labelling a field, so it
+      // takes a heading weight and carries no label of its own.
+      Text(existing.title, style: theme.textTheme.titleMedium),
+      const SizedBox(height: AppSpacing.lg),
+      _quantityField(strings),
+      const SizedBox(height: AppSpacing.xl),
+      _FixedValue(label: strings.productFieldUnit, value: existing.unit),
+      _FixedValue(
+        label: strings.invoiceLineFieldUnitPrice,
+        value: strings.amountWithUnit(
+          formatGroupedPersian(existing.unitPrice.toman),
+          strings.unitToman,
         ),
-        const SizedBox(height: AppSpacing.md),
-        if (_taxMode == _TaxMode.custom)
-          AppTextField(
-            controller: _taxRate,
-            label: strings.invoiceLineTaxCustom,
-            maxLength: AmountLimits.tomanDigits,
-            suffixText: kPersianPercentSign,
-            keyboardType: const TextInputType.numberWithOptions(decimal: true),
-            // Required in this mode, and `0` passes: an explicit
-            // zero is the entire point of the mode (D-026).
-            validator: (String? value) =>
-                _validatePercent(value, strings, required: true),
-          )
-        else if (widget.resolvedTaxRateBp != null)
-          // "Default" is only reassuring if it says which default.
-          // The figure is the engine's, read off the calculated
-          // line — this widget resolves nothing.
-          Text(
-            strings.invoiceLineTaxInheritedNote(
-              formatPercentFromBasisPoints(widget.resolvedTaxRateBp!),
-            ),
-            style: theme.textTheme.bodySmall,
+      ),
+      if (hasDiscount)
+        _FixedValue(
+          label: strings.invoiceLineDiscountSection,
+          value: discountPercent != null
+              ? formatPercentFromBasisPoints(discountPercent)
+              : strings.amountWithUnit(
+                  formatGroupedPersian(existing.discount.toman),
+                  strings.unitToman,
+                ),
+        ),
+      _FixedValue(
+        label: strings.invoiceLineTaxSection,
+        value: switch ((existing.taxRateBp, widget.resolvedTaxRateBp)) {
+          (final int rate, _) => formatPercentFromBasisPoints(rate),
+          // Inheriting: say which rate it inherits, exactly as the compose
+          // form does, rather than printing the word "default" on its own.
+          (null, final int resolved) => strings.invoiceLineTaxInheritedNote(
+            formatPercentFromBasisPoints(resolved),
           ),
-      ],
+          (null, null) => strings.invoiceLineTaxInherit,
+        },
+        isLast: true,
+      ),
+      const SizedBox(height: AppSpacing.md),
+      Text(
+        strings.invoiceLineFixedNote,
+        style: theme.textTheme.bodySmall?.copyWith(
+          color: theme.colorScheme.onSurfaceVariant,
+        ),
+      ),
+    ];
+  }
+
+  /// The one field both shapes share.
+  ///
+  /// Autofocused when it is the only field, which is the state the user opened
+  /// the sheet to change; on a new line the title comes first and takes it.
+  Widget _quantityField(AppStrings strings) {
+    return AppTextField(
+      controller: _quantity,
+      label: strings.invoiceLineFieldQuantity,
+      // A quantity has no column length -- it is stored as
+      // an integer -- but the field still needs a bound,
+      // and this one is far past any real quantity.
+      maxLength: AmountLimits.tomanDigits,
+      helperText: strings.invoiceLineFieldQuantityHelper,
+      autofocus: widget.existing != null,
+      // NOT digitsOnly: the decimal separator is
+      // meaningful here (section 4 allows three places), and a
+      // formatter that ate it would make a fractional
+      // quantity impossible to type rather than merely
+      // invalid.
+      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+      textInputAction: TextInputAction.next,
+      validator: (String? value) => _validateQuantity(value, strings),
     );
   }
 
@@ -438,6 +545,46 @@ class _SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Text(text, style: Theme.of(context).textTheme.labelLarge);
+  }
+}
+
+/// A value the line already carries, stated rather than offered for editing.
+///
+/// Shaped like the read-only rows the customer and invoice detail screens use --
+/// a muted label with the value beneath it -- rather than like a disabled text
+/// field, because it is not a field the user is being kept out of. It is what
+/// the line says.
+class _FixedValue extends StatelessWidget {
+  const _FixedValue({
+    required this.label,
+    required this.value,
+    this.isLast = false,
+  });
+
+  final String label;
+  final String value;
+  final bool isLast;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Padding(
+      padding: EdgeInsets.only(bottom: isLast ? 0 : AppSpacing.lg),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Text(
+            label,
+            style: theme.textTheme.bodySmall?.copyWith(
+              color: theme.colorScheme.onSurfaceVariant,
+            ),
+          ),
+          const SizedBox(height: AppSpacing.xxs),
+          Text(value, style: theme.textTheme.bodyLarge),
+        ],
+      ),
+    );
   }
 }
 

@@ -4,6 +4,7 @@ import 'package:path_provider/path_provider.dart';
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import '../../../core/security/app_log.dart';
+import '../../../data/backup/backup_file_gateway.dart';
 import '../../../data/backup/backup_service.dart';
 import '../../../data/providers.dart';
 
@@ -74,11 +75,14 @@ class BackupController extends _$BackupController {
           .read(backupServiceProvider)
           .exportTo(file: working, passphrase: passphrase);
 
-      final bool delivered = await ref
+      final DeliveredFile? delivered = await ref
           .read(backupFileGatewayProvider)
           .deliver(source: working, suggestedName: suggestedName);
 
-      if (!delivered) return const BackupCancelled();
+      // The destination is deliberately discarded here. A backup is an
+      // encrypted container with nothing to open it with, so unlike an invoice
+      // document there is nothing to offer afterwards.
+      if (delivered == null) return const BackupCancelled();
 
       await ref.read(settingsRepositoryProvider).markBackedUp(DateTime.now());
       return BackupSucceeded(summary);

@@ -8,7 +8,6 @@ import '../../../../core/router/destinations.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../data/models/invoice_detail.dart';
 import '../../application/invoice_cancellation.dart';
-import '../../application/invoice_document_controller.dart';
 
 /// The document's own actions, in the page's title row.
 ///
@@ -26,8 +25,15 @@ import '../../application/invoice_document_controller.dart';
 /// **A menu of one item is deliberate.** The alternative — a bare icon in the
 /// title row — would put an irreversible, destructive action behind a glyph
 /// nobody can name. A menu item is a Persian sentence fragment the user reads
-/// before they commit to anything, and it is the slot the rest of the document's
-/// actions (a draft's deletion, the Phase 7 export) will join.
+/// before they commit to anything, and it is the slot the rest of the
+/// document's actions (a draft's deletion) joined.
+///
+/// **The PDF export is no longer among them** (D-094). It was, and nobody
+/// found it: a menu is the right home for an action the user arrives already
+/// looking for — cancelling, deleting — and the wrong home for the one the
+/// whole of Phase 7 exists to offer. It is a named button in the document's
+/// header row now; see [InvoiceExportButton]. What is left here is what belongs
+/// behind a menu: the two irreversible ones, and editing a draft.
 ///
 /// **The page stays where it is afterwards**, unlike the customer screen's
 /// delete, which leaves for the list. A cancelled invoice is still a document,
@@ -53,19 +59,20 @@ class InvoiceCancelAction extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    // **The export is offered on every invoice, including a draft and a
-    // cancelled one**, which is why the menu no longer disappears with
-    // cancellability. D-075 settled that a draft prints (marked with its band)
-    // and D-061 that a cancelled invoice is still a document; a user who cannot
-    // produce a PDF of the thing on their screen would have to ask why.
     final bool cancellable = detail.invoice.isCancellable;
     final bool isDraft = detail.invoice.isEditable;
+
+    // **Absent entirely when it would be empty.** With the export gone
+    // (D-094), a cancelled invoice has nothing behind this button: it cannot be
+    // cancelled again and it is not a draft. An overflow menu that opens onto
+    // nothing is the affordance-leading-nowhere D-021 rules out, and it used to
+    // be impossible only because one item was always there.
+    if (!cancellable && !isDraft) return const SizedBox.shrink();
 
     return PopupMenuButton<_InvoiceAction>(
       tooltip: strings.actionMore,
       icon: const Icon(Icons.more_vert, size: AppIconSize.md),
       onSelected: (_InvoiceAction action) => switch (action) {
-        _InvoiceAction.export => _export(context, ref),
         _InvoiceAction.cancel => _cancel(context, ref),
         _InvoiceAction.deleteDraft => _deleteDraft(context, ref),
         _InvoiceAction.editDraft => context.go(
@@ -73,10 +80,6 @@ class InvoiceCancelAction extends ConsumerWidget {
         ),
       },
       itemBuilder: (BuildContext context) => <PopupMenuEntry<_InvoiceAction>>[
-        PopupMenuItem<_InvoiceAction>(
-          value: _InvoiceAction.export,
-          child: Text(strings.invoiceDocumentExportAction),
-        ),
         if (cancellable)
           PopupMenuItem<_InvoiceAction>(
             value: _InvoiceAction.cancel,
@@ -103,62 +106,6 @@ class InvoiceCancelAction extends ConsumerWidget {
           ),
       ],
     );
-  }
-
-  /// Renders the document and hands it to the save dialog.
-  ///
-  /// **The empty-seller notice fires here, and only here** — the other half of
-  /// D-077's obligation, the settings screen being the half for the user who
-  /// goes looking. Three properties it has to have, all of them rulings rather
-  /// than taste:
-  ///
-  /// * **It never blocks.** Not a dialog, not a confirmation, not a reason to
-  ///   refuse. D-077 ruled that an empty seller blocks nothing, and a modal
-  ///   asking the user to approve their own document would be exactly the
-  ///   refusal that ruling rejected.
-  /// * **It comes after the save, not before.** Before, it would be a
-  ///   confirmation in everything but name. After, it reports what the file the
-  ///   user now holds actually contains.
-  /// * **It says what happened and offers the fix.** A notice with no way to
-  ///   act on it is a standing warning, and those get ignored.
-  ///
-  /// It is silent on a cancelled export, because nothing was produced and there
-  /// is nothing to report about it.
-  Future<void> _export(BuildContext context, WidgetRef ref) async {
-    final InvoiceExportOutcome outcome = await ref
-.read(invoiceDocumentControllerProvider.notifier)
-.export(detail: detail, strings: strings);
-
-    if (!context.mounted) return;
-    final ScaffoldMessengerState? messenger = ScaffoldMessenger.maybeOf(
-      context,
-    );
-    if (messenger == null) return;
-
-    switch (outcome) {
-      case InvoiceExportCancelled():
-        return;
-      case InvoiceExportFailed():
-        messenger.showSnackBar(
-          SnackBar(content: Text(strings.invoiceDocumentExportFailed)),
-        );
-      case InvoiceExportSaved(hadSeller: final bool hadSeller):
-        messenger.showSnackBar(
-          SnackBar(
-            content: Text(
-              hadSeller
-                  ? strings.invoiceDocumentExportSaved
-: strings.invoiceDocumentExportNoSeller,
-            ),
-            action: hadSeller
-                ? null
-: SnackBarAction(
-                    label: strings.invoiceDocumentExportGoToSettings,
-                    onPressed: () => context.go(AppDestination.settings.path),
-                  ),
-          ),
-        );
-    }
   }
 
   Future<void> _cancel(BuildContext context, WidgetRef ref) async {
@@ -297,4 +244,4 @@ class InvoiceCancelAction extends ConsumerWidget {
   }
 }
 
-enum _InvoiceAction { export, cancel, editDraft, deleteDraft }
+enum _InvoiceAction { cancel, editDraft, deleteDraft }

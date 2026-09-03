@@ -1,3 +1,4 @@
+import 'app_theme_mode.dart';
 import 'seller_identity.dart';
 
 /// The single row of application configuration.
@@ -11,6 +12,7 @@ class AppSettings {
     required this.invoiceNumberPrefix,
     this.paymentTermDays = kDefaultPaymentTermDays,
     this.seller = SellerIdentity.none,
+    this.themeMode = AppThemeMode.system,
     this.devicePrefix,
     this.lastBackupAt,
   });
@@ -58,6 +60,16 @@ class AppSettings {
   /// printed. See [SellerIdentity].
   final SellerIdentity seller;
 
+  /// Which of the two designed themes to show (schema v6, D-087).
+  ///
+  /// **Never null**, and [AppThemeMode.system] is a choice rather than the
+  /// absence of one: both themes are designed (§10), so following the device
+  /// is a first-class result. That is why the column is a non-nullable enum
+  /// index rather than a nullable one — "never chose" and "chose to follow the
+  /// device" are the same fact, and a nullable column would invite a later
+  /// reader to treat them as two.
+  final AppThemeMode themeMode;
+
   /// Reserved for the multi-device numbering collision cloud sync will
   /// introduce (D-013). Unused in Phase 1.
   final String? devicePrefix;
@@ -73,6 +85,7 @@ class AppSettings {
     String? invoiceNumberPrefix,
     int? paymentTermDays,
     SellerIdentity? seller,
+    AppThemeMode? themeMode,
     String? devicePrefix,
     DateTime? lastBackupAt,
   }) {
@@ -85,6 +98,7 @@ class AppSettings {
       // expressible at all -- `??` on four nullable strings could not say
       // "this one is now empty" (D-077).
       seller: seller ?? this.seller,
+      themeMode: themeMode ?? this.themeMode,
       devicePrefix: devicePrefix ?? this.devicePrefix,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
     );

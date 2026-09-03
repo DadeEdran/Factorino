@@ -8,6 +8,7 @@ import '../../../core/localization/month_names.dart';
 import '../../../core/money/money.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/router/destinations.dart';
+import '../../../core/theme/app_colors.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/widgets/amount_text.dart';
@@ -27,6 +28,7 @@ import '../domain/invoice_party_view.dart';
 import '../domain/invoice_status_view.dart';
 import '../domain/invoice_summary_figures.dart';
 import 'widgets/invoice_cancel_action.dart';
+import 'widgets/invoice_export_action.dart';
 import 'widgets/invoice_issue_action.dart';
 import 'widgets/invoice_document_lines.dart';
 import 'widgets/invoice_payments_section.dart';
@@ -121,6 +123,15 @@ class InvoiceDetailScreen extends ConsumerWidget {
           );
         }
 
+        // **Resolved once, here, and passed down** (D-041, D-093). The badge
+        // in the title row and the tint on the blocks below it are the same
+        // fact, and a second derivation is how a page comes to show an amber
+        // badge over a green panel.
+        final InvoiceStatusView status = invoiceStatusViewOf(
+          view.invoice,
+          now: ref.watch(nowProvider),
+        );
+
         return PageBody(
           title: strings.invoiceDetailTitle(
             invoiceNumberLabel(view.invoice, strings),
@@ -156,10 +167,9 @@ class InvoiceDetailScreen extends ConsumerWidget {
             _ => null,
           },
           actions: <Widget>[
-            _StatusChip(
-              detail: view,
-              strings: strings,
-              now: ref.watch(nowProvider),
+            StatusBadge(
+              status: status,
+              label: invoiceStatusLabel(status, strings),
             ),
             // In the title row rather than in a card of its own, and that is
             // the §10 layout rule rather than a preference: a card here would
@@ -168,39 +178,10 @@ class InvoiceDetailScreen extends ConsumerWidget {
             // (b) and the payments card (c). See [InvoiceCancelAction].
             InvoiceCancelAction(detail: view, strings: strings),
           ],
-          child: _DetailBody(detail: view, strings: strings),
+          child: _DetailBody(detail: view, strings: strings, status: status),
         );
       },
     );
-  }
-}
-
-/// The status, beside the title rather than inside the body.
-///
-/// It is the one fact about an invoice that is not on the document — a printed
-/// invoice does not say whether it has been paid — so it belongs to the page
-/// rather than to the paper.
-class _StatusChip extends StatelessWidget {
-  const _StatusChip({
-    required this.detail,
-    required this.strings,
-    required this.now,
-  });
-
-  final InvoiceDetail detail;
-  final AppStrings strings;
-
-  /// Read from the clock provider by the screen, so the overdue derivation
-  /// answers against one instant (D-041).
-  final DateTime now;
-
-  @override
-  Widget build(BuildContext context) {
-    final InvoiceStatusView view = invoiceStatusViewOf(
-      detail.invoice,
-      now: now,
-    );
-    return StatusBadge(status: view, label: invoiceStatusLabel(view, strings));
   }
 }
 
@@ -211,19 +192,51 @@ class _StatusChip extends StatelessWidget {
 /// a table that needs the width, and the party is label-and-value pairs read
 /// down a column. Mobile and tablet are one column, slivers rather than a
 /// `ListView` of children so a hundred-line invoice stays virtualized (§13).
+///
+/// ## What is above the lines, and what is below them (D-093)
+///
+/// **The order answers one question: what does a person open a stored invoice
+/// to find out?** Which invoice it is, when it was issued, what it came to,
+/// what is still owed, and — since Phase 7 — a copy of it. Those five are the
+/// document's own identity, and they are what sits above the lines: the number
+/// and the status are in the title row, and the header below it carries the
+/// dates and the button that produces the PDF.
+///
+/// Everything else scrolls. The party, the payment history and the note are
+/// **fine detail**: real, occasionally needed, and never the reason the page was
+/// opened. They are also the three blocks on this screen whose height depends on
+/// data — a party card is five fields plus up to three provenance notices, a
+/// payments card is one row per payment, a note is however long the user made
+/// it — which is §10's own rule for putting a block below the thing the page is
+/// for, learned three times on this family of screens.
+///
+/// The header is the exception that proves it: two dates and one button, a
+/// height that does not move with the data, replacing a dates card that used to
+/// sit at the very bottom where nobody read it.
 class _DetailBody extends StatelessWidget {
-  const _DetailBody({required this.detail, required this.strings});
+  const _DetailBody({
+    required this.detail,
+    required this.strings,
+    required this.status,
+  });
 
   final InvoiceDetail detail;
   final AppStrings strings;
+
+  /// Resolved once by the screen, so every coloured thing on the page agrees.
+  final InvoiceStatusView status;
 
   @override
   Widget build(BuildContext context) {
     final LayoutTier tier = context.tier;
 
+    final Widget header = _DocumentHeader(detail: detail, strings: strings);
     final Widget party = _PartyCard(detail: detail, strings: strings);
-    final Widget dates = _DatesCard(detail: detail, strings: strings);
-    final Widget summary = _Summary(detail: detail, strings: strings);
+    final Widget summary = _Summary(
+      detail: detail,
+      strings: strings,
+      status: status,
+    );
     // Directly under the figures it commits to, and absent on the phone, where
     // the floating action carries it instead.
     final Widget issue = InvoiceIssueButton(detail: detail, strings: strings);
@@ -231,6 +244,7 @@ class _DetailBody extends StatelessWidget {
     final Widget payments = InvoicePaymentsSection(
       detail: detail,
       strings: strings,
+      status: status,
     );
 
     final Widget lines = detail.items.isEmpty
@@ -249,6 +263,11 @@ class _DetailBody extends StatelessWidget {
           Expanded(
             child: ListView(
               children: <Widget>[
+                // The header leads the main column on this tier too, so the
+                // dates and the export sit with the document rather than with
+                // the context beside it.
+                header,
+                const SizedBox(height: AppSpacing.xl),
                 SectionHeader(title: strings.invoiceDetailLinesSection),
                 lines,
                 const SizedBox(height: AppSpacing.xxl),
@@ -270,8 +289,6 @@ class _DetailBody extends StatelessWidget {
                 payments,
                 const SizedBox(height: AppSpacing.lg),
                 party,
-                const SizedBox(height: AppSpacing.lg),
-                dates,
               ],
             ),
           ),
@@ -279,13 +296,13 @@ class _DetailBody extends StatelessWidget {
       );
     }
 
-    // **Summary, then lines, then the party.** Two decisions, and the second was
-    // made by writing the test rather than by taste.
+    // **Header, summary, then lines, then the rest.** Two decisions, and the
+    // second was made by writing the test rather than by taste.
     //
-    // The summary is first because someone opening a stored invoice is nearly
+    // The summary is high because someone opening a stored invoice is nearly
     // always checking one figure — what it came to, and what is still owed — and
-    // putting anything above it means scrolling past the document to reach its
-    // answer on every visit.
+    // putting anything unbounded above it means scrolling past the document to
+    // reach its answer on every visit.
     //
     // The party and the payments sit **below** the lines, which is the reverse
     // of a printed invoice and the same conclusion D-044 reached about the
@@ -303,6 +320,8 @@ class _DetailBody extends StatelessWidget {
     // stays reachable without scrolling past the lines to find it.
     return ListView(
       children: <Widget>[
+        header,
+        const SizedBox(height: AppSpacing.lg),
         summary,
         issue,
         const SizedBox(height: AppSpacing.xxl),
@@ -313,10 +332,118 @@ class _DetailBody extends StatelessWidget {
         const SizedBox(height: AppSpacing.lg),
         party,
         const SizedBox(height: AppSpacing.lg),
-        dates,
-        const SizedBox(height: AppSpacing.lg),
         notes,
         const SizedBox(height: AppSpacing.xl),
+      ],
+    );
+  }
+}
+
+/// When the invoice was issued, when it is due, and how to get a copy of it.
+///
+/// **The dates moved here from the bottom of the page** (D-092). They were the
+/// last card on the screen, under the note, which is where a reader looks last
+/// and where an issue date — the second thing anyone checks about an invoice
+/// after its number — has no business being.
+///
+/// **The issue date now carries its time.** An invoice is a document issued at
+/// a moment, and Iranian practice quotes both; the stored value has always been
+/// an instant, so nothing new is recorded — it was simply not shown. Correcting
+/// the date in the editor keeps the time of day rather than snapping it to
+/// midnight, which is what makes the figure worth printing (see
+/// `jalaliDayWithTimeOf`).
+///
+/// A due date has no time and is not given one. It is a day the money is
+/// expected by, not a moment, and «۰۰:۰۰» beside it would be an invention.
+///
+/// **A `Wrap`, not a `Row`**, for the reason `_SettingRow` is one: the dates and
+/// a named button do not both fit across a 328-pixel phone, and a `Wrap` places
+/// them on one line where they do and stacks them where they do not, at no cost
+/// either way.
+class _DocumentHeader extends StatelessWidget {
+  const _DocumentHeader({required this.detail, required this.strings});
+
+  final InvoiceDetail detail;
+  final AppStrings strings;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        return Wrap(
+          alignment: WrapAlignment.spaceBetween,
+          crossAxisAlignment: WrapCrossAlignment.center,
+          spacing: AppSpacing.lg,
+          runSpacing: AppSpacing.md,
+          children: <Widget>[
+            ConstrainedBox(
+              constraints: BoxConstraints(maxWidth: constraints.maxWidth),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: <Widget>[
+                  _HeaderFact(
+                    label: strings.invoiceDetailIssueDate,
+                    // Jalali, from a UTC instant, through the one formatter
+                    // (D-005, D-006). The stored value is never a localized
+                    // string, and the time comes from the same instant.
+                    value: strings.dateAtTime(
+                      formatJalaliDateLong(
+                        detail.invoice.issueDate,
+                        monthNames: jalaliMonthNames(strings),
+                      ),
+                      formatJalaliTime(detail.invoice.issueDate),
+                    ),
+                  ),
+                  const SizedBox(height: AppSpacing.xs),
+                  _HeaderFact(
+                    label: strings.invoiceDetailDueDate,
+                    // «بدون سررسید» rather than «ثبت نشده»: an invoice with no
+                    // due date is not one whose due date went unrecorded, it is
+                    // one that has none, and it can never be overdue.
+                    value: detail.invoice.dueDate == null
+                        ? strings.invoiceDetailNoDueDate
+                        : formatJalaliDateLong(
+                            detail.invoice.dueDate!,
+                            monthNames: jalaliMonthNames(strings),
+                          ),
+                  ),
+                ],
+              ),
+            ),
+            InvoiceExportButton(detail: detail, strings: strings),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// One fact in the header: a muted label and its value on one line.
+///
+/// A `Wrap` again rather than a `Row`, at the smallest scale: «تاریخ صدور» and
+/// a date-with-time is a long run in Persian, and on the narrowest phone it
+/// needs to be allowed to fold rather than to overflow.
+class _HeaderFact extends StatelessWidget {
+  const _HeaderFact({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) {
+    final ThemeData theme = Theme.of(context);
+
+    return Wrap(
+      spacing: AppSpacing.sm,
+      children: <Widget>[
+        Text(
+          label,
+          style: theme.textTheme.bodySmall?.copyWith(
+            color: theme.colorScheme.onSurfaceVariant,
+          ),
+        ),
+        Text(value, style: theme.textTheme.bodyMedium),
       ],
     );
   }
@@ -480,49 +607,6 @@ class _PartyNotice extends StatelessWidget {
   }
 }
 
-/// When it was issued, and when it is due.
-class _DatesCard extends StatelessWidget {
-  const _DatesCard({required this.detail, required this.strings});
-
-  final InvoiceDetail detail;
-  final AppStrings strings;
-
-  @override
-  Widget build(BuildContext context) {
-    return AppCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          RecordField(
-            label: strings.invoiceDetailIssueDate,
-            // Jalali, from a UTC instant, through the one formatter (D-005,
-            // D-006). The stored value is never a localized string.
-            value: formatJalaliDateLong(
-              detail.invoice.issueDate,
-              monthNames: jalaliMonthNames(strings),
-            ),
-            strings: strings,
-          ),
-          RecordField(
-            label: strings.invoiceDetailDueDate,
-            // «بدون سررسید» rather than «ثبت نشده»: an invoice with no due date
-            // is not one whose due date went unrecorded, it is one that has
-            // none, and it can never be overdue.
-            value: detail.invoice.dueDate == null
-                ? strings.invoiceDetailNoDueDate
-                : formatJalaliDateLong(
-                    detail.invoice.dueDate!,
-                    monthNames: jalaliMonthNames(strings),
-                  ),
-            strings: strings,
-            isLast: true,
-          ),
-        ],
-      ),
-    );
-  }
-}
-
 /// The reconciliation, and what is still owed on it.
 ///
 /// The summary panel is the same widget the invoice form renders, taking the
@@ -535,15 +619,31 @@ class _DatesCard extends StatelessWidget {
 /// and these two move every time a payment is recorded. Putting them in the same
 /// equation would invite a reader to subtract one from another that it does not
 /// belong to.
+///
+/// **The reconciliation stays neutral and the balance carries the status
+/// colour** (D-093), and the line between them is the same one. The four terms
+/// above are what the printed document says, and the printed document has no
+/// opinion about whether it has been paid; the two figures below are the whole
+/// of what the status is *about*. Colouring the reconciliation would put a
+/// green tint on an arithmetic that did not change when the money arrived.
 class _Summary extends StatelessWidget {
-  const _Summary({required this.detail, required this.strings});
+  const _Summary({
+    required this.detail,
+    required this.strings,
+    required this.status,
+  });
 
   final InvoiceDetail detail;
   final AppStrings strings;
+  final InvoiceStatusView status;
 
   @override
   Widget build(BuildContext context) {
     final ThemeData theme = Theme.of(context);
+    final StatusColors colors = statusColorsOf(
+      status,
+      theme.extension<StatusPalette>()!,
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -554,6 +654,8 @@ class _Summary extends StatelessWidget {
         ),
         const SizedBox(height: AppSpacing.lg),
         AppCard(
+          background: colors.container,
+          border: colors.foreground,
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[
@@ -563,10 +665,16 @@ class _Summary extends StatelessWidget {
                 strings: strings,
               ),
               const SizedBox(height: AppSpacing.sm),
+              // **The one figure on the page that is coloured by status**, and
+              // `AmountText.color` exists for exactly this — its own note names
+              // an overdue balance as the case. What is outstanding is what the
+              // badge in the title row is a word for, so they say the same
+              // thing in the same colour.
               _PaymentRow(
                 label: strings.invoiceDetailDueLabel,
                 amount: detail.amountDue,
                 strings: strings,
+                color: colors.foreground,
               ),
               // An overpayment is invisible in the remaining balance by design
               // -- it clamps at zero, because an invoice cannot owe money -- so
@@ -577,7 +685,7 @@ class _Summary extends StatelessWidget {
                 Text(
                   strings.invoiceDetailOverpaidNote,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: colors.foreground,
                   ),
                 ),
               ],
@@ -592,7 +700,7 @@ class _Summary extends StatelessWidget {
                 Text(
                   strings.invoiceDetailCancelledDueNote,
                   style: theme.textTheme.bodySmall?.copyWith(
-                    color: theme.colorScheme.onSurfaceVariant,
+                    color: colors.foreground,
                   ),
                 ),
               ],
@@ -609,11 +717,15 @@ class _PaymentRow extends StatelessWidget {
     required this.label,
     required this.amount,
     required this.strings,
+    this.color,
   });
 
   final String label;
   final Money amount;
   final AppStrings strings;
+
+  /// The status colour, where the figure is one the status speaks about.
+  final Color? color;
 
   @override
   Widget build(BuildContext context) {
@@ -635,6 +747,7 @@ class _PaymentRow extends StatelessWidget {
           amount,
           unitLabel: strings.unitToman,
           size: AmountSize.small,
+          color: color,
         ),
       ],
     );

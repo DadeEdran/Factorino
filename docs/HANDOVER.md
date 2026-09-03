@@ -4,7 +4,7 @@
 Flutter, Persian-only, RTL, Android + Windows.
 
 This document assumes you know nothing about the project. Read it, then `docs/CURRENT_STATE.md`.
-Written 2026-09-02, at the point development access ended.
+Written 2026-09-02; updated 2026-09-03 after the owner's twelve changes.
 
 ---
 
@@ -26,12 +26,14 @@ A user can:
   customer — and save it back. Only drafts are editable (§6).
 * **Cancel** an issued invoice — never edit it. Cancelling keeps its recorded payments and says so.
 * **Delete a draft** — the only kind of invoice that can be deleted.
-* **Save a PDF** of any invoice, in Persian, RTL, with both parties, a lines table, and totals that
-  reconcile by hand. The document states where it stands: a draft and a cancelled invoice each carry
+* **Save a PDF** of any invoice — from a named button on the invoice page, not a menu — in Persian,
+  RTL, with both parties, a lines table, and totals that reconcile by hand. The confirmation offers
+  to open the file that was just saved. The document states where it stands: a draft and a cancelled invoice each carry
   an unmissable band, and an issued one prints «وضعیت پرداخت» under its payable total.
 * **Back up and restore** the whole database to a single encrypted file under a passphrase.
-* **Configure** the VAT rate, invoice prefix, payment term, rounding unit, and their own business
-  details (which appear on the printed invoice).
+* **Configure** the VAT rate, invoice prefix, payment term, rounding unit, their own business
+  details (which appear on the printed invoice), and **whether the application is light, dark, or
+  follows the device**.
 * **See a dashboard** of the current Jalali month — sales, outstanding, recent invoices.
 
 Everything is local. There is no account, no network call, and no cloud.
@@ -48,7 +50,9 @@ None of these are bugs. All were scoped out and recorded (D-068).
 * **No cloud sync, no accounts, no multi-device.** The database schema is nevertheless sync-ready
   from day one — UUID keys, soft deletes, `updated_at`, `sync_status` — so adding it later does not
   require migrating live data.
-* **No PDF preview, share sheet or print dialog.** You save a file; you do not see it first.
+* **No PDF preview, share sheet or print dialog.** You save a file; you do not see it first — though
+  since 2026-09-03 the confirmation offers to open what was saved, with the device's own viewer
+  (D-091). Still no share intent.
 * **No scheduled or automatic backups, no CSV export, no cloud backup.** Backup is manual, both ways.
 * **An issued invoice cannot be edited.** By design (§6): it is corrected by cancelling and issuing a
   replacement, because a silently edited document is one the customer's copy no longer matches.
@@ -66,7 +70,7 @@ user hits it**, which is not the same as severity.
 
 | # | What | Impact |
 |---|---|---|
-| **30** | On the new-invoice screen, «افزودن از فهرست» leaves the widget tree entirely once the details section is opened — ~400 px of scrolling away. | **The one a first-time user actually tripped on.** Partly fixed (D-086): «صدور» is now absent from the pinned bar until a line exists, which took the gap above add-line from 59 px to 115 px, measured on the phone. The unfolded case is still open, with two candidate fixes and the numbers recorded. |
+| — | **Two Android behaviours have never run on a device.** The system back gesture (D-095) and the intent behind «باز کردن» on a saved PDF (D-091). | Not known-broken — **unverified**, which is a different and more honest word. Both were built and tested as far as a Windows machine and a widget test can go; no phone was connected. They are step 1 of the Next Action, and the first thing to try on the profile APK. |
 | **26** | Crushed Persian at two width bands: the `/invoices/:id` title at 328–376 px, and «پیش‌فرض فاکتور» in the invoice editor at 616–688 px. | Text laid out narrower than its longest word renders one glyph per row. **616–688 is a reachable desktop window**, so this is not hypothetical. Both strings and bands are pinned; the reproduction is two lines. |
 | **25** | An invoice long enough to span a page loses its lines-table header on page 2. | Only bites on a long invoice — but when it does, it is on the customer's copy. Untested in both directions: no fixture has ever actually spanned. Fix the fixture first, then the flag. |
 
@@ -84,6 +88,14 @@ user hits it**, which is not the same as severity.
 27 (a draft could not be deleted), 29 (a draft could not be edited), and the issuing gap — all three
 were the same shape: **a repository method with no call site.** See §6b.
 
+**30 (2026-09-03).** «افزودن از فهرست» left the widget tree once the details section was opened,
+~400 px of scrolling away, and a first-time user never found how to add a line at all. Three attempts:
+folding the details (D-054), withdrawing «صدور» from the pinned bar until a line exists (D-086), and
+finally the one that worked — **putting the lines section above the details section on the phone**
+(D-093). The first two bought room; only the third changed the order, and above the fields the
+add-line control cannot leave the first screen because the section that grows is the one underneath
+it.
+
 **Nothing known is wrong with any figure.** The money engine, the tax and discount allocation, the
 Jalali period boundaries and the invoice numbering are the most heavily tested parts of the codebase
 and none of the open issues touch them.
@@ -92,16 +104,23 @@ and none of the open issues touch them.
 
 ## 4. What to do first
 
-**In this order. The first item is the only irreversible one.**
+**In this order. Item 2 is the only irreversible one** — it used to be first, and the profile APK
+built on 2026-09-03 is what lets the two device checks come before it without committing to a
+signing key.
 
-1. **Create a release keystore and sign a build.** `docs/RELEASE.md` has the exact commands. The
+1. **Install the profile APK and check the two Android-only behaviours** —
+   `build/app/outputs/flutter-apk/app-profile.apk`, built 2026-09-03. The back gesture (D-095) and
+   «باز کردن» on a saved PDF (D-091) are the only two things in the build that no test and no
+   Windows run could reach. A profile build needs no keystore, which is why one exists.
+2. **Create a release keystore and sign a build.** `docs/RELEASE.md` has the exact commands. The
    release build currently *fails* without `android/key.properties`, deliberately — a debug-signed
    APK cannot be distributed and cannot later be replaced by a properly signed one without every
-   user uninstalling first. Do this before anyone installs anything.
-2. **Install that build on a real device and use it once, end to end.** Create a customer, write an
-   invoice, issue it, record a payment, save the PDF, take a backup. That path touches the encrypted
-   database, the money engine, the Jalali dates, the renderer and the file gateway in one pass.
-3. **Then decide about the app lock (issue 28).** It is the difference between "the data is
+   user uninstalling first. Do this before anyone installs anything they intend to keep.
+3. **Use that build once, end to end.** Create a customer, write an invoice, issue it, record a
+   payment, save the PDF, take a backup. That path touches the encrypted database, the money engine,
+   the Jalali dates, the renderer and the file gateway in one pass. **This is how seven of eight
+   defects were found in one afternoon, and twelve more the next day** — none of them by the suite.
+4. **Then decide about the app lock (issue 28).** It is the difference between "the data is
    encrypted" and "the data is safe on a lost phone", and it is the one gap a user would be
    surprised by.
 
@@ -216,16 +235,69 @@ probe (proved accurate against a known 2.68:1), the source-scanning guards (each
 self-test), the gateway boundary, the width sweep (four screens fail at the old 1024 breakpoint, one
 at 1280), and the release-signing refusal (both directions: debug builds, release refuses).
 
+**Newly established (2026-09-03):** `navigation_bar_test.dart`, which failed against the first
+attempt at D-088 — a `DefaultTextStyle` placed outside the `NavigationBar`, which Material's own
+`Material` resets — measuring 36 logical pixels against the other four destinations' 18, and passed
+against the second. It was not written as a negative control; it simply caught the fix that did not
+work, which is the same evidence.
+
 **Not established, and listed rather than assumed:** the money-magnitude ladder sweeps
 (`money_layout_test`) have no negative control — they are believed to bite because D-058 and D-065
 were both found by them, which is evidence but not a standing proof. If you touch the layout
 primitives they watch, add one.
 
+## 6d. A value can be computed correctly and thrown away by its caller
+
+**The most valuable finding of 2026-09-03, and it was found while building something else.**
+
+`invoices.issue_date` has been a UTC **instant** since Phase 1. The Jalali date picker returns
+`startOfJalaliDayUtc` — a **day**, which is exactly right for what it is asked. `setIssueDate`
+assigned that return value whole.
+
+So every invoice whose date was ever corrected in the form had its time of day silently replaced
+with local midnight. Not a missing value — a **specific claim, and a false one**, on the field a
+printed document dates itself by.
+
+**Nothing could see it.** The picker was right and is tested. The instant helpers were right and are
+tested against known Nowruz anchors. The column was right. The repository round-trip was right. The
+defect lived entirely in one assignment between two correct things — and it was **invisible for as
+long as the time was never displayed**, which was its whole life until the owner asked for the time
+to be shown beside the date.
+
+### The shape, stated once
+
+This is the same family as §6b and §6c, and the third member of it:
+
+| | The gap | Why the suite cannot see it |
+|---|---|---|
+| §6b | a repository method with **no call site** | a test asserts what a screen does, never what it fails to offer |
+| §6c | a check that runs in a **state no user is in** | it reports success, truthfully, about somewhere else |
+| **§6d** | a value **computed right and discarded** by its caller | both sides are tested; the assignment between them is not, and nothing renders the loss |
+
+The unifying property is that **each is a fault in wiring rather than in logic**, and a suite built
+from unit tests over correct components is structurally unable to report any of them. All four
+instances so far were found by a person using the application, or by someone asking it for something
+new.
+
+### What to do about it
+
+When a stored value is about to be **displayed for the first time**, do not assume it holds what its
+type says it holds. Read what actually reaches the column on the paths that write it — the form, the
+importer, a migration backfill — before trusting the value enough to print it. A field nobody has
+looked at is a field nobody has checked, however well tested the code around it is.
+
+The remedy here is `jalaliDayWithTimeOf` (D-092): changing the *day* changes only the day, and the
+invariant that the result never leaves the picked Jalali day is what keeps the Jalali reporting
+periods correct. `jalali_day_with_time_test.dart` checks both edges of the clock against a month end,
+a year end and a leap-year Esfand 30.
+
+---
+
 ## 7. The gate
 
 ```sh
 flutter analyze     # must be clean
-flutter test        # 1230 tests, must all pass
+flutter test        # 1269 tests, must all pass
 ```
 
 Both were clean at handover. Beyond that, a phase is not closed until its layout has been checked at
@@ -252,7 +324,10 @@ Two lessons the project paid for, worth keeping:
 
 ## 8. Where things stand
 
-Phases 0–7 are `COMPLETED`. Phases 8–15 are `DEFERRED_INDEFINITELY` (D-068), which is a scope
+Phases 0–7 are `COMPLETED`, plus one unplanned block of work after them: **the owner's twelve
+changes of 2026-09-03** (`ROADMAP.md`, *After Phase 7*), which closed known issue 30 and reversed or
+narrowed several Phase 7 decisions — most visibly, the PDF export moved out of the overflow menu
+because testers never opened it. Phases 8–15 are `DEFERRED_INDEFINITELY` (D-068), which is a scope
 decision taken when the timeline shortened, not an assessment that they do not matter.
 
 The application is feature-complete for its intended job and its data handling is sound. What stands

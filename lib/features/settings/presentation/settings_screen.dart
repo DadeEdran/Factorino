@@ -12,10 +12,11 @@ import '../../../core/theme/app_dimensions.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/page_body.dart';
-import '../../../data/models/app_settings.dart';
-import '../../../data/models/seller_identity.dart';
 import '../../../data/backup/backup_file_gateway.dart';
 import '../../../data/backup/backup_service.dart';
+import '../../../data/models/app_settings.dart';
+import '../../../data/models/app_theme_mode.dart';
+import '../../../data/models/seller_identity.dart';
 import '../application/backup_controller.dart';
 import '../application/settings_editor.dart';
 import '../application/settings_providers.dart';
@@ -119,6 +120,23 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
 .save(settings.copyWith(seller: edited));
     if (!mounted) return;
     _say(saved ? strings.settingsSellerSaved : strings.errorGenericBody);
+  }
+
+  /// Writes the light/dark choice (D-087).
+  ///
+  /// **No confirmation message on success**, unlike every other write on this
+  /// screen. The others change a number the user cannot see the effect of; this
+  /// one repaints the application under their finger, which is a more
+  /// convincing report than a sentence about it. A failure still speaks, because
+  /// then nothing visible happened at all.
+  Future<void> _setThemeMode(AppThemeMode mode) async {
+    if (mode == settings.themeMode) return;
+
+    final bool saved = await ref
+.read(settingsEditorProvider.notifier)
+.save(settings.copyWith(themeMode: mode));
+    if (!mounted || saved) return;
+    _say(strings.errorGenericBody);
   }
 
   Future<void> _export() async {
@@ -323,6 +341,68 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
                 trailingLabel: strings.unitDays,
               ),
             ],
+          ),
+        ),
+        const SizedBox(height: AppSpacing.xl),
+        SectionHeader(title: strings.settingsAppearanceSection),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Padding(
+            padding: const EdgeInsets.all(AppSpacing.lg),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  strings.settingsThemeMode,
+                  style: Theme.of(context).textTheme.bodyLarge,
+                ),
+                const SizedBox(height: AppSpacing.xxs),
+                Text(
+                  strings.settingsThemeModeHint,
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: AppSpacing.md),
+                // **A segmented control, not a switch**, because there are
+                // three states and only two of them are a choice between light
+                // and dark. A switch would have to represent "follow the
+                // device" as one of its two positions, which is how a user
+                // ends up unable to say what the application is currently
+                // doing. See D-087.
+                //
+                // Full width so the three Persian labels get equal room; the
+                // longest is «سیستم» and none of them wrap.
+                SizedBox(
+                  width: double.infinity,
+                  child: SegmentedButton<AppThemeMode>(
+                    segments: <ButtonSegment<AppThemeMode>>[
+                      ButtonSegment<AppThemeMode>(
+                        value: AppThemeMode.system,
+                        label: Text(strings.settingsThemeModeSystem),
+                        icon: const Icon(Icons.brightness_auto_outlined),
+                      ),
+                      ButtonSegment<AppThemeMode>(
+                        value: AppThemeMode.light,
+                        label: Text(strings.settingsThemeModeLight),
+                        icon: const Icon(Icons.light_mode_outlined),
+                      ),
+                      ButtonSegment<AppThemeMode>(
+                        value: AppThemeMode.dark,
+                        label: Text(strings.settingsThemeModeDark),
+                        icon: const Icon(Icons.dark_mode_outlined),
+                      ),
+                    ],
+                    selected: <AppThemeMode>{settings.themeMode},
+                    showSelectedIcon: false,
+                    onSelectionChanged: _busy
+                        ? null
+: (Set<AppThemeMode> selection) =>
+                              _setThemeMode(selection.first),
+                  ),
+                ),
+              ],
+            ),
           ),
         ),
         const SizedBox(height: AppSpacing.xl),

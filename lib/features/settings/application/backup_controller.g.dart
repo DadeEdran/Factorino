@@ -71,7 +71,7 @@ final class BackupControllerProvider
   }
 }
 
-String _$backupControllerHash() => r'9505a300f6a321b3a43eed631f44e6fce024d044';
+String _$backupControllerHash() => r'096f1e02d3c6797dd2870776aa5966dc86a5e623';
 
 /// The backup writes, and nothing else.
 ///

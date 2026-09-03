@@ -478,3 +478,65 @@ final class BackupFileGatewayProvider
 }
 
 String _$backupFileGatewayHash() => r'f4587d0677ee432f85bcf8475386530d9d7fda08';
+
+/// Opens a document the user has just saved (D-091).
+///
+/// Separate from [backupFileGateway] rather than a method on it: the gateway
+/// moves files out of app-private storage, and this only ever acts on a
+/// `DeliveredFile` the gateway already produced. Keeping them apart is what
+/// stops "open it" becoming a general way to reach the filesystem.
+
+@ProviderFor(savedFileOpener)
+final savedFileOpenerProvider = SavedFileOpenerProvider._();
+
+/// Opens a document the user has just saved (D-091).
+///
+/// Separate from [backupFileGateway] rather than a method on it: the gateway
+/// moves files out of app-private storage, and this only ever acts on a
+/// `DeliveredFile` the gateway already produced. Keeping them apart is what
+/// stops "open it" becoming a general way to reach the filesystem.
+
+final class SavedFileOpenerProvider
+    extends
+        $FunctionalProvider<SavedFileOpener, SavedFileOpener, SavedFileOpener>
+    with $Provider<SavedFileOpener> {
+  /// Opens a document the user has just saved (D-091).
+  ///
+  /// Separate from [backupFileGateway] rather than a method on it: the gateway
+  /// moves files out of app-private storage, and this only ever acts on a
+  /// `DeliveredFile` the gateway already produced. Keeping them apart is what
+  /// stops "open it" becoming a general way to reach the filesystem.
+  SavedFileOpenerProvider._()
+    : super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'savedFileOpenerProvider',
+        isAutoDispose: false,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$savedFileOpenerHash();
+
+  @$internal
+  @override
+  $ProviderElement<SavedFileOpener> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  SavedFileOpener create(Ref ref) {
+    return savedFileOpener(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(SavedFileOpener value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<SavedFileOpener>(value),
+    );
+  }
+}
+
+String _$savedFileOpenerHash() => r'4ae350503cb453752bfa06dbf0ef76fae154edac';

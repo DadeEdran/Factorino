@@ -20,6 +20,23 @@ enum InvoiceStatusView {
   overdue,
 }
 
+/// The palette entry a status view resolves to.
+///
+/// Extracted from [StatusBadge] so a screen can carry a status's colour into
+/// something that is not a badge -- the invoice detail screen tints the blocks
+/// that report payment state with it (D-093) -- **without a second mapping**.
+/// Two switch statements over six values is how a page comes to show an amber
+/// badge over a green panel.
+StatusColors statusColorsOf(InvoiceStatusView status, StatusPalette palette) =>
+    switch (status) {
+      InvoiceStatusView.draft => palette.draft,
+      InvoiceStatusView.unpaid => palette.unpaid,
+      InvoiceStatusView.partiallyPaid => palette.partiallyPaid,
+      InvoiceStatusView.paid => palette.paid,
+      InvoiceStatusView.cancelled => palette.cancelled,
+      InvoiceStatusView.overdue => palette.overdue,
+    };
+
 /// A status badge: coloured text on its own quiet container.
 ///
 /// Colour here **means** something (§10), which is why the badge is the only
@@ -39,14 +56,7 @@ class StatusBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final StatusPalette palette = Theme.of(context).extension<StatusPalette>()!;
-    final StatusColors colors = switch (status) {
-      InvoiceStatusView.draft => palette.draft,
-      InvoiceStatusView.unpaid => palette.unpaid,
-      InvoiceStatusView.partiallyPaid => palette.partiallyPaid,
-      InvoiceStatusView.paid => palette.paid,
-      InvoiceStatusView.cancelled => palette.cancelled,
-      InvoiceStatusView.overdue => palette.overdue,
-    };
+    final StatusColors colors = statusColorsOf(status, palette);
 
     return Container(
       padding: const EdgeInsets.symmetric(

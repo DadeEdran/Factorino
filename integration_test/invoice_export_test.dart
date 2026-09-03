@@ -313,12 +313,12 @@ class _FakeGateway implements BackupFileGateway {
   final void Function(File source, String suggestedName) onDeliver;
 
   @override
-  Future<bool> deliver({
+  Future<DeliveredFile?> deliver({
     required File source,
     required String suggestedName,
   }) async {
     onDeliver(source, suggestedName);
-    return confirm;
+    return confirm ? const DeliveredFile('confirmed') : null;
   }
 
   @override

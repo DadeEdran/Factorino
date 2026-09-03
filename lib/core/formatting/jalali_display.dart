@@ -63,6 +63,32 @@ String formatJalaliDateLong(
   return '$day ${monthNames[date.month - 1]} $year';
 }
 
+/// The Tehran wall-clock time at [instant], as `۱۴:۳۰`.
+///
+/// Zero-padded and 24-hour: Iranian business documents quote a 24-hour clock,
+/// and an unpadded hour makes a column of times ragged for the same reason
+/// [formatJalaliDate] pads a date.
+///
+/// Wrapped in a bidi isolate, and that is not decoration here. A time is
+/// digits joined by a colon, and a colon is bidi-neutral: dropped bare beside
+/// Persian words it resolves against whatever sits on either side, and the same
+/// time can render as `۳۰:۱۴` depending on the sentence around it. The isolate
+/// makes the run resolve against itself. See [isolate].
+///
+/// The isolates are stripped again at `DocumentTextBoundary` on the way to the
+/// PDF, where they would cost a character instead (D-070 finding 1) -- so the
+/// one formatter is right for both surfaces.
+String formatJalaliTime(
+  DateTime instant, {
+  Duration offset = kIranStandardOffset,
+}) {
+  final DateTime local = instant.toUtc().add(offset);
+  final String text =
+      '${local.hour.toString().padLeft(2, '0')}:'
+      '${local.minute.toString().padLeft(2, '0')}';
+  return isolate(toPersianDigits(text));
+}
+
 /// The Jalali month and year at [instant]: `شهریور ۱۴۰۵`.
 ///
 /// The label a reporting period carries on a dashboard, where "این ماه" alone

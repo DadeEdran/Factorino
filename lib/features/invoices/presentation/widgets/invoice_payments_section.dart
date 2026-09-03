@@ -2,13 +2,15 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/formatting/jalali_display.dart';
-import '../../../../core/responsive/breakpoints.dart';
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/localization/generated/app_strings.dart';
+import '../../../../core/responsive/breakpoints.dart';
+import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/utils/clock.dart';
 import '../../../../core/widgets/amount_text.dart';
 import '../../../../core/widgets/app_card.dart';
+import '../../../../core/widgets/status_badge.dart';
 import '../../../../data/models/invoice_detail.dart';
 import '../../../../data/models/invoice_status.dart';
 import '../../../../data/models/payment.dart';
@@ -35,11 +37,21 @@ class InvoicePaymentsSection extends ConsumerWidget {
   const InvoicePaymentsSection({
     required this.detail,
     required this.strings,
+    required this.status,
     super.key,
   });
 
   final InvoiceDetail detail;
   final AppStrings strings;
+
+  /// The invoice's status, resolved once by the screen (D-093).
+  ///
+  /// **Passed in rather than derived here**, which is the same rule this
+  /// widget's own header states about the badge: a second determination made at
+  /// display time is how a card comes to contradict the page it sits on. The
+  /// card carries the colour because this is where the money that decides the
+  /// status is listed.
+  final InvoiceStatusView status;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -68,7 +80,14 @@ class InvoicePaymentsSection extends ConsumerWidget {
 
     final bool isCancelled = detail.invoice.status == InvoiceStatus.cancelled;
 
+    final StatusColors colors = statusColorsOf(
+      status,
+      theme.extension<StatusPalette>()!,
+    );
+
     return AppCard(
+      background: colors.container,
+      border: colors.foreground,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
@@ -84,7 +103,7 @@ class InvoicePaymentsSection extends ConsumerWidget {
             Text(
               strings.invoiceDetailCancelledPaymentsNote,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: colors.foreground,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -114,7 +133,7 @@ class InvoicePaymentsSection extends ConsumerWidget {
             Text(
               strings.invoiceDetailPaymentsSettled,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: colors.foreground,
               ),
             ),
             const SizedBox(height: AppSpacing.md),
@@ -142,7 +161,7 @@ class InvoicePaymentsSection extends ConsumerWidget {
                   ? strings.invoiceDetailPaymentsUnavailableDraft
                   : strings.invoiceDetailPaymentsUnavailableCancelled,
               style: theme.textTheme.bodySmall?.copyWith(
-                color: theme.colorScheme.onSurfaceVariant,
+                color: colors.foreground,
               ),
             ),
         ],

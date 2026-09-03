@@ -1,5 +1,6 @@
 import 'package:riverpod_annotation/riverpod_annotation.dart';
 
+import '../../../core/date/jalali_instant.dart';
 import '../../../core/money/money.dart';
 import '../../../core/security/app_log.dart';
 import '../../../data/models/app_settings.dart';
@@ -177,14 +178,21 @@ class InvoiceEditor extends _$InvoiceEditor {
   /// document due before it was issued. A due date the user *did* choose is a
   /// commitment to a day, and dragging it would silently rewrite an agreement.
   /// `dueDateFollowsIssueDate` is what tells the two apart.
-  void setIssueDate(DateTime issueDate) => _update(
-    (InvoiceEditorState s) => s.copyWith(
+  ///
+  /// **The picked day keeps the time of day the invoice already had** (D-092).
+  /// The picker returns a day, which is the start of that day; the invoice's
+  /// `issueDate` is a moment, and it is now printed with its time beside it. A
+  /// straight assignment would stamp `۰۰:۰۰` on any invoice whose date was ever
+  /// corrected -- a specific claim, and a false one -- so only the day moves.
+  void setIssueDate(DateTime day) => _update((InvoiceEditorState s) {
+    final DateTime issueDate = jalaliDayWithTimeOf(day, source: s.issueDate);
+    return s.copyWith(
       issueDate: issueDate,
       dueDate: s.dueDateFollowsIssueDate
           ? defaultDueDate(issueDate, s.settings.paymentTermDays)
           : null,
-    ),
-  );
+    );
+  });
 
   /// Sets the due date the user picked, and stops deriving it.
   ///

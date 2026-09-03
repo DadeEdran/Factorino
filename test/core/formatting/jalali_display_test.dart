@@ -140,6 +140,64 @@ void main() {
     });
   });
 
+  group('formatJalaliTime', () {
+    test('is the Tehran wall clock, not UTC', () {
+      // The same failure `jalaliAt` exists to prevent, one unit down: an
+      // invoice written at 14:30 in Tehran is stored at 11:00 UTC, and a time
+      // rendered from the stored fields would print the hour of a country the
+      // user is not in.
+      expect(_bare(formatJalaliTime(DateTime.utc(2026, 8, 24, 11))), '۱۴:۳۰');
+    });
+
+    test('is zero-padded and 24-hour', () {
+      // Padded so a column of times aligns, for the reason a Jalali date is
+      // padded; 24-hour because that is what an Iranian business document
+      // quotes, and because «۱:۰۵» is two different times without it.
+      expect(
+        _bare(formatJalaliTime(DateTime.utc(2026, 8, 23, 21, 35))),
+        '۰۱:۰۵',
+      );
+      expect(
+        _bare(formatJalaliTime(DateTime.utc(2026, 8, 24, 20, 30))),
+        '۰۰:۰۰',
+      );
+      expect(
+        _bare(formatJalaliTime(DateTime.utc(2026, 8, 24, 20, 29))),
+        '۲۳:۵۹',
+      );
+    });
+
+    test('is isolated, because a colon is bidi-neutral', () {
+      // Dropped bare beside Persian words, the colon resolves against whatever
+      // sits on either side and the same time can render as ۳۰:۱۴. The isolate
+      // makes the run resolve against itself. Stripped again at
+      // `DocumentTextBoundary` on the way to the PDF, where the same two
+      // characters would cost a glyph instead (D-070 finding 1).
+      final String value = formatJalaliTime(DateTime.utc(2026, 8, 24, 11));
+      expect(value.codeUnitAt(0), 0x2068);
+      expect(value.codeUnitAt(value.length - 1), 0x2069);
+    });
+
+    test('reads the same instant the date does', () {
+      // **The property that makes «تاریخ، ساعت» one fact rather than two.**
+      // Both halves of the invoice header come from one stored instant, so a
+      // time near either edge of the day cannot end up beside the wrong date.
+      final DateTime justBeforeMidnight = DateTime.utc(2026, 8, 24, 20, 29);
+      expect(
+        formatJalaliDateLong(justBeforeMidnight, monthNames: monthNames),
+        '۲ شهریور ۱۴۰۵',
+      );
+      expect(_bare(formatJalaliTime(justBeforeMidnight)), '۲۳:۵۹');
+
+      final DateTime justAfter = DateTime.utc(2026, 8, 24, 20, 30);
+      expect(
+        formatJalaliDateLong(justAfter, monthNames: monthNames),
+        '۳ شهریور ۱۴۰۵',
+      );
+      expect(_bare(formatJalaliTime(justAfter)), '۰۰:۰۰');
+    });
+  });
+
   group('isolate', () {
     test('wraps and does not otherwise alter', () {
       expect(_bare(isolate('INV-1405-0001')), 'INV-1405-0001');

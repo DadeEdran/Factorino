@@ -6,6 +6,7 @@ import '../../core/utils/uuid.dart';
 import '../models/invoice_status.dart';
 import '../models/payment_method.dart';
 import '../models/product_type.dart';
+import '../models/app_theme_mode.dart';
 import '../models/sync_status.dart';
 
 import 'invoice_figures_backfill.dart';
@@ -62,8 +63,13 @@ class AppDatabase extends _$AppDatabase {
   /// anyone can hand to a customer. Nothing is backfilled and nothing is
   /// defaulted: an invented seller on a customer-facing page is the one thing
   /// this phase must not do.
+  ///
+  /// v6 (D-087): `settings.theme_mode`, the light/dark choice, defaulted to
+  /// [AppThemeMode.system] — which is what every existing database was already
+  /// doing, so the migration adds a column and changes no behaviour for anyone
+  /// who never opens the control.
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -99,10 +105,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 5 && to >= 5) {
         await migrateV4ToV5(m);
       }
+      if (from < 6 && to >= 6) {
+        await migrateV5ToV6(m);
+      }
 
       // Fail loud on a version this ladder does not cover, rather than
       // opening a database whose shape is not the one the code expects.
-      if (from < 1 || to > 5) {
+      if (from < 1 || to > 6) {
         throw StateError('no migration defined from v$from to v$to');
       }
     },
@@ -460,6 +469,38 @@ Future<void> migrateV4ToV5(Migrator m) async {
     throw StateError(
       'the v4 -> v5 seller migration left ${violations.length} '
       'foreign-key violation(s); refusing to open. See D-077.',
+    );
+  }
+}
+
+/// v5 -> v6 (D-087): `settings.theme_mode`, the light/dark choice.
+///
+/// One column with a default, and **nothing to backfill** — but for the
+/// opposite reason to v5's. v5 had nothing honest to write because the
+/// application had never been told the answer; here the answer is known and is
+/// already in force: every database that reaches this step has been following
+/// the device, which is exactly what `AppThemeMode.system` records. The column
+/// default states the behaviour rather than changing it, so no user's
+/// application looks different the first time they open it after upgrading.
+///
+/// `addColumn` carries the declared default, so existing rows get `0` rather
+/// than a null in a non-nullable column — the failure this step would
+/// otherwise produce on the next read, on a table that is read on every frame
+/// of the settings screen.
+Future<void> migrateV5ToV6(Migrator m) async {
+  final db = m.database as AppDatabase;
+
+  await _addColumnIfAbsent(m, db, db.settings, db.settings.themeMode);
+
+  // As in the three steps before it: nothing here can create a dangling
+  // reference, but the check costs one pragma while we can still refuse to
+  // open.
+  // soft-delete-exempt: an integrity pragma, not a read of user rows.
+  final violations = await db.customSelect('pragma foreign_key_check').get();
+  if (violations.isNotEmpty) {
+    throw StateError(
+      'the v5 -> v6 theme migration left ${violations.length} '
+      'foreign-key violation(s); refusing to open. See D-087.',
     );
   }
 }

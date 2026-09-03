@@ -58,7 +58,7 @@ Factorino/
       database/
         encrypted_database.dart                   # THE single database opener (D-020)
         database_bootstrap.dart                   # key -> open -> migrate -> assert encrypted
-        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 4, migrations
+        app_database.dart (+ .g.dart)             # @DriftDatabase, schemaVersion 6, migrations
         invoice_figures_backfill.dart             #   the v3 -> v4 backfill (D-056)
         soft_delete.dart                          # selectAlive / selectOnlyAlive / countAlive
         tables/                                   # six tables + SyncColumns mixin
@@ -447,6 +447,27 @@ still resolves live. A draft has no snapshot, and neither has anything issued be
 through to the live customer, and `Invoice.party` / `Invoice.partyName` are the only two places that
 fallback is written.
 
+### The system back button
+
+One `BackButtonListener`, in `AdaptiveScaffold`, holding the whole rule (D-095): on the dashboard a
+first press prompts and a second leaves; anywhere else back returns to the dashboard; and a screen
+holding unsaved work registers a `BackClaim` through `BackPolicyScope` to decide for itself. The
+invoice editor is the only screen that does.
+
+**There is exactly one listener on purpose.** Nested `BackButtonListener`s do not reliably hand
+priority back — each creates a child of the *root* dispatcher, and a disposed one clears the parent's
+active child without re-activating whatever was there before, which leaves the back button silently
+dead after the user has visited the invoice form once.
+
+### Handing a saved file to the platform
+
+`SavedFileOpener` (D-091) sits beside `BackupFileGateway` in `data/backup/` and is deliberately a
+second interface rather than a method on the first. The gateway moves a file *out* of app-private
+storage and now returns a `DeliveredFile` — a filesystem path on Windows, a SAF `content://` URI on
+Android; the opener acts only on one the gateway produced, so there is no path parameter through
+which anything else could be reached. Android goes through a four-line method channel in this
+application's own `MainActivity`, which refuses any scheme but `content:` and `file:`.
+
 **Indexes:** invoice issue date, customer reference, status, invoice number (unique), and
 `deleted_at`.
 
@@ -461,7 +482,16 @@ intermediate version and stop there; in the application `to` is always `schemaVe
 **v1 → v2** (D-048) makes the three invoice-number columns nullable so a draft carries no number
 until it is issued. **v2 → v3** (D-052) adds the five party-snapshot columns to `invoices` and
 `payment_term_days` to `settings`. **v3 → v4** (D-055, D-056) adds the three printed-figure columns
-and, unlike either step before it, **backfills** them.
+and, unlike either step before it, **backfills** them. **v4 → v5** (D-077) adds the four nullable
+`seller_*` columns and deliberately writes nothing into them. **v5 → v6** (D-087) adds
+`settings.theme_mode`, defaulted to `AppThemeMode.system`.
+
+> **v6's default is a statement, not a convenience.** Every database reaching it has been following
+> the device, and `system` records exactly that — so the update repaints nobody's application. A
+> default of light or dark would be a visible change nobody asked for, arriving with a setting they
+> have not opened. It is also why the column is a non-nullable enum rather than a nullable one:
+> "never chose" and "chose to follow the device" are one fact, and two representations of one fact
+> eventually get told apart by code.
 
 > **The backfill runs the money engine; it does not re-derive.** `backfillInvoiceFigures` rebuilds an
 > `InvoiceInput` from each pre-v4 row's own stored columns, calls `calculateInvoice`, and writes the

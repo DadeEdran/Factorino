@@ -5971,3 +5971,433 @@ That is the third instance of one pattern in as many days: **a check that report
 conditions the user is never in** — the assert-only table guard absent from release builds (D-081),
 the Gradle guard firing in builds it was never meant to judge (D-083), and now a fold measured on a
 form nobody has used yet.
+
+---
+
+## D-087 — The light/dark control, and why the choice lives in the settings row
+
+**Date:** 2026-09-03. Owner request 11 of twelve: *"Light/dark mode toggle in settings. Both themes
+already exist; this is the control for them."*
+
+Both themes have been designed since Phase 1 (§10: designed, not inverted) and `themeMode` was
+pinned to `ThemeMode.system`. Nothing about the palette changes here. The only question worth a
+decision is **where the choice is stored**, and it has a wrong answer that looks right.
+
+### It is a preference, and it still goes in the database
+
+The obvious home for "which theme" is somewhere per-device, because it is not business data and it
+is not something a second device should inherit. That reasoning is correct and the conclusion is
+still wrong here, for three reasons that are specific to this project rather than general:
+
+1. **There is no per-device store.** Adding one means `shared_preferences` — a new dependency, for a
+   single integer, in a project whose §2 asks whether what we already have covers it.
+2. **It would be a second place settings live.** The settings screen reads one row through one
+   repository as a live query; a control on that screen writing somewhere else is the kind of split
+   nobody remembers six months later.
+3. **The backup would not carry it.** §8's backup is the whole database. A preference outside it is
+   a preference the user loses on restore, silently.
+
+So: `settings.theme_mode`, schema v6, an `intEnum<AppThemeMode>` defaulted to `system`.
+
+**The cost is real and is stated:** after cloud sync (Phase 11) this value would travel between
+devices, and a phone and a desktop plausibly want different answers. That is a Phase 11 problem with
+a Phase 11 answer — the sync layer can exclude a column — and it is a smaller problem than the three
+above.
+
+### `system` is a value, not a null
+
+The column is non-nullable and `AppThemeMode.system` is its default. A nullable column would make
+"never chose" and "chose to follow the device" expressible as two different things, and they are one
+thing: both mean *use the device's setting*. A later reader given two representations of one fact
+will eventually write code that distinguishes them.
+
+### The migration changes nobody's application
+
+Every database reaching v6 has been following the device, and `system` records exactly that. The
+column default is therefore not a convenience — it is the statement that the update repaints nothing.
+`theme_mode_migration_test.dart` asserts it from both v5 and v1, on a real encrypted file through
+the production opener, and asserts the row stays single (`CHECK (singleton = 1)`).
+
+### A segmented control, not a switch
+
+Three states, and only two of them are a choice between light and dark. A switch would have to
+represent "follow the device" as one of two positions, which leaves the user unable to say what the
+application is currently doing.
+
+### No success message
+
+Every other write on the settings screen says «ذخیره شد», because each changes a number whose effect
+the user cannot see. This one repaints the application under their finger, which is a more convincing
+report than a sentence about it. A failure still speaks, because then nothing visible happened.
+
+---
+
+## D-088 — One navigation destination was a different size, and the cause is in Material's layout delegate
+
+**Date:** 2026-09-03. Owner request 9: *"The «محصولات و خدمات» nav button is a different size from
+the others."*
+
+Reported as a spacing complaint. It is not one.
+
+`NavigationDestination.label` is a **`String`**, which Material renders as a bare `Text` with no
+line limit. «محصولات و خدمات» is roughly twice the length of «خانه» and wraps to a second line at
+phone widths where the other four do not. That alone would only be untidy — but
+`_NavigationDestinationLayoutDelegate.performLayout` places the icon at
+
+```
+iconY = halfHeight(size) − Tween(begin: halfHeight(icon),
+                                 end:   halfHeight(icon) + halfHeight(label)).transform(animation)
+```
+
+so in the **selected** state the icon's position depends on the label's height. One two-line label
+lifts its own icon half a line clear of its neighbours'. That is what a person sees and cannot name.
+
+### The fix is one line in the wrong place and one line in the right place
+
+`Text` falls back to the ambient `DefaultTextStyle` for `maxLines` and `overflow` when given
+neither, and that is the only seam Material leaves open. **The first attempt wrapped the whole
+`NavigationBar` and did nothing**, because `NavigationBar` builds its own `Material`, whose
+`AnimatedDefaultTextStyle` replaces the ambient style before the label is built. Measured by the new
+guard: the products label was still 36 logical pixels against the other four's 18.
+
+`destinations` is a `List<Widget>` and each entry becomes the child of the bar's per-destination
+info widget, which is *below* that `Material` — so a `DefaultTextStyle.merge` around each
+destination is the innermost point the application can reach, and it works.
+
+### The cost, stated rather than glossed
+
+At 328 logical pixels, five equal shares are 65 each, and the Persian phrase does not fit in that at
+any size worth reading — so it ellipsises there. Weighed against the alternatives:
+
+* **shortening the label** — §11 names «محصولات و خدمات» and it is the right name for a product whose
+  users include service providers;
+* **shrinking the type** — makes four labels worse to fix one;
+* **two lines for everything** — a single word does not wrap however narrow the box is, so the five
+  would still differ.
+
+`NavigationDestination` uses the label as its own tooltip, and both wider tiers show the phrase in
+full, so nothing is unreachable. **Five identical buttons with one abbreviated word beats four
+aligned buttons and one that is not.**
+
+### The guard bites
+
+`navigation_bar_test.dart` measures the five label heights and the five icon offsets, with each
+destination selected in turn — a single-state check would have missed the original defect on four of
+its five runs. It failed on the first attempt above and passed on the second, which is D-072's
+falsifiability requirement met by accident and worth recording as met.
+
+---
+
+## D-089 — A page transition on a branch root of an indexed-stack shell
+
+**Date:** 2026-09-03. Owner request 1: *"Tab switching glitches — the previous screen flashes for
+one frame when changing tabs."*
+
+Every branch root carried a `CustomTransitionPage` with a 220 ms fade and a few pixels of rise,
+added in Phase 1 when `_branch` was written and there were no sub-routes to move between.
+
+**A branch root inside a `StatefulShellRoute.indexedStack` is not pushed over anything.** The shell
+keeps every visited branch mounted and swaps which one is painted; a destination switch is an index
+change, not a navigation. Giving those roots a transition meant the incoming destination was drawn
+at **zero opacity on its first frame** and faded up, while the stack it sits in had already moved to
+the new index — one frame of a page that is not yet there, over a shell that has already changed.
+Invisible on a 120 Hz desktop, unmissable on a phone.
+
+`NoTransitionPage`. The sub-routes — `/invoices/:id`, the forms — keep the platform's own
+transition, which is where a transition actually says something: those *are* pushes.
+
+**What is not claimed:** this was diagnosed from the mechanism and the report, not from a captured
+frame. A one-frame artefact on a phone is not something the Windows target reproduces, and no device
+was available. The reasoning is above so that a reader who still sees a flash knows exactly what was
+ruled out.
+
+---
+
+## D-090 — On an existing invoice line, the quantity is the only editable field
+
+**Date:** 2026-09-03. Owner request 2: *"In the invoice line editor, only quantity should be
+editable. Price, title and the rest are display-only once a line is added. Changing a price
+mid-invoice is what the product record is for."*
+
+The owner's sentence is the decision; what follows is why it is right beyond the immediate tidiness.
+
+**A price on an invoice line is a snapshot of the catalogue** (D-004), and the value of a snapshot is
+that one can say where it came from. A price retyped in the line sheet comes from nowhere: it matches
+no product record, no other invoice, and nothing anybody can look up six months later when a customer
+queries it. The schema deliberately keeps `product_id` for traceability — and a hand-edited price
+makes that column a lie, because the line still points at a product it no longer agrees with.
+
+So the sheet keeps both jobs and narrows one:
+
+* **adding** a line — from the catalogue or freehand — collects everything, unchanged;
+* **reopening** a line collects the quantity, which is the field that legitimately changes after the
+  fact. Three of something instead of two is the same agreement at a different size, and it is what a
+  user actually reopens a line to do.
+
+A line wrong in any other way is removed and added again: two taps, and nothing left behind claiming
+to be a snapshot of something it is not. The note on the sheet says both routes — edit the product
+for a real price change, delete and add a free line for a genuine one-off — because a refusal with
+no way forward is worse than the edit it prevents.
+
+**Stated values, not disabled fields.** A greyed-out text field is an invitation the screen then
+refuses, which is D-021's rule one level down. The values are shown as label-and-value rows, the way
+the detail screens show a record.
+
+**Nothing is dropped.** The controllers still hold every value from `initState`, so `_submit` builds
+the same entry it always did. Not *collecting* a field and not *carrying* it are different things,
+and `invoice_lines_section_test.dart` asserts the title, unit, price and `productId` survive the
+round trip while the quantity changes.
+
+---
+
+## D-091 — Offering to open the document that was just saved
+
+**Date:** 2026-09-03. Owner request 6: *"After a PDF saves, show a toast with an action to open the
+file."*
+
+A save dialog on Android ends with the file somewhere in the user's own storage and the application
+back in front of them, having said only that it worked. Whether the page is *right* — the Persian
+shaped, the totals readable — is a question they cannot answer without leaving and finding the file
+by hand. So the confirmation carries the action, on the one occasion it is certain to be wanted.
+
+### What had to change underneath
+
+`BackupFileGateway.deliver` returned `bool` and threw the destination away. It now returns
+`DeliveredFile?` — null for a cancellation, and otherwise the platform's own handle: a filesystem
+path on Windows, a SAF `content://` URI on Android. **A type rather than a `String`**, because those
+two are not interchangeable and nothing in `dart:io` can open the second. The backup path discards
+it deliberately: an encrypted container is not a thing to open.
+
+### A method channel rather than a package
+
+Every off-the-shelf "open this file" package wants a `FileProvider` and a filesystem path. What SAF
+hands back is a URI this application already holds a grant for, and `ACTION_VIEW` on it is four lines
+of Kotlin in the app's own `MainActivity` — no dependency, no manifest provider, no permission. It
+refuses any scheme but `content:` and `file:`, so the channel cannot be used to launch an arbitrary
+intent. On Windows it is `explorer.exe <path>`, started without a shell so a filename the user chose
+is never parsed as syntax; its exit code is ignored, because `explorer.exe` returns 1 on a successful
+open.
+
+### What it does to §7's threat model, honestly
+
+D-071's property was that the application never sends a customer's records to another application:
+the save dialog writes where the user pointed it, and there is no share intent. **That property is
+unchanged — this is not a share.** But on Android the document is then read by whichever application
+handles PDFs, which *is* a third-party application receiving a page carrying a customer's کد ملی.
+That is what "open this document" means on a phone, and there is no version of it that does not.
+
+The differences from a share intent, which are the reasons this is acceptable:
+
+* it happens on an **explicit tap**, once, never as a step on the way to saving;
+* on a file that **already exists** at a location the user themselves chose;
+* it opens with the device's default viewer rather than offering the file to a chooser.
+
+`SavedFileOpener` is a separate interface from the gateway, and takes only a `DeliveredFile` the
+gateway produced — there is no path parameter to pass anything else through.
+
+### One action, not two
+
+A snackbar has room for one. The no-seller case (D-077) keeps the settings action, because a document
+that names only one party is the one the user should fix rather than open. The two never collide.
+
+**Unverified on Android.** No device was connected. The Kotlin compiles and the channel string is in
+the built APK (`classes9.dex`); whether the intent resolves on the owner's phone is the first thing
+to check.
+
+---
+
+## D-092 — The issue date moved to the top of the page, and now carries its time
+
+**Date:** 2026-09-03. Owner requests 4 and 7: *"Move the issue date from the bottom of the invoice
+screen to the top, and show the issue time alongside it"*, and the same on the PDF.
+
+The dates were the **last card on the detail screen**, under the note — where a reader looks last,
+for the second thing anyone checks about an invoice after its number. They are now a two-line header
+above the lines, beside the export button (D-094).
+
+### The time was always stored and never shown
+
+`invoices.issue_date` has been a UTC instant since Phase 1. Nothing new is recorded here.
+
+**But it was being thrown away on every edit**, and that is the part that needed a decision. The
+Jalali picker returns `startOfJalaliDayUtc` — a day, which is correct for what it is asked. Assigning
+that whole stamped ۰۰:۰۰ on any invoice whose date was ever corrected: not a missing value but a
+**specific claim, and a false one**, on a document a customer keeps. So `setIssueDate` now moves only
+the day and keeps the time of day (`jalaliDayWithTimeOf`).
+
+> **This was a live defect, not a hazard avoided while adding a feature**, and it is the most
+> valuable finding of the session. Every component involved was correct and tested — the picker, the
+> instant helpers against known Nowruz anchors, the column, the repository round-trip. The fault was
+> one assignment between two correct things, and it was **invisible for as long as the time was never
+> displayed**, which was its whole life until this request. `HANDOVER.md` §6d writes it up as a class
+> beside §6b (a repository method with no call site) and §6c (a check that runs in a state no user is
+> in): all three are faults in *wiring* rather than in logic, which a suite of unit tests over correct
+> components is structurally unable to report.
+
+**The invariant that makes this safe** is that the result never leaves the picked Jalali day: it is
+that day's local midnight plus a time of day strictly under 24 hours. Every reporting period in the
+application is a Jalali month resolved to UTC instants (§5, D-006), so a carry that could overflow a
+boundary would file an invoice under the wrong month on the dashboard.
+`jalali_day_with_time_test.dart` checks both edges of the clock against a month end, a year end and a
+leap-year Esfand 30.
+
+**Invoices written before this keep whatever they had**, which for a picked date is ۰۰:۰۰. That is
+their honest recorded instant and it is not rewritten.
+
+### A due date is given no time
+
+It is the day the money is expected by, not a moment. «۰۰:۰۰» beside it would be an invention.
+
+### On the page
+
+One value, not two fields: «۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» is one answer to "when was this issued", and
+splitting it would put a second label on the page for half of it. **D-070's contract rule 2 is
+untouched** — that rule forbids joining a *label* to its value, because the neutral characters
+between them resolve against whichever side is adjacent. Here both halves are the value and the
+joining copy is strong RTL.
+
+The time formatter isolates its own result (a colon between digits is bidi-neutral and «۱۴:۳۰» can
+render as «۳۰:۱۴»), and `DocumentTextBoundary` strips those isolates again on the way to the
+renderer, where they would cost a character instead. One formatter, correct on both surfaces.
+
+**Read on the rendered page, per §6 of the handover**: rasterised at 2400 px and cropped, the header
+reads «تاریخ صدور ۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» with the digits in order and the colon in place.
+
+---
+
+## D-093 — What sits above the invoice's lines, and what the status colours
+
+**Date:** 2026-09-03. Owner requests 3, 8 and 12: the information hierarchy, status colour through
+the screen, and *"design them as one change"*.
+
+### The ordering rule, stated as a question
+
+**What does a person open a stored invoice to find out?** Which invoice it is, when it was issued,
+what it came to, what is still owed, and — since Phase 7 — how to get a copy. Those are the
+document's own identity, and they are what sits above the lines: number and status in the title row,
+dates and the export button in the header, then the figures.
+
+Everything else scrolls. The party, the payment history and the note are **fine detail**: real,
+occasionally needed, never the reason the page was opened. They are also the three blocks whose
+height depends on data — five fields plus up to three provenance notices, one row per payment, a note
+of any length — which is §10's own rule for putting a block below the thing the page is for, learned
+three times on this family of screens (D-044, Phase 5 (b), Phase 5 (c)).
+
+The header is the exception that proves it: two dates and one button, a height that does not move
+with the data, replacing a dates card that used to sit where nobody read it. `invoice_detail_screen_test`
+asserts the first invoice line is still inside a 400 × 800 phone.
+
+### The status colours what the status is about, and nothing else
+
+Three places carry it, and they are the three that report payment state: the badge in the title row,
+the **balance** card (paid and outstanding), and the **payments** card. The `container` half of a
+`StatusColors` pair tints the surface; the `foreground` half draws the outstanding figure and the
+explanatory sentences. `AmountText.color` already existed for exactly this and its own note names an
+overdue balance as the case.
+
+**The reconciliation stays neutral, and that is the line the whole scheme is drawn on.** Gross,
+discount, tax and payable are what the *printed document* says, and a printed document has no opinion
+about whether it has been paid. Tinting them green would put a colour on an arithmetic that did not
+change when the money arrived.
+
+**One derivation, three consumers.** `statusColorsOf` was extracted from `StatusBadge` so the badge
+and the tints read the same resolved status; the screen resolves it once from `nowProvider` (D-041)
+and passes it down. Two switch statements over six values is how a page comes to show an amber badge
+over a green panel.
+
+Red stays reserved for overdue — the palette already guarantees it, and the test asserts an unpaid
+invoice inside its terms carries no red anywhere on the page. An unpaid invoice inside its terms is
+the normal state of business, not a problem.
+
+### The form's half of the hierarchy: known issue 30 is closed
+
+The same request applied to the invoice **form**, where D-086 measured the real fault and left it
+open: with the details section unfolded, «افزودن از فهرست» left the widget tree entirely, ~400 px of
+scrolling away, and a first-time user never found how to add a line at all.
+
+**Candidate 1 is taken: on the phone, the lines section is above the details section.** It is §10's
+rule applied a fourth time — a variable-height block above the thing the page is for belongs below
+it. Above the fields, add-line cannot leave the first screen, because the section that grows is the
+one underneath it. Folding the details (D-054) and withdrawing «صدور» (D-086) each bought room and
+neither fixed the unfolded case, because both were rearranging around the wrong order.
+
+The customer stays reachable and still required: it lives in the details section's own heading, which
+shows it while collapsed, so «مشتری را انتخاب کنید» in the pinned bar points at something one scroll
+away rather than at something hidden. The two wider tiers lay the sections side by side and are
+unchanged — the order question does not arise there.
+
+---
+
+## D-094 — The PDF export is a named button, because a menu item was not found
+
+**Date:** 2026-09-03. Owner request 5: *"Add a visible PDF button on the invoice screen. Testers
+won't find a menu item."*
+
+It was a `PopupMenuItem` in the title row's overflow menu, put there in Phase 7 (d) on §10's rule
+that a control which must be reachable without scrolling belongs where it costs no vertical space.
+**The rule is right and the conclusion was wrong.** The menu costs no space — and no discoverability
+either, because nobody opened it. Testers handed the application did not find how to produce a PDF
+at all, which is a complete failure of the one feature Phase 7 exists for.
+
+So it is a named button in the document's header row, where it costs one line that is already there
+for the dates.
+
+**Not in the title row beside the status badge**, which is where a page action would otherwise go: at
+328 logical pixels that row is already the subject of known issue 26, and another 48-pixel control in
+it would take the invoice number's remaining width and crush it. The header row is the nearest place
+that has room.
+
+**The menu item is gone rather than kept alongside.** Two ways to do one thing is how a user comes to
+wonder whether they differ.
+
+A consequence worth noting: the export was the one item always in that menu, which is why the menu
+never disappeared. With it gone, a **cancelled** invoice has nothing behind the overflow button — it
+cannot be cancelled again and it is not a draft — so the button is now absent there rather than
+opening onto nothing (D-021).
+
+---
+
+## D-095 — The system back button, and the one place the application can be left from
+
+**Date:** 2026-09-03. Owner request 10: *"On the dashboard, first press shows a toast saying press
+again to exit; second press exits. Anywhere else in the app, back returns to the dashboard."*
+
+Three rules, and a mechanism that is the interesting part.
+
+* **On the dashboard**, the first press says how to leave and the second one leaves. An offline
+  financial application that exits on a single stray press is one the user loses their place in
+  constantly, and on Android the back gesture is an edge swipe that is easy to trigger by accident.
+* **Anywhere else**, back returns to the dashboard rather than exiting — so there is exactly one
+  place in the application the back button can close it, and the user can always find it.
+* **A screen holding unsaved work decides for itself**, because "return to the dashboard" must not
+  become a way to discard a typed invoice without being asked.
+
+### One `BackButtonListener`, and a registry rather than a second one
+
+The obvious way to give the invoice form its own behaviour is a second `BackButtonListener` deeper in
+the tree, which is what that widget appears to be for. **It does not reliably hand priority back.**
+Each listener creates a child of the *root* dispatcher and calls `takePriority()`, so the
+deepest-mounted wins — but when it is disposed, `forget()` clears the parent's active child and
+nothing re-activates the listener that was there before. The result is a back button that silently
+stops working after the user has visited the invoice form once, which is a defect nobody would
+connect to the form.
+
+So there is exactly one listener, in the shell, and screens that need their own behaviour register a
+`BackClaim` through `BackPolicyScope`. `release` is identity-checked, because route transitions
+dispose the outgoing screen *after* the incoming one has registered and an unconditional release
+would silently clear the new screen's claim.
+
+### The window is a timer, not two clock readings
+
+`nowProvider` is deliberately frozen for the life of the process (see `core/utils/clock.dart`), so it
+cannot measure an interval — and reaching for `DateTime.now()` beside it is exactly the second clock
+that file exists to prevent. A timer that is either running or not says the same thing and reads
+nothing. It doubles as the message's own duration, so the prompt is on screen for exactly the window
+it describes.
+
+### Unverified on hardware
+
+`back_policy_test.dart` drives the real `BackButtonListener` through the platform's own `popRoute`
+message and watches `SystemNavigator.pop` on the platform channel, so the plumbing is tested rather
+than the callback. But an Android back **gesture** on a real device was not: no phone was connected.
+This is the item on the list most likely to behave differently on hardware.

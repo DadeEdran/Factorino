@@ -192,11 +192,22 @@ void main() {
       expect(find.text(strings.invoiceFieldIssueDate), findsNothing);
       expect(find.text(strings.invoiceFieldNotes), findsNothing);
 
+      // **Scrolled to first**, which is new and is the point of the reorder
+      // (known issue 30, D-086): the lines section is above the fields on the
+      // phone now, so the details heading is below the first viewport while
+      // the add-line control is inside it. A tap on an off-screen heading
+      // lands on whatever is at those coordinates, which is how this test
+      // would quietly stop testing the fold.
+      await tester.ensureVisible(find.text(strings.invoiceDetailsTitle));
+      await tester.pumpAndSettle();
+
       // The whole heading is the target, not the chevron alone.
       await tester.tap(find.text(strings.invoiceDetailsTitle));
       await tester.pumpAndSettle();
       expect(find.text(strings.invoiceFieldIssueDate), findsOneWidget);
 
+      await tester.ensureVisible(find.text(strings.invoiceDetailsTitle));
+      await tester.pumpAndSettle();
       await tester.tap(find.text(strings.invoiceDetailsTitle));
       await tester.pumpAndSettle();
       expect(find.text(strings.invoiceFieldIssueDate), findsNothing);

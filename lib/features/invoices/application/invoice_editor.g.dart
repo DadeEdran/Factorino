@@ -140,7 +140,7 @@ final class InvoiceEditorProvider
   }
 }
 
-String _$invoiceEditorHash() => r'02445bbe4422d28a7297bb14eaec30772e02993c';
+String _$invoiceEditorHash() => r'13503808e446b58f5beb27de8b233f2682ecfadd';
 
 /// The invoice being edited, and every intent that changes it.
 ///

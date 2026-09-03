@@ -432,9 +432,14 @@ void main() {
     expect(strings.invoiceLineActionRemove, isNotEmpty);
   });
 
-  testWidgets('editing a row replaces that line, and keeps the rest', (
+  testWidgets('editing a row changes its quantity and nothing else', (
     WidgetTester tester,
   ) async {
+    // **Reopening a line collects the quantity, and only the quantity**
+    // (D-090). The title, unit, price, discount and rate are shown as the line
+    // states them and are not fields: a price on an invoice line is a snapshot
+    // of the catalogue (D-004), and one retyped here matches no product record
+    // and nothing anybody can look up when the customer queries it.
     final ProviderContainer container = await pumpSection(tester);
     final AppStrings strings = stringsOf(tester, InvoiceLinesSection);
 
@@ -446,6 +451,7 @@ void main() {
             unit: 'عدد',
             unitPrice: Money.toman(1000),
             quantityMilli: 2000,
+            productId: 'product-7',
           ),
         );
     await tester.pumpAndSettle();
@@ -453,15 +459,36 @@ void main() {
     await tester.tap(find.text('قبلی'));
     await tester.pumpAndSettle();
 
-    // The sheet opened pre-filled with the line's own values, in the editable
-    // form: `2000` milli reads as `2`, not as `2.000`.
+    // The sheet opened pre-filled with the line's own quantity, in the
+    // editable form: `2000` milli reads as `2`, not as `2.000`.
     expect(find.text('2'), findsOneWidget);
 
-    await submitSheet(tester, strings, title: 'بعدی');
+    // The fields that are gone are **gone**, not disabled: a greyed-out input
+    // is an invitation the sheet then refuses.
+    expect(
+      find.widgetWithText(TextFormField, strings.invoiceLineFieldTitle),
+      findsNothing,
+    );
+    expect(
+      find.widgetWithText(TextFormField, strings.invoiceLineFieldUnitPrice),
+      findsNothing,
+    );
+    // ...and the values they held are stated instead, so the user can still
+    // see what the line says.
+    expect(find.text('قبلی'), findsWidgets);
+    expect(find.text(strings.invoiceLineFixedNote), findsOneWidget);
 
-    expect(stateOf(container).lines.single.title, 'بعدی');
-    // Untouched fields survive the round trip through the sheet.
-    expect(stateOf(container).lines.single.quantityMilli, 2000);
+    await submitSheet(tester, strings, quantity: '5');
+
+    final InvoiceLineEntry edited = stateOf(container).lines.single;
+    expect(edited.quantityMilli, 5000);
+    // Everything else survives the round trip through the sheet untouched --
+    // the controllers still hold it, so not collecting a field is not the same
+    // as dropping it.
+    expect(edited.title, 'قبلی');
+    expect(edited.unit, 'عدد');
+    expect(edited.unitPrice, Money.toman(1000));
+    expect(edited.productId, 'product-7');
   });
 
   testWidgets('the desktop tier renders a table, the phone renders cards', (

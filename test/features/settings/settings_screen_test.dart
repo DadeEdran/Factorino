@@ -40,10 +40,12 @@ void main() {
   Future<AppStrings> pumpSettings(
     WidgetTester tester, {
     AppSettings value = settings,
+    Size size = kMobileSize,
   }) async {
     await pumpScreen(
       tester,
       const SettingsScreen(),
+      size: size,
       overrides: <Override>[
         settingsRepositoryProvider.overrideWithValue(
           _FakeSettingsRepository(value),
@@ -123,12 +125,24 @@ void main() {
     WidgetTester tester,
   ) async {
     // A payment term belongs with the VAT rate and the numbering prefix -- it
-    // is the same kind of thing, and the backup section below is not.
-    final AppStrings strings = await pumpSettings(tester);
-    // Both must be in the tree at once for the comparison to mean anything,
-    // and the backup heading is below the fold now that the seller section is
-    // above them both.
-    await reach(tester, strings.settingsBackupSection);
+    // is the same kind of thing, and the sections below it are not.
+    //
+    // **Pumped at the desktop size and not scrolled**, which is a change of
+    // method rather than of claim. Both landmarks have to be in the tree at
+    // once for a comparison of their positions to mean anything, and with the
+    // appearance section joining the screen (D-087) there is no scroll offset
+    // on a 400 x 800 phone where the invoicing heading and the backup heading
+    // are both built -- a `ListView` does not keep what is far off screen. A
+    // window tall enough to hold the whole screen removes the question, and
+    // the order under test is the same order at every tier.
+    //
+    // The height is a measuring instrument rather than a claim about any real
+    // window: it is simply larger than the screen's own content, so nothing is
+    // virtualized away while two positions are compared.
+    final AppStrings strings = await pumpSettings(
+      tester,
+      size: const Size(1400, 1600),
+    );
 
     expect(find.text(strings.settingsInvoicingSection), findsOneWidget);
     expect(

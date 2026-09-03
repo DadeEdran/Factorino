@@ -5,7 +5,46 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-03 — Phase 7 is COMPLETE and the app has been used on a phone.** Eight
+> **Last updated: 2026-09-03 (second session) — twelve changes from real use are delivered.** The
+> owner returned from testing with a list of twelve; all twelve are done, `flutter analyze` is
+> clean and **1,269 tests pass** (1,231 before, +38). Two artifacts were produced: a Windows release
+> build and an **arm64 profile APK**.
+>
+> **What changed, in one line each.** Tab switching no longer flashes (D-089). An existing invoice
+> line offers only its quantity (D-090). The invoice detail screen was redesigned as one change —
+> issue date and time at the top, a visible PDF button, status colour on the blocks that report
+> payment state, fine detail below the lines (D-092, D-093, D-094). The printed document carries the
+> time too, **read off a rasterised page** rather than off the source. The navigation bar's five
+> destinations are the same size (D-088). Back returns to the dashboard, and leaves only from there
+> (D-095). Light/dark is a setting, stored in schema **v6** (D-087).
+>
+> **Known issue 30 is CLOSED** — D-086's candidate 1, taken: on the phone the lines section is now
+> above the details section, so the add-line control cannot leave the first screen.
+>
+> **The most valuable thing in this session is a defect nobody asked for, found while building item
+> 4.** `setIssueDate` assigned the date picker's return value whole — and the picker correctly
+> returns a **day**, while `issue_date` is an **instant**. So every invoice whose date was ever
+> corrected had its time of day silently replaced with local midnight: not a missing value but a
+> false one, on the field a printed document dates itself by. It was invisible for as long as the
+> time was never displayed, which was its whole life until the owner asked for it to be shown.
+>
+> **It is the same shape as the three uncalled repository methods**: correct code on both sides,
+> wrong wiring between them, and no test able to see it — because a suite of unit tests over correct
+> components cannot report a fault in the wiring. That is now written up as `HANDOVER.md` §6d,
+> beside §6b (a method with no call site) and §6c (a check that runs in a state no user is in). All
+> four instances were found by a person using the application, or by asking it for something new.
+>
+> **Two things are deliberately unverified, and both are Android-only.** The back **gesture** on
+> hardware (D-095) and the intent that opens a saved PDF (D-091). No phone was connected; the Kotlin
+> compiles and is in the built APK, and the Dart side is tested through the real dispatcher — what is
+> untested is the device. They are the first two things to check on the APK.
+>
+> **One guard was proved to bite while being written.** `navigation_bar_test.dart` failed against the
+> first attempt at D-088 (a `DefaultTextStyle` outside the `NavigationBar`, which Material's own
+> `Material` resets) and passed against the second. That is D-072's falsifiability requirement met by
+> accident, and it is recorded because most of the guards here have not had that.
+>
+> Earlier: **Phase 7 is COMPLETE and the app has been used on a phone.** Eight
 > findings came out of that first real use, and **seven are fixed**: a draft can now be deleted,
 > issued and edited; a settled invoice no longer offers a payment action it does not need; numeric
 > fields select on focus; the printed document states its status; and the printed line-total column
@@ -291,7 +330,7 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found)                          as of Phase 7 (c)
+flutter analyze:            PASS   (No issues found)                    as of 2026-09-03, twelve
 Width sweep (D-081):        PASS   width_sweep_test.dart -- 10 screens x every width from 328 to
                                    1600, each inside the REAL AdaptiveScaffold, failing on any
                                    thrown exception. Verified to bite: 4 screens fail at the old
@@ -305,8 +344,43 @@ Export from the menu:       PASS   phone tier, Redmi (2026-09-02): the menu item
                                    invoice, tapped, the render driven through the real providers,
                                    and D-077's no-seller notice with its «تنظیمات» action shown.
                                    0 layout errors. Gateway faked -- SAF cannot be driven by adb
-flutter test:               PASS   (1230/1230) as of 2026-09-03, after the eight phone findings.
-                                   Was 1204 at the Phase 7 close, 1194 after (d), 1189 after (c)
+flutter test:               PASS   (1269/1269) as of 2026-09-03, after the owner's twelve.
+                                   Was 1230 after the eight phone findings, 1204 at the Phase 7
+                                   close, 1194 after (d), 1189 after (c). The +38 are: the v6 theme
+                                   migration (7), the back rule (8), the navigation bar (5), the
+                                   time formatter and the day-with-time arithmetic (8), the
+                                   redesigned invoice header at every tier and status (7), the
+                                   document's date-and-time (3)
+Owner's twelve, 2026-09-03: DONE   all twelve. 1 tab flash (D-089), 2 quantity-only line editing
+                                   (D-090), 3 information hierarchy + known issue 30 (D-093),
+                                   4 issue date and time at the top (D-092), 5 visible PDF button
+                                   (D-094), 6 open-the-file action (D-091), 7 the time on the
+                                   printed page (D-092), 8 status colour (D-093), 9 the navigation
+                                   bar (D-088), 10 the back button (D-095), 11 light/dark (D-087),
+                                   12 the coherence of 2/3/4/5/8, which is why they share D-092-094
+Android-only, UNVERIFIED:   GAP    **two behaviours nothing here could check.** (a) the back
+                                   GESTURE on hardware -- the Dart side is driven through the real
+                                   BackButtonListener and the platform popRoute message, and
+                                   SystemNavigator.pop is watched on the channel, but no device ran
+                                   it. (b) the ACTION_VIEW intent behind «باز کردن» -- the Kotlin
+                                   compiles and the channel string is present in the built APK
+                                   (classes9.dex), and that is the whole of what is known. Both are
+                                   step 1 of the Next Action, and neither is a Windows question
+Rendered page, date+time:   PASS   read off PIXELS, not source, per HANDOVER §6. Rasterised at
+                                   2400 px through tools/pdf_raster and cropped: the header reads
+                                   «تاریخ صدور ۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» -- digits in order, the
+                                   bidi-neutral colon not reordered, the isolates stripped at the
+                                   boundary without eating the final glyph (D-070 finding 1)
+Windows, run not just built: PASS  built debug, LAUNCHED, and driven: the v5->v6 migration ran
+                                   against the real dev database (12 demo invoices) and the app
+                                   opened on it; the redesigned invoice screen, the status tint,
+                                   the light/dark control and dark mode were all seen on screen.
+                                   The dev database's theme was set back to «سیستم» afterwards
+Guard verified to bite:     PASS   navigation_bar_test.dart failed against the FIRST attempt at
+                                   D-088 -- a DefaultTextStyle outside the NavigationBar, which
+                                   Material's own Material resets -- measuring 36 logical pixels
+                                   against the other four destinations' 18, and passed against the
+                                   second. D-072's requirement, met while the guard was written
 Phone findings, 2026-09-03: FIXED  7 of 8. Draft delete (27), issue from the detail screen (D-082),
                                    draft edit (29, D-084), the unreconcilable printed line-total
                                    column removed (D-082), settled invoices withdraw the payment
@@ -321,13 +395,19 @@ Fold, measured on the Redmi: TAKEN 392.7 x 803.6. add-line at 586-611; pinned ba
 Invoice export - both:      PASS   re-run after the status work; 0 layout errors on the phone
                                    +5 for `rtl_table_test.dart`; the export suite is an
                                    integration test and is not in this count
-Android build:              PASS   release APKs rebuilt 2026-09-02 after Phase 7 (b);
-                                   arm64 21,653,926. Last installed and cold-started on the
-                                   Redmi 2026-09-01 -- NOT re-installed since the pdf dependency
-Windows build:              PASS   release bundle rebuilt CLEAN 2026-09-02, 33,116,830 over
-                                   18 files. Take this only after `flutter clean`: an uncleaned
-                                   Release dir holds an 87 MB stale kernel_blob.bin and reads
-                                   120 MB
+Android build:              PASS   **arm64 PROFILE APK built 2026-09-03**, 47,385,392 bytes, at
+                                   build/app/outputs/flutter-apk/app-profile.apk. Profile, not
+                                   release, so it needs no keystore -- the release refusal (D-083)
+                                   is untouched and still fires. Earlier: release APKs rebuilt
+                                   2026-09-02 after Phase 7 (b), arm64 21,653,926. NOT installed on
+                                   a device since 2026-09-01
+Windows build:              PASS   **release rebuilt 2026-09-03** at
+                                   build/windows/x64/runner/Release/ (data/app.so 9,896,840). Note
+                                   factorino.exe keeps an older timestamp because the C++ runner
+                                   did not need relinking -- app.so is what carries the Dart. Take
+                                   a SIZE figure only after `flutter clean`: an uncleaned Release
+                                   dir holds an 87 MB stale kernel_blob.bin and reads 120 MB
+                                   against a clean 33,116,830 over 18 files (2026-09-02)
 
 Backup container proof:     PASS   5/5 on BOTH targets (D-069) -- encrypted on disk with the
                                    sentinel absent from the raw bytes, right passphrase reopens,
@@ -2095,7 +2175,7 @@ repositories and driving the real sheets.
 
 | 29 | ~~A saved draft cannot be edited~~ | **Resolved 2026-09-03** (D-084). «ویرایش پیش‌نویس» in the draft's menu reopens it at `/invoices/:id/edit`; `save` calls `updateDraft` rather than `create`. The editing id is carried on `InvoiceEditorState` rather than in the provider's family key, so it survives the rebuild a settings change causes — which would otherwise have turned an edit into a second invoice silently. Four tests against the real database. Editing an *issued* invoice remains impossible, which is §6, not a gap. |
 
-| 30 | **Adding a line on the new-invoice screen competes with the pinned bar, and vanishes once the details section is opened** | **Partly fixed 2026-09-03** (D-086), measured on the Redmi before and after. «صدور» is now **absent** from the pinned bar until a line exists — an invoice with no lines cannot be issued, so the filled button was advertising an action that could only fail, from the most prominent place on the screen. The bar lost 56 px and the gap above «افزودن از فهرست» went from **59 px to 115 px** (bar top 670 → 726). **Still open:** with the details section unfolded the add-line control leaves the widget tree entirely, ~400 px away. The two remaining candidates — lines above details on the phone, or promoting add-line and demoting details — need a phone to verify and are recorded in D-086. |
+| ~~30~~ | **DONE 2026-09-03 (D-093).** Adding a line on the new-invoice screen competed with the pinned bar and left the widget tree once the details section was opened. D-086 took the smallest of its three candidates and measured the rest; **candidate 1 is now taken**: on the phone the lines section sits **above** the details section, which is §10's own rule (a variable-height block above the thing the page is for belongs below it) applied a fourth time. Above the fields, add-line cannot leave the first screen, because the section that grows is the one underneath it. The customer stays visible in the collapsed details heading, so «مشتری را انتخاب کنید» still points at something reachable. Kept in this table struck through rather than deleted, so the history of the three attempts reads straight. |
 
 (5 and 7 were resolved in (f2) and have been dropped.)
 
@@ -2878,46 +2958,50 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-> **Nothing is half-finished and no question is waiting on an answer.** (a), (b) and (c) were all
-> delivered and reported; do not re-open any of them.
+> **Nothing is half-finished and no question is waiting on an answer.** The owner's twelve-item list
+> is delivered in full; the gate is clean at 1,269 tests and both artifacts are built.
 
-**Phase 7 (a), (b) and (c) are delivered. The invoice prints, and it now says who issued it** — but
-still only into a test's byte array. Nothing in the application generates one yet. **(d) is all that
-remains in the plan.**
+**The single specific next action: install the profile APK on the phone and check the two
+Android-only behaviours nothing here could verify.**
 
-**Every product question is answered.** D-075 settled the draft band and the pre-snapshot line;
-D-077 settled the seller: an empty seller **prints no block at all**, and **blocks nothing** — not
-issuing, not printing — with the settings screen carrying the prompt that makes it impossible to be
-surprised by. None of this needs re-litigating.
+> **These two are the first things to check, and neither is assumed working.** They are not known
+> broken; they are **unproven on hardware** — Dart-tested through the real dispatcher, Kotlin
+> compiled and present in the built APK, and never once run on a device. Do not read a green suite
+> as covering them. Everything else in the owner's twelve was seen working, either on Windows or in
+> a rendered page.
 
-**Known issue 24 is DONE (D-079)** — and not as this list originally described it. The reversal
-lives in `rtlTable`, callers declare columns in reading order, and the page was read. Do not re-open
-it; the numbered item 0 below is kept only so the history reads straight.
+The APK is `build/app/outputs/flutter-apk/app-profile.apk`, and a copy is at
+`%USERPROFILE%\Desktop\Factorino-test\factorino-arm64.apk`. In this order, because the first
+is the one that can make the whole application feel broken:
 
-**PHASE 7 IS `COMPLETED`** (2026-09-02), and the distribution items are done too: the release build
-now **refuses to build without a keystore** rather than falling back to the debug key, and the two
-manifest lines are in and verified in the built APK with `aapt2`. Gate clean at **1230/1230**.
+1. **The back gesture.** From the dashboard, one press should show «برای خروج، دوباره بازگشت را
+   بزنید» and a second within 2.5 s should leave. From anywhere else it should return to the
+   dashboard. From the invoice form with a customer or a line entered, it should ask before
+   discarding. `back_policy_test.dart` drives the real `BackButtonListener` through the platform's
+   own `popRoute` message, so the plumbing is tested — the **gesture** on hardware is not, and
+   D-095 records why nested listeners were rejected in case the behaviour surprises.
+2. **«باز کردن» on the PDF message.** Save an invoice, then tap the action on the confirmation. It
+   goes through a method channel in this application's own `MainActivity` (D-091) — no package, no
+   `FileProvider` — and issues `ACTION_VIEW` on the SAF URI with a read grant. If nothing happens,
+   the Persian line «برنامه‌ای برای باز کردن فایل PDF پیدا نشد» is the expected answer on a phone
+   with no PDF viewer; silence is not, and would mean the intent did not resolve.
 
-**Development access ended after 2026-09-03. What follows is for whoever picks this up.**
+Then, still on the phone, the three that were designed against measurements taken there but built
+without one: the invoice form's new order (issue 30 / D-093), the navigation bar's five labels at
+the real Persian widths (D-088), and whether the tab-switch flash is actually gone (D-089 diagnosed
+it from the mechanism, not from a captured frame).
 
-**The single specific next action: create a release keystore and sign a build** — `docs/RELEASE.md`
-has the exact commands. It is the only irreversible decision left: a debug-signed APK cannot be
-distributed, and cannot later be replaced by a properly signed one without every user uninstalling
-first. Everything else can be changed afterwards; this cannot.
+After that, the standing list is unchanged:
 
-Then, in order:
-
-1. **Install that build on a real device and use it once, end to end** — customer, invoice, issue,
-   payment, PDF, backup. That path touches the encrypted database, the money engine, the Jalali
-   dates, the renderer and the file gateway in one pass. **This is how seven of the last eight
-   defects were found**, and none of them by the 1,230 tests.
-2. **Decide about the app lock (known issue 28).** It is the difference between "the data is
-   encrypted" and "the data is safe on a lost phone", and the threat model in `ARCHITECTURE.md`
-   §B.11 now says so plainly.
-3. **Known issue 30's remaining half** — the add-line control leaving the widget tree when the
-   details section is open. Measured, with two candidate fixes recorded in D-086; both need a phone.
-4. **Known issue 26** (crushed Persian at two width bands) and **25** (the lines-table header on a
-   second page), in that order — 26's second band is a reachable desktop window.
+1. **Create a release keystore and sign a build** — `docs/RELEASE.md` has the exact commands. Still
+   the only irreversible decision left, and still ahead of anyone installing anything they intend to
+   keep. (A **profile** APK needs no keystore, which is why this session could produce one.)
+2. **Decide about the app lock (known issue 28).** The difference between "the data is encrypted"
+   and "the data is safe on a lost phone".
+3. **Known issue 26** (crushed Persian at two width bands) and **25** (the lines-table header on a
+   second page), in that order. Note that 26's first band — the `/invoices/:id` title at 328–376 —
+   was **not made worse** by this session: D-094 deliberately put the PDF button in the header row
+   rather than the title row for exactly that reason.
 
 Read `docs/HANDOVER.md` before any of it.
 

@@ -1188,5 +1188,55 @@
   "invoiceDocumentExportGoToSettings": "تنظیمات",
   "@invoiceDocumentExportGoToSettings": {
     "description": "The action beside the no-seller notice, taking the user to the settings screen where the business name is entered. Deliberately the plain section name rather than an instruction, because the notice above it has already said what is missing."
+  },
+  "dateAtTime": "{date}\u060c \u0633\u0627\u0639\u062a {time}",
+  "@dateAtTime": {
+    "description": "A Jalali date with the time of day beside it, for the invoice header and the printed document. The Persian comma and the word for 'at' live here rather than in a formatter, because they are copy: a translator changes the order and the separator by editing this line. The two placeholders arrive already formatted -- the date from formatJalaliDateLong and the time from formatJalaliTime, which is bidi-isolated so the colon cannot reorder it.",
+    "placeholders": {
+      "date": { "type": "String" },
+      "time": { "type": "String" }
+    }
+  },
+  "amountWithUnit": "{amount} {unit}",
+  "@amountWithUnit": {
+    "description": "An amount and its currency unit as one string, for the few places a figure is a read-only value in a row rather than an AmountText -- the fixed price on an existing invoice line. AmountText remains the way money is drawn everywhere it is drawn as money; this exists so those places still obey section 9's rule that a unit label is always shown, never a bare number.",
+    "placeholders": {
+      "amount": { "type": "String" },
+      "unit": { "type": "String" }
+    }
+  },
+  "invoiceLineFixedNote": "\u0639\u0646\u0648\u0627\u0646\u060c \u0642\u06cc\u0645\u062a\u060c \u062a\u062e\u0641\u06cc\u0641 \u0648 \u0645\u0627\u0644\u06cc\u0627\u062a \u0627\u06cc\u0646 \u0633\u0637\u0631 \u062b\u0627\u0628\u062a \u0627\u0633\u062a. \u0628\u0631\u0627\u06cc \u062a\u063a\u06cc\u06cc\u0631 \u0642\u06cc\u0645\u062a\u060c \u0645\u062d\u0635\u0648\u0644 \u0631\u0627 \u062f\u0631 \u0641\u0647\u0631\u0633\u062a \u0645\u062d\u0635\u0648\u0644\u0627\u062a \u0648\u06cc\u0631\u0627\u06cc\u0634 \u06a9\u0646\u06cc\u062f\u061b \u0628\u0631\u0627\u06cc \u0645\u0628\u0644\u063a\u06cc \u0645\u0648\u0631\u062f\u06cc\u060c \u0627\u06cc\u0646 \u0633\u0637\u0631 \u0631\u0627 \u062d\u0630\u0641 \u06a9\u0646\u06cc\u062f \u0648 \u0633\u0637\u0631 \u0622\u0632\u0627\u062f \u062a\u0627\u0632\u0647\u200c\u0627\u06cc \u0628\u06cc\u0641\u0632\u0627\u06cc\u06cc\u062f.",
+  "@invoiceLineFixedNote": {
+    "description": "Shown on an existing invoice line, where the quantity is the only editable field (D-090). It says what is fixed and, crucially, names both ways to change it -- edit the product record for a price that is really different, or delete the line and add a free one for a genuine one-off. A note that only refused would leave the user with no route at all."
+  },
+  "exitConfirmPrompt": "\u0628\u0631\u0627\u06cc \u062e\u0631\u0648\u062c\u060c \u062f\u0648\u0628\u0627\u0631\u0647 \u0628\u0627\u0632\u06af\u0634\u062a \u0631\u0627 \u0628\u0632\u0646\u06cc\u062f.",
+  "@exitConfirmPrompt": {
+    "description": "The first back press on the dashboard says this; a second one within the same window leaves the application (D-095). An instruction rather than a question, because there is no control to answer it with -- the answer is the next press."
+  },
+  "settingsAppearanceSection": "\u0646\u0645\u0627\u06cc\u0634",
+  "@settingsAppearanceSection": {
+    "description": "The settings section holding the light/dark choice. Named for what it governs rather than 'theme', which is a word from the implementation."
+  },
+  "settingsThemeMode": "\u067e\u0648\u0633\u062a\u0647\u0654 \u0631\u0648\u0634\u0646 \u0648 \u062a\u06cc\u0631\u0647",
+  "@settingsThemeMode": {
+    "description": "The label above the three-way light/dark control."
+  },
+  "settingsThemeModeHint": "\u0628\u0627 \u0627\u0646\u062a\u062e\u0627\u0628 \u00ab\u0633\u06cc\u0633\u062a\u0645\u00bb\u060c \u0628\u0631\u0646\u0627\u0645\u0647 \u0627\u0632 \u062a\u0646\u0638\u06cc\u0645 \u062f\u0633\u062a\u06af\u0627\u0647 \u067e\u06cc\u0631\u0648\u06cc \u0645\u06cc\u200c\u06a9\u0646\u062f.",
+  "@settingsThemeModeHint": {
+    "description": "Explains the third option, which is the only one whose effect is not visible from its own name. Both themes are designed rather than one being an inversion of the other, so following the device is a real choice and not a fallback."
+  },
+  "settingsThemeModeSystem": "\u0633\u06cc\u0633\u062a\u0645",
+  "@settingsThemeModeSystem": {},
+  "settingsThemeModeLight": "\u0631\u0648\u0634\u0646",
+  "@settingsThemeModeLight": {},
+  "settingsThemeModeDark": "\u062a\u06cc\u0631\u0647",
+  "@settingsThemeModeDark": {},
+  "invoiceDocumentExportOpenAction": "\u0628\u0627\u0632 \u06a9\u0631\u062f\u0646",
+  "@invoiceDocumentExportOpenAction": {
+    "description": "The action beside the 'file saved' message, which opens the PDF that was just written with whatever reads PDFs on the device (D-091). Offered only where the document is complete -- an invoice saved without a seller block keeps the settings action instead, because that is the one the user should act on first."
+  },
+  "invoiceDocumentExportOpenFailed": "\u0628\u0631\u0646\u0627\u0645\u0647\u200c\u0627\u06cc \u0628\u0631\u0627\u06cc \u0628\u0627\u0632 \u06a9\u0631\u062f\u0646 \u0641\u0627\u06cc\u0644 PDF \u067e\u06cc\u062f\u0627 \u0646\u0634\u062f. \u0641\u0627\u06cc\u0644 \u0630\u062e\u06cc\u0631\u0647 \u0634\u062f\u0647 \u0627\u0633\u062a.",
+  "@invoiceDocumentExportOpenFailed": {
+    "description": "A device with nothing that reads PDFs is a real device, so this is a fact rather than an error. It repeats that the file was saved, because the user's worry on seeing a failure message is that the save failed too."
   }
 }

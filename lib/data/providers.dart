@@ -2,6 +2,7 @@ import 'package:riverpod_annotation/riverpod_annotation.dart';
 
 import 'backup/backup_file_gateway.dart';
 import 'backup/backup_service.dart';
+import 'backup/saved_file_opener.dart';
 import 'database/app_database.dart';
 import 'repositories/customer_repository.dart';
 import 'repositories/drift/drift_customer_repository.dart';
@@ -87,3 +88,12 @@ BackupService backupService(Ref ref) =>
 @Riverpod(keepAlive: true)
 BackupFileGateway backupFileGateway(Ref ref) =>
     const PlatformBackupFileGateway();
+
+/// Opens a document the user has just saved (D-091).
+///
+/// Separate from [backupFileGateway] rather than a method on it: the gateway
+/// moves files out of app-private storage, and this only ever acts on a
+/// `DeliveredFile` the gateway already produced. Keeping them apart is what
+/// stops "open it" becoming a general way to reach the filesystem.
+@Riverpod(keepAlive: true)
+SavedFileOpener savedFileOpener(Ref ref) => const PlatformSavedFileOpener();

@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 
+import '../../models/app_theme_mode.dart';
 import 'sync_columns.dart';
 
 /// Single-row application configuration.
@@ -96,4 +97,24 @@ class Settings extends Table with SyncColumns {
   /// a landline with an area code, and rewriting it would be the application
   /// overruling the user about their own letterhead.
   TextColumn get sellerPhone => text().withLength(max: 20).nullable()();
+
+  // ------------------------------------------------ appearance (v6, D-087)
+
+  /// Which of the two designed themes to show, as the [AppThemeMode] index.
+  ///
+  /// **In this table rather than in a device-local store**, which is the one
+  /// question this column had to answer. It is a preference rather than
+  /// business data, and the obvious home for it is somewhere per-device — but
+  /// this application has no per-device store, and adding one would mean a new
+  /// dependency, a second place settings live, and a second thing the backup
+  /// does not carry. The settings row already exists, is already read as a
+  /// live query by the screen that edits it, and already travels with a
+  /// backup. See D-087.
+  ///
+  /// The literal `0` rather than `AppThemeMode.system.index`, for the reason
+  /// every other default in this file carries one: `drift_dev` reads this
+  /// argument from the **source expression**. `settings_theme_test.dart`
+  /// asserts the generated default is `AppThemeMode.system`.
+  IntColumn get themeMode =>
+      intEnum<AppThemeMode>().withDefault(const Constant(0))();
 }

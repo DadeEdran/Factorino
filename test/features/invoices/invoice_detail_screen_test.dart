@@ -1,7 +1,9 @@
 import 'package:factorino/core/formatting/jalali_display.dart';
 import 'package:factorino/core/formatting/number_display.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
+import 'package:factorino/core/localization/month_names.dart';
 import 'package:factorino/core/money/money.dart';
+import 'package:factorino/core/theme/app_colors.dart';
 import 'package:factorino/core/theme/app_dimensions.dart';
 import 'package:factorino/core/utils/clock.dart';
 import 'package:factorino/core/widgets/app_table.dart';
@@ -686,19 +688,39 @@ void main() {
       // Two controls saying the same thing is one too many (§10), and the
       // invoice list already settled this: on mobile the floating button is on
       // screen, so the inline one is omitted.
-      await pumpWithPayments(tester, view: detail(), size: kMobileSize);
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(),
+        size: kMobileSize,
+      );
 
       expect(find.byType(FloatingActionButton), findsOneWidget);
-      expect(find.byType(FilledButton), findsNothing);
+      // **The label, not `FilledButton`**, and that is a correction rather than
+      // a preference: the header now carries a filled button of its own (the
+      // PDF export, D-094), so counting the type answers a different question
+      // than the one this test asks. What must not appear twice is the control
+      // that records a payment.
+      expect(
+        find.widgetWithText(FilledButton, strings.invoiceDetailRecordPayment),
+        findsNothing,
+      );
     });
 
     testWidgets('the wider tiers offer it once, inline', (
       WidgetTester tester,
     ) async {
-      await pumpWithPayments(tester, view: detail(), size: kDesktopSize);
+      final AppStrings strings = await pumpWithPayments(
+        tester,
+        view: detail(),
+        size: kDesktopSize,
+      );
 
       expect(find.byType(FloatingActionButton), findsNothing);
-      expect(find.byType(FilledButton), findsOneWidget);
+      // See the phone case above for why this is by label.
+      expect(
+        find.widgetWithText(FilledButton, strings.invoiceDetailRecordPayment),
+        findsOneWidget,
+      );
     });
 
     testWidgets('recording sends the repository what the sheet built', (
@@ -1350,10 +1372,14 @@ void main() {
         view: detail(status: InvoiceStatus.cancelled),
       );
 
-      await tester.tap(find.byIcon(Icons.more_vert));
-      await tester.pumpAndSettle();
-
+      // **The menu is gone entirely, not opened onto nothing** (D-094). With
+      // the export moved out to a named button, a cancelled invoice has no
+      // action left behind this icon: it cannot be cancelled again and it is
+      // not a draft. An overflow button that opens an empty menu is the
+      // affordance-leading-nowhere D-021 rules out.
+      expect(find.byIcon(Icons.more_vert), findsNothing);
       expect(find.text(strings.invoiceCancelAction), findsNothing);
+
       expect(
         find.text(strings.invoiceDocumentExportAction),
         findsOneWidget,
@@ -1672,6 +1698,226 @@ void main() {
         });
       }
     }
+  });
+
+  group('the document header, redesigned as one change (D-092, D-093, D-094)', () {
+    /// The screen with a plain fake repository behind it.
+    Future<AppStrings> pumpDetail(
+      WidgetTester tester, {
+      required InvoiceDetail view,
+      Size size = kMobileSize,
+    }) async {
+      final FakeInvoiceRepository repo = FakeInvoiceRepository(
+        const <InvoiceListItem>[],
+      );
+      repo.details[view.invoice.id] = view;
+
+      await pumpScreen(
+        tester,
+        const InvoiceDetailScreen(invoiceId: 'i1'),
+        overrides: <Override>[
+          invoiceRepositoryProvider.overrideWithValue(repo),
+          nowProvider.overrideWithValue(now),
+        ],
+        size: size,
+      );
+      await tester.pumpAndSettle();
+      return stringsOf(tester, InvoiceDetailScreen);
+    }
+
+    /// The vertical position of the first invoice line's title.
+    double linesTop(WidgetTester tester) =>
+        tester.getTopLeft(find.text('طراحی وب‌سایت')).dy;
+
+    testWidgets('the issue date is at the top, with its time beside it', (
+      WidgetTester tester,
+    ) async {
+      // **Moved from the very bottom of the page** (D-092), where it sat under
+      // the note — the position a reader reaches last, for the second thing
+      // anyone checks about an invoice after its number.
+      final AppStrings strings = await pumpDetail(tester, view: detail());
+
+      final String expected = strings.dateAtTime(
+        formatJalaliDateLong(issued, monthNames: jalaliMonthNames(strings)),
+        formatJalaliTime(issued),
+      );
+      expect(find.text(expected), findsOneWidget);
+
+      expect(
+        tester.getTopLeft(find.text(expected)).dy,
+        lessThan(linesTop(tester)),
+        reason: 'the issue date belongs above the lines, not below them',
+      );
+    });
+
+    testWidgets('a due date is shown as a day, with no invented time', (
+      WidgetTester tester,
+    ) async {
+      // A due date is the day money is expected by, not a moment. «۰۰:۰۰»
+      // beside it would be a claim the record never made.
+      final AppStrings strings = await pumpDetail(
+        tester,
+        view: detail(dueDate: DateTime.utc(2026, 9, 19, 6)),
+      );
+
+      final String due = formatJalaliDateLong(
+        DateTime.utc(2026, 9, 19, 6),
+        monthNames: jalaliMonthNames(strings),
+      );
+      expect(find.text(due), findsOneWidget);
+      expect(
+        find.text(strings.dateAtTime(due, formatJalaliTime(issued))),
+        findsNothing,
+      );
+    });
+
+    testWidgets(
+      'the PDF action is a named button on the page, not a menu item',
+      (WidgetTester tester) async {
+        // **The whole of D-094.** It was a `PopupMenuItem` and testers handed
+        // the application did not find it at all, which is a complete failure of
+        // the one feature Phase 7 exists for. A menu is the right home for an
+        // action the user arrives already looking for; it is the wrong home for
+        // the one they are meant to discover.
+        final AppStrings strings = await pumpDetail(tester, view: detail());
+
+        expect(
+          find.widgetWithText(
+            FilledButton,
+            strings.invoiceDocumentExportAction,
+          ),
+          findsOneWidget,
+        );
+
+        // And it is not *also* in the menu: two ways to do one thing is how a
+        // user comes to wonder whether they differ.
+        await tester.tap(find.byIcon(Icons.more_vert));
+        await tester.pumpAndSettle();
+        expect(find.text(strings.invoiceDocumentExportAction), findsOneWidget);
+      },
+    );
+
+    testWidgets(
+      'every tier offers it, on a draft and on a cancelled invoice too',
+      (WidgetTester tester) async {
+        // D-075 settled that a draft prints, marked with its band, and D-061
+        // that a cancelled invoice is still a document. A user who could not
+        // produce a PDF of what is on their screen would have to ask why.
+        for (final MapEntry<String, Size> tier in kAllTierSizes.entries) {
+          for (final InvoiceStatus status in InvoiceStatus.values) {
+            final AppStrings strings = await pumpDetail(
+              tester,
+              view: detail(status: status),
+              size: tier.value,
+            );
+            expect(
+              find.widgetWithText(
+                FilledButton,
+                strings.invoiceDocumentExportAction,
+              ),
+              findsOneWidget,
+              reason: 'missing on ${tier.key} for ${status.name}',
+            );
+          }
+        }
+      },
+    );
+
+    testWidgets('the header does not push the lines off a phone', (
+      WidgetTester tester,
+    ) async {
+      // §10's rule, applied to the block this increment added. The header is
+      // the exception to "put it below the lines" only because its height does
+      // not move with the data — two dates and one button — so it has to stay
+      // inside the first screen along with the figures and the first line.
+      await pumpDetail(tester, view: detail(), size: kMobileSize);
+
+      expect(
+        linesTop(tester),
+        lessThan(kMobileSize.height),
+        reason:
+            'the first invoice line is off the bottom of a 400 x 800 phone, '
+            'which is the fourth time a block above it has done that',
+      );
+    });
+
+    testWidgets(
+      'the status colours the balance and the payments, and nothing else',
+      (WidgetTester tester) async {
+        // **One derivation, three places** (D-093). The badge in the title row,
+        // the balance card and the payments card all read the same resolved
+        // status through `statusColorsOf`; two switch statements over six values
+        // is how a page comes to show an amber badge over a green panel.
+        //
+        // The reconciliation above them stays neutral on purpose: those four
+        // terms are what the printed document says, and the printed document has
+        // no opinion about whether it has been paid.
+        for (final (InvoiceStatus status, InvoiceStatusView view)
+            in <(InvoiceStatus, InvoiceStatusView)>[
+              (InvoiceStatus.unpaid, InvoiceStatusView.unpaid),
+              (InvoiceStatus.paid, InvoiceStatusView.paid),
+              (InvoiceStatus.draft, InvoiceStatusView.draft),
+              (InvoiceStatus.cancelled, InvoiceStatusView.cancelled),
+            ]) {
+          await pumpDetail(tester, view: detail(status: status));
+
+          final StatusPalette palette = Theme.of(
+            tester.element(find.byType(InvoiceDetailScreen)),
+          ).extension<StatusPalette>()!;
+          final StatusColors expected = statusColorsOf(view, palette);
+
+          expect(
+            tester.widget<StatusBadge>(find.byType(StatusBadge)).status,
+            view,
+            reason: 'the badge and the tint must be the same derivation',
+          );
+
+          final Iterable<Color?> tinted = tester
+              .widgetList<Material>(find.byType(Material))
+              .map((Material m) => m.color)
+              .where((Color? c) => c == expected.container);
+          expect(
+            tinted.length,
+            greaterThanOrEqualTo(2),
+            reason:
+                'the balance card and the payments card both carry the '
+                '${view.name} tint; found ${tinted.length}',
+          );
+        }
+      },
+    );
+
+    testWidgets('red appears only where an invoice is actually overdue', (
+      WidgetTester tester,
+    ) async {
+      // The palette reserves red for one meaning: money that is late (§10). An
+      // unpaid invoice inside its terms is the normal state of business, and
+      // colouring it red would make a list of ordinary invoices look like a
+      // list of problems.
+      final BuildContext context = await () async {
+        await pumpDetail(tester, view: detail());
+        return tester.element(find.byType(InvoiceDetailScreen));
+      }();
+      final StatusPalette palette = Theme.of(context)
+          .extension<StatusPalette>()!;
+
+      Iterable<Color?> materialColours(WidgetTester t) => t
+          .widgetList<Material>(find.byType(Material))
+          .map((Material m) => m.color);
+
+      await pumpDetail(tester, view: detail());
+      expect(
+        materialColours(tester),
+        isNot(contains(palette.overdue.container)),
+        reason: 'an unpaid invoice inside its terms is not a problem',
+      );
+
+      await pumpDetail(
+        tester,
+        view: detail(dueDate: now.subtract(const Duration(days: 3))),
+      );
+      expect(materialColours(tester), contains(palette.overdue.container));
+    });
   });
 
   group('the fold on a real phone', () {

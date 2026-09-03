@@ -65,6 +65,41 @@ DateTime startOfJalaliDayUtc(
   return localMidnight.subtract(offset);
 }
 
+/// [day]'s Jalali date, carrying the Tehran time of day that [source] has.
+///
+/// **Why a picked date is not simply the start of a day.** The date picker
+/// returns `startOfJalaliDayUtc`, which is correct for what it is asked -- a
+/// day, not a moment. But an invoice's `issueDate` is the instant the document
+/// states it was issued at, and the screen and the printed page now show the
+/// time beside the date (D-092). Snapping to midnight every time the user
+/// opened the picker would replace a real time with `۰۰:۰۰` on any invoice
+/// whose date was ever touched, which is worse than showing no time at all: it
+/// is a specific claim, and a false one.
+///
+/// So changing the *day* changes only the day. The form opens with the clock's
+/// own instant, and that time of day survives a date correction.
+///
+/// **It cannot move the invoice into a different Jalali day**, which is the
+/// property the reporting periods depend on: the result is that day's midnight
+/// plus a time of day strictly less than 24 hours.
+DateTime jalaliDayWithTimeOf(
+  DateTime day, {
+  required DateTime source,
+  Duration offset = kIranStandardOffset,
+}) {
+  final DateTime local = source.toUtc().add(offset);
+  final Duration timeOfDay = Duration(
+    hours: local.hour,
+    minutes: local.minute,
+    seconds: local.second,
+    milliseconds: local.millisecond,
+  );
+  return startOfJalaliDayUtc(
+    jalaliAt(day, offset: offset),
+    offset: offset,
+  ).add(timeOfDay);
+}
+
 /// The UTC instant corresponding to a Jalali wall-clock date and time in
 /// [offset].
 ///

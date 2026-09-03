@@ -649,10 +649,10 @@ class _ConfirmingGateway implements BackupFileGateway {
   const _ConfirmingGateway();
 
   @override
-  Future<bool> deliver({
+  Future<DeliveredFile?> deliver({
     required File source,
     required String suggestedName,
-  }) async => true;
+  }) async => const DeliveredFile('confirmed');
 
   @override
   Future<bool> receive({required File destination}) async => false;

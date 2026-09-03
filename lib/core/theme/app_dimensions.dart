@@ -116,6 +116,15 @@ abstract final class AppDuration {
   /// five.
   static const Duration inputDebounce = Duration(milliseconds: 250);
 
+  /// How long after a back press on the home destination a second press still
+  /// means "leave the application".
+  ///
+  /// Long enough to read a short Persian sentence and act on it, short enough
+  /// that a back press half a minute later is not silently armed. It doubles as
+  /// the message's own duration, so the prompt is on screen for exactly the
+  /// window it describes.
+  static const Duration exitConfirmation = Duration(milliseconds: 2500);
+
   /// One half-cycle of a skeleton loader's pulse.
   ///
   /// Slow on purpose. A skeleton is on screen while the user waits, and a fast

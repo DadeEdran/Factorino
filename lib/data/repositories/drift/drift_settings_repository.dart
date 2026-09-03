@@ -42,6 +42,7 @@ class DriftSettingsRepository implements SettingsRepository {
             roundingUnitRial: Value(settings.roundingUnitRial),
             invoiceNumberPrefix: Value(settings.invoiceNumberPrefix),
             paymentTermDays: Value(settings.paymentTermDays),
+            themeMode: Value(settings.themeMode),
             // `Value`, not `Value.absent`, on all four: clearing the seller is
             // an ordinary edit and has to reach the column as a null.
             sellerName: Value<String?>(seller.name),
@@ -76,6 +77,7 @@ class DriftSettingsRepository implements SettingsRepository {
     roundingUnitRial: row.roundingUnitRial,
     invoiceNumberPrefix: row.invoiceNumberPrefix,
     paymentTermDays: row.paymentTermDays,
+    themeMode: row.themeMode,
     seller: SellerIdentity(
       name: row.sellerName,
       economicId: row.sellerEconomicId,

@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 
 import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/responsive/breakpoints.dart';
+import '../../../core/router/back_policy.dart';
 import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/utils/clock.dart';
@@ -87,6 +88,50 @@ class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
   /// result rather than parking it in `state` — the controller's `AsyncValue`
   /// describes the invoice being edited, not the save.
   bool _writing = false;
+
+  /// The system back press, while this screen is open.
+  ///
+  /// **Registered rather than intercepted with a second listener** — see
+  /// [BackClaims] for why there is exactly one of those in the application.
+  /// Without this the shell's rule («back returns to the dashboard») would leave
+  /// a half-typed invoice without asking, which is the one thing the [PopScope]
+  /// above exists to prevent. The claim runs the same confirmation and then
+  /// obeys the shell's rule rather than the in-page back arrow's: the arrow
+  /// goes up one level to the invoice list, and the hardware back goes home.
+  ///
+  /// A tear-off held in a field rather than a fresh closure at each call site:
+  /// [BackClaims.release] checks identity, so a claim that could not be
+  /// recognised again would never be withdrawn.
+  late final BackClaim _backClaim = _onSystemBack;
+
+  Future<bool> _onSystemBack() async {
+    final AsyncValue<InvoiceEditorState> editor = ref.read(
+      invoiceEditorProvider(_openedAt),
+    );
+    if (_hasContent(editor) && !await _confirmDiscard(AppStrings.of(context))) {
+      // Handled: the user chose to stay, which is a decision and not a
+      // no-op — returning false here would let the shell navigate anyway.
+      return true;
+    }
+    if (mounted) context.go(AppDestination.dashboard.path);
+    return true;
+  }
+
+  BackClaims? _claims;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    // Null in a widget test that pumps this screen without the shell, which is
+    // the ordinary way it is tested.
+    _claims = BackPolicyScope.maybeOf(context)?..claim(_backClaim);
+  }
+
+  @override
+  void dispose() {
+    _claims?.release(_backClaim);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -442,14 +487,37 @@ class _MobileLayout extends StatelessWidget {
               bottom: AppSpacing.xl,
             ),
             children: <Widget>[
-              // **Collapsible here and nowhere else.** On a phone these fields
-              // fill the first viewport and push the add-line buttons 400
-              // logical pixels down — measured on the device (D-054). The two
-              // wider tiers have room for both at once and gain nothing from a
-              // fold.
-              InvoiceDetailsSection(openedAt: openedAt, collapsible: true),
-              const SizedBox(height: AppSpacing.xxl),
+              // **The lines come first on the phone, and the details fold
+              // below them** (known issue 30, D-086 candidate 1). This is §10's
+              // own rule applied a fourth time: a variable-height block above
+              // the thing the page is for belongs below it.
+              //
+              // The number D-086 measured is what made it candidate 1 rather
+              // than a preference. With the details section open — setting a
+              // date, a discount, a rate, all ordinary things to do — the
+              // add-line control left the rendered tree entirely, about 400
+              // logical pixels of scrolling away, and a first-time user handed
+              // the application never found how to add a line at all. Folding
+              // the details (D-054) and withdrawing «صدور» until a line exists
+              // (D-086) each bought room and neither fixed the unfolded case,
+              // because both were rearranging around the wrong order.
+              //
+              // Above the fields, add-line cannot leave the first screen: the
+              // section that grows is the one underneath it.
+              //
+              // **The customer is still reachable and still required.** It
+              // lives in the details section's own heading, which shows it
+              // while collapsed — so the sentence in the pinned bar that says
+              // «مشتری را انتخاب کنید» points at something one scroll away
+              // rather than at something hidden.
               InvoiceLinesSection(openedAt: openedAt),
+              const SizedBox(height: AppSpacing.xxl),
+              // **Collapsible here and nowhere else.** On a phone these fields
+              // fill a whole viewport — measured on the device (D-054). The two
+              // wider tiers have room for both at once and gain nothing from a
+              // fold, and they lay the two out side by side rather than
+              // stacked, so the order question does not arise there.
+              InvoiceDetailsSection(openedAt: openedAt, collapsible: true),
             ],
           ),
         ),

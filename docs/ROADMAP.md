@@ -2023,3 +2023,42 @@ verification does not happen; the §7 properties that are already implemented �
 the key in platform storage, parameterized queries, the logging wrapper, no secrets in the repository
 — remain implemented and tested, and the ones that are not (app lock, manifest hardening, R8) remain
 unbuilt and are listed under Phase 9.
+
+---
+
+## After Phase 7 — the owner's twelve, 2026-09-03
+
+**Status:** `COMPLETED`
+
+Not a phase in the original plan. The owner tested the application and returned with twelve changes;
+all twelve are delivered, `flutter analyze` is clean and the suite stands at **1,269**. They are
+recorded here rather than folded into Phase 7 because several of them reverse or narrow decisions
+that phase made, and a reader should be able to see that they were made deliberately and later.
+
+| # | What | Where |
+|---|---|---|
+| 1 | Tab switching no longer flashes — a branch root of an indexed-stack shell is not a push | D-089 |
+| 2 | An existing invoice line offers only its quantity; price and title are the product record's | D-090 |
+| 3 | The invoice screen's hierarchy, and **known issue 30 closed** — lines above details on the phone | D-093 |
+| 4 | The issue date moved to the top and carries its time; the picker no longer discards it | D-092 |
+| 5 | A visible, named PDF button — the menu item was not found by testers | D-094 |
+| 6 | The save confirmation offers to open the file | D-091 |
+| 7 | The same date and time on the printed page, read off a rasterised render | D-092 |
+| 8 | Status colour on the blocks that report payment state, and only those | D-093 |
+| 9 | Five navigation destinations the same size — the cause was Material's layout delegate | D-088 |
+| 10 | Back returns to the dashboard, and leaves only from there | D-095 |
+| 11 | Light/dark in settings, stored in schema v6 | D-087 |
+| 12 | 2, 3, 4, 5 and 8 designed as one change, which is why they share three decisions | D-092–094 |
+
+**Security note.** One new stored value (`settings.theme_mode`, an enum index — not personal data,
+not a secret) and one new **outward** surface: the `ACTION_VIEW` intent behind «باز کردن» hands a
+saved invoice to whichever application reads PDFs. D-091 states plainly what that does and does not
+change about §7's threat model — it is not a share intent, it fires only on an explicit tap, and it
+acts on a file the user themselves chose the destination of, but the receiving application is a third
+party and the page carries a customer's کد ملی. No new permission is requested and no dependency was
+added. The release-signing refusal (D-083) is untouched; the APK produced this session is a **profile**
+build, which needs no keystore.
+
+**Known issues touched.** 30 is closed. 26 was deliberately not made worse: D-094 put the PDF button
+in the document header rather than the title row, because that row at 328–376 px is 26's first band.
+25 and 28 are unchanged.

@@ -2453,6 +2453,78 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'تنظیمات'**
   String get invoiceDocumentExportGoToSettings;
+
+  /// A Jalali date with the time of day beside it, for the invoice header and the printed document. The Persian comma and the word for 'at' live here rather than in a formatter, because they are copy: a translator changes the order and the separator by editing this line. The two placeholders arrive already formatted -- the date from formatJalaliDateLong and the time from formatJalaliTime, which is bidi-isolated so the colon cannot reorder it.
+  ///
+  /// In fa, this message translates to:
+  /// **'{date}، ساعت {time}'**
+  String dateAtTime(String date, String time);
+
+  /// An amount and its currency unit as one string, for the few places a figure is a read-only value in a row rather than an AmountText -- the fixed price on an existing invoice line. AmountText remains the way money is drawn everywhere it is drawn as money; this exists so those places still obey section 9's rule that a unit label is always shown, never a bare number.
+  ///
+  /// In fa, this message translates to:
+  /// **'{amount} {unit}'**
+  String amountWithUnit(String amount, String unit);
+
+  /// Shown on an existing invoice line, where the quantity is the only editable field (D-090). It says what is fixed and, crucially, names both ways to change it -- edit the product record for a price that is really different, or delete the line and add a free one for a genuine one-off. A note that only refused would leave the user with no route at all.
+  ///
+  /// In fa, this message translates to:
+  /// **'عنوان، قیمت، تخفیف و مالیات این سطر ثابت است. برای تغییر قیمت، محصول را در فهرست محصولات ویرایش کنید؛ برای مبلغی موردی، این سطر را حذف کنید و سطر آزاد تازه‌ای بیفزایید.'**
+  String get invoiceLineFixedNote;
+
+  /// The first back press on the dashboard says this; a second one within the same window leaves the application (D-095). An instruction rather than a question, because there is no control to answer it with -- the answer is the next press.
+  ///
+  /// In fa, this message translates to:
+  /// **'برای خروج، دوباره بازگشت را بزنید.'**
+  String get exitConfirmPrompt;
+
+  /// The settings section holding the light/dark choice. Named for what it governs rather than 'theme', which is a word from the implementation.
+  ///
+  /// In fa, this message translates to:
+  /// **'نمایش'**
+  String get settingsAppearanceSection;
+
+  /// The label above the three-way light/dark control.
+  ///
+  /// In fa, this message translates to:
+  /// **'پوستهٔ روشن و تیره'**
+  String get settingsThemeMode;
+
+  /// Explains the third option, which is the only one whose effect is not visible from its own name. Both themes are designed rather than one being an inversion of the other, so following the device is a real choice and not a fallback.
+  ///
+  /// In fa, this message translates to:
+  /// **'با انتخاب «سیستم»، برنامه از تنظیم دستگاه پیروی می‌کند.'**
+  String get settingsThemeModeHint;
+
+  /// No description provided for @settingsThemeModeSystem.
+  ///
+  /// In fa, this message translates to:
+  /// **'سیستم'**
+  String get settingsThemeModeSystem;
+
+  /// No description provided for @settingsThemeModeLight.
+  ///
+  /// In fa, this message translates to:
+  /// **'روشن'**
+  String get settingsThemeModeLight;
+
+  /// No description provided for @settingsThemeModeDark.
+  ///
+  /// In fa, this message translates to:
+  /// **'تیره'**
+  String get settingsThemeModeDark;
+
+  /// The action beside the 'file saved' message, which opens the PDF that was just written with whatever reads PDFs on the device (D-091). Offered only where the document is complete -- an invoice saved without a seller block keeps the settings action instead, because that is the one the user should act on first.
+  ///
+  /// In fa, this message translates to:
+  /// **'باز کردن'**
+  String get invoiceDocumentExportOpenAction;
+
+  /// A device with nothing that reads PDFs is a real device, so this is a fact rather than an error. It repeats that the file was saved, because the user's worry on seeing a failure message is that the save failed too.
+  ///
+  /// In fa, this message translates to:
+  /// **'برنامه‌ای برای باز کردن فایل PDF پیدا نشد. فایل ذخیره شده است.'**
+  String get invoiceDocumentExportOpenFailed;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {
