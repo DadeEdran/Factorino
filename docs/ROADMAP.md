@@ -2117,3 +2117,16 @@ the next action in `CURRENT_STATE.md`; it is a product decision the owner asked 
 **Security note.** Nothing stored, no new dependency, no new platform surface. One behaviour narrows:
 a stale snackbar is dropped on resume, which drops the «تکمیل مشخصات» action with it — the settings
 screen carries the same prompt for the user who goes looking (D-077).
+
+### The sixth pass — the seller prompt moves earlier
+
+| What | Where |
+|---|---|
+| A prompt on the dashboard while the seller name is empty, with no way to dismiss it | D-102 |
+
+Recommended in the fifth pass and approved. **The gap was timing, not information**: an empty seller
+is the default state of every database, so every first-time user met the requirement at the moment
+they saved their first PDF rather than before it.
+
+**Security note.** Nothing stored, no new dependency, no new platform surface. **D-077 is untouched**
+— an empty seller still blocks nothing, and this widget has no power to refuse anything.

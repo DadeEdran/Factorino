@@ -109,16 +109,10 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
   /// controller, because there is one settings row and one place that writes
   /// it.
   Future<void> _editSeller() async {
-    final SellerIdentity? edited = await showSellerEditorSheet(
-      context,
-      seller: settings.seller,
-    );
-    if (edited == null || !mounted) return;
-
-    final bool saved = await ref
-.read(settingsEditorProvider.notifier)
-.save(settings.copyWith(seller: edited));
-    if (!mounted) return;
+    // **The same function the dashboard prompt calls** (D-102). Two entry
+    // points, one write path, so they cannot come to save a seller differently.
+    final bool? saved = await editSellerIdentity(context, ref, settings);
+    if (saved == null || !mounted) return;
     _say(saved ? strings.settingsSellerSaved : strings.errorGenericBody);
   }
 

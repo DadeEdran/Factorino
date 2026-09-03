@@ -2585,6 +2585,24 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'فاکتور در برنامهٔ PDF باز شد؛ فایل هم ذخیره شد.'**
   String get invoiceDocumentExportSavedAndOpened;
+
+  /// The dashboard prompt shown while the seller name is empty (D-102). Addressed as a task the user has not done yet, not as a warning: an empty seller is the ordinary starting state of every database, not an error.
+  ///
+  /// In fa, this message translates to:
+  /// **'مشخصات کسب‌وکارتان را وارد کنید'**
+  String get sellerPromptTitle;
+
+  /// Both consequences, because the second is what actually confused someone: the owner met the no-seller export message, saw it send them to settings, and read a working save as a failure (D-101). Saying here what will happen later is what stops that sequence from being a surprise. Deliberately not a threat -- an empty seller still blocks nothing (D-077), and neither sentence says it does.
+  ///
+  /// In fa, this message translates to:
+  /// **'تا وقتی نام کسب‌وکارتان را وارد نکنید، بخش «فروشنده» روی فاکتور چاپ نمی‌شود — و فایل PDF پس از ذخیره خودبه‌خود باز نمی‌شود.'**
+  String get sellerPromptBody;
+
+  /// Opens the seller sheet straight from the dashboard, so the fix is one tap from the prompt rather than a navigation to settings and a second control there. **The same words as the export message's action, deliberately**: the user may meet either first, and two labels for one destination would read as two different repairs.
+  ///
+  /// In fa, this message translates to:
+  /// **'تکمیل مشخصات'**
+  String get sellerPromptAction;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {

@@ -20,6 +20,7 @@ import '../../../core/widgets/page_body.dart';
 import '../../../core/widgets/stat_tile.dart';
 import '../../../data/models/invoice_list_item.dart';
 import '../../invoices/presentation/invoices_screen.dart';
+import '../../settings/presentation/widgets/seller_identity_prompt.dart';
 import '../application/dashboard_providers.dart';
 import '../domain/dashboard_summary.dart';
 
@@ -53,22 +54,46 @@ class DashboardScreen extends ConsumerWidget {
 
     return PageBody(
       title: strings.dashboardTitle,
-      child: summary.when(
-        loading: () => const _DashboardSkeleton(),
-        error: (Object error, StackTrace stack) => AsyncErrorView(
-          error: error,
-          stackTrace: stack,
-          scope: 'dashboard',
-          onRetry: () => ref.invalidate(dashboardSummaryProvider),
-        ),
-        data: (DashboardSummary data) => data.isEmpty
-            ? EmptyState(
-                icon: Icons.insights_outlined,
-                title: strings.emptyDashboardTitle,
-                body: strings.emptyDashboardBody,
-              )
-            : _DashboardBody(summary: data, strings: strings),
+      // **Above the summary rather than inside it** (D-102), and that placement
+      // is the point rather than a detail. `_DashboardBody` is not what a
+      // first-time user sees — `data.isEmpty` gives them the empty state, and
+      // they are exactly who this prompt exists for. Putting it inside the body
+      // would have shown it to everyone except the person it is for.
+      //
+      // It is also outside `summary.when`, so a slow or failed aggregate query
+      // cannot take the prompt with it: the two answer different questions and
+      // neither should wait on the other.
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const SellerIdentityPrompt(),
+          Expanded(child: _body(context, ref, strings, summary)),
+        ],
       ),
+    );
+  }
+
+  Widget _body(
+    BuildContext context,
+    WidgetRef ref,
+    AppStrings strings,
+    AsyncValue<DashboardSummary> summary,
+  ) {
+    return summary.when(
+      loading: () => const _DashboardSkeleton(),
+      error: (Object error, StackTrace stack) => AsyncErrorView(
+        error: error,
+        stackTrace: stack,
+        scope: 'dashboard',
+        onRetry: () => ref.invalidate(dashboardSummaryProvider),
+      ),
+      data: (DashboardSummary data) => data.isEmpty
+          ? EmptyState(
+              icon: Icons.insights_outlined,
+              title: strings.emptyDashboardTitle,
+              body: strings.emptyDashboardBody,
+            )
+          : _DashboardBody(summary: data, strings: strings),
     );
   }
 }

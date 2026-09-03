@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/localization/generated/app_strings.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/editor_sheet.dart';
+import '../../../../data/models/app_settings.dart';
 import '../../../../data/models/field_limits.dart';
 import '../../../../data/models/seller_identity.dart';
+import '../../application/settings_editor.dart';
 
 /// Edits the four seller fields — the business the invoice is issued **by**.
 ///
@@ -28,6 +31,33 @@ import '../../../../data/models/seller_identity.dart';
 /// print. Emptying **all four** is always allowed and is how a user who wants
 /// no seller block gets rid of it; the error message says so, because a
 /// required-field rule with no stated way out is a trap.
+/// Opens the seller sheet and writes what it returns.
+///
+/// **Top-level, because two placements call it** (D-102): the settings screen's
+/// own edit control, and the dashboard prompt that a first-time user meets
+/// first. One function rather than two closures, so the two entry points cannot
+/// come to save a seller differently — the same reason `recordPayment` and
+/// `pickInvoiceCustomer` are top-level beside their sheets.
+///
+/// Returns null if the sheet was dismissed, and otherwise whether the write
+/// succeeded. The caller says what happened, because the two placements have
+/// different things worth saying.
+Future<bool?> editSellerIdentity(
+  BuildContext context,
+  WidgetRef ref,
+  AppSettings settings,
+) async {
+  final SellerIdentity? edited = await showSellerEditorSheet(
+    context,
+    seller: settings.seller,
+  );
+  if (edited == null || !context.mounted) return null;
+
+  return ref
+      .read(settingsEditorProvider.notifier)
+      .save(settings.copyWith(seller: edited));
+}
+
 Future<SellerIdentity?> showSellerEditorSheet(
   BuildContext context, {
   required SellerIdentity seller,

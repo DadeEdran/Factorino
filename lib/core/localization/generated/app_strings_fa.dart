@@ -1390,4 +1390,14 @@ class AppStringsFa extends AppStrings {
   @override
   String get invoiceDocumentExportSavedAndOpened =>
       'فاکتور در برنامهٔ PDF باز شد؛ فایل هم ذخیره شد.';
+
+  @override
+  String get sellerPromptTitle => 'مشخصات کسب‌وکارتان را وارد کنید';
+
+  @override
+  String get sellerPromptBody =>
+      'تا وقتی نام کسب‌وکارتان را وارد نکنید، بخش «فروشنده» روی فاکتور چاپ نمی‌شود — و فایل PDF پس از ذخیره خودبه‌خود باز نمی‌شود.';
+
+  @override
+  String get sellerPromptAction => 'تکمیل مشخصات';
 }

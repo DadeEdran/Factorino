@@ -6834,3 +6834,84 @@ no step in any flow, it disappears by being satisfied rather than by being dismi
 D-077's ruling that an empty seller blocks nothing. An onboarding step was considered and rejected:
 this application has no first-run flow at all, and adding one to carry a single optional field is a
 larger change than the problem justifies.
+
+---
+
+## D-102 — The seller prompt moves to the dashboard: a prompt, not a gate
+
+**Date:** 2026-09-03. Approved after D-101, where the owner met the no-seller export message on a
+first phone test and read a working save as a failure.
+
+### The gap was timing, not information
+
+D-077 put a prompt on the settings screen and ruled that an empty seller **blocks nothing** — not
+issuing, not printing. Both were right. What neither covered is *when* the user finds out.
+
+An empty seller is the **default state of every database**: the v5 migration backfills nothing and
+invents nothing, deliberately, because there is no honest value for a business the application has
+never been told about. So every first-time user has one, and the settings prompt reaches only the
+user who goes looking. Everyone else meets the requirement at the moment they save their first PDF —
+and gets an explanation instead of a document, at the one moment they wanted a document.
+
+**The requirement was being discovered when it was already too late.**
+
+### Why the dashboard
+
+* It is the **first screen every user sees**, on the first launch and every launch after.
+* It costs **no step in any flow**. Nothing is interrupted, nothing is gated, and a user who is not
+  ready scrolls past.
+* It **disappears by being satisfied, not by being dismissed**. There is no close button, and that
+  is the design rather than an omission: a prompt that can be waved away is one that gets waved away
+  and then forgotten, which returns the application to exactly the state the prompt exists to
+  prevent. `appSettingsProvider` is a live query, so a saved name rebuilds the widget into a
+  `SizedBox.shrink` — it goes because the thing it asked for happened.
+
+**Above `summary.when`, not inside the body**, and that placement is the whole thing rather than a
+detail. `_DashboardBody` is not what a first-time user sees: `DashboardSummary.isEmpty` is true for
+them and they get the empty state. A prompt placed inside the body would have been shown to everybody
+**except** the person it exists for. Sitting outside the `when` also means a slow or failed aggregate
+query cannot take the prompt with it — the two answer different questions and neither should wait on
+the other.
+
+**Nothing while the answer is unknown.** It renders nothing while the settings row is loading rather
+than assuming the seller is empty; a prompt that flashed on every cold start before the read landed
+would be the application telling a user with a perfectly good business name to enter one.
+
+### D-077 stands: this is a prompt, not a gate
+
+An empty seller still blocks nothing. This widget has no power to refuse anything and does not try:
+it states a consequence and offers the fix beside it. The finding was that D-077's *ruling* was right
+and its *timing* was wrong, and nothing here reopens the ruling.
+
+The copy says **both** consequences — the seller block will be missing, and the file will not open by
+itself after saving — because the second is what actually caused the confusion. Saying here what will
+happen later is what stops that sequence from being a surprise.
+
+`isPrintable` is the test, not `isNotEmpty` (D-077): a name alone satisfies the prompt, because the
+document prints a block from a name and prints one perfectly well without an address or a کد
+اقتصادی. An address without a name does not, because that identity has something in it and still
+cannot head a block.
+
+### Two placements considered and rejected
+
+**An onboarding step.** This application has no first-run flow at all, and building one to carry a
+single optional field is a larger change than the problem justifies — and a wizard shown once is the
+easiest thing in an application to click through without reading.
+
+**The invoice form.** That is the screen four separate decisions have been spent decluttering
+(D-054, D-086, D-093, D-096). A settings prompt on it would undo part of that for a message with
+nothing to do with the invoice being written.
+
+### One write path
+
+`editSellerIdentity` is top-level beside the sheet, and both the settings screen's edit control and
+this prompt call it — the same reason `recordPayment` and `pickInvoiceCustomer` are top-level. Two
+entry points, one write, so they cannot come to save a seller differently. The prompt opens the
+**sheet** rather than navigating to settings: the fix is one tap from the sentence that asked for it.
+
+### Seen working
+
+At 420 px on Windows: the prompt above the tiles, «تکمیل مشخصات» opening the seller sheet, a name
+saved, and the prompt gone with the tiles moved up to fill the space — the disappears-by-being-
+satisfied property, observed rather than argued. The dev database's seller was cleared again
+afterwards, so it is back in the state every new database is in.

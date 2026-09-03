@@ -5,7 +5,22 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-03 (fifth pass) — the first phone test of the export found two things, and
+> **Last updated: 2026-09-03 (sixth pass) — the seller prompt moved to the dashboard.**
+>
+> Approved from the fifth pass's recommendation. An empty seller is the default state of every
+> database (the v5 migration invents nothing, deliberately), so **every first-time user met the
+> requirement at the moment they saved their first PDF** — and got an explanation instead of a
+> document. The gap was timing, not information: D-077's prompt on the settings screen reaches only
+> the user who goes looking.
+>
+> It is a **prompt, not a gate** — D-077's ruling is untouched and an empty seller still blocks
+> nothing. It sits above the dashboard's summary rather than inside it, because
+> `DashboardSummary.isEmpty` is true for a first-time user and the body they see is the empty state:
+> a prompt inside the body would have been shown to everybody except the person it is for. It has no
+> close button and **disappears by being satisfied**, which was observed on Windows rather than
+> argued — name entered, prompt gone, tiles moved up.
+>
+> Earlier the same day: **the first phone test of the export found two things (fifth pass) — the first phone test of the export found two things, and
 > neither was a fault in what the code did.**
 >
 > * **A correct message was read as a broken one** (D-101). With no seller entered — the state every
@@ -418,8 +433,9 @@ Export from the menu:       PASS   phone tier, Redmi (2026-09-02): the menu item
                                    invoice, tapped, the render driven through the real providers,
                                    and D-077's no-seller notice with its «تنظیمات» action shown.
                                    0 layout errors. Gateway faked -- SAF cannot be driven by adb
-flutter test:               PASS   (1295/1295) as of 2026-09-03, after the export copy and the
-                                   snackbar lifecycle (D-101). Was 1289 after the discount screen and
+flutter test:               PASS   (1304/1304) as of 2026-09-03, after the dashboard seller prompt
+                                   (D-102). Was 1295 after the export copy and the snackbar
+                                   lifecycle (D-101). Was 1289 after the discount screen and
                                    the document naming (D-098, D-099, D-100). Was 1272 after the phone's
                                    invoice form was rebuilt (D-096, D-097), 1269 after the twelve.
                                    Was 1230 after the eight phone findings, 1204 at the Phase 7
@@ -448,6 +464,11 @@ Rendered page, date+time:   PASS   read off PIXELS, not source, per HANDOVER §6
                                    «تاریخ صدور ۲ شهریور ۱۴۰۵، ساعت ۱۰:۰۰» -- digits in order, the
                                    bidi-neutral colon not reordered, the isolates stripped at the
                                    boundary without eating the final glyph (D-070 finding 1)
+Seller prompt, seen:        PASS   at 420 px: the prompt above the dashboard tiles; «تکمیل مشخصات»
+                                   opening the seller sheet; a name saved; the prompt **gone** with
+                                   the tiles moved up to fill the space. The dev database's seller
+                                   was cleared again afterwards, so it is back in the state every
+                                   new database is in
 Export message, seen:       PASS   at 420 px, through the REAL Windows save dialog: «فایل فاکتور
                                    ذخیره شد. چون نام کسب‌وکارتان وارد نشده، بخش «فروشنده» روی آن چاپ
                                    نشد و فایل باز نشد.» with «تکمیل مشخصات» beside it
@@ -3085,38 +3106,15 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-> **Nothing is half-finished and no question is waiting on an answer.** The owner's twelve-item list
-> is delivered in full; the gate is clean at 1,269 tests and both artifacts are built.
+> **Nothing is half-finished and no question is waiting on an answer.** Six passes of owner feedback
+> are delivered in full, including the seller prompt the fifth pass asked to be consulted on; the
+> gate is clean at **1,304** tests and both artifacts are built.
 
-**The single specific next action: decide whether the seller prompt moves to the dashboard**, and
-then install the profile APK and check what still cannot be checked here.
+**The single specific next action: install the profile APK on the phone and check what cannot be
+checked here.**
 
-> **The recommendation, since the owner asked for one.** An empty seller block is the default state
-> of every new database (D-077 backfills nothing, deliberately), so **every first-time user meets the
-> no-seller message before they ever see the export work**. That is the wrong place to discover a
-> required setting: the user is told, at the moment they wanted a document, that the document is
-> incomplete.
->
-> **Recommended: a dismissible prompt on the dashboard while the seller name is empty.** One line and
-> an action that opens the seller sheet. The dashboard is the first screen every user sees; it costs
-> no step in any flow; it disappears by being *satisfied* rather than by being dismissed, so it
-> cannot be waved away and forgotten; and it keeps D-077's ruling that an empty seller blocks
-> nothing — it is a prompt, not a gate.
->
-> **Considered and rejected: an onboarding step.** This application has no first-run flow at all, and
-> building one to carry a single optional field is a larger change than the problem justifies —
-> and a wizard shown once is the easiest thing in an application to click through without reading.
->
-> **Considered and rejected: prompting on the first invoice.** The invoice form is already the
-> screen this project has spent four decisions decluttering (D-054, D-086, D-093, D-096). Putting a
-> settings prompt on it would undo part of that for a message with nothing to do with the invoice
-> being written.
->
-> It is not built, because it is a product decision rather than a defect fix and the owner asked to
-> be consulted. It is roughly an hour, including its test.
-
-Then: **install the profile APK on the phone and check the Android-only behaviours nothing here can
-verify.**
+> **The seller prompt is DONE** (D-102), which was the other half of this action. What is left is
+> the hardware.
 
 > **These are still the first things to check, and none is assumed working.** They are not known
 > broken; they are **unproven on hardware** — Dart-tested through the real dispatcher, Kotlin

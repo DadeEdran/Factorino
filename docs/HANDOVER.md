@@ -39,7 +39,8 @@ A user can:
 * **Back up and restore** the whole database to a single encrypted file under a passphrase.
 * **Configure** the VAT rate, invoice prefix, payment term, rounding unit, their own business
   details (which appear on the printed invoice), and **whether the application is light, dark, or
-  follows the device**.
+  follows the device**. The dashboard asks for the business name while there is none (D-102) — a
+  prompt, never a gate: an empty seller still blocks nothing.
 * **See a dashboard** of the current Jalali month — sales, outstanding, recent invoices.
 
 Everything is local. There is no account, no network call, and no cloud.
@@ -340,7 +341,7 @@ a year end and a leap-year Esfand 30.
 
 ```sh
 flutter analyze     # must be clean
-flutter test        # 1295 tests, must all pass
+flutter test        # 1304 tests, must all pass
 ```
 
 Both were clean at handover. Beyond that, a phase is not closed until its layout has been checked at
