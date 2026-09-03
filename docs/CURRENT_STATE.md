@@ -514,6 +514,21 @@ Schema migration:           PASS   v7 (D-106). Unit suite: v6->v7 and v1->v7 aga
                                    columns gone, every neighbouring field intact, tables still
                                    writable, single settings row still single. On-device on
                                    Windows as above
+Artifacts delivered:        PASS   all three replaced in `%USERPROFILE%\Desktop\Factorino-test\`
+                                   under the fixed names the owner links people to. Rebuilt from
+                                   the COMMITTED tree after `flutter clean`:
+                                     factorino-arm64.apk        35,104,038  (was 35,055,091)
+                                     factorino-windows-x64.zip  14,805,201, 21 entries, bundle
+                                                                CONTENTS at the archive root
+                                     Release dir                35,083,603 over 18 files
+                                   **The APK was verified to be the right build**: classes9.dex
+                                   carries `io.github.erysaw.factorino/documents` and
+                                   `saveDocument`, and the old `open_file` channel string is gone.
+                                   **The zip was extracted to a scratch directory and launched** --
+                                   the exact path the README tells a tester to follow -- and the
+                                   window opened.
+                                   `README-fa.txt` rewritten: section 4 replaced for this pass, and
+                                   corrected everywhere the removed field was still promised
 Web build:                  NOT_TESTED
 Android on hardware:        NOT_TESTED  **by arrangement** -- the owner is testing this build. The
                                    two behaviours that have never run on a phone: the document
