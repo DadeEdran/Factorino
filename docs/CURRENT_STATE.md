@@ -317,19 +317,32 @@ Schema migration:           PASS   v7 (D-106). Unit suite: v6->v7 and v1->v7 aga
                                    Windows as above
 Artifacts delivered:        PASS   all three replaced in `%USERPROFILE%\Desktop\Factorino-test\`
                                    under the fixed names the owner links people to. Rebuilt from
-                                   the COMMITTED tree after `flutter clean`:
-                                     factorino-arm64.apk        35,104,038  (was 35,055,091)
-                                     factorino-windows-x64.zip  14,805,201, 21 entries, bundle
+                                   the COMMITTED tree after `flutter clean`, 2026-09-04:
+                                     factorino-arm64.apk        35,103,714  (was 35,104,038 -- the
+                                                                icon removal and five features net
+                                                                out to 324 bytes)
+                                     factorino-windows-x64.zip  14,807,863, 21 entries, bundle
                                                                 CONTENTS at the archive root
-                                     Release dir                35,083,603 over 18 files
-                                   **The APK was verified to be the right build**: classes9.dex
-                                   carries `io.github.erysaw.factorino/documents` and
-                                   `saveDocument`, and the old `open_file` channel string is gone.
+                                     Release dir                35,099,491 over 18 files
+                                   **`flutter clean` is not optional, and this pass proved why.**
+                                   The first APK built without it came out **45.4 MB** against the
+                                   33.5 MB of the clean rebuild of the SAME commit -- 35% inflation
+                                   from stale Gradle/dex state, which would have been handed to a
+                                   tester as a plausible-looking number and filed as growth.
+                                   **The APK was verified to be the right build**: `libapp.so`
+                                   carries the three strings this pass added -- the custom-range
+                                   chip and both calendar headings (D-111). Note the search must be
+                                   **UTF-16LE**: Dart stores non-Latin strings as `TwoByteString`,
+                                   so grepping the snapshot for UTF-8 finds nothing and looks
+                                   exactly like a stale build.
                                    **The zip was extracted to a scratch directory and launched** --
                                    the exact path the README tells a tester to follow -- and the
-                                   window opened.
-                                   `README-fa.txt` rewritten: section 4 replaced for this pass, and
-                                   corrected everywhere the removed field was still promised
+                                   window opened with its Persian title and stayed up 10 s.
+                                   `README-fa.txt` rewritten: section 4 replaced for this pass, the
+                                   previous pass's four items kept as "not yet tried on a phone",
+                                   payments and the filter corrected in section 5, two known issues
+                                   added, and **a new section 9** explaining the standalone hamza --
+                                   which is D-112's answer and D-108's fix
 Web build:                  NOT_TESTED
 Android on hardware:        NOT_TESTED  **by arrangement** -- the owner is testing this build. The
                                    two behaviours that have never run on a phone: the document
