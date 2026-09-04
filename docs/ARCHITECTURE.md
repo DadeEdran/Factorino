@@ -389,6 +389,29 @@ customer's name — and no payment information. The `paid`/`partiallyPaid` deter
 a second, contradicting answer because it is not handed the inputs. The one thing it *does* derive is
 `overdue`, which is not a stored status and must not be.
 
+### Per-day aggregation, in one statement
+
+`InvoiceRepository.watchDailySales(InstantRange)` returns a sparse map from Iranian civil day to that
+day's issued total and count, from a single grouped query (D-116):
+
+```sql
+SELECT (issue_date + ?) / 86400000 AS day_index, SUM(grand_total_rial), COUNT(id)
+FROM invoices
+WHERE deleted_at IS NULL AND status IN (unpaid, partiallyPaid, paid)
+  AND issue_date >= ? AND issue_date < ?
+GROUP BY day_index
+```
+
+**One query for a whole month**, which is the point: a calendar marking which of thirty-one days had
+sales would otherwise issue thirty-one statements and reissue them on every month step. The offset is
+added **before** the division, so the boundary is Tehran midnight rather than UTC midnight — dividing
+the raw instant files an invoice issued at 02:00 Tehran under the previous date.
+
+It is built with drift's typed operators, not raw SQL: SQLite's `/` on two integers is integer
+division, so `(issueDate + Variable(offsetMs)) / Constant(86400000)` expresses the key inside the
+query builder with the offset bound (§7). The same method serves a one-day range, so the day view's
+figure and the calendar's marks come from one statement and cannot disagree.
+
 ## B.5 Database design
 
 **Connection setup** (D-016): opened directly with `drift` + `sqlite3` + `path_provider`, with the
@@ -649,22 +672,58 @@ same way produce no error, just a customer who cannot be found — so it is enfo
 scans `lib/`, exactly as the single database opener is (D-020), and verified end to end through the
 real encrypted database rather than only as a unit.
 
+### Jalali periods, and the one key SQL can group on
+
+`core/date/jalali_period.dart` resolves every reporting period in the Jalali calendar first and only
+then converts to instants (D-006). It now covers **day, week, month and year**:
+
+* `jalaliWeek` / `jalaliWeekOf` — شنبه to جمعه, stepping back by `shamsi_date`'s `weekDay - 1`, which
+  is already the Iranian week. `DateTime.weekday` starts at Monday and would shift every week by two
+  days while still producing a plausible-looking figure (D-115).
+* `dayIndexAtMillis` / `jalaliFromDayIndex` (in `jalali_instant.dart`) and `dayIndexRange` — the
+  Iranian civil day as a single integer, `(instant + offset) ~/ 86400000`. It exists because **SQLite
+  can compute that and cannot compute a Jalali date**, so a per-day aggregate groups on the index in
+  SQL and converts once per returned row rather than once per day of the month (D-116). The pair
+  lives here rather than at the call site because §5 keeps calendar arithmetic in `core/date/`, and
+  because both halves must agree about the offset — a query grouped on one boundary and read back on
+  another is off by a day for three and a half hours out of every twenty-four. `dayIndexRange`
+  refuses a range reaching before the epoch, where truncating division rounds the wrong way.
+
+`core/formatting/jalali_display.dart` adds `formatJalaliYear` and `formatJalaliDayRangeParts`. The
+latter returns the two **halves** of a range caption rather than the sentence, because the «تا»
+between them is copy and lives in the ARB (§1, D-034); it states a shared month and year once
+(«۱ تا ۷ شهریور ۱۴۰۵») and widens only where the range straddles one. Its end comes from
+`lastJalaliDayOf`, never from the half-open `range.end`, which names the following day.
+
 ## B.7 Navigation — **built** (increment e)
 
 `go_router` (D-009), with routes for dashboard, customers, customer detail, products, product
 detail, invoices, invoice detail, create/edit invoice, reports and settings. Web URLs are real and
 shareable; deep links restore on Windows and Android.
 
-Full navigation label set: داشبورد / فاکتورها / مشتریان / محصولات و خدمات / گزارش‌ها / تنظیمات.
+Full navigation label set: داشبورد / فاکتورها / مشتریان / محصولات / گزارش‌ها / تنظیمات.
+
+**The products destination is «محصولات» and its screen is titled «محصولات و خدمات»** (D-114). §11
+names the longer phrase; it survives as the page's own heading, where there is room. A navigation
+label is read at a glance across a bar five items wide, and the longer one was the only label that
+could not fit an equal fifth of a 328-pixel phone.
 
 Routes are registered only where the screen exists: the five destinations do, and the detail and
 create routes arrive with the screens they open. A registered route resolving to nothing is the same
 failure D-021 rejects, one level down.
 
-**In Phase 1, گزارش‌ها is omitted entirely** — not disabled, not a coming-soon placeholder, and its
-route is not registered either, so no deep link or typed Web URL can reach a screen that does not
-exist. It arrives in Phase 8 (D-021). Phase 1 navigation is therefore:
-داشبورد · فاکتورها · مشتریان · محصولات و خدمات · تنظیمات.
+`/day` («فروش روزانه») is a **child of the dashboard branch**, not a sixth destination (D-116): it
+answers a question the dashboard already asks at a finer grain, so it sits behind the dashboard and
+the bar stays at five. The dashboard's own path is `/`, so this is its only child and there is no
+`:id` above it to swallow the literal segment. It is reached from an icon in the dashboard's **title
+row**, which costs no height — §10's rule about data-dependent cards above the content a page exists
+to show.
+
+**گزارش‌ها is omitted entirely** — not disabled, not a coming-soon placeholder, and its route is not
+registered either, so no deep link or typed Web URL can reach a screen that does not exist. It
+arrives in Phase 8 (D-021), and `/day` is deliberately not it: that section opens when it has the
+reports that make it a section. Navigation is therefore:
+داشبورد · فاکتورها · مشتریان · محصولات · تنظیمات.
 
 ## B.8 Localization and RTL — **built** (increment e)
 

@@ -1,6 +1,7 @@
 import '../../core/date/jalali_period.dart';
 import '../../core/money/invoice_calculator.dart';
 import '../models/customer_totals.dart';
+import '../models/daily_sales.dart';
 import '../models/invoice.dart';
 import '../models/invoice_detail.dart';
 import '../models/invoice_draft.dart';
@@ -125,6 +126,23 @@ abstract interface class InvoiceRepository {
   /// The same sum, as a live query, for a dashboard tile that must not go
   /// stale on the next write.
   Stream<int> watchTotalIssuedRial(InstantRange period);
+
+  /// The same sum, **broken down by Iranian civil day**, for [range], live —
+  /// in **one** statement (§13).
+  ///
+  /// One query for a whole month rather than one per day, which is the whole
+  /// reason this exists rather than the calendar calling
+  /// [watchTotalIssuedRial] thirty-one times. It is also why the grouping key
+  /// is a day *index* and not a formatted date: SQLite can compute
+  /// `(issue_date + offset) / 86400000` and cannot compute a Jalali date, so
+  /// the boundary is applied in SQL and the calendar conversion happens once
+  /// per returned row rather than once per day of the month.
+  ///
+  /// The same population as every other sales figure: issued only, drafts and
+  /// cancellations excluded (D-039). Summing the days of a month therefore
+  /// gives exactly `totalIssuedRial` of that month, and a test holds the two to
+  /// it.
+  Stream<DailySales> watchDailySales(InstantRange range);
 
   /// Creates an invoice, its lines, and its number, in one transaction.
   ///

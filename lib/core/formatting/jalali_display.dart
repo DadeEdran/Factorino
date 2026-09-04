@@ -13,6 +13,7 @@ library;
 import 'package:shamsi_date/shamsi_date.dart';
 
 import '../date/jalali_instant.dart';
+import '../date/jalali_period.dart';
 import 'persian_text.dart';
 
 /// The Jalali date at [instant], as `۱۴۰۵/۰۶/۰۲`.
@@ -108,6 +109,72 @@ String formatJalaliMonthYear(
   }
   final Jalali date = jalaliAt(instant, offset: offset);
   return '${monthNames[date.month - 1]} ${toPersianDigits('${date.year}')}';
+}
+
+/// The Jalali year at [instant], as `۱۴۰۵`.
+///
+/// The caption a yearly figure carries. Digits only — no copy — so it does not
+/// take the twelve month names it would otherwise need.
+String formatJalaliYear(
+  DateTime instant, {
+  Duration offset = kIranStandardOffset,
+}) {
+  return toPersianDigits('${jalaliAt(instant, offset: offset).year}');
+}
+
+/// The two ends of [range] as a caption's halves: `(from: '۱', to: '۷ شهریور
+/// ۱۴۰۵')`.
+///
+/// **Returns the parts rather than the sentence**, because the word between
+/// them is copy and copy lives in the ARB (§1, D-034). The caller joins them
+/// with the localization layer's own «{from} تا {to}».
+///
+/// **The month and year are stated once when both ends share them.** A week
+/// caption reading «۱ شهریور ۱۴۰۵ تا ۷ شهریور ۱۴۰۵» is correct and unreadable
+/// on a tile; «۱ تا ۷ شهریور ۱۴۰۵» is the form a Persian reader expects. A week
+/// that straddles a month — or a year — gets the fuller form on the end that
+/// needs it, so nothing is ever ambiguous.
+///
+/// **The end is [lastJalaliDayOf], not `range.end`.** The range is half-open,
+/// so its end instant is the *following* day's midnight: naming it would put a
+/// day outside the figure on the label that says what the figure covers.
+({String from, String to}) formatJalaliDayRangeParts(
+  InstantRange range, {
+  required List<String> monthNames,
+  Duration offset = kIranStandardOffset,
+}) {
+  if (monthNames.length != 12) {
+    throw ArgumentError.value(
+      monthNames.length,
+      'monthNames',
+      'expected the twelve Jalali month names in order',
+    );
+  }
+  final Jalali first = jalaliAt(range.start, offset: offset);
+  final Jalali last = jalaliAt(
+    lastJalaliDayOf(range, offset: offset),
+    offset: offset,
+  );
+
+  final String to =
+      '${toPersianDigits('${last.day}')} ${monthNames[last.month - 1]} '
+      '${toPersianDigits('${last.year}')}';
+
+  if (first.year == last.year && first.month == last.month) {
+    return (from: toPersianDigits('${first.day}'), to: to);
+  }
+  if (first.year == last.year) {
+    return (
+      from: '${toPersianDigits('${first.day}')} ${monthNames[first.month - 1]}',
+      to: to,
+    );
+  }
+  return (
+    from:
+        '${toPersianDigits('${first.day}')} ${monthNames[first.month - 1]} '
+        '${toPersianDigits('${first.year}')}',
+    to: to,
+  );
 }
 
 /// An Iranian mobile number, grouped for reading: `۰۹۱۲ ۳۴۵ ۶۷۸۹`.

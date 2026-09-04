@@ -118,10 +118,10 @@ abstract class AppStrings {
   /// **'مشتریان'**
   String get navCustomers;
 
-  /// Navigation destination: the product and service catalogue.
+  /// Navigation destination: the product and service catalogue. Deliberately SHORTER than productsTitle, which is the page's own heading and still names both halves. A navigation label is read at a glance in a bar five items wide, and «محصولات و خدمات» was the one label that wrapped to a second line on a phone; the screen it opens says what it holds.
   ///
   /// In fa, this message translates to:
-  /// **'محصولات و خدمات'**
+  /// **'محصولات'**
   String get navProducts;
 
   /// Navigation destination: application settings.
@@ -214,11 +214,71 @@ abstract class AppStrings {
   /// **'مشتریان'**
   String get dashboardCustomerCount;
 
+  /// Dashboard tile. 'This week' is the JALALI week, شنبه to جمعه (D-006) -- not the last seven days, and not a Monday-start week. The caption beneath it names the two dates, because a week is the one period a user cannot reconstruct from its name.
+  ///
+  /// In fa, this message translates to:
+  /// **'فروش این هفته'**
+  String get dashboardSalesThisWeek;
+
+  /// Dashboard tile. The JALALI year, Farvardin to Farvardin -- the user's business and tax year. A Gregorian year here would be wrong by about three months and would look right for nine of them.
+  ///
+  /// In fa, this message translates to:
+  /// **'فروش امسال'**
+  String get dashboardSalesThisYear;
+
+  /// Title-row action on the dashboard, opening the day view. In the title row rather than as a card, because section 10 forbids adding height above the content a page exists to show.
+  ///
+  /// In fa, this message translates to:
+  /// **'فروش روزانه'**
+  String get dashboardDailySales;
+
   /// No description provided for @dashboardRecentInvoices.
   ///
   /// In fa, this message translates to:
   /// **'فاکتورهای اخیر'**
   String get dashboardRecentInvoices;
+
+  /// The day view: pick a day on a Jalali calendar and see what was sold that day.
+  ///
+  /// In fa, this message translates to:
+  /// **'فروش روزانه'**
+  String get dailySalesTitle;
+
+  /// The selected day's sales total. The same population as every other sales figure -- issued invoices only, drafts and cancellations excluded (D-039).
+  ///
+  /// In fa, this message translates to:
+  /// **'فروش این روز'**
+  String get dailySalesDayTotal;
+
+  /// No description provided for @dailySalesInvoicesSection.
+  ///
+  /// In fa, this message translates to:
+  /// **'فاکتورهای این روز'**
+  String get dailySalesInvoicesSection;
+
+  /// What a marked calendar day announces to a screen reader. The dot itself announces nothing, so without this the marking is visual-only.
+  ///
+  /// In fa, this message translates to:
+  /// **'دارای فروش'**
+  String get dailySalesMarkedDay;
+
+  /// Explains the dot under a calendar day. It says 'invoice issued' rather than 'sales' because that is exactly what the dot means: a payment received on a day does not mark it, since the day view answers what was SOLD that day, not what was collected.
+  ///
+  /// In fa, this message translates to:
+  /// **'روزهایی که فاکتور صادر شده با نقطه مشخص شده‌اند.'**
+  String get dailySalesLegend;
+
+  /// No description provided for @dailySalesEmptyTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'در این روز فاکتوری صادر نشده است'**
+  String get dailySalesEmptyTitle;
+
+  /// No description provided for @dailySalesEmptyBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'روز دیگری را از تقویم انتخاب کنید. روزهای دارای فروش با نقطه مشخص شده‌اند.'**
+  String get dailySalesEmptyBody;
 
   /// No description provided for @emptyDashboardTitle.
   ///
@@ -229,7 +289,7 @@ abstract class AppStrings {
   /// No description provided for @emptyDashboardBody.
   ///
   /// In fa, this message translates to:
-  /// **'با ساختن اولین فاکتور، خلاصهٔ فروش و مانده دریافتنی همین‌جا نمایش داده می‌شود.'**
+  /// **'با ساختن اولین فاکتور، خلاصه فروش و مانده دریافتنی همین‌جا نمایش داده می‌شود.'**
   String get emptyDashboardBody;
 
   /// No description provided for @invoicesTitle.
@@ -319,7 +379,7 @@ abstract class AppStrings {
   /// No description provided for @settingsInvoicePrefix.
   ///
   /// In fa, this message translates to:
-  /// **'پیشوند شمارهٔ فاکتور'**
+  /// **'پیشوند شماره فاکتور'**
   String get settingsInvoicePrefix;
 
   /// No description provided for @settingsRoundingUnit.
@@ -427,7 +487,7 @@ abstract class AppStrings {
   /// Validation error when a seller field is filled but the name is not. Reported, never clamped (D-027): a seller block carrying an economic ID and no name is a fragment rather than an identification. The second sentence is what stops the rule becoming a trap -- it says how to get OUT of the section, because a user who wants no seller block at all must be able to empty it.
   ///
   /// In fa, this message translates to:
-  /// **'برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همهٔ فیلدها را خالی بگذارید.'**
+  /// **'برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همه فیلدها را خالی بگذارید.'**
   String get settingsErrorSellerNameRequired;
 
   /// No description provided for @settingsSellerSaved.
@@ -607,7 +667,7 @@ abstract class AppStrings {
   /// Opens the full list behind a short preview of it -- the dashboard's recent-invoices section.
   ///
   /// In fa, this message translates to:
-  /// **'مشاهدهٔ همه'**
+  /// **'مشاهده همه'**
   String get actionViewAll;
 
   /// Tooltip for a row's overflow menu.
@@ -1265,7 +1325,7 @@ abstract class AppStrings {
   /// No description provided for @invoiceIssueConfirmBody.
   ///
   /// In fa, this message translates to:
-  /// **'با صدور، فاکتور شمارهٔ رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.'**
+  /// **'با صدور، فاکتور شماره رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.'**
   String get invoiceIssueConfirmBody;
 
   /// No description provided for @invoiceIssueConfirmAction.
@@ -1295,7 +1355,7 @@ abstract class AppStrings {
   /// No description provided for @invoiceDiscardKeepAction.
   ///
   /// In fa, this message translates to:
-  /// **'ادامهٔ ویرایش'**
+  /// **'ادامه ویرایش'**
   String get invoiceDiscardKeepAction;
 
   /// No description provided for @invoiceBackTooltip.
@@ -1583,19 +1643,19 @@ abstract class AppStrings {
   /// The live record's current name, shown beside the diverged notice so the user can find the customer in the list. Named as the record, not as a correction -- neither one is wrong.
   ///
   /// In fa, this message translates to:
-  /// **'در پروندهٔ مشتری: {name}'**
+  /// **'در پرونده مشتری: {name}'**
   String invoiceDetailPartyRecordNow(String name);
 
   /// A draft has no snapshot on purpose: it is not a document yet and should pick up a correction (D-052). Says both halves -- what is true now, and what changes at issue.
   ///
   /// In fa, this message translates to:
-  /// **'این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پروندهٔ فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.'**
+  /// **'این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پرونده فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.'**
   String get invoiceDetailPartyDraft;
 
   /// An invoice issued before schema v3 has no party snapshot and never will (D-052 refuses to fabricate one). The same admission «ثبت‌نشده» makes for a missing figure, applied to the party -- with the reassurance that the money is unaffected, for the reason invoiceSummaryGrossUnrecordedNote carries one.
   ///
   /// In fa, this message translates to:
-  /// **'مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پروندهٔ فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.'**
+  /// **'مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پرونده فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.'**
   String get invoiceDetailPartyNoSnapshot;
 
   /// The customer row is soft-deleted. Restates the promise the delete dialog made, at the moment the user would otherwise wonder whether the invoice is broken.
@@ -1607,7 +1667,7 @@ abstract class AppStrings {
   /// Leads to the LIVE customer record, which is what detail.customer is for -- never to the snapshot, which is not a row and has nowhere to lead.
   ///
   /// In fa, this message translates to:
-  /// **'رفتن به پروندهٔ مشتری'**
+  /// **'رفتن به پرونده مشتری'**
   String get invoiceDetailGoToCustomer;
 
   /// The mobile number, which is deliberately not part of the party snapshot: contact detail, not document content, and it should resolve live so a reprint next year reaches the number the customer has now (D-052).
@@ -1811,7 +1871,7 @@ abstract class AppStrings {
   /// No description provided for @paymentFieldNoteHint.
   ///
   /// In fa, this message translates to:
-  /// **'شمارهٔ چک، مرجع تراکنش، یا هر یادداشت دیگر'**
+  /// **'شماره چک، مرجع تراکنش، یا هر یادداشت دیگر'**
   String get paymentFieldNoteHint;
 
   /// What is still owed, shown under the amount field so the common case -- paying off the rest -- needs no arithmetic from the user. It is InvoiceDetail.amountDue, read, never recomputed here.
@@ -1889,7 +1949,7 @@ abstract class AppStrings {
   /// Cancellation is the correction path, so the copy states what it does and what it does not do before the user commits: the record stays, the number stays spent (D-013), and editing is still not the way back. A confirmation that only asks «are you sure» is one people learn to dismiss.
   ///
   /// In fa, this message translates to:
-  /// **'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شمارهٔ آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.'**
+  /// **'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شماره آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.'**
   String get invoiceCancelBody;
 
   /// Shown only when the invoice actually carries payments (D-060's rule). Cancelling never touches the payments table (D-061), and a user cancelling a part-paid invoice must be told that before committing, not discover it afterwards.
@@ -1955,13 +2015,13 @@ abstract class AppStrings {
   /// No description provided for @invoiceFilterPeriodSection.
   ///
   /// In fa, this message translates to:
-  /// **'بازهٔ زمانی'**
+  /// **'بازه زمانی'**
   String get invoiceFilterPeriodSection;
 
   /// No description provided for @invoiceFilterCustomerAny.
   ///
   /// In fa, this message translates to:
-  /// **'همهٔ مشتریان'**
+  /// **'همه مشتریان'**
   String get invoiceFilterCustomerAny;
 
   /// No description provided for @invoiceFilterCustomerChoose.
@@ -1973,7 +2033,7 @@ abstract class AppStrings {
   /// No description provided for @invoiceFilterPeriodAny.
   ///
   /// In fa, this message translates to:
-  /// **'همهٔ تاریخ‌ها'**
+  /// **'همه تاریخ‌ها'**
   String get invoiceFilterPeriodAny;
 
   /// The current JALALI month, not the Gregorian one (section 5, D-006). «فروش این ماه» on the dashboard means the same thing.
@@ -1997,10 +2057,10 @@ abstract class AppStrings {
   /// Opens two Jalali calendars in turn, for a start day and an end day. The presets answer the questions a billing application is usually asked; this answers the rest, and it is a Jalali calendar rather than a Gregorian one for the reason section 5 gives about every other date in this application.
   ///
   /// In fa, this message translates to:
-  /// **'بازهٔ دلخواه'**
+  /// **'بازه دلخواه'**
   String get invoiceFilterPeriodCustom;
 
-  /// The chosen custom range, on the chip, replacing «بازهٔ دلخواه» once it is set. Both ends arrive already formatted by formatJalaliDate, which bidi-isolates each so the slashes cannot reorder; the word between them is copy and lives here.
+  /// The chosen custom range, on the chip, replacing «بازه دلخواه» once it is set. Both ends arrive already formatted by formatJalaliDate, which bidi-isolates each so the slashes cannot reorder; the word between them is copy and lives here.
   ///
   /// In fa, this message translates to:
   /// **'{from} تا {to}'**
@@ -2051,7 +2111,7 @@ abstract class AppStrings {
   /// The cancelled invoice's version of paymentDeleteBody. «مانده افزایش می‌یابد» is false there — nothing is owed on a void document — and the fact worth stating instead is that correcting the money record does not resurrect the invoice (D-061).
   ///
   /// In fa, this message translates to:
-  /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقهٔ پرداخت را اصلاح می‌کند.'**
+  /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.'**
   String paymentDeleteBodyCancelled(String amount);
 
   /// No description provided for @settingsEditTitle.
@@ -2081,7 +2141,7 @@ abstract class AppStrings {
   /// No description provided for @settingsFieldPrefix.
   ///
   /// In fa, this message translates to:
-  /// **'پیشوند شمارهٔ فاکتور'**
+  /// **'پیشوند شماره فاکتور'**
   String get settingsFieldPrefix;
 
   /// No description provided for @settingsFieldPrefixHint.
@@ -2129,7 +2189,7 @@ abstract class AppStrings {
   /// No description provided for @backupExportAction.
   ///
   /// In fa, this message translates to:
-  /// **'تهیهٔ پشتیبان'**
+  /// **'تهیه پشتیبان'**
   String get backupExportAction;
 
   /// No description provided for @backupImportAction.
@@ -2141,7 +2201,7 @@ abstract class AppStrings {
   /// No description provided for @backupPasswordTitle.
   ///
   /// In fa, this message translates to:
-  /// **'گذرواژهٔ فایل پشتیبان'**
+  /// **'گذرواژه فایل پشتیبان'**
   String get backupPasswordTitle;
 
   /// No description provided for @backupPasswordField.
@@ -2183,7 +2243,7 @@ abstract class AppStrings {
   /// No description provided for @backupExportInProgress.
   ///
   /// In fa, this message translates to:
-  /// **'در حال تهیهٔ پشتیبان…'**
+  /// **'در حال تهیه پشتیبان…'**
   String get backupExportInProgress;
 
   /// No description provided for @backupExportDone.
@@ -2195,7 +2255,7 @@ abstract class AppStrings {
   /// No description provided for @backupImportPasswordTitle.
   ///
   /// In fa, this message translates to:
-  /// **'گذرواژهٔ این فایل پشتیبان'**
+  /// **'گذرواژه این فایل پشتیبان'**
   String get backupImportPasswordTitle;
 
   /// No description provided for @backupImportInProgress.
@@ -2213,19 +2273,19 @@ abstract class AppStrings {
   /// No description provided for @backupImportConfirmTitle.
   ///
   /// In fa, this message translates to:
-  /// **'جایگزینی همهٔ اطلاعات'**
+  /// **'جایگزینی همه اطلاعات'**
   String get backupImportConfirmTitle;
 
   /// The replace-not-merge sentence, required by D-069 as a data-loss guard: a user who expects a merge loses everything entered since the backup and has no reason to expect it, because «restore» implies addition to most people.
   ///
   /// In fa, this message translates to:
-  /// **'با بازیابی، همهٔ اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.'**
+  /// **'با بازیابی، همه اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.'**
   String get backupImportConfirmReplaces;
 
   /// No description provided for @backupImportConfirmLoses.
   ///
   /// In fa, this message translates to:
-  /// **'هر چیزی که پس از تهیهٔ این پشتیبان ثبت کرده‌اید از بین می‌رود.'**
+  /// **'هر چیزی که پس از تهیه این پشتیبان ثبت کرده‌اید از بین می‌رود.'**
   String get backupImportConfirmLoses;
 
   /// No description provided for @backupImportConfirmContents.
@@ -2253,7 +2313,7 @@ abstract class AppStrings {
   /// Export failed. The file is deleted on any failure, so there is never a half-written backup to explain away.
   ///
   /// In fa, this message translates to:
-  /// **'تهیهٔ پشتیبان انجام نشد'**
+  /// **'تهیه پشتیبان انجام نشد'**
   String get errorBackupExportFailedTitle;
 
   /// No description provided for @errorBackupExportFailedBody.
@@ -2289,7 +2349,7 @@ abstract class AppStrings {
   /// Refused rather than attempted: this build has no migration step for a shape it has never seen. The copy says what to do -- update the app -- rather than only that it failed.
   ///
   /// In fa, this message translates to:
-  /// **'این پشتیبان با نسخهٔ جدیدتری ساخته شده است'**
+  /// **'این پشتیبان با نسخه جدیدتری ساخته شده است'**
   String get errorBackupFromNewerVersionTitle;
 
   /// No description provided for @errorBackupFromNewerVersionBody.
@@ -2373,7 +2433,7 @@ abstract class AppStrings {
   /// One factual line under the party block, printed ONLY for an invoice issued before the party snapshot existed (D-052, schema v3), where the document's own statement of the buyer was never stored. It is not an apology and not a warning: it says where the details came from, which is true and is what a reader would otherwise assume wrongly. The other three provenance cases print nothing -- see D-075. Keep it to one sentence; a document that explains itself at length reads as unreliable.
   ///
   /// In fa, this message translates to:
-  /// **'مشخصات خریدار از پروندهٔ فعلی مشتری خوانده شده است.'**
+  /// **'مشخصات خریدار از پرونده فعلی مشتری خوانده شده است.'**
   String get invoiceDocumentPartyFromRecord;
 
   /// The row-number column of the printed lines table. Conventional on an Iranian invoice, and the column a customer points at when they query one line. Narrow: it holds at most three Persian digits.
@@ -2481,7 +2541,7 @@ abstract class AppStrings {
   /// The menu item on the invoice detail screen that generates the PDF and offers it to the user to save. In the title row menu beside cancellation, per the project spec: an actions card here would be the fourth block added above the invoice lines on this family of screens. Says 'save a PDF copy' rather than 'print' -- nothing is sent to a printer, a file is written where the user chooses.
   ///
   /// In fa, this message translates to:
-  /// **'ذخیرهٔ نسخهٔ PDF'**
+  /// **'ذخیره نسخه PDF'**
   String get invoiceDocumentExportAction;
 
   /// Saved, and the automatic open found nothing to open it with -- a phone with no PDF viewer is a real phone. Says which of the two happened rather than reporting only the save, because the user is looking at the application rather than at a document and needs to know why. Carries the «باز کردن» action as a manual retry.
@@ -2493,7 +2553,7 @@ abstract class AppStrings {
   /// A failed generation or save. Friendly Persian with no stack trace, no file path and no exception text, per section 7. Says what to do next rather than what went wrong internally, because the internal reason is never something the user can act on.
   ///
   /// In fa, this message translates to:
-  /// **'ذخیرهٔ فایل فاکتور انجام نشد. دوباره تلاش کنید.'**
+  /// **'ذخیره فایل فاکتور انجام نشد. دوباره تلاش کنید.'**
   String get invoiceDocumentExportFailed;
 
   /// The other half of D-077's obligation, rewritten after the owner read it as a broken save (D-101). Three things in order, and the order is the point: **the file saved** (first, plainly, because that is what the user is anxious about), **why the seller block is missing** (their business name is not entered), and **why the document did not open** (so the settings action is not read as a repair for the save). The previous wording said only that the invoice had been saved without a seller section, which left «تنظیمات» looking like a fix for something that had gone wrong.
@@ -2541,7 +2601,7 @@ abstract class AppStrings {
   /// The label above the three-way light/dark control.
   ///
   /// In fa, this message translates to:
-  /// **'پوستهٔ روشن و تیره'**
+  /// **'پوسته روشن و تیره'**
   String get settingsThemeMode;
 
   /// Explains the third option, which is the only one whose effect is not visible from its own name. Both themes are designed rather than one being an inversion of the other, so following the device is a real choice and not a fallback.
@@ -2637,7 +2697,7 @@ abstract class AppStrings {
   /// The ordinary, everything-worked outcome (D-100). **It leads with the opening, not the saving**, so the three export messages differ in their first words rather than in a negation particle buried mid-sentence -- the owner tested the previous build, met the no-seller message instead, and read a working save as a failure (D-101). No action beside it: offering to open a document that is already open is an action that does nothing visible.
   ///
   /// In fa, this message translates to:
-  /// **'فاکتور در برنامهٔ PDF باز شد؛ فایل هم ذخیره شد.'**
+  /// **'فاکتور در برنامه PDF باز شد؛ فایل هم ذخیره شد.'**
   String get invoiceDocumentExportSavedAndOpened;
 
   /// The dashboard prompt shown while the seller name is empty (D-102). Addressed as a task the user has not done yet, not as a warning: an empty seller is the ordinary starting state of every database, not an error.

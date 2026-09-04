@@ -44,7 +44,12 @@ A user can:
   details (which appear on the printed invoice), and **whether the application is light, dark, or
   follows the device**. The dashboard asks for the business name while there is none (D-102) — a
   prompt, never a gate: an empty seller still blocks nothing.
-* **See a dashboard** of the current Jalali month — sales, outstanding, recent invoices.
+* **See a dashboard** of three nested Jalali periods — sales this week (شنبه to جمعه), this month
+  and this year — plus what is outstanding and the most recent invoices (D-115).
+* **Pick a day and see that day's sales** — «فروش روزانه» at `/day`, reached from the calendar icon
+  in the dashboard's title row. A Jalali calendar marks every day an invoice was **issued** on it,
+  so the months with activity are visible at a glance; the whole visible month comes from one
+  grouped query (D-116).
 
 Everything is local. There is no account, no network call, and no cloud.
 
@@ -55,8 +60,11 @@ Everything is local. There is no account, no network call, and no cloud.
 None of these are bugs. All were scoped out and recorded (D-068).
 
 * **No reports section.** «گزارش‌ها» is absent from navigation entirely rather than being a dead
-  item — there is no period selection and no sales-by-customer or sales-by-product breakdown. The
-  dashboard covers the current Jalali month only.
+  item. The dashboard covers week, month and year, and «فروش روزانه» covers a chosen day — but there
+  is no summary over an *arbitrary* period (the invoice list filters on one; nothing totals it), no
+  sales-by-customer or sales-by-product breakdown, and **no cash-received view**: every sales figure
+  in the application, the calendar's marks included, counts invoices by the day they were **issued**,
+  not by the day money arrived (D-116).
 * **No cloud sync, no accounts, no multi-device.** The database schema is nevertheless sync-ready
   from day one — UUID keys, soft deletes, `updated_at`, `sync_status` — so adding it later does not
   require migrating live data.

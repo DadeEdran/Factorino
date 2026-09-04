@@ -18,25 +18,53 @@ import 'package:flutter_test/flutter_test.dart';
 /// | `ى` U+0649 | `ی` U+06CC | Arabic alef maksura, which renders dotless |
 /// | `ة` U+0629 | `ه` U+0647 | Arabic teh marbuta, in borrowed names |
 /// | `إ` U+0625 | `ا` U+0627 | hamza below, which Persian does not write |
-/// | `ء` U+0621 | `ٔ` U+0654 **on** the ه | a standalone hamza; see below |
+/// | `ء` U+0621 | — | a standalone hamza; see below |
+/// | `ٔ` U+0654 | — | the ezafe mark on ه; see below |
+/// | `ۀ` U+06C0 | `ه` | the same mark, precomposed |
 /// | `ـ` U+0640 | — | tatweel, a typesetting stretch with no meaning |
 /// | `٠`–`٩` U+0660–9 | `۰`–`۹` U+06F0–9 | any Arabic locale's number formatter |
 ///
-/// ## Why the standalone hamza is on the list and the marked letters are not
+/// ## Why the ezafe mark is banned, and the marked letters are not
 ///
 /// `آ` `أ` `ؤ` `ئ` and the fathatan of «لطفاً» are **correct Persian** — «مؤثر»,
-/// «متأسفانه» and «لطفاً» are spelt with them — and so is the combining hamza of
-/// the ezafe «ـهٔ», which this application writes 31 times and renders correctly
-/// on screen and on the printed page. What Persian does not write is a hamza
-/// **on its own**, and the way that appears is not by being typed: `ه` followed
-/// by U+0654 is one grapheme, and a container narrower than the word it holds
-/// breaks *inside* it, leaving the mark alone at the start of the next line. So
-/// the ban here is the cheap half of the answer and `text_fit.dart`'s
-/// `expectNoCrushedText` is the other half.
+/// «متأسفانه» and «لطفاً» are spelt with them — and they stay.
 ///
-/// A Persian word that genuinely ends in one — «جزء», «سوء», «امضاء» — would
-/// belong in [_hamzaAllowed] with the key named. It is empty, and a future
-/// entry should be a decision somebody made rather than a ban somebody removed.
+/// **U+0654 after ه is also correct Persian, and it is banned anyway, because
+/// Vazirmatn cannot draw it acceptably.** This was reported twice from a phone
+/// and diagnosed wrongly the first time, so the measurement is recorded here:
+///
+/// * The font is not missing the glyph and the shaper is not failing. U+0654 is
+///   in Vazirmatn's `cmap`, `GDEF` classes it as a mark, and its `GPOS`
+///   mark-to-base lookup covers ه and all three of its joined forms with real
+///   anchors. The mark lands exactly where the font asks for it.
+/// * Where the font asks for it is the problem. Mark anchor (260, 972) against
+///   the isolated ه's (424, 1164) puts the hamza's ink bottom at y=1117 while
+///   the ه's ink top is 912 — a gap of **205 units on a 2048 em, 0.10 em**,
+///   with the mark's centre 0.038 em to the left of the letter's. All three
+///   weights agree to within 0.004 em.
+/// * At 14–16 sp on a phone that gap is one to two device pixels of clear
+///   space, and the mark rasterises as a **free-floating stroke above and to
+///   the left of the letter** rather than as part of it. Rendered through the
+///   real Vazirmatn at 14 sp and magnified, it reads as a stray mark, which is
+///   exactly what was reported.
+/// * There is no way to fix it from this side. Vazirmatn composes hamza with
+///   fatha and damma only — there is no ه+ء ligature — and U+06C0, the
+///   precomposed form, decomposes to the same two glyphs and renders
+///   identically. A font-level anchor is not something an application can
+///   override.
+///
+/// **So the ezafe is written with a plain «ه».** «مشاهده همه», «تهیه پشتیبان».
+/// That is normal Persian orthography — the mark is optional in modern usage
+/// and widely omitted — and a correct letter beats a correct mark in the wrong
+/// place. The earlier diagnosis, that the mark appeared alone because `ه` plus
+/// U+0654 is one grapheme and a narrow container breaks inside it, was a real
+/// effect and a real fix (`text_fit.dart`'s `expectNoCrushedText` still guards
+/// it) but it was not this. These strings render wrong with room to spare.
+///
+/// A Persian word that genuinely ends in a standalone hamza — «جزء», «سوء»,
+/// «امضاء» — would belong in [_hamzaAllowed] with the key named. It is empty,
+/// and a future entry should be a decision somebody made rather than a ban
+/// somebody removed.
 ///
 /// ## What is scanned, and what is deliberately not
 ///
@@ -126,13 +154,14 @@ void main() {
     // list that swept up `أ` or `ؤ` would demand that «متأسفانه» and «مؤثر» be
     // misspelt to make a test pass, and the ARB holds both today.
     for (final String correct in <String>[
+      // The ezafe written the way this application now writes it: a plain ه.
       'متأسفانه انجام این کار ممکن نشد',
       'نرخ مؤثر',
       'لطفاً دوباره تلاش کنید',
-      'ذخیرهٔ نسخهٔ PDF',
+      'ذخیره نسخه PDF',
       'آماده',
       'مسئول',
-      'شمارهٔ فاکتور',
+      'شماره فاکتور',
       '۱۴۰۵/۰۶/۰۲',
       '۲٬۱۱۷٬۵۰۰ تومان',
       '۸٫۵٪',
@@ -155,6 +184,10 @@ void main() {
       'شماره ١٢٣': 'شماره ۱۲۳',
       'فاكتورــ': 'فاکتور',
       'جزء': 'جزء',
+      // Both ways of writing the ezafe mark, so neither can come back: the
+      // combining form and the precomposed letter render identically wrong.
+      'مشاهدهٔ همه': 'مشاهده همه',
+      'مشاهدۀ همه': 'مشاهده همه',
     };
 
     slips.forEach((String arabic, String persian) {
@@ -199,7 +232,9 @@ class _ArabicOnly {
 /// look-alikes are listed, one at a time, each with its replacement, so a
 /// failure tells the reader what to type rather than that something is wrong.
 const Map<int, String?> _arabicOnly = <int, String?>{
-  0x0621: 'ـهٔ', // ARABIC LETTER HAMZA, standing alone
+  0x0621: null, // ARABIC LETTER HAMZA, standing alone
+  0x0654: null, // COMBINING HAMZA ABOVE — the ezafe mark; see the class doc
+  0x06C0: 'ه', // HEH WITH YEH ABOVE — the precomposed ezafe, same problem
   0x0625: 'ا', // ALEF WITH HAMZA BELOW
   0x0629: 'ه', // TEH MARBUTA
   0x0640: null, // TATWEEL — a stretch, not a letter

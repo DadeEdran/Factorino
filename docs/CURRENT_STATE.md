@@ -5,66 +5,65 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
-> **Last updated: 2026-09-04 (eighth pass) — the third phone test: five requests, and two of them
-> turned out to be the same defect.**
+> **Last updated: 2026-09-04 (ninth pass) — four requests, and the correction of a diagnosis this
+> file got wrong last pass.**
 >
-> The owner tested the seventh-pass build and returned with five items. All five are done.
-> `flutter analyze` is clean, **1,354 tests pass** (1,318 before this pass), the Windows build runs,
-> and **fourteen of the fifteen on-device files pass on Windows** — the fifteenth needs a human to
-> dismiss a native dialog and is excluded by design. Both artifacts rebuilt.
+> All four are done. `flutter analyze` is clean, **1,382 tests pass** (1,354 before this pass), the
+> Windows release builds, and **fifteen of the sixteen on-device files pass on Windows** — the
+> sixteenth needs a human to dismiss a native dialog and is excluded by design. Both artifacts
+> rebuilt.
 >
-> **1. The Arabic characters: there is one, and it is not user-facing** (D-112). The owner asked for
-> a count, "since that tells us whether it was one slip or something systematic". A full codepoint
-> census of every tracked file found **a single Arabic yeh, inside an ARB `description`** — English
-> developer documentation about what the search normalizer folds, a sentence that cannot be written
-> without the character it is about. Zero reach a user, on any surface. `git log -S` says the ARB has
-> never held an Arabic kaf.
+> **1. The ezafe mark: the eighth pass's answer was wrong, and this one was measured** (D-113). The
+> owner reported the hamza a second time and said the thing that mattered: *"these render wrong even
+> where there's plenty of room, so it may not be the line-break cause you diagnosed."* Correct.
+> D-112 reasoned from the ARB and from a PDF raster and **never drew the string at the size a phone
+> draws it**.
 >
-> **So what did the owner see?** The report named a standalone «ء». The ARB writes U+0654 — the
-> combining hamza of the ezafe «ـهٔ» — **31 times, always after `ه`**, which is correct Persian, and
-> it was rasterised through the real production `SafeText` to be sure: «نسخهٔ PDF» renders with the
-> hamza on the ه. But `ه` + U+0654 is **one grapheme**, and a container narrower than the word breaks
-> *inside* it, leaving the mark alone at the start of the next line. **That is request 3's «سیست» /
-> «م», in a different word.** The two reports are one defect. The guard the owner asked for is built
-> anyway — it is cheap and it locks the source down — but the fix that matters is D-108.
+> Drawn this time, at 14 sp through the real production Vazirmatn and magnified: the mark is a
+> **detached stroke above and to the left of the ه**, over empty space. Then read out of the font
+> binary, which says why: the glyph is present, `GDEF` classes it correctly as a mark, and `GPOS`
+> covers ه and all three joined forms with real anchors — and **those anchors put the hamza 0.100 em
+> clear of the letter** (205 units on a 2048 em) and 0.038 em left of its centre. All three weights
+> agree to within 0.004 em. At 14–16 sp that is one to two device pixels of white, and the mark
+> rasterises as a free-floating stroke. **Nothing is failing; the font asks for it there**, and an
+> application cannot override a `GPOS` anchor — Vazirmatn has no ه+ء ligature, and «ۀ» decomposes to
+> the same two glyphs and renders identically.
 >
-> **2. «پرداخت کامل مانده» already existed, and that is the finding** (D-109). The control shipped in
-> Phase 5 (c), wired to `InvoiceDetail.amountDue`. The owner tested the build containing it and asked
-> for it. It was not below the fold — measured at **173–198 of the 545 pixels the keyboard leaves** —
-> it was read as *helper text*: a bare `TextButton` under the field's grey helper line is two lines of
-> prose to anyone scanning for a button. It is a `FilledButton.tonal` now. **A report that a feature
-> is missing is evidence about the affordance, not about the backlog.**
+> **So the mark comes out**: «مشاهده همه», «تهیه پشتیبان», «شماره فاکتور», «ذخیره نسخه PDF». 33
+> occurrences over 32 ARB keys — one written as a `\u0654` escape, which is why a plain character
+> replacement missed it. U+0654 and U+06C0 join the script guard's ban list. The owner authorised
+> this in the request; plain «ه» is normal modern Persian, and a correct letter beats a correct mark
+> in the wrong place. **D-112's line-break mechanism is real and stays guarded — it was simply a
+> different defect.** The two reports were two defects, not one; last pass said one.
 >
-> **3. The theme label, measured** (D-108). `SegmentedButton` splits its width evenly and each segment
-> spent 18 pixels on an icon plus 8 on the gap; the label is `Flexible` in what is left. «سیستم» got
-> **30.7 px at 320, 44.0 at 360, and 45.0 of the 45.0 it needs at 400** — zero margin, which is why a
-> phone one notch up the font-size slider shows it and no test here could. The icons are gone (§10:
-> three Persian words name these states completely). **`pumpScreen` had no `textScaler` at all**, so
-> every widget test in this project has rendered at 1.0 — D-062's finding in another unit — and it
-> now sweeps Android's own ladder, 0.85 / 1.0 / 1.15 / 1.3. That sweep immediately found a **second**
-> crush two cards down: the backup buttons, «پشتیبان» given 48.2 px for a word needing 62.1. Those
-> icons stayed and the even split went, as an `OverflowBar`.
+> **2. «محصولات»** (D-114). The destination is renamed; `productsTitle` keeps «محصولات و خدمات» as
+> the page's own heading. D-108 had **pinned** the truncation cost with a note saying that if a
+> change ever made the label fit, deleting the assertion should be deliberate rather than a
+> discovery — so the assertion is **inverted**, not removed: no navigation label may be abbreviated
+> at 328 px, the narrowest width the sweep covers.
 >
-> **4. A payment is a moment, and the column had been holding a day** (D-110). The time could not be
-> shown because it was never recorded: the sheet opened at `jalaliDayOf(today).start`, so **every
-> payment ever written carried ۰۰:۰۰**. This is D-092 one column over, two days later, found the same
-> way — by displaying the value. Fixed the same way. **Old payments show no time**, and that is where
-> D-092 is deliberately not followed: an invoice's midnight was a real instant a picker produced, a
-> payment's midnight is the absence of one, and printing it would be a false claim about when money
-> arrived. Proven end to end on Windows through the real encrypted column: `paid at : ۱۴۰۵/۰۶/۱۳
-> ۰۲:۲۴`.
+> **3. Week and year on the dashboard** (D-115). Three nested Jalali periods, three tiles, one
+> provider family over `watchTotalIssuedRial`. `jalaliWeek` is new: **شنبه to جمعه**, from
+> `shamsi_date`'s own weekday numbering — `DateTime.weekday` starts at Monday and would shift every
+> week by two days while still looking plausible. The year is Farvardin to Farvardin. The week's
+> caption names both its dates, because a week is the one period whose name does not say which days
+> it holds. Desktop went 4 columns → 3, so the three sales figures share a row.
 >
-> **5. The custom Jalali range** (D-111). The filter sheet's own comment called this "a later phase's
-> problem, not a gap here"; it was a gap. Two sequential calendars headed «از تاریخ» and «تا تاریخ»,
-> the second floored at the first. The trap is the **inclusive day against the half-open bound**: the
-> user picks a last day and means all of it, so the stored end is the *next* day's start, and getting
-> it wrong drops a day from every range while looking right in every screenshot. Proven on Windows
-> against real SQL with the one assertion a database can settle — **today to today must return
-> today's invoices**.
+> **4. «فروش روزانه» at `/day`** (D-116). A Jalali calendar with a dot on every day that has issued
+> invoices, plus that day's total, count and invoice list. **One grouped query per visible month**:
+> `GROUP BY (issue_date + ?) / 86400000`, built with drift's typed operators and the offset as a
+> bound variable — the offset goes in **before** the division, or the grouping is by UTC day and an
+> invoice issued at 02:00 Tehran is filed under yesterday. The selected day reads the **same** method
+> over a one-day range, so the dot and the total cannot disagree.
+>
+> **What a dot means, decided and stated:** an invoice was **issued** that day. Not a payment
+> received. The figure above the calendar is sales, so a dot meaning "money arrived" would mark days
+> whose total is zero, and one invoice paid in three instalments would light four days. Cash received
+> is a real report and a different one; it is filed to Phase 8. The Persian legend under the calendar
+> says the rule on screen.
 >
 > **What is unverified: everything Android, again.** No phone was connected, by the owner's own
-> arrangement. In particular the theme label at the owner's actual width and font size is the one
-> thing this pass most wants to see on hardware — the fix is measured, but on a harness.
+> arrangement — they said so and will test there themselves.
 
 ---
 
@@ -89,7 +88,7 @@ increments delivered on both targets: (a) the dependency and `core/pdf/` (D-074)
 and the template (D-075, D-076), (c) **schema v5** and the seller block (D-077), (d) the save, the
 device pass and the gate's two measurements.
 
-**After Phase 7 — eight owner passes from real use, to 2026-09-04 · `COMPLETED`.** Recorded in
+**After Phase 7 — nine owner passes from real use, to 2026-09-04 · `COMPLETED`.** Recorded in
 `ROADMAP.md` rather than folded into a phase, because several reverse or narrow earlier decisions.
 The twelve (D-086 – D-095), the phone form rebuild (D-096, D-097), discounting and the document
 hand-off (D-098 – D-100), the copy the first phone test found wrong (D-101), the dashboard seller
@@ -99,7 +98,10 @@ becoming first-party, back moving within a destination, deletion gated on cancel
 phone test's five** (D-108 – D-112): the crushed theme label and the text-scale dimension the
 harness never had, the fill-the-balance control that existed and could not be seen, the payment
 that had never recorded a time, the custom Jalali range, and the Arabic-character guard whose
-census found one character and no user-facing slip.
+census found one character and no user-facing slip. And **the fourth phone test's four**
+(D-113 – D-116): the ezafe mark measured out of the font rather than guessed at and removed, the
+products destination shortened, the dashboard widened to week and year, and «فروش روزانه» — a Jalali
+calendar over one grouped query per month, marking the days an invoice was issued.
 **Phases 8–15 · `DEFERRED_INDEFINITELY`** (D-068). Not next, not later, not scheduled. Two items
 inside them are called out in `ROADMAP.md` as minutes of work that gate distribution rather than
 phase-sized work: the Android manifest's `allowBackup="false"` (known issue 15) and release
@@ -267,40 +269,43 @@ it belongs to the section it sits in.
 ## Verification status
 
 ```
-flutter analyze:            PASS   (No issues found) as of 2026-09-04, EIGHTH pass
-flutter test:               PASS   (1354/1354) as of 2026-09-04, eighth pass. +36 over the
-                                   seventh: the Arabic-character guard (4, D-112), the theme
-                                   label sweep at 3 widths x 4 text scales (12, D-108), the
-                                   payment sheet's fill and clock (6, D-109/D-110), the custom
-                                   Jalali range (6, D-111), `lastJalaliDayOf` (6, D-111), and
-                                   two payment-row time cases on the detail screen.
-                                   Was 1318 after the second phone test (D-103 - D-107)
-On-device, WINDOWS:         PASS   **14 of 15 `integration_test/` files, all green** as of
-                                   2026-09-04. The list and detail suites grew this pass:
-                                   `invoice_list_device` now drives the **custom range** through
-                                   the real filter sheet and asserts today-to-today returns
-                                   today's invoices out of real SQL (D-111), and
-                                   `invoice_detail_device` reads the **payment's recorded time**
-                                   back out of the encrypted column after the real write
-                                   (`paid at : 1405/06/13 02:24`, D-110). 0 layout errors on
-                                   every device suite.
+flutter analyze:            PASS   (No issues found) as of 2026-09-04, NINTH pass
+flutter test:               PASS   (1382/1382) as of 2026-09-04, ninth pass. +28 over the
+                                   eighth: the Jalali week and the day-index round trip
+                                   (10, D-115/D-116), the grouped per-day query against a real
+                                   database including the days-sum-to-the-month invariant
+                                   (7, D-116), the day view's screen tests -- query counting,
+                                   marks, figures, the day list (9, D-116), and one more
+                                   dashboard test for the two new periods (D-115). The script
+                                   guard (D-113) and the navigation-label assertion (D-114)
+                                   changed existing tests rather than adding any, and the
+                                   width sweep gained an eleventh screen.
+                                   Was 1354 after the third phone test (D-108 - D-112)
+On-device, WINDOWS:         PASS   **15 of 16 `integration_test/` files, all green** as of
+                                   2026-09-04, ninth pass. **New: `daily_sales_device_test`**,
+                                   which runs the grouped statement against a real ENCRYPTED
+                                   database with a fixture seeded ACROSS A TEHRAN MIDNIGHT --
+                                   two invoices half an hour either side of it, on the same UTC
+                                   date. They land on two Iranian days, which is the one thing
+                                   a widget test answering from a fake cannot show. It also
+                                   asserts the days of a month sum to `totalIssuedRial` of that
+                                   month, and runs the amount ladder through the day tile.
+                                   0 layout errors. The other 14 were re-run unchanged and all
+                                   pass.
                                    EXCLUDED BY DESIGN: `backup_gateway_probe` blocks on a native
                                    save dialog waiting for a human to dismiss it. The other
                                    gateway probe, `backup_gateway_save`, does pass on Windows.
-                                   Previous pass's note, still true (D-107) --
-                                   seller_migration_proof (v1->v7 AND v6->v7 on a real ENCRYPTED
-                                   file, foreign keys on), customer_snapshot_migration_proof,
-                                   invoice_figures_migration_proof, invoice_number_migration_proof,
-                                   invoice_export (a real 18,386-byte PDF written, cancel path,
-                                   empty-seller path), invoice_detail_device, invoice_list_device,
-                                   invoice_form_device, settings_device (0 layout errors on each),
-                                   startup, d020_encryption_proof, backup_container_proof.
-                                   EXCLUDED BY DESIGN: the two backup-gateway probes need a human
-                                   to drive a native save dialog.
-                                   **THREE of these were rotted before this pass and had been for
-                                   several sessions** -- `integration_test/` is not in
-                                   `flutter test`, so nothing reported it. See D-107
-Windows build:              PASS   debug built and DRIVEN this pass -- the 14 on-device files
+Layout sweep:               PASS   `width_sweep_test` covers **11 screens** now -- «فروش روزانه»
+                                   added -- at every width from 328 to 1600 in 24 px steps,
+                                   inside the real `AdaptiveScaffold`, over the D-057 ladder.
+                                   The day view sweeps clean at every width, which is the check
+                                   §15 requires before a change closes and the one that would
+                                   catch the 312-wide calendar squeezing what sits beside it.
+Rendered check:             PASS   The two reported strings drawn through the real Vazirmatn at
+                                   14 and 16 sp at dpr 3 and magnified, before and after -- and
+                                   the dashboard and day view rendered at 400x800 and 1240x820.
+                                   **This is the step D-112 skipped**, and the whole of D-113.
+Windows build:              PASS   debug built and DRIVEN this pass -- the 15 on-device files
                                    above run against it. Release rebuilt for the artifact; sizes
                                    below. Previous pass also LAUNCHED the release binary and held
                                    it 12 s, creating a fresh encrypted v7 database under %APPDATA%
@@ -317,13 +322,32 @@ Schema migration:           PASS   v7 (D-106). Unit suite: v6->v7 and v1->v7 aga
                                    Windows as above
 Artifacts delivered:        PASS   all three replaced in `%USERPROFILE%\Desktop\Factorino-test\`
                                    under the fixed names the owner links people to. Rebuilt from
-                                   the COMMITTED tree after `flutter clean`, 2026-09-04:
-                                     factorino-arm64.apk        35,103,714  (was 35,104,038 -- the
-                                                                icon removal and five features net
-                                                                out to 324 bytes)
-                                     factorino-windows-x64.zip  14,807,863, 21 entries, bundle
+                                   the COMMITTED tree after `flutter clean`, 2026-09-04
+                                   (NINTH pass):
+                                     factorino-arm64.apk        35,169,386  (was 35,103,714 -- the
+                                                                day view, the calendar grid and
+                                                                the new strings add 65,672 bytes)
+                                     factorino-windows-x64.zip  14,818,788, 21 entries, bundle
                                                                 CONTENTS at the archive root
-                                     Release dir                35,099,491 over 18 files
+                                                                (was 14,807,863)
+                                     README-fa.txt              30,523 (was 31,803 -- section 9
+                                                                rewritten, the ezafe mark removed
+                                                                from 61 places so every button
+                                                                label it quotes matches the screen)
+                                   **The APK was verified to be the right build, in both
+                                   directions**: `libapp.so` carries «فروش روزانه», «فروش این
+                                   هفته», «فروش امسال», «مشاهده همه», «تهیه پشتیبان» and the
+                                   calendar legend -- and does NOT carry «مشاهدهٔ همه»,
+                                   «تهیهٔ پشتیبان» or «شمارهٔ فاکتور» in their old spellings.
+                                   Search must be **UTF-16LE**: Dart stores non-Latin strings as
+                                   `TwoByteString`, so grepping UTF-8 finds nothing and looks
+                                   exactly like a stale build. (Twelve raw U+0654 code units
+                                   remain in the binary; every one is machine code or a symbol
+                                   name read at an odd byte offset, not a string.)
+                                   **`flutter clean` is still not optional.** The first APK this
+                                   pass came out at 45.4 MB again, from the same stale Gradle
+                                   state the eighth pass measured; the clean rebuild of the same
+                                   commit is 33.5 MiB.
                                    **`flutter clean` is not optional, and this pass proved why.**
                                    The first APK built without it came out **45.4 MB** against the
                                    33.5 MB of the clean rebuild of the SAME commit -- 35% inflation
@@ -3111,654 +3135,51 @@ session starts cold at the Next Action below.
 
 ## Next action
 
-> **Nothing is half-finished and no question is waiting on an answer.** Eight passes of owner
-> feedback are delivered in full; the gate is clean at **1,354** tests, **14 on-device files pass on
-> Windows**, and both artifacts are rebuilt from the committed tree.
+> **Nothing is half-finished and no question is waiting on an answer.** Nine passes of owner feedback
+> are delivered in full; the gate is clean at **1,382** tests, **15 on-device files pass on Windows**,
+> and both artifacts are rebuilt from the committed tree.
 
-**The single specific next action: install `factorino-arm64.apk` on the phone, open Settings, and
-read the three theme labels — «سیستم» first, at the font size the phone is actually set to.**
+**The single specific next action: install `factorino-arm64.apk` on the phone, open the dashboard,
+scroll to «فاکتورهای اخیر», and read the words «مشاهده همه» — then Settings, and «تهیه پشتیبان».**
 
-> **That is the measurement this pass could not take.** D-108's fix is measured, but on a harness:
-> «سیستم» needed 45.0 logical pixels and was being given 30.7 at 320 px, 44.0 at 360, and **45.0 of
-> 45.0 at 400** — zero margin, which is exactly why it broke on the owner's phone and on nothing
-> here. The icons are gone and the sweep now runs 320/360/400 against 0.85/1.0/1.15/1.3. **What no
-> harness can confirm is the phone's own width and scale**, and D-112 argues the standalone «ء» the
-> owner reported is the *same* crush in «شمارهٔ», so this one check settles two of the five reports.
-> While in Settings, look at «تهیهٔ پشتیبان» and «بازیابی از پشتیبان» too: the same sweep found them
-> crushed at 320 px and they are an `OverflowBar` now, so on a narrow phone they may stack, which is
-> correct.
+> **Those are the exact two strings the owner reported twice**, and this pass changed the letters in
+> them rather than the space around them (D-113). The mark is gone; what should be on screen is a
+> plain «ه» with nothing above it. If anything still sits above those words, the font diagnosis is
+> wrong too and that is the most important thing this project could learn next — a photograph of the
+> screen would settle it.
+>
+> The same check answers D-112's mistake in the other direction: «سیستم» in Settings is a *separate*
+> defect, fixed last pass and still unverified on hardware, so read the three theme labels while
+> there.
 
 The APK is `build/app/outputs/flutter-apk/app-profile.apk`, copied to
 `%USERPROFILE%\Desktop\Factorino-test\factorino-arm64.apk`. Then, in this order:
 
-1. **The payment sheet's two changes (D-109, D-110).** Open an unpaid invoice and record a payment.
-   «پرداخت کامل مانده» is a tonal **button** now rather than a text link — the question is whether it
-   is findable, since the old one was on screen the whole time and was not. Save it, and the row
-   should read the date **and a time**. Payments recorded by an earlier build show the date alone,
-   deliberately: they never had a time, and «۰۰:۰۰» would be an invention rather than a value.
-2. **The custom range (D-111).** فاکتورها → the filter control → «بازهٔ دلخواه». Two calendars, headed
-   «از تاریخ» and «تا تاریخ»; days before the start are unselectable in the second. Pick a range whose
-   **last day has an invoice on it** — that is the case the whole decision turns on, and it is proven
-   against real SQL on Windows but not on the phone.
-3. **The PDF hand-off (D-103).** Still never executed on a device across three phone tests, and still
+1. **The navigation bar (D-114).** The fourth item should read «محصولات», on one line, whole — no
+   ellipsis at any font size. Open it: the page's own heading is still «محصولات و خدمات», which is
+   deliberate.
+
+2. **The dashboard's three sales tiles (D-115).** «فروش این هفته» / «فروش این ماه» / «فروش امسال»,
+   each with a caption naming its period. The week's caption names two dates; **check that the week
+   it claims starts on a شنبه**, because that is the assertion no harness can make about the owner's
+   own idea of "this week". The three do not add up, by design.
+
+3. **«فروش روزانه» (D-116).** The calendar icon beside the «داشبورد» title. Issue invoices on two
+   different days and confirm both days grow a dot and the days between do not. Then the case worth
+   the trip: **issue an invoice late at night, after midnight Tehran**, and confirm it lands on the
+   new day rather than the old one. That is proven on Windows against real SQL across a synthetic
+   Tehran midnight, and never against a real clock on a phone in Iran.
+   Save a **draft** on a third day and confirm that day stays undotted.
+
+4. **The PDF hand-off (D-103).** Still never executed on a device across four phone tests, and still
    the highest-value unknown here. Save an invoice **with the business name filled in** — without it
-   D-100's exception fires and the document deliberately does not open, which the fifth pass mistook
-   for a failure. Expected: the file saves and the device's PDF reader opens it with no second tap,
-   and the message starts «فاکتور در برنامهٔ PDF باز شد». On a phone with no PDF reader,
-   «برنامه‌ای برای باز کردن فایل PDF پیدا نشد» is correct and is not a fault. **Silence is the failure
-   signal.** If it still does nothing, D-103's diagnosis was wrong and that is the most valuable
-   thing the next session can be told.
-4. **The back gesture (D-095, D-104).** Still never run on hardware. Inside an invoice, back returns
-   to **فاکتورها**. From the top of any destination, back goes to the dashboard. From the dashboard,
-   one press shows «برای خروج، دوباره بازگشت را بزنید» and a second within 2.5 s leaves. From the
-   invoice form with a customer or a line entered, it must ask before discarding — that claim
-   outranks everything and is the one worth trying deliberately.
-5. **Deleting invoices (D-105)** and **کد اقتصادی being gone (D-106)**, both unchanged from the
-   previous pass's list and both still untried on hardware. Note D-106 is a **one-way migration** on
-   an existing phone database: whatever was typed into those fields is dropped on first launch.
-
-And, still carried from the previous list, **the three designed against phone measurements but built
-without one**: the invoice form's order (D-096), the navigation bar's five labels at real Persian
-widths (D-088), and whether the tab-switch flash is gone (D-089 diagnosed it from the mechanism, not
-from a captured frame). The navigation labels are the same class of question as item 1 above and
-should be read at the same time.
-
-After that, the standing list is unchanged:
-
-1. **Create a release keystore and sign a build** — `docs/RELEASE.md` has the exact commands. Still
-   the only irreversible decision left, and still ahead of anyone installing anything they intend to
-   keep. (A **profile** APK needs no keystore, which is why these sessions can produce one.)
-2. **Decide about the app lock (known issue 28).** The difference between "the data is encrypted"
-   and "the data is safe on a lost phone".
-3. **Known issue 26** (crushed Persian at two width bands) and **25** (the lines-table header on a
-   second page), in that order. Note that **known issue 26 is now partly answered**: `pumpScreen`
-   takes a `textScaler` and `expectNoCrushedText` can be swept over a screen at every width and
-   scale, which is what found the backup buttons this pass. The same sweep applied to the other
-   screens is the cheapest way to close it.
-
-**And one rule from the pass before, still in force** (D-107): before declaring a pass verified, run
-`integration_test/` on a target. It is not in `flutter test`. **A rule this pass adds** (D-110): when
-a fault is found in one column, ask which other columns have the same shape — `issueDate` was fixed
-two days before `paidAt` was found carrying the identical defect, and nobody looked.
-
-Read `docs/HANDOVER.md` before any of it.
-
-*Historical — the previous next action, now superseded:*
-
-**~~Install `factorino-arm64.apk` and check the document hand-off first.~~** Still item 3 above; the
-phone was never connected, so nothing about it changed.
-
-*Historical — the previous next action, now done:*
-
-**~~Run the phone-tier device pass over the export action.~~**
-`invoice_export_test.dart` drives the *controller* on both targets; nothing has yet driven the
-**menu item** on a phone — tapping «ذخیرهٔ نسخهٔ PDF» in the title row, and reading the snackbar and
-its «تنظیمات» action against a real layout. That is the D-057/D-062 gap this increment opened, and
-it is the same shape as the one (c) opened and (d)'s cable session found: **an increment that
-changes a screen invalidates the suite for that screen.** `invoice_detail_device_test.dart` is the
-file. Note the save dialog itself cannot be tapped by `adb` under MIUI, so the suite should stop at
-the point the picker opens, exactly as `backup_gateway_probe_test.dart` does.
-
-Then: known issue 25 (a fixture that actually spans a page, and `repeat: true` with it), and the
-phase close.
-
-*Historical — the previous next action, now done:*
-
-**~~Phase 7 (d) step 1 — the provider.~~** A provider that loads the
-Vazirmatn faces from `rootBundle` into a `DocumentTypeface`, builds the view from the
-`invoiceDetailProvider` the detail screen already watches **and the `appSettingsProvider` seller**,
-and renders. Note `buildInvoiceDocumentView` takes `seller:` and defaults it to
-`SellerIdentity.none` — a call site that forgets it produces a document with no seller block and no
-error, so wire it deliberately. **Take the real size figure immediately after this lands**: it is the
-moment `core/pdf/` first becomes reachable from `main()`, and the first moment the number means
-anything.
-
-**The rest of Phase 7 (d) — make the document reachable.** In this order:
-
-0. ~~**Known issue 24 first.**~~ **DONE 2026-09-02 (D-079).** The original wording is kept below
-   for the record; it proposed the one-line reversal the owner rejected. What was built instead is
-   `rtlTable`. Historical text follows: The
-   printed lines table runs its columns in the reverse of the Iranian reading order — ردیف at the
-   far left, جمع سطر at the far right — because **`pw.Table` lays column 0 out at the LEFT even
-   under `textDirection: rtl`**. (c) hit the same mechanism on the party blocks and corrected it
-   there; the lines table was left alone because it is an accepted increment and was outside (c)'s
-   scope. The fix is to reverse `lineColumns` **and** the cell list in `_lines` **together** — one
-   without the other silently mislabels every column, which is far worse than the current fault —
-   and then **read the rendered page**, not the source. D-076's write-up claims this already came
-   out right; it does not.
-1. A provider that loads the Vazirmatn faces from `rootBundle` into a `DocumentTypeface`, builds the
-   view from the `invoiceDetailProvider` the detail screen already watches **and the
-   `appSettingsProvider` seller**, and renders. Note `buildInvoiceDocumentView` takes
-   `seller:` and defaults it to `SellerIdentity.none` — a call site that forgets it produces a
-   document with no seller block and no error, so wire it deliberately.
-2. An action on `/invoices/:id` that saves the file — reusing the **D-071 backup gateway**, which
-   already solves exactly this on both targets (`ACTION_CREATE_DOCUMENT` on Android,
-   `file_selector_windows` on desktop) and is already proven with a confirmed save on each.
-3. **The non-blocking notice for an empty seller.** D-077 ruled that printing is never blocked, and
-   that the user must not be able to be *surprised*. The settings screen covers the user who goes
-   looking; this is the other half — `InvoiceDocumentView.seller == null` is the fact to check, at
-   the moment of printing, once, without stopping anything.
-4. **The §7 question (d) owns and (b) deliberately did not touch:** a generated PDF holds full
-   customer and financial data. Where it lands, whether a temporary copy exists, and who deletes it
-   are this increment's decisions, and the ROADMAP security note for Phase 7 already names them.
-5. **The cable work — THREE OF FOUR ITEMS ARE DONE (2026-09-02 evening).** Read
-   `## What the (d) cable session found` for the detail. Status:
-   - the **Android cold start** — **TAKEN**, 343 ms median on HEAD. And the recorded 1,401 ms
-     baseline is **retired**: it does not reproduce on its own commit (D-078). Quote the paired
-     343-vs-352 comparison, never the 1,401;
-   - the **phone-tier device pass** — **DONE**, all four suites, 0 layout errors. It found and
-     fixed a regression (c) had shipped into `settings_device_test`, and it now covers the seller
-     sheet, which had never met a real keyboard;
-   - the **Android leg of the v5 migration proof** — **PASS**, both ladders, matching Windows;
-   - the **real size figure** — **still owed, and still cannot be taken.** D-074's +133 KB is a
-     floor, and the floor claim holds on the **import graph** rather than on the number:
-     21,653,926 is a *size*, it is quantised, and it does not distinguish changes of this
-     magnitude. It becomes measurable the moment step 1 lands and `core/pdf/` is reachable from
-     `main()` for the first time — so **take it right after the provider**, not before.
-
-   One cable item is deliberately unexercised: `backup_gateway_save_test.dart` needs a human to tap
-   the Android save dialog, since MIUI refuses `adb` input injection. It is PASS from D-071 and
-   nothing this session touched the gateway.
-
-### The commits this work sits on, newest first
-
-| commit | what |
-|---|---|
-| **`35e581a`** | Phase 7 (d): the provider, the save action, the §7 artifact ruling and the real size figure (D-080) |
-| `f5430ad` | Issue 24 fixed at the source — `rtlTable`; D-072's 16 pixels corrected; known issue 25 (D-079) |
-| `a111fa6` | The (d) cable session: the three Android measurements, the settings-suite regression (c) shipped, and the retired cold-start baseline (D-078) |
-| `cc5c639` | Phase 7 (c): schema v5 and the seller block; the two rulings; known issue 24 (D-077) |
-| `0436094` | Phase 7 (b): the invoice prints — the view model, the generator interface, the one template (D-075, D-076) |
-| `47beb6e` | Phase 7 (a): the `pdf` dependency and the text layer that makes it safe (D-074) |
-| `b4465a7` | The ZWNJ cause found, and `tools/pdf_raster/` so the page is visible from the terminal (D-073) |
-| `49f3812` | The superseded ZWNJ diagnosis — kept for the record, **wrong in its cause**; read D-073 |
-| `75f7b7a` | The guard audit and its corollary (D-072) |
-
-### What is deliberately NOT built, so nobody builds it twice
-
-* **No document is reachable from the application.** No provider, no button, no file written. That
-  is all (d).
-* **No seller block**, pending the decision above. Not an oversight and not a `TODO`.
-* **No `DocumentField` rendering helper beyond the one inside the template.** Rule 2's other half
-  landed with the template rather than as a shared widget, because a field widget with no second
-  document to sit in is the speculative abstraction §15 forbids.
-* **No PDF preview screen, no share sheet, no print dialog.** Not in the reduced plan (D-068).
-
-### The Phase 6 close, 2026-09-01
-
-**All four device suites pass on the Redmi**, after (d):
-
-| Suite | Result |
-|---|---|
-| `settings_device_test` (new) | **PASS** — 0 layout errors, real keyboard up, write reaching the real encrypted database |
-| `invoice_form_device_test` | **PASS** — 0 layout errors |
-| `invoice_list_device_test` | **PASS** — 0 layout errors |
-| `invoice_detail_device_test` | **PASS** — 0 layout errors |
-
-Re-run because (d) changed `AppTextField`, which every form in the application uses.
-
-**And the close found two things in its own guard — D-072.**
-
-1. **A password field raises a bigger keyboard than an ordinary one**: **284.0** logical pixels
-   against 254.9, a different IME layout. The widget guard had been checking that sheet against the
-   friendlier number. It passes either way — action at 503.6 against a limit of 519.6, **16 pixels of
-   margin** — and that margin is the number to watch if the §8 warning copy ever grows.
-2. **The inset was never what made the check bite.** Raising it does not fail the assertions: the
-   backup password sheet passed against an invented 560-pixel keyboard, because `EditorSheet` puts
-   the `viewInsets` padding inside its own height cap and lands the action on top of whatever
-   keyboard exists **by construction**. So the file was measuring a property it could not fail, and
-   every assertion in it would have gone on passing if `EditorSheet` itself regressed. It now carries
-   a **negative control** — a sheet built the way the defect was, asserted to put its action below the
-   fold — the same both-directions design as `gateway_boundary_test.dart`.
-
-**Why that run is not optional here.** D-068 reduced this phase's device pass to the phone tier at one
-large amount, and reduced nothing else — the **keyboard rule is explicitly not among the reductions**,
-and a backup password field in a sheet is exactly what D-062 was written for. The Windows run below
-reports `keyboard 0.0`, which is the degraded form D-062 refuses to accept in its place.
-
-### What (d) delivered
-
-**1092 tests, was 1068** (+24); analyze clean.
-
-**Settings is editable, and that is a defect fix rather than a feature.** §4 requires the VAT rate to
-be configurable and never hardcoded; it was hardcoded at whatever the database was seeded with. The
-work belonged to no phase, which is how the scope cut would have made it permanent (D-068). The rate,
-the invoice prefix and the payment term are editable, and **every bound is reported rather than
-clamped** — `AppSettings` deliberately does not clamp (D-052), so the form is the only thing between a
-mistyped digit and an invoice due before it was issued. Zero days is **allowed**: paid-on-delivery is a
-real term, and a bound of "positive" would have refused most workshops.
-
-**The rate is shown in the unit the user thinks in.** 900 basis points is «۹», not «۹۰۰» — and the
-conversion back goes through `tryParseScaledInput(scale: 100)` rather than a `double` multiplication,
-because a tax rate is on the money path and there is no floating point on it (§4).
-
-**Backup is reachable, in both directions.** Export asks for the password **twice**; restore asks
-once, because a typo there costs a second rather than a file that can never be opened. The §8 warning
-sits **above** the fields rather than under them, so it reads as a condition of the task instead of
-small print. The password is returned **exactly as typed** — not trimmed, since a trailing space is
-part of it (pinned in both the widget test and the container test).
-
-**The restore confirmation names what will be lost**, replace-not-merge first (D-069), and describes
-**the file** — counts and creation date read out of a container already opened, its password accepted,
-its version checked and its counts verified. `inspect` runs before the dialog for exactly that reason:
-the numbers on screen are the file's, not a hope about it.
-
-**`markBackedUp` runs only after the file is actually delivered**, not after it is written. A reminder
-that reset itself when the user opened the save dialog and thought better of it would say a backup
-exists when none does.
-
-**Known issue 6's first half is closed**: the last-backup row goes through `formatJalaliDateLong` and
-would otherwise have rendered «۱٬۷۵۶٬۰۰۰٬۰۰۰٬۰۰۰» the moment `lastBackupAt` stopped being null — which
-until this increment nothing could make happen.
-
-**Two shared pieces grew rather than being worked around.** `AppTextField` gained `obscureText`,
-because `field_limit_path_test` forbids a raw `TextFormField` and is right to: a password field that
-skipped the shared component would also skip the length validator, and would be the precedent for the
-next field that skipped them. `formatJalaliDateForFileName` is new and is the one place a Jalali date
-is written in **Latin** digits — a file name travels into file managers, cloud drives and Windows
-dialogs, where Persian digits sort unpredictably and are awkward to type months later. The date is
-still Jalali, which is the part the user recognises.
-
-### Verification for (d)
-
-| Check | Result |
-|---|---|
-| `flutter analyze` | PASS |
-| `flutter test` | PASS 1092/1092 |
-| Keyboard rule, widget sweep | PASS — both new sheets at the measured 255 px inset |
-| Settings editing, widget | PASS 11 — bounds refused and **nothing written** on refusal |
-| Backup flow copy, widget | PASS 11 — warning, ask-twice, mismatch, not-trimmed, replace-not-merge |
-| Device — **Windows** | PASS — 0 layout errors, no crushed text, and the edit **reaches the real encrypted database**: term 60, rate 850bp read back out of it |
-| Device — **Android phone** | **OWED.** Windows reports `keyboard 0.0`; D-062 does not accept that for the keyboard rule |
-
-### What is deliberately not covered by an automated run
-
-Taking a **real** backup end to end from the screen opens the system save dialog, which needs a tap no
-automated run on this device can supply while MIUI refuses input injection. That link is proved
-separately and byte-for-byte in `integration_test/backup_gateway_save_test.dart` (D-071), on both
-targets. The device suite stops at the password sheet and says so.
-
-### What (c) delivered — import, and what every refusal leaves behind
-
-**1068 tests, was 1052** (+16); analyze clean.
-
-**Two phases, and the boundary between them is the whole design.** `importFrom` opens the container,
-identifies it, version-checks it and counts it — **before a single row of live data is removed**.
-Only then does it read everything out of the container, and only then does the live transaction open.
-Reading the container **before** the transaction is deliberate: interleaving two databases inside one
-transaction would let a read failure on the backup abort a live transaction already half-way through
-deleting the user's data.
-
-**The rollback is tested by failing, not only by succeeding.** The container is made genuinely
-invalid in a way that bites *part-way through* — two issued invoices sharing one number, which the
-live unique index refuses — so by the time it fails, `customers` and `products` have already been
-deleted and reinserted. The live database comes back **row-for-row identical**. Writing that test
-turned up something reassuring: the container carries the same unique index, so it refused the
-duplicate too, and the index had to be dropped **inside the container** first.
-
-**Refusals, each asserting what it left behind** — the Phase 5 (c) pattern:
-
-| Refusal | Problem | Live data |
-|---|---|---|
-| Wrong passphrase | `cannotOpen` | unchanged |
-| Tampered byte | `cannotOpen` — **deliberately the same case** | unchanged |
-| A keyed database that is not a backup | `notABackup` | unchanged |
-| Newer app schema version | `fromNewerVersion` | unchanged |
-| Newer container format version | `fromNewerVersion` — checked separately | unchanged |
-| Counts disagreeing with contents | `countMismatch` | unchanged |
-| Empty passphrase | `BackupPassphraseRejected` | unchanged |
-
-A wrong password, a corrupt file and a tampered file are **one case on purpose**: SQLCipher
-authenticates the page and cannot tell them apart, so splitting them would mean guessing, and the
-guess would be a claim about the user's file that nothing supports. The Persian copy therefore names
-both plausible remedies rather than one.
-
-**Version compatibility both ways.** Downward through the **real ladder**: the container is opened as
-an `AppDatabase`, so drift runs the same `onUpgrade` steps the application runs — tested by building
-an actual v3 container with the generated `DatabaseAtV3` and restoring from it. Upward it is refused,
-with copy that says *update the app* rather than failing generically.
-
-**Every Persian body states that the existing data is untouched**, because that is the thing the user
-most needs to know and cannot check for themselves.
-
-**Also pinned:** a tombstone restores as a tombstone, settings restore without defaults being reseeded
-over them, and an import **replaces rather than merges** — the behaviour the confirmation copy
-promises.
-
-**And a restore is a decrypt under one key and a re-encrypt under another**, now stated rather than
-implied (D-069, owner's question). The backup is keyed by the **user's password**; the live database
-by **this device's key** in `flutter_secure_storage`. So the password never becomes the database key,
-and the device key is never written into a backup — which is what lets a backup be restored onto a
-device that has never seen the original, and why there is deliberately no mechanism to move a device
-key anywhere.
-
-### The device session, 2026-09-01 — all five owed items cleared
-
-The Redmi Note 8 Pro was connected and **every owed device item ran**. Nothing is owed on hardware
-any more except the one thing no automated run can do, named at the end.
-
-| # | Owed item | Result |
-|---|---|---|
-| 1 | `invoice_list` device suite, post-D-065/D-066 | **PASS**, 0 layout errors |
-| 2 | `invoice_detail` device suite | **PASS**, 0 layout errors |
-| 3 | `invoice_form` device suite | **PASS**, 0 layout errors |
-| 4 | Backup container proof on Android (D-069) | **PASS 5/5**, sqlite3 3.53.4, same as Windows |
-| 5 | Phase 7 cold-start baseline | **taken** — see below |
-
-**The D-065/D-066 fixes changed nothing on the phone tier**, as predicted and now measured: the phone
-renders invoice lines as cards rather than as the table D-065 fixed. The detail suite's ladder still
-reports `100000000 تومان : unrecorded figures shown = true` at the top rung, which is the pre-v4
-«ثبت‌نشده» path behaving correctly, not a regression.
-
-**Known issue 10 recurred once**, on the second suite of the run: `INSTALL_FAILED_USER_RESTRICTED`
-followed by `DELETE_FAILED_INTERNAL_ERROR` on the cleanup. Its documented remedy worked first time —
-`adb install -r` by hand, then retry.
-
-**Phase 7 cold-start baseline**, release build (`app-arm64-v8a-release.apk`, 21,520,524 bytes),
-`am force-stop` before each, on commit `60b5cd5` — **before any PDF dependency**:
-
-| Run | TotalTime |
-|---|---|
-| 1 | **3,440 ms** — first launch after install: dex optimization, encryption-key generation and database creation all land here |
-| 2–5 | 1,401 · 1,465 · 1,363 · **1,330 ms** |
-
-~~**Take 1,401 ms as the baseline**~~ — **WITHDRAWN 2026-09-02, D-078.** This figure does not
-reproduce. The same commit, rebuilt from a worktree and measured on the same Redmi in the same
-session as HEAD, gives **352 ms** median of ten. Nothing may be compared against the number above;
-the reasoning about keeping run 1 separate still stands, and is applied to the paired measurement
-that replaced it. See `## What the (d) cable session found`.
-
-### The Android save dialog — the link the owner most wanted tested
-
-**It opens, and it is the right intent.** Proved on hardware by reading it out of `dumpsys` while the
-picker was in the foreground:
-
-```
-act=android.intent.action.CREATE_DOCUMENT cat=[android.intent.category.OPENABLE]
-cmp=com.google.android.documentsui/com.android.documentsui.picker.PickActivity
-```
-
-SAF create-document, **not** a share intent — the exact property D-071 chose the package for,
-demonstrated rather than argued. Cancelling returns `false`, so a cancellation reads as the ordinary
-outcome it is rather than as a failed backup. `lib/data/backup/backup_file_gateway.dart` is the real
-gateway, not a probe, so (d) inherits tested code.
-
-**Two findings from doing it:**
-
-1. **`adb shell input keyevent` is refused on this device** — *"Injecting to another application
-   requires INJECT_EVENTS permission"*, because MIUI gates simulated input behind its **USB debugging
-   (Security settings)** toggle. `am force-stop com.google.android.documentsui` cancels the picker
-   just as well and changes no device setting.
-2. **`flutter_file_dialog` has a stated expiry.** The build warns that it applies the Kotlin Gradle
-   Plugin and that *"future versions of Flutter will fail to build"* apps using such plugins. It
-   builds today. It is a **dated dependency**, which raises the value of the fallback D-071 already
-   specified — app-external storage via `path_provider`, no dependency and no permission — and the
-   gateway interface is what makes that a one-file change if it comes to it.
-
-**The completed save is now proved too, on both targets** (2026-09-01, owner tapped through it).
-`integration_test/backup_gateway_save_test.dart` is **interactive on purpose** and is not part of any
-suite — MIUI refuses `adb` input injection, so no automated run can supply the tap.
-
-| Target | Result |
-|---|---|
-| Android, Redmi | Saved to Downloads, pulled back: **4,096 bytes, byte-identical** |
-| Windows | Saved via `file_selector_windows`: **4,096 bytes, byte-identical** |
-
-Compared against a generated pattern (`(i * 7 + 13) % 256`), not zeroes, so a truncated or empty
-write could not pass by looking plausible. **Nothing in the chain a user walks is now unexercised.**
-
-**And the dated dependency has a review trigger and a guard**, not just a caveat (owner). The
-trigger: **the first Flutter upgrade that warns more loudly or fails.** At that point, check whether
-the author migrated to Built-in Kotlin; if not, take the fallback — app-external storage via
-`path_provider`, no dependency, no permission, the user finding the file rather than choosing where
-it lands. What makes that a one-file change is `test/data/backup/gateway_boundary_test.dart`, which
-fails if anything in `lib/` outside the gateway imports `flutter_file_dialog` or `file_selector` —
-and *also* fails if the gateway stops importing them, so it cannot pass vacuously after a rename.
-
-### What (b) delivered — export in the data layer
-
-`lib/data/backup/backup_service.dart`. **1050 tests, was 1015** (+35); analyze clean.
-
-**The verification reopen is in the service, not in a test** (owner, 2026-09-01). `exportTo` writes
-the container, closes it, **reopens it cold with the password the user typed**, and compares the
-`backup_table_counts` rows against both what was written *and* a fresh `count(*)` over each table —
-so a stale count row cannot agree with itself into a pass. Only then does it return a `BackupSummary`.
-Any failure deletes the file: **a partial backup is worse than none, because it looks like a backup.**
-
-**A backup carries tombstones.** `_copy` is marked `soft-delete-exempt` with the reason: a backup that
-filtered `deleted_at is null` would resurrect every deleted customer and invoice on restore, and would
-hand the future sync layer a device whose deletions never happened. Tested directly.
-
-**The container is the app's own schema.** It is opened as an `AppDatabase`, so `onCreate` builds the
-tables at `schemaVersion` and the migration ladder is available to it — which is what makes an older
-backup migrate itself on open in (c). The seeded settings row is **cleared before the copy**, or a
-restore would quietly reset the user's VAT rate to the default.
-
-**Passphrase characters, end to end** —
-`test/data/backup/backup_passphrase_characters_test.dart`, 24 tests. Every one writes a real container
-and reopens it: apostrophe (one, several, and alone), double quote, backslash, backslash-before-quote,
-Persian digits, Arabic-Indic digits, ZWNJ, Persian script with spaces, leading/trailing/both-end
-spaces, `'; drop table customers; --`, `%` and `_`, emoji, and a 200-character passphrase. Plus six
-**must-not-open** cases pinning that a trailing space, a leading space, a ZWNJ, Persian-vs-Latin digits
-and Arabic-vs-Persian digits are **not** folded together — §9's digit normalization is mandatory for
-numeric input and would be a **defect** applied to a password.
-
-### Two guard tests fired, and both were right
-
-- **`soft_delete_usage_test`** caught four raw reads. All four are legitimate — the container's own
-  `backup_meta` and `backup_table_counts`, which have no `deleted_at`, plus a `select 1` that forces
-  decryption — and each now carries its reason. The count query's reason matters: it **must** include
-  tombstones, or verification would disagree with what was written and fail every export from a
-  database that has ever had a row deleted.
-- **`single_open_path_test`** flagged `backup_service.dart` for the key pragma's literal name, which
-  appeared only in a **doc comment**. The comment was reworded rather than the scanner loosened, and
-  the file says why: the guard is worth more strict than that sentence was worth verbatim.
-
-### Deferred out of (b), deliberately
-
-- **The Riverpod provider** for `BackupService` lands in (d) with the screen that needs it. Adding it
-  here would have meant a `build_runner` pass for a provider nothing yet watches.
-- **The gateway packages** likewise (D-071): they are chosen and they resolve, and nothing needs
-  delivering until there is a screen.
-
-See "What (a) delivered" below for the container proof and what it left owed.
-
-### What (a) delivered
-
-**The container works, and it is proved rather than asserted.**
-`integration_test/backup_container_proof_test.dart`, **5/5 passing on Windows** (sqlite3 3.53.4):
-
-| Question | Result |
-|---|---|
-| Is the file encrypted on disk? | **Yes** — 8,192 bytes, no plaintext SQLite header, and the sentinel national-ID stand-in is **absent from the raw bytes** |
-| Does the right passphrase reopen it and return the data? | **Yes** |
-| Does a passphrase differing by one character fail? | **Yes** — `SqliteException` **at open**, and the file is left byte-for-byte intact |
-| Does a tampered byte fail authentication? | **Yes** — `SqliteException`, so the per-page HMAC D-069 relies on is doing what D-069 assumes |
-| Is an empty passphrase refused before a file exists? | **Yes** (after a fix — see below) |
-
-Plus `test/data/database/backup_container_setup_test.dart`, 11 unit tests over the statement list and
-the quote escaping. **Test count is 1015**, was 1004.
-
-**The passphrase-keyed opener lives in `encrypted_database.dart`, the same file as the live one.**
-Exactly one file in `lib/` may open a database (`single_open_path_test.dart`), and putting the second
-opener anywhere else would have meant loosening the check that makes D-020 structural rather than
-remembered. It differs from the live opener in one way only: the key is a **passphrase**, so
-sqlite3mc runs its SQLCipher KDF, where the live database passes `x'..'` raw because its key comes
-from the platform keystore and must not be stretched.
-
-**The proof caught a real defect on its first run, which is why it exists.** `NativeDatabase`'s
-`setup` closure is **lazy** — it runs on first use of the connection, not at construction — so the
-empty-passphrase guard, living inside `setup`, did not fire when the executor was built. A caller
-could hold an apparently-valid executor for an empty passphrase, and the file would be created before
-anything refused. An empty key produces an **unencrypted** database under SQLCipher semantics, so
-this was the one outcome a backup may never have. The validation is now eager, before the executor is
-constructed.
-
-**`pragma key` cannot take a bound variable** — pragmas are not parameterizable in SQLite — so the
-passphrase reaches SQL through `escapeSqlStringLiteral`, and that is the reviewed exception D-018
-allows for. Getting it wrong would not be a syntax error but a **data-loss bug**: the file would be
-keyed with a string other than the one the user typed and would refuse that password on restore. The
-proof's passphrase carries an apostrophe deliberately. The standing mitigation, for (b): **an export
-is not reported successful until the finished file has been reopened with the same passphrase.**
-
-**The gateway is chosen — D-071.** Windows uses `file_selector` for both directions; Android uses
-`file_selector` to open and **`flutter_file_dialog`** to save, because `file_selector_android`
-implements only `openFile`, `openFiles` and `getDirectoryPath` — read from its source, not assumed.
-`share_plus` was rejected for the save: a share intent is a new outbound data surface for the most
-sensitive artifact the app produces. Both packages resolve here (`pub add --dry-run` against
-`https://pub.dev` directly, since the mirror is flaky again — known issue 11). **The packages are not
-yet added to `pubspec.yaml`**; that lands in (b), where something actually needs delivering.
-
-### What (a) leaves owed
-
-- **The Android container proof.** The suite has run on Windows only. D-064: a target with no run is
-  a target with no evidence.
-- **The Android save dialog**, never raised on real hardware.
-- Both want the same cable as the three device suites owed since D-065/D-066 and the Phase 7
-  cold-start baseline. **One session with the phone connected clears all five.**
-
-### What (a) delivers, and nothing more
-
-1. **The container proof**, `integration_test/`, on **both** targets, in the D-020 style: write a
-   password-keyed sqlite3mc container, close it, then reopen it (i) with the right password —
-   succeeds; (ii) with the **wrong** password — fails cleanly, not a crash, and before any data is
-   touched; (iii) with **a byte flipped** — fails page authentication.
-2. **The file gateway probe**, which is the real unknown. Windows has `getSaveLocation`.
-   **`file_selector_android` does not implement it** — verified in its source at
-   `flutter/packages`, where the Android class implements only `openFile`, `openFiles` and
-   `getDirectoryPath`. The Android answer is one of, in this order of preference:
-   `flutter_file_dialog`'s SAF create-document (keeps the file on the device), `share_plus` (a new
-   outbound data surface the security note must then account for), or app-external storage via
-   `path_provider` as the zero-dependency floor.
-3. **A decision entry** recording which gateway won and why.
-
-No UI, no repository wiring, no product code path in (a).
-
-### DONE before (a): the Phase 7 entry gate and the shaping probe
-
-Both were approved to happen ahead of Phase 6 and **both have run**.
-
-**The baseline, on `60b5cd5`** — the commit before any PDF dependency:
-
-| Measurement | Value |
-|---|---|
-| Android APK, arm64-v8a, release | **21,520,524 bytes** (armeabi-v7a 19,096,744; x86_64 23,138,664) |
-| Windows release bundle, total | **32,876,606 bytes** over 17 files |
-| Android cold start | **TAKEN 2026-09-02, and the stored baseline retired (D-078)** — HEAD 343 ms against the baseline commit's own 352 ms, measured paired |
-
-**The shaping probe: Phase 7 is viable — D-070.** `pdf` 3.13.0 with `bidi` 2.0.13 over bundled
-Vazirmatn shapes and joins Persian, lays out RTL, renders Persian digits and U+066C, and places a
-Latin invoice number correctly inside an RTL sentence **with no isolation marks at all**. It ran in a
-throwaway package in the scratchpad, so the dependency **never entered `pubspec.yaml`** and the
-baseline above still sits on a PDF-free commit.
-
-**Three findings, and the first one reaches back into code that already exists:**
-
-1. **U+2068/U+2069 must never reach the renderer.** Absent from Vazirmatn's `cmap` (checked, not
-   assumed), and the shaper **eats the last character of the isolated run** — a national ID printed
-   nine of ten digits, silently, and plausibly. **This application already wraps invoice numbers,
-   phones and national IDs in those controls for the Flutter UI**, where they are correct and
-   required by §9. The PDF view-model boundary must strip them, with a test.
-2. **A number containing spaces or a `+` scrambles** — `+98 912 123 4567` rendered as
-   `۴۵۶۷ ۱۲۳ ۹۱۲ ۹۸+`. Needs an explicit LTR `Directionality`. An unbroken digit run needs nothing.
-3. **ZWNJ draws a box**, and it is **not** the font: U+200C is in the `cmap` at glyph 322 and the join
-   around it already breaks correctly. Deleting it is not the fix — that joins «پیشنویس» across a
-   boundary that must not join. **The first thing Phase 7 fixes**, a correctness item under D-068.
-
-**The owner reviewed the rendered pages and found the part that matters most:** the ZWNJ box appears
-in the probe's **own section heading** — «نیم‌فاصله» printed «نیم▯فاصله». So it is in the
-application's **own ARB strings**, not only in test data or customer input: «پیش‌نویس»,
-«پرداخت‌نشده», «وب‌سایت» are all already shipped. A document with boxes through its own labels is not
-deliverable, so this is the **highest-priority item in Phase 7, ahead of layout**. The remedy must
-preserve the join break (verified on the rendered page, ش final and ن initial), must be tested over
-**every** ARB entry containing U+200C rather than over examples, and must not be mistaken for a fix to
-finding 2.
-
-**And the print contract is settled, by measurement (probe 3).** The tempting default — "LTR
-`Directionality` everywhere, no control characters" — is **wrong and destructive**. Thirteen field
-shapes were rendered bare and wrapped: the wrapper is a **no-op** on every field a document actually
-prints (invoice number, national ID, economic ID, phone in all three forms **including the spaced
-`+۹۸` one**, Jalali date, amount, percent, negative amount, parenthesised number) and it **reverses
-any Persian inside it** — «فاکتور» becomes «روتکاف», «تومان» becomes «ناموت».
-
-The contract is two structural rules with no per-field special-casing: **(1) no control characters
-reach the renderer**, stripped at the view-model boundary with a test; **(2) the label and the value
-are separate widgets, never one string.** Rule 2 is what makes the phone-scrambling finding disappear
-rather than need a remedy — probe 2 scrambled `+۹۸ ۹۱۲ ۱۲۳ ۴۵۶۷` only because the value shared one
-`Text` with «تلفن: », and alone in its own cell it is correct.
-
-### Still owed, from before the cut
-
-**With the cable back in: re-run the three device suites on the Redmi.** They have not run on the
-phone since the D-065/D-066 fixes. Neither defect is expected there — the phone tier renders invoice
-lines as cards rather than as a table, and the chip fix is tier-independent — but "not expected" is
-not a run (D-064). The five cold starts for the Phase 7 baseline can be taken in the same session.
-`adb devices` empty with an ADB interface present means a stale daemon (known issue 22), not a bad
-cable.
-
-### What Phase 6 has to deliver, from §8, so the split is not re-derived
-
-1. **Export** — a full backup file to a user-chosen location.
-2. **Encrypted with a user-supplied password**, key derived through a KDF and never used raw. Met by
-   the container's SQLCipher-compatible PBKDF2-HMAC-SHA512 at 256,000 iterations (D-069). The UI must
-   say in Persian that losing the password loses the backup.
-3. **A format version and an integrity check.** `backup_meta.format_version` plus the container's
-   per-page HMAC-SHA512, with **row counts per table** as a separate logical completeness check.
-   **No whole-file HMAC is added on top, and that is a decision, not an omission** — a second check
-   over the same bytes can disagree with the first, and then import has to decide which to believe
-   (D-069).
-4. **Import is transactional**: it either fully succeeds or leaves the existing data untouched.
-5. **A last-backup date in settings**, through `formatJalaliDateLong` (known issue 6).
-6. **And settings becomes editable in (d)** — a defect fix, not a feature. §4 requires the VAT rate to
-   be configurable and never hardcoded; it is hardcoded at the seeded default today, and a business on
-   a different rate hits it on its first invoice with no recourse. Prefix and payment term come with
-   it, the term **bounded** (D-052).
-
-**Deferred by §8 and not to be built now:** scheduled backups, CSV export, cloud backup.
-
-### The three constraints that apply from the first line of code (D-069)
-
-- **Nothing about a backup is logged** — not the password, not the destination path, not a row count
-  that implies how much business the user does.
-- **The container is built in app-private storage and deleted on every exit path**, including the
-  failing ones.
-- **The import confirmation states in Persian that existing data is replaced, not merged.** A user
-  who expects a merge and receives a replacement loses everything entered since the backup, and has
-  no reason to expect it — "restore" implies addition to most people. Copy with the weight of a
-  data-loss guard.
-
-### The close-out standard for this phase, reduced on purpose
-
-Phone tier, one large realistic amount (D-068) — **not** the D-057 three-tier four-rung sweep, and
-**not** D-064's every-suite-every-target. Two things are not reduced: the **keyboard rule** (D-062),
-and the **correctness tests**, which is where the budget went instead: a backup round-trips to the
-Rial.
-
-### After Phase 7, and scheduled unlike Phases 8–15
-
-Release signing from a gitignored properties file (known issue 13) and the two manifest lines,
-`allowBackup="false"` and `usesCleartextTraffic="false"` (known issue 15). About an hour. **If time
-runs short, something else is cut instead** (owner).
-
-### Standing constraints carried out of Phase 5, from the owner
-
-All of these were met inside Phase 5; they are kept because they are the rules the next phase
-inherits, not a checklist still to work through.
-
-- **The detail screen shows the party snapshot for issued invoices and the live record for drafts**
-  (D-052), and **says which** — done in (b) via `InvoicePartyProvenance` (D-058).
-- **Payments recompute derived status in the same transaction** (§6). **Recording and deleting both,
-  both directions**, tested at the repository — done in (c) (D-060).
-- **Cancellation is the correction path** for an issued invoice and must not silently edit. The
-  Persian copy states what cancelling does **and does not** do, *including that the number stays
-  spent* (D-013) — done in (d) via `InvoiceCancelAction`, with the ruling on the payments it keeps
-  (D-061).
-- **List filters over status, customer and Jalali period, at the query level** — not in Dart over a
-  loaded page. Done in (e) (D-063).
-- **Paging `watchForCustomer`**, known issue 16 — done in (e).
-- **A device pass before the phase is called done** — at **all three tiers**, over the written ladder
-  (D-057), not on one tier at whatever amounts the flow produces. **And the device test must `reach`
-  what it asserts rather than assume where it is** (D-062): the tiers order pages differently, so a
-  position that holds on one is a coincidence on the others. Done for the whole phase in (f), on
-  **both** targets — which is D-064, the rule (f) added: a suite that has only ever run on one target
-  is evidence about one target, and the close is what runs it elsewhere.
+   the file is written but not opened, on purpose, and the Persian message says so.
+
+5. **The payment sheet and the custom range** (D-109, D-110, D-111), carried from last pass and still
+   unverified on hardware. A recorded payment should show a date **and a time**; payments written by
+   an earlier build show the date alone, deliberately.
+
+**If everything above is right, there is no queued work.** The remaining named items are the two that
+gate distribution rather than phase-sized work — the Android manifest's `allowBackup="false"` (known
+issue 15) and release signing from a gitignored properties file (known issue 13) — and Phase 8, where
+D-116 filed the cash-received report and D-115 left arbitrary-period summaries.

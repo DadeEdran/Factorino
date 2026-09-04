@@ -3,10 +3,10 @@ import 'package:shamsi_date/shamsi_date.dart';
 
 import '../date/jalali_instant.dart';
 import '../formatting/jalali_display.dart';
-import '../formatting/persian_text.dart';
 import '../localization/generated/app_strings.dart';
 import '../localization/month_names.dart';
 import '../theme/app_dimensions.dart';
+import 'jalali_month_grid.dart';
 
 /// Picks a Jalali day and returns the **UTC instant** that day begins at.
 ///
@@ -101,7 +101,6 @@ class _JalaliDatePickerDialogState extends State<_JalaliDatePickerDialog> {
   @override
   Widget build(BuildContext context) {
     final AppStrings strings = AppStrings.of(context);
-    final ThemeData theme = Theme.of(context);
     final List<String> months = jalaliMonthNames(strings);
 
     return AlertDialog(
@@ -111,39 +110,16 @@ class _JalaliDatePickerDialogState extends State<_JalaliDatePickerDialog> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                IconButton(
-                  // In RTL the "previous" affordance points right. These are
-                  // directional navigation icons, which §9 says do mirror —
-                  // and Flutter mirrors them automatically under an RTL
-                  // Directionality, so the logical names are the correct ones
-                  // here and reversing them by hand would double the flip.
-                  icon: const Icon(Icons.chevron_left),
-                  tooltip: strings.datePickerPreviousMonth,
-                  onPressed: () => _showMonth(-1),
-                ),
-                Expanded(
-                  child: Text(
-                    // Month and year of the grid being browsed, named rather
-                    // than numbered: `۱۴۰۵/۰۶` is a date, not a heading.
-                    '${months[_visibleMonth.month - 1]} '
-                    '${toPersianDigits('${_visibleMonth.year}')}',
-                    textAlign: TextAlign.center,
-                    style: theme.textTheme.titleMedium,
-                  ),
-                ),
-                IconButton(
-                  icon: const Icon(Icons.chevron_right),
-                  tooltip: strings.datePickerNextMonth,
-                  onPressed: () => _showMonth(1),
-                ),
-              ],
+            JalaliMonthHeader(
+              month: _visibleMonth,
+              monthNames: months,
+              strings: strings,
+              onStep: _showMonth,
             ),
             const SizedBox(height: AppSpacing.sm),
-            _WeekdayHeadings(strings: strings),
+            JalaliWeekdayHeadings(strings: strings),
             const SizedBox(height: AppSpacing.xs),
-            _MonthGrid(
+            JalaliMonthGrid(
               month: _visibleMonth,
               selected: _selected,
               isAllowed: _isAllowed,
@@ -180,146 +156,7 @@ class _JalaliDatePickerDialogState extends State<_JalaliDatePickerDialog> {
     );
   }
 
-  /// Seven columns of tappable days plus the dialog's own padding. Fixed,
-  /// because a calendar that reflows is a calendar whose columns move.
-  static const double _dialogWidth = 312;
-}
-
-class _WeekdayHeadings extends StatelessWidget {
-  const _WeekdayHeadings({required this.strings});
-
-  final AppStrings strings;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final List<String> headings = <String>[
-      strings.weekdayShanbeShort,
-      strings.weekdayYekshanbeShort,
-      strings.weekdayDoshanbeShort,
-      strings.weekdaySeshanbeShort,
-      strings.weekdayChaharshanbeShort,
-      strings.weekdayPanjshanbeShort,
-      strings.weekdayJomeShort,
-    ];
-
-    return Row(
-      children: <Widget>[
-        for (int i = 0; i < headings.length; i++)
-          Expanded(
-            child: Center(
-              child: Text(
-                headings[i],
-                style: theme.textTheme.labelSmall?.copyWith(
-                  // Friday, the Iranian weekend.
-                  color: i == 6
-                      ? theme.colorScheme.primary
-: theme.colorScheme.onSurfaceVariant,
-                ),
-              ),
-            ),
-          ),
-      ],
-    );
-  }
-}
-
-class _MonthGrid extends StatelessWidget {
-  const _MonthGrid({
-    required this.month,
-    required this.selected,
-    required this.isAllowed,
-    required this.onPick,
-  });
-
-  final Jalali month;
-  final Jalali selected;
-  final bool Function(Jalali day) isAllowed;
-  final ValueChanged<Jalali> onPick;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final int daysInMonth = month.monthLength;
-
-    // `shamsi_date`'s weekDay is 1 for Saturday through 7 for Friday, which is
-    // already the Iranian week — so the leading blanks are simply one less than
-    // the first day's weekday. Mapping through DateTime.weekday, which starts
-    // at Monday, is the mistake this comment exists to prevent.
-    final int leadingBlanks = Jalali(month.year, month.month, 1).weekDay - 1;
-    final int cells = leadingBlanks + daysInMonth;
-    final int rows = (cells / 7).ceil();
-
-    return Column(
-      mainAxisSize: MainAxisSize.min,
-      children: <Widget>[
-        for (int row = 0; row < rows; row++)
-          Row(
-            children: <Widget>[
-              for (int column = 0; column < 7; column++)
-                Expanded(
-                  child: _cell(
-                    theme,
-                    dayNumber: row * 7 + column - leadingBlanks + 1,
-                    daysInMonth: daysInMonth,
-                  ),
-                ),
-            ],
-          ),
-      ],
-    );
-  }
-
-  Widget _cell(
-    ThemeData theme, {
-    required int dayNumber,
-    required int daysInMonth,
-  }) {
-    if (dayNumber < 1 || dayNumber > daysInMonth) {
-      return const SizedBox(height: _cellHeight);
-    }
-
-    final Jalali day = Jalali(month.year, month.month, dayNumber);
-    final bool isSelected =
-        day.year == selected.year &&
-        day.month == selected.month &&
-        day.day == selected.day;
-    final bool allowed = isAllowed(day);
-
-    return SizedBox(
-      height: _cellHeight,
-      child: Center(
-        child: InkWell(
-          onTap: allowed ? () => onPick(day) : null,
-          customBorder: const CircleBorder(),
-          child: Container(
-            width: _cellHeight,
-            height: _cellHeight,
-            alignment: Alignment.center,
-            decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              color: isSelected ? theme.colorScheme.primary : null,
-            ),
-            child: Text(
-              toPersianDigits('$dayNumber'),
-              style: theme.textTheme.bodyMedium?.copyWith(
-                color: isSelected
-                    ? theme.colorScheme.onPrimary
-: allowed
-                    ? theme.colorScheme.onSurface
-                    // Shown rather than hidden: a gap where days should be
-                    // reads as a broken calendar, while a dimmed day reads as
-                    // one that cannot be chosen.
-: theme.colorScheme.onSurface.withValues(alpha: 0.38),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  static const double _cellHeight = 40;
+  static const double _dialogWidth = kJalaliCalendarWidth;
 }
 
 /// A tappable field showing a Jalali date, for a form.

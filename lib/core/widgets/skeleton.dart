@@ -95,6 +95,7 @@ class SkeletonList extends StatelessWidget {
     required this.rowBuilder,
     this.rowCount = 6,
     this.spacing = AppSpacing.md,
+    this.shrinkWrap = false,
     super.key,
   });
 
@@ -106,11 +107,20 @@ class SkeletonList extends StatelessWidget {
 
   final double spacing;
 
+  /// Whether to size to the rows rather than to the space offered.
+  ///
+  /// Needed wherever this sits **inside** another scrollable — a section part
+  /// way down a page rather than the page's whole body. An unbounded viewport
+  /// nested in an unbounded viewport is a layout error rather than a squeeze,
+  /// so this is a correctness switch, not a preference.
+  final bool shrinkWrap;
+
   @override
   Widget build(BuildContext context) {
     return ListView.separated(
       // The skeleton is not interactive and scrolling it does nothing useful.
       physics: const NeverScrollableScrollPhysics(),
+      shrinkWrap: shrinkWrap,
       itemCount: rowCount,
       separatorBuilder: (BuildContext context, int index) =>
           SizedBox(height: spacing),

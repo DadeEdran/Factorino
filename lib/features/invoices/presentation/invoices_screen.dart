@@ -94,7 +94,7 @@ class InvoicesScreen extends ConsumerWidget {
           : null,
       child: invoices.when(
         loading: () => SkeletonList(
-          rowBuilder: (BuildContext context) => _InvoiceSkeletonRow(tier: tier),
+          rowBuilder: (BuildContext context) => InvoiceSkeletonRow(tier: tier),
         ),
         error: (Object error, StackTrace stack) => AsyncErrorView(
           error: error,
@@ -455,8 +455,14 @@ class InvoiceCard extends StatelessWidget {
 
 /// A placeholder shaped like the row it stands in for, so the layout does not
 /// jump when the data lands.
-class _InvoiceSkeletonRow extends StatelessWidget {
-  const _InvoiceSkeletonRow({required this.tier});
+/// One invoice row's shape, for a list that has not arrived yet (§10).
+///
+/// Public alongside [InvoiceCard] and [InvoiceTableRow], and for the same
+/// reason: the daily-sales screen draws the same rows, so it must draw the same
+/// skeleton — a placeholder shaped unlike the thing it stands in for is a page
+/// that jumps when the data lands.
+class InvoiceSkeletonRow extends StatelessWidget {
+  const InvoiceSkeletonRow({required this.tier, super.key});
 
   final LayoutTier tier;
 

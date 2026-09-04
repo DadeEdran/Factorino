@@ -22,7 +22,7 @@ class AppStringsFa extends AppStrings {
   String get navCustomers => 'مشتریان';
 
   @override
-  String get navProducts => 'محصولات و خدمات';
+  String get navProducts => 'محصولات';
 
   @override
   String get navSettings => 'تنظیمات';
@@ -71,14 +71,46 @@ class AppStringsFa extends AppStrings {
   String get dashboardCustomerCount => 'مشتریان';
 
   @override
+  String get dashboardSalesThisWeek => 'فروش این هفته';
+
+  @override
+  String get dashboardSalesThisYear => 'فروش امسال';
+
+  @override
+  String get dashboardDailySales => 'فروش روزانه';
+
+  @override
   String get dashboardRecentInvoices => 'فاکتورهای اخیر';
+
+  @override
+  String get dailySalesTitle => 'فروش روزانه';
+
+  @override
+  String get dailySalesDayTotal => 'فروش این روز';
+
+  @override
+  String get dailySalesInvoicesSection => 'فاکتورهای این روز';
+
+  @override
+  String get dailySalesMarkedDay => 'دارای فروش';
+
+  @override
+  String get dailySalesLegend =>
+      'روزهایی که فاکتور صادر شده با نقطه مشخص شده‌اند.';
+
+  @override
+  String get dailySalesEmptyTitle => 'در این روز فاکتوری صادر نشده است';
+
+  @override
+  String get dailySalesEmptyBody =>
+      'روز دیگری را از تقویم انتخاب کنید. روزهای دارای فروش با نقطه مشخص شده‌اند.';
 
   @override
   String get emptyDashboardTitle => 'هنوز اطلاعاتی برای نمایش نیست';
 
   @override
   String get emptyDashboardBody =>
-      'با ساختن اولین فاکتور، خلاصهٔ فروش و مانده دریافتنی همین‌جا نمایش داده می‌شود.';
+      'با ساختن اولین فاکتور، خلاصه فروش و مانده دریافتنی همین‌جا نمایش داده می‌شود.';
 
   @override
   String get invoicesTitle => 'فاکتورها';
@@ -127,7 +159,7 @@ class AppStringsFa extends AppStrings {
       'تغییر این نرخ روی فاکتورهای صادرشده اثری ندارد.';
 
   @override
-  String get settingsInvoicePrefix => 'پیشوند شمارهٔ فاکتور';
+  String get settingsInvoicePrefix => 'پیشوند شماره فاکتور';
 
   @override
   String get settingsRoundingUnit => 'رند کردن مبلغ نهایی';
@@ -186,7 +218,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get settingsErrorSellerNameRequired =>
-      'برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همهٔ فیلدها را خالی بگذارید.';
+      'برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همه فیلدها را خالی بگذارید.';
 
   @override
   String get settingsSellerSaved => 'مشخصات فروشنده ذخیره شد.';
@@ -276,7 +308,7 @@ class AppStringsFa extends AppStrings {
   String get actionLoadMore => 'نمایش بیشتر';
 
   @override
-  String get actionViewAll => 'مشاهدهٔ همه';
+  String get actionViewAll => 'مشاهده همه';
 
   @override
   String get actionMore => 'گزینه‌های بیشتر';
@@ -632,7 +664,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceIssueConfirmBody =>
-      'با صدور، فاکتور شمارهٔ رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.';
+      'با صدور، فاکتور شماره رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.';
 
   @override
   String get invoiceIssueConfirmAction => 'صدور و ثبت نهایی';
@@ -648,7 +680,7 @@ class AppStringsFa extends AppStrings {
   String get invoiceDiscardAction => 'رها کردن';
 
   @override
-  String get invoiceDiscardKeepAction => 'ادامهٔ ویرایش';
+  String get invoiceDiscardKeepAction => 'ادامه ویرایش';
 
   @override
   String get invoiceBackTooltip => 'بازگشت به فهرست فاکتورها';
@@ -810,23 +842,23 @@ class AppStringsFa extends AppStrings {
 
   @override
   String invoiceDetailPartyRecordNow(String name) {
-    return 'در پروندهٔ مشتری: $name';
+    return 'در پرونده مشتری: $name';
   }
 
   @override
   String get invoiceDetailPartyDraft =>
-      'این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پروندهٔ فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.';
+      'این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پرونده فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.';
 
   @override
   String get invoiceDetailPartyNoSnapshot =>
-      'مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پروندهٔ فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.';
+      'مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پرونده فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.';
 
   @override
   String get invoiceDetailCustomerDeleted =>
       'این مشتری از فهرست مشتریان حذف شده است. فاکتورهای او دست‌نخورده باقی می‌مانند.';
 
   @override
-  String get invoiceDetailGoToCustomer => 'رفتن به پروندهٔ مشتری';
+  String get invoiceDetailGoToCustomer => 'رفتن به پرونده مشتری';
 
   @override
   String get invoiceDetailContactSection => 'تماس';
@@ -945,7 +977,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get paymentFieldNoteHint =>
-      'شمارهٔ چک، مرجع تراکنش، یا هر یادداشت دیگر';
+      'شماره چک، مرجع تراکنش، یا هر یادداشت دیگر';
 
   @override
   String paymentAmountRemainingHelper(String amount) {
@@ -991,7 +1023,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceCancelBody =>
-      'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شمارهٔ آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.';
+      'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شماره آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.';
 
   @override
   String invoiceCancelPaymentsNote(String amount) {
@@ -1028,16 +1060,16 @@ class AppStringsFa extends AppStrings {
   String get invoiceFilterCustomerSection => 'مشتری';
 
   @override
-  String get invoiceFilterPeriodSection => 'بازهٔ زمانی';
+  String get invoiceFilterPeriodSection => 'بازه زمانی';
 
   @override
-  String get invoiceFilterCustomerAny => 'همهٔ مشتریان';
+  String get invoiceFilterCustomerAny => 'همه مشتریان';
 
   @override
   String get invoiceFilterCustomerChoose => 'انتخاب مشتری';
 
   @override
-  String get invoiceFilterPeriodAny => 'همهٔ تاریخ‌ها';
+  String get invoiceFilterPeriodAny => 'همه تاریخ‌ها';
 
   @override
   String get invoiceFilterPeriodThisMonth => 'این ماه';
@@ -1049,7 +1081,7 @@ class AppStringsFa extends AppStrings {
   String get invoiceFilterPeriodThisYear => 'امسال';
 
   @override
-  String get invoiceFilterPeriodCustom => 'بازهٔ دلخواه';
+  String get invoiceFilterPeriodCustom => 'بازه دلخواه';
 
   @override
   String invoiceFilterPeriodCustomRange(String from, String to) {
@@ -1084,7 +1116,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String paymentDeleteBodyCancelled(String amount) {
-    return '$amount تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقهٔ پرداخت را اصلاح می‌کند.';
+    return '$amount تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.';
   }
 
   @override
@@ -1101,7 +1133,7 @@ class AppStringsFa extends AppStrings {
       'به درصد. تغییر آن روی فاکتورهای قبلی اثری ندارد.';
 
   @override
-  String get settingsFieldPrefix => 'پیشوند شمارهٔ فاکتور';
+  String get settingsFieldPrefix => 'پیشوند شماره فاکتور';
 
   @override
   String get settingsFieldPrefixHint =>
@@ -1128,13 +1160,13 @@ class AppStringsFa extends AppStrings {
   String get settingsSaved => 'تنظیمات ذخیره شد.';
 
   @override
-  String get backupExportAction => 'تهیهٔ پشتیبان';
+  String get backupExportAction => 'تهیه پشتیبان';
 
   @override
   String get backupImportAction => 'بازیابی از پشتیبان';
 
   @override
-  String get backupPasswordTitle => 'گذرواژهٔ فایل پشتیبان';
+  String get backupPasswordTitle => 'گذرواژه فایل پشتیبان';
 
   @override
   String get backupPasswordField => 'گذرواژه';
@@ -1156,13 +1188,13 @@ class AppStringsFa extends AppStrings {
   String get backupPasswordTooShort => 'گذرواژه باید دست‌کم ۸ نویسه باشد.';
 
   @override
-  String get backupExportInProgress => 'در حال تهیهٔ پشتیبان…';
+  String get backupExportInProgress => 'در حال تهیه پشتیبان…';
 
   @override
   String get backupExportDone => 'فایل پشتیبان ذخیره شد.';
 
   @override
-  String get backupImportPasswordTitle => 'گذرواژهٔ این فایل پشتیبان';
+  String get backupImportPasswordTitle => 'گذرواژه این فایل پشتیبان';
 
   @override
   String get backupImportInProgress => 'در حال بازیابی…';
@@ -1171,15 +1203,15 @@ class AppStringsFa extends AppStrings {
   String get backupImportDone => 'بازیابی انجام شد.';
 
   @override
-  String get backupImportConfirmTitle => 'جایگزینی همهٔ اطلاعات';
+  String get backupImportConfirmTitle => 'جایگزینی همه اطلاعات';
 
   @override
   String get backupImportConfirmReplaces =>
-      'با بازیابی، همهٔ اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.';
+      'با بازیابی، همه اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.';
 
   @override
   String get backupImportConfirmLoses =>
-      'هر چیزی که پس از تهیهٔ این پشتیبان ثبت کرده‌اید از بین می‌رود.';
+      'هر چیزی که پس از تهیه این پشتیبان ثبت کرده‌اید از بین می‌رود.';
 
   @override
   String backupImportConfirmContents(
@@ -1199,7 +1231,7 @@ class AppStringsFa extends AppStrings {
   String get backupImportConfirmAction => 'جایگزین کن';
 
   @override
-  String get errorBackupExportFailedTitle => 'تهیهٔ پشتیبان انجام نشد';
+  String get errorBackupExportFailedTitle => 'تهیه پشتیبان انجام نشد';
 
   @override
   String get errorBackupExportFailedBody =>
@@ -1221,7 +1253,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get errorBackupFromNewerVersionTitle =>
-      'این پشتیبان با نسخهٔ جدیدتری ساخته شده است';
+      'این پشتیبان با نسخه جدیدتری ساخته شده است';
 
   @override
   String get errorBackupFromNewerVersionBody =>
@@ -1269,7 +1301,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentPartyFromRecord =>
-      'مشخصات خریدار از پروندهٔ فعلی مشتری خوانده شده است.';
+      'مشخصات خریدار از پرونده فعلی مشتری خوانده شده است.';
 
   @override
   String get invoiceDocumentColumnRow => 'ردیف';
@@ -1329,7 +1361,7 @@ class AppStringsFa extends AppStrings {
   String get invoiceDeleteFailed => 'حذف این فاکتور ممکن نشد.';
 
   @override
-  String get invoiceDocumentExportAction => 'ذخیرهٔ نسخهٔ PDF';
+  String get invoiceDocumentExportAction => 'ذخیره نسخه PDF';
 
   @override
   String get invoiceDocumentExportSaved =>
@@ -1337,7 +1369,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentExportFailed =>
-      'ذخیرهٔ فایل فاکتور انجام نشد. دوباره تلاش کنید.';
+      'ذخیره فایل فاکتور انجام نشد. دوباره تلاش کنید.';
 
   @override
   String get invoiceDocumentExportNoSeller =>
@@ -1367,7 +1399,7 @@ class AppStringsFa extends AppStrings {
   String get settingsAppearanceSection => 'نمایش';
 
   @override
-  String get settingsThemeMode => 'پوستهٔ روشن و تیره';
+  String get settingsThemeMode => 'پوسته روشن و تیره';
 
   @override
   String get settingsThemeModeHint =>
@@ -1422,7 +1454,7 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentExportSavedAndOpened =>
-      'فاکتور در برنامهٔ PDF باز شد؛ فایل هم ذخیره شد.';
+      'فاکتور در برنامه PDF باز شد؛ فایل هم ذخیره شد.';
 
   @override
   String get sellerPromptTitle => 'مشخصات کسب‌وکارتان را وارد کنید';

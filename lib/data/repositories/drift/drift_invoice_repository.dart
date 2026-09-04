@@ -11,6 +11,7 @@ import '../../models/app_settings.dart';
 import '../../models/customer.dart';
 import '../../models/customer_snapshot.dart';
 import '../../models/customer_totals.dart';
+import '../../models/daily_sales.dart';
 import '../../models/invoice.dart';
 import '../../models/invoice_detail.dart';
 import '../../models/invoice_draft.dart';
@@ -290,6 +291,65 @@ class DriftInvoiceRepository implements InvoiceRepository {
       period,
       total,
     ).watchSingle().map((TypedResult row) => row.read(total) ?? 0);
+  }
+
+  @override
+  Stream<DailySales> watchDailySales(InstantRange range) {
+    // The same sum as `watchTotalIssuedRial`, grouped by Iranian civil day:
+    //
+    //   SELECT (issue_date + ?) / 86400000 AS day_index,
+    //          SUM(grand_total_rial),
+    //          COUNT(id)
+    //   FROM invoices
+    //   WHERE deleted_at IS NULL AND status IN (unpaid, partiallyPaid, paid)
+    //     AND issue_date >= ? AND issue_date < ?
+    //   GROUP BY day_index
+    //
+    // **One statement for the whole month**, which is the point: the calendar
+    // needs to know which of thirty-one days had sales, and asking per day
+    // would be thirty-one round trips repainted on every month step.
+    //
+    // **The offset is added before the division, and that is the correctness
+    // of it.** Dividing `issue_date` alone groups by the UTC day, which files
+    // an invoice issued at 02:00 Tehran under the previous date — the user
+    // would see yesterday's takings change overnight. Shifting by Iran's
+    // offset first puts the boundary at Tehran midnight, exactly where
+    // `jalaliDay` puts it, so a day on this calendar and a day in a period
+    // filter are the same day.
+    //
+    // Built with drift's typed operators rather than a raw statement (§7):
+    // SQLite's `/` on two integers *is* integer division, so the whole key is
+    // expressible without leaving the query builder, and the offset goes in as
+    // a bound variable rather than as text spliced into SQL.
+    final Expression<int> dayIndex =
+        (_db.invoices.issueDate +
+            Variable<int>(kIranStandardOffset.inMilliseconds)) /
+        const Constant<int>(kMillisecondsPerDay);
+    final Expression<int> total = _db.invoices.grandTotalRial.sum();
+    final Expression<int> counter = _db.invoices.id.count();
+
+    final JoinedSelectStatement<HasResultSet, dynamic> query =
+        _db.selectOnlyAlive(_db.invoices)
+..addColumns(<Expression<Object>>[dayIndex, total, counter])
+..where(_issuedInPeriod(range))
+..groupBy(<Expression<Object>>[dayIndex]);
+
+    return query.watch().map((List<TypedResult> rows) {
+      final Map<int, DaySales> byDayIndex = <int, DaySales>{};
+      for (final TypedResult row in rows) {
+        final int? index = row.read(dayIndex);
+        if (index == null) continue;
+        byDayIndex[index] = DaySales(
+          total: Money.rial(row.read(total) ?? 0),
+          invoiceCount: row.read(counter) ?? 0,
+        );
+      }
+      return DailySales(
+        range: range,
+        offset: kIranStandardOffset,
+        byDayIndex: byDayIndex,
+      );
+    });
   }
 
   JoinedSelectStatement<HasResultSet, dynamic> _issuedTotalQuery(

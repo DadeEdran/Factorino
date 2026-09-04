@@ -66,6 +66,16 @@ enum AppDestination {
 /// hierarchy (`/customers/<id>/edit`) and the shell keeps the right navigation
 /// item selected.
 abstract final class AppRoutes {
+  /// «فروش روزانه» — pick a day on a Jalali calendar and see that day's sales.
+  ///
+  /// A **child of the dashboard branch**, not a sixth navigation destination.
+  /// It answers a question the dashboard already asks — "how much have I sold"
+  /// — at a finer grain, so it belongs behind the dashboard rather than beside
+  /// it, and the navigation bar stays at the five items §11 names. It is also
+  /// not گزارش‌ها: that section arrives in Phase 8 with the reports that make it
+  /// a section, and D-021 forbids opening it early with one screen in it.
+  static const String dailySales = '/day';
+
   /// The new-customer form.
   static const String customerCreate = '/customers/new';
 

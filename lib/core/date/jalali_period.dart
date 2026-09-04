@@ -103,6 +103,30 @@ InstantRange jalaliMonth(
   );
 }
 
+/// The Jalali week containing [date], as an instant range.
+///
+/// **The Iranian week runs Saturday to Friday.** `shamsi_date` numbers weekdays
+/// 1 for شنبه through 7 for جمعه, which is already that week, so the first day
+/// is simply [date] stepped back by `weekDay - 1`. Reaching for
+/// `DateTime.weekday` here -- which numbers from Monday -- would shift every
+/// week by two days, and the figure would still look plausible: a week's sales
+/// is never obviously wrong, it is only wrong.
+///
+/// Seven days from that Saturday, so the end bound never has to be reasoned
+/// about separately, and a week that straddles a month or a year boundary is
+/// the same arithmetic as one that does not.
+InstantRange jalaliWeek(Jalali date, {Duration offset = kIranStandardOffset}) {
+  final Jalali saturday = Jalali(
+    date.year,
+    date.month,
+    date.day,
+  ).addDays(-(date.weekDay - 1));
+  return InstantRange(
+    startOfJalaliDayUtc(saturday, offset: offset),
+    startOfJalaliDayUtc(saturday.addDays(7), offset: offset),
+  );
+}
+
 /// The Jalali year [year], as an instant range: Farvardin 1 to Farvardin 1.
 InstantRange jalaliYear(int year, {Duration offset = kIranStandardOffset}) {
   return InstantRange(
@@ -117,6 +141,15 @@ InstantRange jalaliDayOf(
   Duration offset = kIranStandardOffset,
 }) {
   return jalaliDay(jalaliAt(instant, offset: offset), offset: offset);
+}
+
+/// The Jalali week containing [instant] -- what "این هفته" means on a
+/// dashboard.
+InstantRange jalaliWeekOf(
+  DateTime instant, {
+  Duration offset = kIranStandardOffset,
+}) {
+  return jalaliWeek(jalaliAt(instant, offset: offset), offset: offset);
 }
 
 /// The Jalali month containing [instant] -- what "این ماه" means on a
@@ -186,6 +219,40 @@ DateTime lastJalaliDayOf(
   final startOfEndDay = startOfJalaliDayUtc(endDay, offset: offset);
   if (startOfEndDay != range.end) return startOfEndDay;
   return startOfJalaliDayUtc(endDay.addDays(-1), offset: offset);
+}
+
+/// The Iranian civil days [range] covers, as the inclusive first and last
+/// [dayIndexAtMillis] index.
+///
+/// What a per-day aggregate is read back against: the query groups on the index
+/// and returns only days that have rows, so the caller needs the full span to
+/// tell "no sales" from "not in this month" — and it must be the span the query
+/// itself used, not one re-derived from a Jalali month, or the two disagree at
+/// the boundary.
+///
+/// **Refuses a range reaching before the epoch.** The index is a truncating
+/// division, which rounds toward zero rather than downward, so a negative
+/// instant would land on the wrong day rather than fail. That cannot arise from
+/// a business date, and if it ever does it should stop rather than report a
+/// figure under the wrong heading.
+({int first, int last}) dayIndexRange(
+  InstantRange range, {
+  Duration offset = kIranStandardOffset,
+}) {
+  if (range.startMillis < 0) {
+    throw ArgumentError.value(
+      range,
+      'range',
+      'day indexing is defined only at or after the epoch',
+    );
+  }
+  return (
+    first: dayIndexAtMillis(range.startMillis, offset: offset),
+    // The end is exclusive, so the last day inside the range is the day the
+    // instant *before* it falls in — the same off-by-one [lastJalaliDayOf]
+    // exists to keep out of call sites.
+    last: dayIndexAtMillis(range.endMillis - 1, offset: offset),
+  );
 }
 
 /// The number of days in Jalali month [year]/[month]: 31, 30, or 29/30 for

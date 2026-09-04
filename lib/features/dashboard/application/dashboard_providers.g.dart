@@ -72,6 +72,119 @@ final class DashboardPeriodProvider
 
 String _$dashboardPeriodHash() => r'befd2419d7bd2d697156f88ce8a51f1ef756ed10';
 
+/// The Jalali **week** — شنبه to جمعه, not the last seven days.
+///
+/// A rolling seven-day window would be a different question, and a defensible
+/// one, but not the one «این هفته» asks: a user comparing Wednesday to Tuesday
+/// expects the figure to have grown by Wednesday's sales, not to have also
+/// dropped last Wednesday's off the back.
+
+@ProviderFor(dashboardWeek)
+final dashboardWeekProvider = DashboardWeekProvider._();
+
+/// The Jalali **week** — شنبه to جمعه, not the last seven days.
+///
+/// A rolling seven-day window would be a different question, and a defensible
+/// one, but not the one «این هفته» asks: a user comparing Wednesday to Tuesday
+/// expects the figure to have grown by Wednesday's sales, not to have also
+/// dropped last Wednesday's off the back.
+
+final class DashboardWeekProvider
+    extends $FunctionalProvider<InstantRange, InstantRange, InstantRange>
+    with $Provider<InstantRange> {
+  /// The Jalali **week** — شنبه to جمعه, not the last seven days.
+  ///
+  /// A rolling seven-day window would be a different question, and a defensible
+  /// one, but not the one «این هفته» asks: a user comparing Wednesday to Tuesday
+  /// expects the figure to have grown by Wednesday's sales, not to have also
+  /// dropped last Wednesday's off the back.
+  DashboardWeekProvider._()
+: super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'dashboardWeekProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$dashboardWeekHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstantRange> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  InstantRange create(Ref ref) {
+    return dashboardWeek(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstantRange value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InstantRange>(value),
+    );
+  }
+}
+
+String _$dashboardWeekHash() => r'40305aa036dfde1c69670516464a5368501b495c';
+
+/// The Jalali **year** — Farvardin 1 to Farvardin 1, the user's business and
+/// tax year (D-006). A Gregorian year here would be wrong by roughly three
+/// months, and would look right for nine of them.
+
+@ProviderFor(dashboardYear)
+final dashboardYearProvider = DashboardYearProvider._();
+
+/// The Jalali **year** — Farvardin 1 to Farvardin 1, the user's business and
+/// tax year (D-006). A Gregorian year here would be wrong by roughly three
+/// months, and would look right for nine of them.
+
+final class DashboardYearProvider
+    extends $FunctionalProvider<InstantRange, InstantRange, InstantRange>
+    with $Provider<InstantRange> {
+  /// The Jalali **year** — Farvardin 1 to Farvardin 1, the user's business and
+  /// tax year (D-006). A Gregorian year here would be wrong by roughly three
+  /// months, and would look right for nine of them.
+  DashboardYearProvider._()
+: super(
+        from: null,
+        argument: null,
+        retry: null,
+        name: r'dashboardYearProvider',
+        isAutoDispose: true,
+        dependencies: null,
+        $allTransitiveDependencies: null,
+      );
+
+  @override
+  String debugGetCreateSourceHash() => _$dashboardYearHash();
+
+  @$internal
+  @override
+  $ProviderElement<InstantRange> $createElement($ProviderPointer pointer) =>
+      $ProviderElement(pointer);
+
+  @override
+  InstantRange create(Ref ref) {
+    return dashboardYear(ref);
+  }
+
+  /// {@macro riverpod.override_with_value}
+  Override overrideWithValue(InstantRange value) {
+    return $ProviderOverride(
+      origin: this,
+      providerOverride: $SyncValueProvider<InstantRange>(value),
+    );
+  }
+}
+
+String _$dashboardYearHash() => r'f2288f9c52cdaecc14f05133e495b84409e8f773';
+
 /// Every dashboard figure, read together (see [DashboardSummary]).
 ///
 /// Each `ref.watch(...future)` below is a **live** query underneath: the four
@@ -141,45 +254,63 @@ final class DashboardSummaryProvider
   }
 }
 
-String _$dashboardSummaryHash() => r'8823619600380625ab521e9348cca1a01872b57d';
+String _$dashboardSummaryHash() => r'900cb165055ce03e5dac70eb7b2e31d20ae34116';
 
-/// The five underlying live queries, private because nothing outside the
-/// summary should read one on its own — a screen that watched a single figure
-/// would reintroduce exactly the "tiles from different moments" problem
+/// The underlying live queries, private because nothing outside the summary
+/// should read one on its own — a screen that watched a single figure would
+/// reintroduce exactly the "tiles from different moments" problem
 /// [DashboardSummary] exists to prevent.
+///
+/// **One family for all three sales figures, not three providers.** Week, month
+/// and year differ only in the range, and the family caches per range, so the
+/// three tiles run the same query against three arguments. Writing a
+/// `_weeklySales` beside a `_monthlySales` would be the same statement three
+/// times, and three places for the D-039 population to drift apart.
 
-@ProviderFor(_monthlySalesRial)
-final _monthlySalesRialProvider = _MonthlySalesRialFamily._();
+@ProviderFor(_issuedSalesRial)
+final _issuedSalesRialProvider = _IssuedSalesRialFamily._();
 
-/// The five underlying live queries, private because nothing outside the
-/// summary should read one on its own — a screen that watched a single figure
-/// would reintroduce exactly the "tiles from different moments" problem
+/// The underlying live queries, private because nothing outside the summary
+/// should read one on its own — a screen that watched a single figure would
+/// reintroduce exactly the "tiles from different moments" problem
 /// [DashboardSummary] exists to prevent.
+///
+/// **One family for all three sales figures, not three providers.** Week, month
+/// and year differ only in the range, and the family caches per range, so the
+/// three tiles run the same query against three arguments. Writing a
+/// `_weeklySales` beside a `_monthlySales` would be the same statement three
+/// times, and three places for the D-039 population to drift apart.
 
-final class _MonthlySalesRialProvider
+final class _IssuedSalesRialProvider
     extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
     with $FutureModifier<int>, $StreamProvider<int> {
-  /// The five underlying live queries, private because nothing outside the
-  /// summary should read one on its own — a screen that watched a single figure
-  /// would reintroduce exactly the "tiles from different moments" problem
+  /// The underlying live queries, private because nothing outside the summary
+  /// should read one on its own — a screen that watched a single figure would
+  /// reintroduce exactly the "tiles from different moments" problem
   /// [DashboardSummary] exists to prevent.
-  _MonthlySalesRialProvider._({
-    required _MonthlySalesRialFamily super.from,
+  ///
+  /// **One family for all three sales figures, not three providers.** Week, month
+  /// and year differ only in the range, and the family caches per range, so the
+  /// three tiles run the same query against three arguments. Writing a
+  /// `_weeklySales` beside a `_monthlySales` would be the same statement three
+  /// times, and three places for the D-039 population to drift apart.
+  _IssuedSalesRialProvider._({
+    required _IssuedSalesRialFamily super.from,
     required InstantRange super.argument,
   }) : super(
          retry: null,
-         name: r'_monthlySalesRialProvider',
+         name: r'_issuedSalesRialProvider',
          isAutoDispose: true,
          dependencies: null,
          $allTransitiveDependencies: null,
        );
 
   @override
-  String debugGetCreateSourceHash() => _$_monthlySalesRialHash();
+  String debugGetCreateSourceHash() => _$_issuedSalesRialHash();
 
   @override
   String toString() {
-    return r'_monthlySalesRialProvider'
+    return r'_issuedSalesRialProvider'
         ''
         '($argument)';
   }
@@ -192,12 +323,12 @@ final class _MonthlySalesRialProvider
   @override
   Stream<int> create(Ref ref) {
     final argument = this.argument as InstantRange;
-    return _monthlySalesRial(ref, argument);
+    return _issuedSalesRial(ref, argument);
   }
 
   @override
   bool operator ==(Object other) {
-    return other is _MonthlySalesRialProvider && other.argument == argument;
+    return other is _IssuedSalesRialProvider && other.argument == argument;
   }
 
   @override
@@ -206,34 +337,46 @@ final class _MonthlySalesRialProvider
   }
 }
 
-String _$_monthlySalesRialHash() => r'be17cf9656fd4ab427d9c1986f12a799710b82c3';
+String _$_issuedSalesRialHash() => r'171885599da3565b9f9a913b1fb57d3d9ab725fa';
 
-/// The five underlying live queries, private because nothing outside the
-/// summary should read one on its own — a screen that watched a single figure
-/// would reintroduce exactly the "tiles from different moments" problem
+/// The underlying live queries, private because nothing outside the summary
+/// should read one on its own — a screen that watched a single figure would
+/// reintroduce exactly the "tiles from different moments" problem
 /// [DashboardSummary] exists to prevent.
+///
+/// **One family for all three sales figures, not three providers.** Week, month
+/// and year differ only in the range, and the family caches per range, so the
+/// three tiles run the same query against three arguments. Writing a
+/// `_weeklySales` beside a `_monthlySales` would be the same statement three
+/// times, and three places for the D-039 population to drift apart.
 
-final class _MonthlySalesRialFamily extends $Family
+final class _IssuedSalesRialFamily extends $Family
     with $FunctionalFamilyOverride<Stream<int>, InstantRange> {
-  _MonthlySalesRialFamily._()
+  _IssuedSalesRialFamily._()
 : super(
         retry: null,
-        name: r'_monthlySalesRialProvider',
+        name: r'_issuedSalesRialProvider',
         dependencies: null,
         $allTransitiveDependencies: null,
         isAutoDispose: true,
       );
 
-  /// The five underlying live queries, private because nothing outside the
-  /// summary should read one on its own — a screen that watched a single figure
-  /// would reintroduce exactly the "tiles from different moments" problem
+  /// The underlying live queries, private because nothing outside the summary
+  /// should read one on its own — a screen that watched a single figure would
+  /// reintroduce exactly the "tiles from different moments" problem
   /// [DashboardSummary] exists to prevent.
+  ///
+  /// **One family for all three sales figures, not three providers.** Week, month
+  /// and year differ only in the range, and the family caches per range, so the
+  /// three tiles run the same query against three arguments. Writing a
+  /// `_weeklySales` beside a `_monthlySales` would be the same statement three
+  /// times, and three places for the D-039 population to drift apart.
 
-  _MonthlySalesRialProvider call(InstantRange period) =>
-      _MonthlySalesRialProvider._(argument: period, from: this);
+  _IssuedSalesRialProvider call(InstantRange period) =>
+      _IssuedSalesRialProvider._(argument: period, from: this);
 
   @override
-  String toString() => r'_monthlySalesRialProvider';
+  String toString() => r'_issuedSalesRialProvider';
 }
 
 @ProviderFor(_monthlyIssuedCount)

@@ -65,6 +65,56 @@ DateTime startOfJalaliDayUtc(
   return localMidnight.subtract(offset);
 }
 
+/// Milliseconds in one day. The unit the day index below is counted in.
+const int kMillisecondsPerDay = 86400000;
+
+/// Which **Iranian civil day** [instantMillis] falls in, as a count of days
+/// since the Iranian day that contained the epoch.
+///
+/// The one number a SQL `GROUP BY` can compute without a calendar. Grouping
+/// invoices by day in SQLite means grouping them by *something*, and the stored
+/// column is a UTC instant: `issue_date / 86400000` groups by the **UTC** day,
+/// which files an invoice issued at 02:00 Tehran under the previous day. Adding
+/// the offset first shifts the boundary to Tehran midnight, and the division
+/// then lands every instant of one Iranian day on one integer.
+///
+/// The index is not itself a date and must not be shown to anyone; it is a
+/// grouping key that [jalaliFromDayIndex] turns back into a date. The pair is
+/// here rather than at the call site because §5 keeps calendar arithmetic in
+/// this file, and because the two halves have to agree about the offset -- a
+/// query grouped on one boundary and read back on another is off by a day for
+/// three and a half hours out of every twenty-four.
+///
+/// **Truncating division, so this is only correct for instants at or after the
+/// epoch.** Dart and SQLite both truncate toward zero, which for a negative
+/// numerator rounds the wrong way and would collapse two days into one. Every
+/// instant this application stores is a business date well after 1970, and
+/// [dayIndexRange] refuses a range that reaches before it rather than returning
+/// a quietly wrong grouping.
+int dayIndexAtMillis(
+  int instantMillis, {
+  Duration offset = kIranStandardOffset,
+}) {
+  return (instantMillis + offset.inMilliseconds) ~/ kMillisecondsPerDay;
+}
+
+/// The Jalali date of the Iranian civil day numbered [dayIndex].
+///
+/// The inverse of [dayIndexAtMillis]: the index times a day, less the offset,
+/// is the UTC instant that Iranian day began at.
+Jalali jalaliFromDayIndex(
+  int dayIndex, {
+  Duration offset = kIranStandardOffset,
+}) {
+  return jalaliAt(
+    DateTime.fromMillisecondsSinceEpoch(
+      dayIndex * kMillisecondsPerDay - offset.inMilliseconds,
+      isUtc: true,
+    ),
+    offset: offset,
+  );
+}
+
 /// [day]'s Jalali date, carrying the Tehran time of day that [source] has.
 ///
 /// **Why a picked date is not simply the start of a day.** The date picker

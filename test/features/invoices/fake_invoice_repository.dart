@@ -1,9 +1,13 @@
 import 'dart:async';
 
+import 'package:shamsi_date/shamsi_date.dart';
+
+import 'package:factorino/core/date/jalali_instant.dart';
 import 'package:factorino/core/date/jalali_period.dart';
 import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/models/customer_totals.dart';
+import 'package:factorino/data/models/daily_sales.dart';
 import 'package:factorino/data/models/invoice.dart';
 import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
@@ -71,6 +75,24 @@ class FakeInvoiceRepository implements InvoiceRepository {
   /// The period the last aggregate was asked for, so a test can assert the
   /// dashboard resolved a **Jalali** month rather than a Gregorian one.
   InstantRange? lastPeriod;
+
+  /// Every period an issued-total query has been asked for, in order.
+  ///
+  /// `lastPeriod` cannot answer a screen that asks for three periods at once —
+  /// it only remembers whichever query happened to settle last. The dashboard
+  /// now reads week, month and year together, and the thing worth asserting is
+  /// that it asked for all three.
+  final List<InstantRange> issuedTotalPeriods = <InstantRange>[];
+
+  /// Per-period totals, for a screen showing more than one period at a time.
+  ///
+  /// A range absent from this map falls back to [issuedTotalRial], so every
+  /// existing caller keeps its single flat figure and nothing had to be
+  /// rewritten to add the two new tiles.
+  Map<InstantRange, int> issuedTotalByPeriod = <InstantRange, int>{};
+
+  int _issuedTotalFor(InstantRange period) =>
+      issuedTotalByPeriod[period] ?? issuedTotalRial;
 
   /// Which customer the last totals query was scoped to -- the assertion that a
   /// customer's page asks about *that* customer rather than about the business.
@@ -146,13 +168,45 @@ class FakeInvoiceRepository implements InvoiceRepository {
   @override
   Stream<int> watchTotalIssuedRial(InstantRange period) {
     lastPeriod = period;
-    return _emit(issuedTotalRial);
+    issuedTotalPeriods.add(period);
+    return _emit(_issuedTotalFor(period));
+  }
+
+  /// Per-day sales the calendar reads, keyed by **Jalali day**.
+  ///
+  /// Written as `Jalali` rather than as the day index the real query groups on,
+  /// because a test that had to compute the index would be reimplementing the
+  /// thing under test. The conversion happens here, through the same helper the
+  /// production code uses.
+  Map<Jalali, DaySales> dailySales = <Jalali, DaySales>{};
+
+  /// Every range [watchDailySales] has been asked for, in order — so a test can
+  /// assert that a month was fetched **once** rather than once per day.
+  final List<InstantRange> dailySalesQueries = <InstantRange>[];
+
+  @override
+  Stream<DailySales> watchDailySales(InstantRange range) {
+    dailySalesQueries.add(range);
+    final Map<int, DaySales> byDayIndex = <int, DaySales>{};
+    dailySales.forEach((Jalali day, DaySales sales) {
+      final DateTime start = startOfJalaliDayUtc(day);
+      if (!range.contains(start)) return;
+      byDayIndex[dayIndexAtMillis(start.millisecondsSinceEpoch)] = sales;
+    });
+    return _emit(
+      DailySales(
+        range: range,
+        offset: kIranStandardOffset,
+        byDayIndex: byDayIndex,
+      ),
+    );
   }
 
   @override
   Future<int> totalIssuedRial(InstantRange period) async {
     lastPeriod = period;
-    return issuedTotalRial;
+    issuedTotalPeriods.add(period);
+    return _issuedTotalFor(period);
   }
 
   @override

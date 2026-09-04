@@ -151,11 +151,17 @@ abstract final class AppLayout {
 
   /// The width of the tablet rail, where labels sit beneath their icons.
   ///
-  /// Wide enough for the longest destination -- محصولات و خدمات -- to wrap onto
-  /// two lines rather than overflow. Measured against that label rather than
-  /// chosen: it is the one that decides this number, and a rail sized for the
-  /// short labels clips it silently at exactly one breakpoint, which is the
-  /// kind of defect that ships.
+  /// Measured against the longest destination label rather than chosen. That
+  /// was محصولات و خدمات, which had to wrap onto two lines rather than
+  /// overflow; the destination has since been shortened to محصولات and every
+  /// label now fits on one line with room to spare.
+  ///
+  /// **The number is kept at the width the longer label needed.** It is now
+  /// headroom rather than a fit, and narrowing it would be a rail-geometry
+  /// change with its own three-tier layout check to earn — not a free
+  /// consequence of renaming a string. The reason it was measured still holds:
+  /// a rail sized for the short labels clips a longer one silently at exactly
+  /// one breakpoint, which is the kind of defect that ships.
   static const double navigationRailCompactWidth = 104;
 
   /// Bottom padding a scrolling list needs when a floating action button sits

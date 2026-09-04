@@ -4,12 +4,14 @@ import 'dart:async';
 // that a schema-v1 database would hold -- a draft that already carries a
 // number. The repository cannot produce one any more, which is the point.
 import 'package:drift/drift.dart' show Value;
+import 'package:factorino/core/date/jalali_instant.dart';
 import 'package:factorino/core/date/jalali_period.dart';
 import 'package:factorino/core/money/invoice_calculator.dart';
 import 'package:factorino/core/money/money.dart';
 import 'package:factorino/data/database/app_database.dart'
     show InvoicesCompanion;
 import 'package:factorino/data/models/invoice.dart';
+import 'package:factorino/data/models/daily_sales.dart';
 import 'package:factorino/data/models/invoice_detail.dart';
 import 'package:factorino/data/models/invoice_draft.dart';
 import 'package:factorino/data/models/invoice_filter.dart';
@@ -20,6 +22,7 @@ import 'package:factorino/data/models/payment_method.dart';
 import 'package:factorino/data/models/product.dart';
 import 'package:factorino/data/repositories/invoice_repository.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 import 'repository_harness.dart';
 
@@ -862,6 +865,177 @@ void main() {
 
       await harness.invoices.softDelete(created.invoice.id);
       expect(await harness.invoices.watchCount().first, 0);
+    });
+  });
+
+  group('per-day sales, from one grouped query', () {
+    /// Issues an invoice worth [rial] on the Jalali [day], at noon Tehran.
+    ///
+    /// Noon rather than midnight so the row sits well inside its day: an
+    /// instant on a boundary would pass a grouping that is off by one in
+    /// either direction, which is the thing these tests are for.
+    Future<void> issueOn(Jalali day, int rial) async {
+      final DateTime noon = startOfJalaliDayUtc(day)
+          .add(const Duration(hours: 12));
+      final created = await harness.invoices.create(
+        harness.draft(customerId, unitPriceRial: rial, issueDate: noon),
+      );
+      await harness.invoices.issue(created.invoice.id);
+    }
+
+    test('groups by Iranian civil day, sparsely', () async {
+      await issueOn(Jalali(1405, 6, 2), 1000000);
+      await issueOn(Jalali(1405, 6, 2), 2000000);
+      await issueOn(Jalali(1405, 6, 9), 5000000);
+
+      final DailySales sales = await harness.invoices
+          .watchDailySales(jalaliMonth(1405, 6))
+          .first;
+
+      // The default tax rate applies, so each figure is its net plus 10% --
+      // the point of the assertion is the grouping, and the amounts come from
+      // the engine rather than from this test.
+      expect(sales.on(Jalali(1405, 6, 2)).invoiceCount, 2);
+      expect(sales.on(Jalali(1405, 6, 9)).invoiceCount, 1);
+      expect(sales.on(Jalali(1405, 6, 2)).total.rial, 3300000);
+      expect(sales.on(Jalali(1405, 6, 9)).total.rial, 5500000);
+
+      // Sparse: only the two days that have anything are rows.
+      expect(sales.activeDayCount, 2);
+
+      // And a day with nothing answers zero rather than null, so no call site
+      // has to know which days are present.
+      expect(sales.on(Jalali(1405, 6, 3)).total, Money.zero);
+      expect(sales.hasSales(Jalali(1405, 6, 3)), isFalse);
+      expect(sales.hasSales(Jalali(1405, 6, 2)), isTrue);
+    });
+
+    test('the days of a month add up to the month total', () async {
+      // **The reconciliation that keeps the calendar and the dashboard
+      // honest.** They are two readings of the same population (D-039); if
+      // they ever disagree, one of the two screens is lying and neither says
+      // which.
+      await issueOn(Jalali(1405, 6, 1), 1000000);
+      await issueOn(Jalali(1405, 6, 15), 2500000);
+      await issueOn(Jalali(1405, 6, 31), 700000);
+
+      final InstantRange month = jalaliMonth(1405, 6);
+      final DailySales sales = await harness.invoices
+          .watchDailySales(month)
+          .first;
+
+      expect(sales.total.rial, await harness.invoices.totalIssuedRial(month));
+    });
+
+    test('the boundary is Tehran midnight, not UTC midnight', () async {
+      // 22:00 Tehran on 1405/06/02 and 02:00 Tehran on 1405/06/03 share a UTC
+      // date. Grouping on the raw stored instant would file them under one
+      // day, and the user would see last night's takings on the wrong date.
+      final DateTime evening = DateTime.utc(2026, 8, 24, 18, 30);
+      final DateTime night = DateTime.utc(2026, 8, 24, 22, 30);
+      expect(evening.day, night.day, reason: 'the same UTC date');
+
+      for (final DateTime at in <DateTime>[evening, night]) {
+        final created = await harness.invoices.create(
+          harness.draft(customerId, unitPriceRial: 1000000, issueDate: at),
+        );
+        await harness.invoices.issue(created.invoice.id);
+      }
+
+      final DailySales sales = await harness.invoices
+          .watchDailySales(jalaliMonth(1405, 6))
+          .first;
+
+      expect(sales.on(Jalali(1405, 6, 2)).invoiceCount, 1);
+      expect(sales.on(Jalali(1405, 6, 3)).invoiceCount, 1);
+    });
+
+    test('drafts and cancellations are excluded, as everywhere else', () async {
+      // D-039, asserted here as well as on the month total, because a calendar
+      // dot appearing on the day somebody started typing an invoice is the
+      // same defect one screen along.
+      final draft = await harness.invoices.create(
+        harness.draft(
+          customerId,
+          unitPriceRial: 1000000,
+          issueDate: startOfJalaliDayUtc(Jalali(1405, 6, 4))
+              .add(const Duration(hours: 12)),
+        ),
+      );
+      await issueOn(Jalali(1405, 6, 5), 2000000);
+      await issueOn(Jalali(1405, 6, 6), 3000000);
+
+      final List<InvoiceListItem> all = await harness.invoices
+          .watchList()
+          .first;
+      await harness.invoices.cancel(
+        all
+            .firstWhere(
+              (InvoiceListItem i) => i.invoice.grandTotal.rial == 3300000,
+            )
+            .invoice
+            .id,
+      );
+
+      final DailySales sales = await harness.invoices
+          .watchDailySales(jalaliMonth(1405, 6))
+          .first;
+
+      expect(sales.hasSales(Jalali(1405, 6, 4)), isFalse, reason: 'a draft');
+      expect(sales.hasSales(Jalali(1405, 6, 5)), isTrue);
+      expect(sales.hasSales(Jalali(1405, 6, 6)), isFalse, reason: 'cancelled');
+      expect(draft.invoice.status, InvoiceStatus.draft);
+    });
+
+    test('soft-deleted invoices are excluded', () async {
+      await issueOn(Jalali(1405, 6, 7), 1000000);
+      final created = await harness.invoices.create(
+        harness.draft(
+          customerId,
+          unitPriceRial: 9000000,
+          issueDate: startOfJalaliDayUtc(Jalali(1405, 6, 8))
+              .add(const Duration(hours: 12)),
+        ),
+      );
+      await harness.invoices.issue(created.invoice.id);
+      await harness.invoices.cancel(created.invoice.id);
+      await harness.invoices.softDelete(created.invoice.id);
+
+      final DailySales sales = await harness.invoices
+          .watchDailySales(jalaliMonth(1405, 6))
+          .first;
+      expect(sales.hasSales(Jalali(1405, 6, 8)), isFalse);
+      expect(sales.activeDayCount, 1);
+    });
+
+    test('a one-day range is the same query, answering for that day', () async {
+      // The day view reads its figure through this method rather than through
+      // a second aggregate, so the dot and the total cannot disagree.
+      await issueOn(Jalali(1405, 6, 2), 1000000);
+      await issueOn(Jalali(1405, 6, 3), 4000000);
+
+      final DailySales day = await harness.invoices
+          .watchDailySales(jalaliDay(Jalali(1405, 6, 2)))
+          .first;
+
+      expect(day.activeDayCount, 1);
+      expect(day.on(Jalali(1405, 6, 2)).total.rial, 1100000);
+    });
+
+    test('re-emits after a write', () async {
+      final InstantRange month = jalaliMonth(1405, 6);
+      final List<int> seen = <int>[];
+      final StreamSubscription<DailySales> subscription = harness.invoices
+          .watchDailySales(month)
+          .listen((DailySales s) => seen.add(s.activeDayCount));
+      addTearDown(subscription.cancel);
+
+      await pumpEventQueue();
+      expect(seen, <int>[0]);
+
+      await issueOn(Jalali(1405, 6, 12), 1000000);
+      await pumpEventQueue();
+      expect(seen.last, 1);
     });
   });
 

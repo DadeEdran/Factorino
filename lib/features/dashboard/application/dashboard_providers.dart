@@ -27,6 +27,21 @@ const int kRecentInvoiceCount = 5;
 @riverpod
 InstantRange dashboardPeriod(Ref ref) => jalaliMonthOf(ref.watch(nowProvider));
 
+/// The Jalali **week** — شنبه to جمعه, not the last seven days.
+///
+/// A rolling seven-day window would be a different question, and a defensible
+/// one, but not the one «این هفته» asks: a user comparing Wednesday to Tuesday
+/// expects the figure to have grown by Wednesday's sales, not to have also
+/// dropped last Wednesday's off the back.
+@riverpod
+InstantRange dashboardWeek(Ref ref) => jalaliWeekOf(ref.watch(nowProvider));
+
+/// The Jalali **year** — Farvardin 1 to Farvardin 1, the user's business and
+/// tax year (D-006). A Gregorian year here would be wrong by roughly three
+/// months, and would look right for nine of them.
+@riverpod
+InstantRange dashboardYear(Ref ref) => jalaliYearOf(ref.watch(nowProvider));
+
 /// Every dashboard figure, read together (see [DashboardSummary]).
 ///
 /// Each `ref.watch(...future)` below is a **live** query underneath: the four
@@ -39,10 +54,18 @@ InstantRange dashboardPeriod(Ref ref) => jalaliMonthOf(ref.watch(nowProvider));
 /// Dart to count or sum them.
 @riverpod
 Future<DashboardSummary> dashboardSummary(Ref ref) async {
+  final InstantRange week = ref.watch(dashboardWeekProvider);
   final InstantRange period = ref.watch(dashboardPeriodProvider);
+  final InstantRange year = ref.watch(dashboardYearProvider);
 
+  final int weekSalesRial = await ref.watch(
+    _issuedSalesRialProvider(week).future,
+  );
   final int salesRial = await ref.watch(
-    _monthlySalesRialProvider(period).future,
+    _issuedSalesRialProvider(period).future,
+  );
+  final int yearSalesRial = await ref.watch(
+    _issuedSalesRialProvider(year).future,
   );
   final int issuedCount = await ref.watch(
     _monthlyIssuedCountProvider(period).future,
@@ -52,8 +75,12 @@ Future<DashboardSummary> dashboardSummary(Ref ref) async {
   final int invoiceCount = await ref.watch(_invoiceCountProvider.future);
 
   return DashboardSummary(
+    week: week,
     period: period,
+    year: year,
+    salesThisWeek: Money.rial(weekSalesRial),
     salesThisPeriod: Money.rial(salesRial),
+    salesThisYear: Money.rial(yearSalesRial),
     issuedCountThisPeriod: issuedCount,
     outstanding: Money.rial(outstandingRial),
     customerCount: customerCount,
@@ -61,12 +88,18 @@ Future<DashboardSummary> dashboardSummary(Ref ref) async {
   );
 }
 
-/// The five underlying live queries, private because nothing outside the
-/// summary should read one on its own — a screen that watched a single figure
-/// would reintroduce exactly the "tiles from different moments" problem
+/// The underlying live queries, private because nothing outside the summary
+/// should read one on its own — a screen that watched a single figure would
+/// reintroduce exactly the "tiles from different moments" problem
 /// [DashboardSummary] exists to prevent.
+///
+/// **One family for all three sales figures, not three providers.** Week, month
+/// and year differ only in the range, and the family caches per range, so the
+/// three tiles run the same query against three arguments. Writing a
+/// `_weeklySales` beside a `_monthlySales` would be the same statement three
+/// times, and three places for the D-039 population to drift apart.
 @riverpod
-Stream<int> _monthlySalesRial(Ref ref, InstantRange period) =>
+Stream<int> _issuedSalesRial(Ref ref, InstantRange period) =>
     ref.watch(invoiceRepositoryProvider).watchTotalIssuedRial(period);
 
 @riverpod

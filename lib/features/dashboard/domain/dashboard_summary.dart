@@ -14,22 +14,47 @@ import '../../../core/money/money.dart';
 /// there is one skeleton rather than four tiles pulsing out of step.
 class DashboardSummary {
   const DashboardSummary({
+    required this.week,
     required this.period,
+    required this.year,
+    required this.salesThisWeek,
     required this.salesThisPeriod,
+    required this.salesThisYear,
     required this.issuedCountThisPeriod,
     required this.outstanding,
     required this.customerCount,
     required this.invoiceCount,
   });
 
+  /// The **Jalali** week the week figure covers: شنبه to جمعه (D-006), not the
+  /// seven days ending today and not a Monday-start week.
+  final InstantRange week;
+
   /// The **Jalali** month the two period figures cover (D-006), carried so the
   /// caption on screen names the same month the query used rather than one the
   /// screen resolves separately.
   final InstantRange period;
 
+  /// The **Jalali** year — the user's business and tax year, Farvardin to
+  /// Farvardin.
+  final InstantRange year;
+
+  /// Invoices *issued* in [week] — the same population as [salesThisPeriod],
+  /// over a shorter range.
+  ///
+  /// **The three sales figures are nested, not additive.** This week is inside
+  /// this month is inside this year, so the tiles are three answers to "how
+  /// much have I sold" at three zoom levels rather than three parts of a total.
+  /// Each names its own period on its caption for exactly that reason: without
+  /// it a reader could reasonably try to add them.
+  final Money salesThisWeek;
+
   /// Invoices *issued* in [period] — drafts and cancellations excluded
   /// (D-039).
   final Money salesThisPeriod;
+
+  /// Invoices *issued* in [year].
+  final Money salesThisYear;
 
   /// How many documents [salesThisPeriod] is the sum of. The same population,
   /// so the two tiles reconcile.

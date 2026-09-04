@@ -120,8 +120,11 @@ class _MobileShell extends StatelessWidget {
         // **Every destination's label is one line, and that is a fix rather
         // than a preference.** `NavigationDestination.label` is a `String`
         // that Material renders as a bare `Text` with no line limit, and
-        // «محصولات و خدمات» is long enough to wrap where the other four do
-        // not. That is not merely untidy: the destination's icon and label are
+        // «محصولات و خدمات» was long enough to wrap where the other four did
+        // not. That label has since been shortened to «محصولات», which removes
+        // the cause; the clamp stays because it is a property of the bar rather
+        // than of one string, and the next long label would land here again.
+        // That is not merely untidy: the destination's icon and label are
         // placed by `_NavigationDestinationLayoutDelegate`, whose selected-state
         // icon offset is `halfHeight(icon) + halfHeight(label)` — so the one
         // two-line label lifted its icon half a line above the other four and

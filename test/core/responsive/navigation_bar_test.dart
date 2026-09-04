@@ -61,7 +61,10 @@ void main() {
     // taller than one that does not, and that height is what the layout
     // delegate reads to place the icon. Comparing the five heights asks the
     // question directly rather than through a proxy: before the fix
-    // «محصولات و خدمات» measured a second line and the other four did not.
+    // «محصولات و خدمات» measured a second line and the other four did not. The
+    // label has since been shortened to «محصولات», which removes the cause —
+    // but the clamp and this measurement stay, because they hold for whatever
+    // the five labels become next.
     final AppStrings strings = await pumpShell(
       tester,
       selected: AppDestination.dashboard,
@@ -114,9 +117,7 @@ void main() {
     'and at the narrowest supported phone, where the label is tightest',
     (WidgetTester tester) async {
       // 328 is the narrowest width `width_sweep_test` covers, and five equal
-      // shares of it is 65 logical pixels each. This is the width the longest
-      // Persian label cannot fit in at any readable size -- so it ellipsises, and
-      // the point of the assertion is that ellipsising is *all* that happens.
+      // shares of it is 65 logical pixels each.
       await pumpShell(
         tester,
         selected: AppDestination.products,
@@ -130,11 +131,15 @@ void main() {
       expect(tops.toSet(), hasLength(1));
       expect(tester.takeException(), isNull);
 
-      // **The cost, pinned rather than glossed.** At this width the longest
-      // label really is abbreviated; the next test says where the whole phrase
-      // remains readable. If a future change makes it fit, this line is the
-      // one to delete -- and deleting it will be a deliberate act rather than
-      // a discovery.
+      // **The abbreviation is gone, and this is the line that says so.** This
+      // assertion used to be `isTrue`, with a comment pinning the cost of a
+      // label that could not fit: «محصولات و خدمات» really was ellipsised at an
+      // equal fifth of a 328-wide bar, and the note said that if a future change
+      // ever made it fit, deleting the line should be a deliberate act rather
+      // than a discovery. Renaming the destination to «محصولات» is that change,
+      // so the assertion is inverted rather than removed — the label now fits
+      // whole at the narrowest width the application supports, and a future
+      // label long enough to break that will fail here.
       final AppStrings strings = stringsOf(tester, AdaptiveScaffold);
       expect(
         tester
@@ -145,7 +150,10 @@ void main() {
               ),
             )
             .didExceedMaxLines,
-        isTrue,
+        isFalse,
+        reason:
+            'no navigation label may be abbreviated at the narrowest '
+            'supported phone width',
       );
     },
   );
@@ -153,11 +161,14 @@ void main() {
   testWidgets('the full label is still reachable, as the destination tooltip', (
     WidgetTester tester,
   ) async {
-    // **What ellipsising costs, and the answer to it.** §11 names
-    // «محصولات و خدمات» as the navigation label and it stays the label; a
-    // narrow phone shows as much of it as an equal fifth of the bar allows.
-    // `NavigationDestination` uses the label as its own tooltip, so the whole
-    // phrase is a long press away -- and the two wider tiers show it in full.
+    // **The tooltip survives the rename, and still earns its place.** §11
+    // names «محصولات و خدمات», and that phrase is still the *screen's* heading
+    // — `productsTitle` — while the navigation item is now the shorter
+    // «محصولات». `NavigationDestination` uses its label as its own tooltip, so
+    // a user who is unsure what a five-item bar means can still hold a
+    // destination and read it. Nothing is abbreviated at any supported width
+    // any more, but the affordance is free and removing it would only make the
+    // bar less legible.
     final AppStrings strings = await pumpShell(
       tester,
       selected: AppDestination.dashboard,

@@ -3,18 +3,17 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
 import '../../../core/formatting/jalali_display.dart';
-import '../../../core/formatting/number_display.dart';
 import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/localization/month_names.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
-import '../../../core/theme/app_typography.dart';
 import '../../../core/utils/clock.dart';
 import '../../../core/widgets/amount_text.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/app_table.dart';
 import '../../../core/widgets/async_error_view.dart';
+import '../../../core/widgets/count_text.dart';
 import '../../../core/widgets/empty_state.dart';
 import '../../../core/widgets/page_body.dart';
 import '../../../core/widgets/stat_tile.dart';
@@ -54,6 +53,17 @@ class DashboardScreen extends ConsumerWidget {
 
     return PageBody(
       title: strings.dashboardTitle,
+      // **In the title row, which costs no height** (§10). A card offering the
+      // day view would sit above the tiles the page exists to show, and the
+      // rule about that has already been rediscovered three times on three
+      // different cards.
+      actions: <Widget>[
+        IconButton(
+          icon: const Icon(Icons.calendar_month_outlined),
+          tooltip: strings.dashboardDailySales,
+          onPressed: () => context.go(AppRoutes.dailySales),
+        ),
+      ],
       // **Above the summary rather than inside it** (D-102), and that placement
       // is the point rather than a detail. `_DashboardBody` is not what a
       // first-time user sees — `data.isEmpty` gives them the empty state, and
@@ -111,10 +121,24 @@ class _DashboardBody extends StatelessWidget {
     // The Jalali month the period figures cover, named rather than implied.
     // "این ماه" alone asks the user to trust that the app and they mean the
     // same month, and the two calendars' boundaries never coincide (D-006).
+    final List<String> monthNames = jalaliMonthNames(strings);
     final String periodLabel = formatJalaliMonthYear(
       summary.period.start,
-      monthNames: jalaliMonthNames(strings),
+      monthNames: monthNames,
     );
+    // A week is the one period whose name does not say which days it covers, so
+    // its caption names both ends. `lastJalaliDayOf` rather than the range's own
+    // `end`, which is exclusive and would name the following Saturday — a day
+    // outside the figure, on the label that says what the figure covers.
+    final ({String from, String to}) weekDays = formatJalaliDayRangeParts(
+      summary.week,
+      monthNames: monthNames,
+    );
+    final String weekLabel = strings.invoiceFilterPeriodCustomRange(
+      weekDays.from,
+      weekDays.to,
+    );
+    final String yearLabel = formatJalaliYear(summary.year.start);
 
     final AmountSize amountSize = tier.isMobile
         ? AmountSize.medium
@@ -123,12 +147,25 @@ class _DashboardBody extends StatelessWidget {
     return ListView(
       children: <Widget>[
         TileGrid(
+          // Three across on a desktop rather than four: six tiles over four
+          // columns leaves a ragged second row of two, and the three sales
+          // figures belong on one row together — they are the same figure at
+          // three zoom levels, and reading them side by side is the point.
           columns: switch (tier) {
             LayoutTier.mobile => 1,
             LayoutTier.tablet => 2,
-            LayoutTier.desktop => 4,
+            LayoutTier.desktop => 3,
           },
           tiles: <Widget>[
+            StatTile(
+              label: strings.dashboardSalesThisWeek,
+              caption: weekLabel,
+              value: AmountText(
+                summary.salesThisWeek,
+                unitLabel: strings.unitToman,
+                size: amountSize,
+              ),
+            ),
             StatTile(
               label: strings.dashboardSalesThisMonth,
               caption: periodLabel,
@@ -139,9 +176,18 @@ class _DashboardBody extends StatelessWidget {
               ),
             ),
             StatTile(
+              label: strings.dashboardSalesThisYear,
+              caption: yearLabel,
+              value: AmountText(
+                summary.salesThisYear,
+                unitLabel: strings.unitToman,
+                size: amountSize,
+              ),
+            ),
+            StatTile(
               label: strings.dashboardInvoiceCount,
               caption: periodLabel,
-              value: _CountText(
+              value: CountText(
                 value: summary.issuedCountThisPeriod,
                 size: amountSize,
               ),
@@ -157,7 +203,7 @@ class _DashboardBody extends StatelessWidget {
             ),
             StatTile(
               label: strings.dashboardCustomerCount,
-              value: _CountText(value: summary.customerCount, size: amountSize),
+              value: CountText(value: summary.customerCount, size: amountSize),
             ),
           ],
         ),
@@ -166,37 +212,6 @@ class _DashboardBody extends StatelessWidget {
           _RecentInvoices(strings: strings, tier: tier),
         ],
       ],
-    );
-  }
-}
-
-/// A count, in the same numeral style as an amount but with no unit.
-///
-/// No unit label, deliberately. §9's "never a bare number" is about money,
-/// where the difference between Rial and Toman is a factor of ten; a count of
-/// invoices under a tile labelled "فاکتورهای صادرشده" has no such ambiguity,
-/// and repeating the noun would be noise.
-class _CountText extends StatelessWidget {
-  const _CountText({required this.value, required this.size});
-
-  final int value;
-  final AmountSize size;
-
-  @override
-  Widget build(BuildContext context) {
-    final ThemeData theme = Theme.of(context);
-    final TextStyle style = switch (size) {
-      AmountSize.large => AppTypography.amountLarge,
-      AmountSize.medium => AppTypography.amountMedium,
-      AmountSize.small => AppTypography.amountSmall,
-    };
-
-    return Text(
-      formatGroupedPersian(value),
-      style: style.copyWith(
-        color: theme.colorScheme.onSurface,
-        fontFamily: AppTypography.fontFamily,
-      ),
     );
   }
 }
@@ -277,9 +292,13 @@ class _DashboardSkeleton extends StatelessWidget {
       columns: switch (context.tier) {
         LayoutTier.mobile => 1,
         LayoutTier.tablet => 2,
-        LayoutTier.desktop => 4,
+        LayoutTier.desktop => 3,
       },
+      // Six, matching the six that arrive. A skeleton short of the real thing
+      // is a page that jumps when the data lands.
       tiles: const <Widget>[
+        StatTileSkeleton(),
+        StatTileSkeleton(),
         StatTileSkeleton(),
         StatTileSkeleton(),
         StatTileSkeleton(),

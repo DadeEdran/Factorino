@@ -1919,14 +1919,30 @@ closed.
 
 **What a user loses.** Nothing they can see. Per D-021 «گزارش‌ها» is omitted from navigation entirely
 until this phase — no disabled item, no coming-soon placeholder, no registered route — so its absence
-is invisible rather than broken. The dashboard already landed in Phase 1 (f2): four live SQL
-aggregates over Jalali month boundaries plus a recent-invoices list. What is missing is **period
-selection** (the dashboard covers the current Jalali month only) and **per-entity breakdowns** —
-sales by customer, and sales by product, which is where the product-usage question moved when Phase 3
-was re-scoped (D-042). Registering `/products/:id` belongs here too.
+is invisible rather than broken.
+
+**Part of the period selection this phase was holding has now landed, on owner request** (ninth pass,
+D-115 and D-116), outside the phase and outside «گزارش‌ها»:
+
+* The dashboard reports **three** nested Jalali periods — week (شنبه to جمعه), month and year — where
+  Phase 1 (f2) left it at the current month only.
+* **`/day`, «فروش روزانه»**: a Jalali calendar marking the days that have issued invoices, and that
+  day's total, count and invoices. One grouped `GROUP BY` per visible month, not one query per day.
+
+It is a child of the dashboard branch rather than a sixth destination, and it is deliberately **not**
+گزارش‌ها: D-021 keeps that section closed until it has the reports that make it a section.
+
+**What is still missing here.** An arbitrary period on the dashboard (the invoice *list* already
+filters on a custom Jalali range, D-111; what is absent is a summary over one), and the **per-entity
+breakdowns** — sales by customer, and sales by product, which is where the product-usage question
+moved when Phase 3 was re-scoped (D-042). Registering `/products/:id` belongs here too. A
+**cash-received** view — takings by the day money arrived rather than by the day a document was
+issued — belongs here as well; D-116 records why it is a separate report rather than a second meaning
+for the day view's marks.
 
 **Security note if it is ever taken up.** No new data. Aggregation queries stay parameterized (D-018)
-and must not leak amounts into logs.
+and must not leak amounts into logs — which the ninth pass's grouped daily aggregate honours: it is
+built from drift's typed operators with the offset as a bound variable, and logs nothing.
 
 ---
 
@@ -2186,3 +2202,32 @@ than the day it held before — and the display rule is deliberately conservativ
 before the change, so nothing is asserted about a customer's payment that the database does not know.
 The Arabic-character guard is a test and ships in no build. The custom range is a `WHERE` clause over
 columns already queried.
+
+---
+
+### The ninth pass — the diagnosis that was wrong, and reporting that got wider
+
+| What | Where |
+|---|---|
+| **The ezafe mark comes out of every string.** D-112's line-break explanation was wrong and the owner said so. Rendered through the real Vazirmatn at 14 sp and then read out of the font's own tables: `GPOS` puts the hamza **0.100 em clear of the ه** and 0.038 em left of its centre, in all three weights — one to two device pixels of white on a phone. Not fixable from this side; 33 occurrences replaced with a plain «ه», both spellings banned by the guard | D-113 |
+| The products destination becomes «محصولات»; the page keeps «محصولات و خدمات». D-108's pinned truncation cost is **inverted rather than deleted** — no label may now be abbreviated at 328 px | D-114 |
+| The dashboard reports **week, month and year**, all Jalali, all SQL, from one provider family. `jalaliWeek` is new in `core/date/`, شنبه-based; `formatJalaliDayRangeParts` names the week's two ends and states a shared month once | D-115 |
+| **`/day`, «فروش روزانه»**: a Jalali calendar dotted on the days with issued invoices, and that day's total, count and invoice list. **One grouped query per visible month** — `GROUP BY (issue_date + offset) / 86400000`, in drift's typed operators with the offset bound | D-116 |
+
+**The finding this pass is about evidence again, and the same way round as last time.** D-112 reasoned
+from the ARB and from a PDF raster and never drew the string at the size a phone draws it. The owner's
+instruction — *"check it on the rendered screen, not in the ARB"* — is the rule for anything about how
+text **looks**: the artifact under examination is pixels. Two independent reports of one symptom
+should have made that the first step rather than the second.
+
+**And the pass answered a question with a number rather than a preference.** *"Decide what 'has sales'
+means"* is settled by what the page reports: the figure above the calendar is sales, so a dot that
+meant "money arrived" would mark days whose total is zero. Cash received is a real report and a
+different one (Phase 8).
+
+**Security note.** No new data stored, no new dependency, no new platform surface, no new permission,
+and the threat model is unchanged. The one new query is a read over columns already queried, built
+with drift's typed API and a bound variable — no raw SQL, no interpolation, nothing logged. The
+navigation rename and the string change touch presentation only. `/day` is a new route but reads the
+same tables under the same soft-delete filter, and registers **with the screen it opens** (D-021).
+

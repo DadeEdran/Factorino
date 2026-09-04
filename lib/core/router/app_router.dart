@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import '../../features/customers/presentation/customer_detail_screen.dart';
 import '../../features/customers/presentation/customer_form_screen.dart';
 import '../../features/customers/presentation/customers_screen.dart';
+import '../../features/dashboard/presentation/daily_sales_screen.dart';
 import '../../features/dashboard/presentation/dashboard_screen.dart';
 import '../../features/invoices/presentation/invoice_detail_screen.dart';
 import '../../features/invoices/presentation/invoice_editor_screen.dart';
@@ -77,7 +78,21 @@ GoRouter createRouter() {
               );
             },
         branches: <StatefulShellBranch>[
-          _branch(AppDestination.dashboard, const DashboardScreen()),
+          _branch(
+            AppDestination.dashboard,
+            const DashboardScreen(),
+            children: <RouteBase>[
+              // `/day`, under the dashboard, so the URL reads as a hierarchy
+              // and the shell keeps داشبورد selected while it is open. The
+              // dashboard's own path is `/`, so this is its only child and
+              // there is no `:id` above it to swallow the literal segment.
+              GoRoute(
+                path: 'day',
+                builder: (BuildContext context, GoRouterState state) =>
+                    const DailySalesScreen(),
+              ),
+            ],
+          ),
           _branch(
             AppDestination.invoices,
             const InvoicesScreen(),

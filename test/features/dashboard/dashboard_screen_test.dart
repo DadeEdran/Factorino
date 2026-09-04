@@ -1,5 +1,6 @@
 import 'dart:async';
 
+import 'package:factorino/core/date/jalali_instant.dart';
 import 'package:factorino/core/date/jalali_period.dart';
 import 'package:factorino/core/localization/generated/app_strings.dart';
 import 'package:factorino/core/money/money.dart';
@@ -20,6 +21,7 @@ import 'package:factorino/features/invoices/presentation/invoices_screen.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/misc.dart';
 import 'package:flutter_test/flutter_test.dart';
+import 'package:shamsi_date/shamsi_date.dart';
 
 import '../invoices/fake_invoice_repository.dart';
 import '../screen_harness.dart';
@@ -96,11 +98,55 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(invoices.lastPeriod, isNotNull);
-      expect(invoices.lastPeriod, jalaliMonthOf(now));
+      expect(invoices.issuedTotalPeriods, contains(jalaliMonthOf(now)));
       // Belt and braces: the same range, named explicitly, so this test still
       // means something if `jalaliMonthOf` is ever the thing that broke.
-      expect(invoices.lastPeriod, jalaliMonth(1405, 6));
-      expect(invoices.lastPeriod!.contains(now), isTrue);
+      expect(invoices.issuedTotalPeriods, contains(jalaliMonth(1405, 6)));
+      expect(jalaliMonth(1405, 6).contains(now), isTrue);
+    });
+
+    testWidgets('the week is شنبه to جمعه, and the year is Farvardin-based', (
+      WidgetTester tester,
+    ) async {
+      // The two new periods, asserted on the ranges the repository was handed
+      // rather than on what the tiles render — the same reason the month
+      // assertion above is written that way.
+      //
+      // `now` is 1405/06/02, a دوشنبه — the *third* day of the Iranian week —
+      // so the week under test starts two days earlier, on شنبه 1405/05/31,
+      // and runs through جمعه 1405/06/06. It crosses a month boundary, which
+      // is the case worth pinning: Mordad has 31 days and Shahrivar starts the
+      // next, and a week computed by subtracting a fixed number of days from
+      // the month's first would land in the wrong month here. A Monday-start
+      // week would begin a day later and a rolling seven-day window six days
+      // earlier; both would still look like a plausible figure on the tile,
+      // which is why this is pinned to exact instants.
+      final FakeInvoiceRepository invoices = FakeInvoiceRepository(
+        <InvoiceListItem>[item('a', liveCustomerName: 'مریم احمدی')],
+      );
+      await pumpScreen(
+        tester,
+        const DashboardScreen(),
+        overrides: overridesFor(invoices, _FakeCustomerRepository(1)),
+      );
+      await tester.pumpAndSettle();
+
+      expect(jalaliAt(now).weekDay, 3, reason: 'دوشنبه, the third day');
+      expect(
+        invoices.issuedTotalPeriods,
+        contains(
+          InstantRange(
+            startOfJalaliDayUtc(Jalali(1405, 5, 31)),
+            startOfJalaliDayUtc(Jalali(1405, 6, 7)),
+          ),
+        ),
+        reason: 'the week runs شنبه 1405/05/31 to جمعه 1405/06/06 inclusive',
+      );
+      expect(
+        invoices.issuedTotalPeriods,
+        contains(jalaliYear(1405)),
+        reason: 'the year is Farvardin to Farvardin, not January to January',
+      );
     });
 
     testWidgets('the period tiles name the Jalali month on screen', (
@@ -132,31 +178,41 @@ void main() {
     testWidgets('each tile shows the repository figure, through AmountText', (
       WidgetTester tester,
     ) async {
+      // **Three different figures for the three periods**, so the tiles cannot
+      // pass by all reading the same query. Week is inside month is inside
+      // year, so the amounts ascend the way real ones would.
+      final FakeInvoiceRepository invoices =
+          FakeInvoiceRepository(
+              <InvoiceListItem>[item('a', liveCustomerName: 'مریم احمدی')],
+              issuedCount: 3,
+              outstandingRial: 5000000,
+            )
+            ..issuedTotalByPeriod = <InstantRange, int>{
+              jalaliWeekOf(now): 3000000,
+              jalaliMonthOf(now): 12000000,
+              jalaliYearOf(now): 90000000,
+            };
+
       await pumpScreen(
         tester,
         const DashboardScreen(),
-        overrides: overridesFor(
-          FakeInvoiceRepository(
-            <InvoiceListItem>[item('a', liveCustomerName: 'مریم احمدی')],
-            issuedTotalRial: 12000000,
-            issuedCount: 3,
-            outstandingRial: 5000000,
-          ),
-          _FakeCustomerRepository(7),
-        ),
+        overrides: overridesFor(invoices, _FakeCustomerRepository(7)),
         size: kDesktopSize,
       );
       await tester.pumpAndSettle();
 
       final AppStrings strings = stringsOf(tester, DashboardScreen);
-      expect(find.byType(StatTile), findsNWidgets(4));
+      expect(find.byType(StatTile), findsNWidgets(6));
+      expect(find.text(strings.dashboardSalesThisWeek), findsOneWidget);
       expect(find.text(strings.dashboardSalesThisMonth), findsOneWidget);
+      expect(find.text(strings.dashboardSalesThisYear), findsOneWidget);
       expect(find.text(strings.dashboardInvoiceCount), findsOneWidget);
       expect(find.text(strings.dashboardOutstanding), findsOneWidget);
       expect(find.text(strings.dashboardCustomerCount), findsOneWidget);
 
       // Money goes through AmountText: Persian digits, Toman, unit label —
-      // 12,000,000 Rial is 1,200,000 Toman, 5,000,000 Rial is 500,000.
+      // 3,000,000 Rial is 300,000 Toman, 12,000,000 is 1,200,000, 90,000,000
+      // is 9,000,000, and 5,000,000 outstanding is 500,000.
       // Scoped to the tiles, because the recent-invoices row underneath shows
       // an amount too — through the same widget, which is the point.
       expect(
@@ -164,16 +220,18 @@ void main() {
           of: find.byType(StatTile),
           matching: find.byType(AmountText),
         ),
-        findsNWidgets(2),
+        findsNWidgets(4),
       );
+      expect(find.text('۳۰۰٬۰۰۰'), findsOneWidget);
       expect(find.text('۱٬۲۰۰٬۰۰۰'), findsOneWidget);
+      expect(find.text('۹٬۰۰۰٬۰۰۰'), findsOneWidget);
       expect(find.text('۵۰۰٬۰۰۰'), findsOneWidget);
       expect(
         find.descendant(
           of: find.byType(StatTile),
           matching: find.text(strings.unitToman),
         ),
-        findsNWidgets(2),
+        findsNWidgets(4),
       );
 
       // Counts are Persian digits with no unit — a count of invoices under a
@@ -286,7 +344,7 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byType(EmptyState), findsNothing);
-      expect(find.byType(StatTile), findsNWidgets(4));
+      expect(find.byType(StatTile), findsNWidgets(6));
       expect(find.text('۲۰'), findsOneWidget);
     });
 
@@ -349,6 +407,15 @@ void main() {
         size: kMobileSize,
       );
       await tester.pumpAndSettle();
+
+      // **Scrolled to, because on a phone it is below the fold.** Six tiles in
+      // one column is roughly a screen and a half before the recent list
+      // begins, and the `ListView` does not build what is not on screen — so a
+      // finder that did not scroll would report the section missing rather
+      // than off-screen. That is a real property of the page, not a test
+      // artefact: the tiles are what the dashboard is for, and the recent
+      // invoices are a glance below them.
+      await tester.scrollUntilVisible(find.byType(InvoiceCard), 200);
 
       expect(find.byType(InvoiceCard), findsOneWidget);
       expect(find.byType(AppTableHeader), findsNothing);

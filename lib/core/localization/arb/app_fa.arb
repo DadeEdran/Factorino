@@ -18,9 +18,9 @@
   "@navCustomers": {
     "description": "Navigation destination: the customer list."
   },
-  "navProducts": "محصولات و خدمات",
+  "navProducts": "محصولات",
   "@navProducts": {
-    "description": "Navigation destination: the product and service catalogue."
+    "description": "Navigation destination: the product and service catalogue. Deliberately SHORTER than productsTitle, which is the page's own heading and still names both halves. A navigation label is read at a glance in a bar five items wide, and «محصولات و خدمات» was the one label that wrapped to a second line on a phone; the screen it opens says what it holds."
   },
   "navSettings": "تنظیمات",
   "@navSettings": {
@@ -83,12 +83,47 @@
   "@dashboardCustomerCount": {
     "description": "Dashboard tile: number of customers on record."
   },
+  "dashboardSalesThisWeek": "فروش این هفته",
+  "@dashboardSalesThisWeek": {
+    "description": "Dashboard tile. 'This week' is the JALALI week, شنبه to جمعه (D-006) -- not the last seven days, and not a Monday-start week. The caption beneath it names the two dates, because a week is the one period a user cannot reconstruct from its name."
+  },
+  "dashboardSalesThisYear": "فروش امسال",
+  "@dashboardSalesThisYear": {
+    "description": "Dashboard tile. The JALALI year, Farvardin to Farvardin -- the user's business and tax year. A Gregorian year here would be wrong by about three months and would look right for nine of them."
+  },
+  "dashboardDailySales": "فروش روزانه",
+  "@dashboardDailySales": {
+    "description": "Title-row action on the dashboard, opening the day view. In the title row rather than as a card, because section 10 forbids adding height above the content a page exists to show."
+  },
   "dashboardRecentInvoices": "فاکتورهای اخیر",
   "@dashboardRecentInvoices": {},
 
+  "dailySalesTitle": "فروش روزانه",
+  "@dailySalesTitle": {
+    "description": "The day view: pick a day on a Jalali calendar and see what was sold that day."
+  },
+  "dailySalesDayTotal": "فروش این روز",
+  "@dailySalesDayTotal": {
+    "description": "The selected day's sales total. The same population as every other sales figure -- issued invoices only, drafts and cancellations excluded (D-039)."
+  },
+  "dailySalesInvoicesSection": "فاکتورهای این روز",
+  "@dailySalesInvoicesSection": {},
+  "dailySalesMarkedDay": "دارای فروش",
+  "@dailySalesMarkedDay": {
+    "description": "What a marked calendar day announces to a screen reader. The dot itself announces nothing, so without this the marking is visual-only."
+  },
+  "dailySalesLegend": "روزهایی که فاکتور صادر شده با نقطه مشخص شده‌اند.",
+  "@dailySalesLegend": {
+    "description": "Explains the dot under a calendar day. It says 'invoice issued' rather than 'sales' because that is exactly what the dot means: a payment received on a day does not mark it, since the day view answers what was SOLD that day, not what was collected."
+  },
+  "dailySalesEmptyTitle": "در این روز فاکتوری صادر نشده است",
+  "@dailySalesEmptyTitle": {},
+  "dailySalesEmptyBody": "روز دیگری را از تقویم انتخاب کنید. روزهای دارای فروش با نقطه مشخص شده‌اند.",
+  "@dailySalesEmptyBody": {},
+
   "emptyDashboardTitle": "هنوز اطلاعاتی برای نمایش نیست",
   "@emptyDashboardTitle": {},
-  "emptyDashboardBody": "با ساختن اولین فاکتور، خلاصهٔ فروش و مانده دریافتنی همین‌جا نمایش داده می‌شود.",
+  "emptyDashboardBody": "با ساختن اولین فاکتور، خلاصه فروش و مانده دریافتنی همین‌جا نمایش داده می‌شود.",
   "@emptyDashboardBody": {},
 
   "invoicesTitle": "فاکتورها",
@@ -126,7 +161,7 @@
   },
   "settingsDefaultTaxRateHint": "تغییر این نرخ روی فاکتورهای صادرشده اثری ندارد.",
   "@settingsDefaultTaxRateHint": {},
-  "settingsInvoicePrefix": "پیشوند شمارهٔ فاکتور",
+  "settingsInvoicePrefix": "پیشوند شماره فاکتور",
   "@settingsInvoicePrefix": {},
   "settingsRoundingUnit": "رند کردن مبلغ نهایی",
   "@settingsRoundingUnit": {},
@@ -179,7 +214,7 @@
   "@settingsSellerFieldPhoneHint": {
     "description": "Says the number is kept exactly as typed. Worth saying because the customer mobile field does normalize, so a user who has met that field would reasonably expect this one to as well."
   },
-  "settingsErrorSellerNameRequired": "برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همهٔ فیلدها را خالی بگذارید.",
+  "settingsErrorSellerNameRequired": "برای چاپ مشخصات فروشنده، نام کسب‌وکار لازم است. برای حذف کامل این بخش، همه فیلدها را خالی بگذارید.",
   "@settingsErrorSellerNameRequired": {
     "description": "Validation error when a seller field is filled but the name is not. Reported, never clamped (D-027): a seller block carrying an economic ID and no name is a fragment rather than an identification. The second sentence is what stops the rule becoming a trap -- it says how to get OUT of the section, because a user who wants no seller block at all must be able to empty it."
   },
@@ -254,7 +289,7 @@
   "@actionLoadMore": {
     "description": "Loads the next page. Lists are paginated at the query level, so this widens the window the database is asked for rather than filtering something already loaded."
   },
-  "actionViewAll": "مشاهدهٔ همه",
+  "actionViewAll": "مشاهده همه",
   "@actionViewAll": {
     "description": "Opens the full list behind a short preview of it -- the dashboard's recent-invoices section."
   },
@@ -563,7 +598,7 @@
   "@invoiceActionSaveDraftHint": {},
   "invoiceIssueConfirmTitle": "این فاکتور صادر شود؟",
   "@invoiceIssueConfirmTitle": {},
-  "invoiceIssueConfirmBody": "با صدور، فاکتور شمارهٔ رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.",
+  "invoiceIssueConfirmBody": "با صدور، فاکتور شماره رسمی خود را می‌گیرد و دیگر قابل ویرایش نخواهد بود. برای اصلاح آن باید فاکتور را باطل کنید و فاکتور تازه‌ای صادر کنید.",
   "@invoiceIssueConfirmBody": {},
   "invoiceIssueConfirmAction": "صدور و ثبت نهایی",
   "@invoiceIssueConfirmAction": {},
@@ -573,7 +608,7 @@
   "@invoiceDiscardBody": {},
   "invoiceDiscardAction": "رها کردن",
   "@invoiceDiscardAction": {},
-  "invoiceDiscardKeepAction": "ادامهٔ ویرایش",
+  "invoiceDiscardKeepAction": "ادامه ویرایش",
   "@invoiceDiscardKeepAction": {},
   "invoiceBackTooltip": "بازگشت به فهرست فاکتورها",
   "@invoiceBackTooltip": {},
@@ -717,16 +752,16 @@
   "@invoiceDetailPartyDiverged": {
     "description": "The customer record has changed since the invoice was issued, so the screen is showing the snapshot and the customer list shows something else. Without this the snapshot reads as stale data rather than as the document's own statement (D-052)."
   },
-  "invoiceDetailPartyRecordNow": "در پروندهٔ مشتری: {name}",
+  "invoiceDetailPartyRecordNow": "در پرونده مشتری: {name}",
   "@invoiceDetailPartyRecordNow": {
     "description": "The live record's current name, shown beside the diverged notice so the user can find the customer in the list. Named as the record, not as a correction -- neither one is wrong.",
     "placeholders": { "name": { "type": "String" } }
   },
-  "invoiceDetailPartyDraft": "این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پروندهٔ فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.",
+  "invoiceDetailPartyDraft": "این فاکتور هنوز صادر نشده است، بنابراین مشخصات بالا از پرونده فعلی مشتری خوانده می‌شود و با اصلاح آن پرونده تغییر می‌کند. با صدور فاکتور، این مشخصات ثبت و ثابت می‌شوند.",
   "@invoiceDetailPartyDraft": {
     "description": "A draft has no snapshot on purpose: it is not a document yet and should pick up a correction (D-052). Says both halves -- what is true now, and what changes at issue."
   },
-  "invoiceDetailPartyNoSnapshot": "مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پروندهٔ فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.",
+  "invoiceDetailPartyNoSnapshot": "مشخصات طرف حساب این فاکتور هنگام صدور ثبت نشده است، بنابراین آنچه در بالا آمده از پرونده فعلی مشتری خوانده می‌شود. مبالغ فاکتور از این موضوع اثر نمی‌گیرند.",
   "@invoiceDetailPartyNoSnapshot": {
     "description": "An invoice issued before schema v3 has no party snapshot and never will (D-052 refuses to fabricate one). The same admission «ثبت‌نشده» makes for a missing figure, applied to the party -- with the reassurance that the money is unaffected, for the reason invoiceSummaryGrossUnrecordedNote carries one."
   },
@@ -734,7 +769,7 @@
   "@invoiceDetailCustomerDeleted": {
     "description": "The customer row is soft-deleted. Restates the promise the delete dialog made, at the moment the user would otherwise wonder whether the invoice is broken."
   },
-  "invoiceDetailGoToCustomer": "رفتن به پروندهٔ مشتری",
+  "invoiceDetailGoToCustomer": "رفتن به پرونده مشتری",
   "@invoiceDetailGoToCustomer": {
     "description": "Leads to the LIVE customer record, which is what detail.customer is for -- never to the snapshot, which is not a row and has nowhere to lead."
   },
@@ -845,7 +880,7 @@
   "@paymentFieldMethod": {},
   "paymentFieldNote": "توضیح",
   "@paymentFieldNote": {},
-  "paymentFieldNoteHint": "شمارهٔ چک، مرجع تراکنش، یا هر یادداشت دیگر",
+  "paymentFieldNoteHint": "شماره چک، مرجع تراکنش، یا هر یادداشت دیگر",
   "@paymentFieldNoteHint": {},
   "paymentAmountRemainingHelper": "مانده: {amount} تومان",
   "@paymentAmountRemainingHelper": {
@@ -889,7 +924,7 @@
   },
   "invoiceCancelTitle": "این فاکتور باطل شود؟",
   "@invoiceCancelTitle": {},
-  "invoiceCancelBody": "فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شمارهٔ آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.",
+  "invoiceCancelBody": "فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شماره آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.",
   "@invoiceCancelBody": {
     "description": "Cancellation is the correction path, so the copy states what it does and what it does not do before the user commits: the record stays, the number stays spent (D-013), and editing is still not the way back. A confirmation that only asks «are you sure» is one people learn to dismiss."
   },
@@ -926,13 +961,13 @@
   "@invoiceFilterStatusSection": {},
   "invoiceFilterCustomerSection": "مشتری",
   "@invoiceFilterCustomerSection": {},
-  "invoiceFilterPeriodSection": "بازهٔ زمانی",
+  "invoiceFilterPeriodSection": "بازه زمانی",
   "@invoiceFilterPeriodSection": {},
-  "invoiceFilterCustomerAny": "همهٔ مشتریان",
+  "invoiceFilterCustomerAny": "همه مشتریان",
   "@invoiceFilterCustomerAny": {},
   "invoiceFilterCustomerChoose": "انتخاب مشتری",
   "@invoiceFilterCustomerChoose": {},
-  "invoiceFilterPeriodAny": "همهٔ تاریخ‌ها",
+  "invoiceFilterPeriodAny": "همه تاریخ‌ها",
   "@invoiceFilterPeriodAny": {},
   "invoiceFilterPeriodThisMonth": "این ماه",
   "@invoiceFilterPeriodThisMonth": {
@@ -944,13 +979,13 @@
   "@invoiceFilterPeriodThisYear": {
     "description": "The current Jalali year."
   },
-  "invoiceFilterPeriodCustom": "بازهٔ دلخواه",
+  "invoiceFilterPeriodCustom": "بازه دلخواه",
   "@invoiceFilterPeriodCustom": {
     "description": "Opens two Jalali calendars in turn, for a start day and an end day. The presets answer the questions a billing application is usually asked; this answers the rest, and it is a Jalali calendar rather than a Gregorian one for the reason section 5 gives about every other date in this application."
   },
   "invoiceFilterPeriodCustomRange": "{from} تا {to}",
   "@invoiceFilterPeriodCustomRange": {
-    "description": "The chosen custom range, on the chip, replacing «بازهٔ دلخواه» once it is set. Both ends arrive already formatted by formatJalaliDate, which bidi-isolates each so the slashes cannot reorder; the word between them is copy and lives here.",
+    "description": "The chosen custom range, on the chip, replacing «بازه دلخواه» once it is set. Both ends arrive already formatted by formatJalaliDate, which bidi-isolates each so the slashes cannot reorder; the word between them is copy and lives here.",
     "placeholders": {
       "from": { "type": "String" },
       "to": { "type": "String" }
@@ -984,7 +1019,7 @@
   "@invoiceDetailCancelledPaymentsNote": {
     "description": "Shown on a cancelled invoice that carries payments (D-061). A void document showing a paid amount with no explanation reads as a fault in the software rather than as a fact about the record."
   },
-  "paymentDeleteBodyCancelled": "{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقهٔ پرداخت را اصلاح می‌کند.",
+  "paymentDeleteBodyCancelled": "{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.",
   "@paymentDeleteBodyCancelled": {
     "description": "The cancelled invoice's version of paymentDeleteBody. «مانده افزایش می‌یابد» is false there — nothing is owed on a void document — and the fact worth stating instead is that correcting the money record does not resurrect the invoice (D-061).",
     "placeholders": { "amount": { "type": "String" } }
@@ -1000,7 +1035,7 @@
   "@settingsFieldTaxRateHint": {
     "description": "States the property that makes the field safe to change at all: every invoice item snapshots the rate that applied to it (D-026)."
   },
-  "settingsFieldPrefix": "پیشوند شمارهٔ فاکتور",
+  "settingsFieldPrefix": "پیشوند شماره فاکتور",
   "@settingsFieldPrefix": {},
   "settingsFieldPrefixHint": "مثلاً INV در INV-۱۴۰۵-۰۰۰۱. شماره‌های صادرشده تغییر نمی‌کنند.",
   "@settingsFieldPrefixHint": {},
@@ -1019,11 +1054,11 @@
   "settingsSaved": "تنظیمات ذخیره شد.",
   "@settingsSaved": {},
 
-  "backupExportAction": "تهیهٔ پشتیبان",
+  "backupExportAction": "تهیه پشتیبان",
   "@backupExportAction": {},
   "backupImportAction": "بازیابی از پشتیبان",
   "@backupImportAction": {},
-  "backupPasswordTitle": "گذرواژهٔ فایل پشتیبان",
+  "backupPasswordTitle": "گذرواژه فایل پشتیبان",
   "@backupPasswordTitle": {},
   "backupPasswordField": "گذرواژه",
   "@backupPasswordField": {},
@@ -1039,24 +1074,24 @@
   "@backupPasswordMismatch": {},
   "backupPasswordTooShort": "گذرواژه باید دست‌کم ۸ نویسه باشد.",
   "@backupPasswordTooShort": {},
-  "backupExportInProgress": "در حال تهیهٔ پشتیبان…",
+  "backupExportInProgress": "در حال تهیه پشتیبان…",
   "@backupExportInProgress": {},
   "backupExportDone": "فایل پشتیبان ذخیره شد.",
   "@backupExportDone": {},
-  "backupImportPasswordTitle": "گذرواژهٔ این فایل پشتیبان",
+  "backupImportPasswordTitle": "گذرواژه این فایل پشتیبان",
   "@backupImportPasswordTitle": {},
   "backupImportInProgress": "در حال بازیابی…",
   "@backupImportInProgress": {},
   "backupImportDone": "بازیابی انجام شد.",
   "@backupImportDone": {},
 
-  "backupImportConfirmTitle": "جایگزینی همهٔ اطلاعات",
+  "backupImportConfirmTitle": "جایگزینی همه اطلاعات",
   "@backupImportConfirmTitle": {},
-  "backupImportConfirmReplaces": "با بازیابی، همهٔ اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.",
+  "backupImportConfirmReplaces": "با بازیابی، همه اطلاعات فعلی این دستگاه حذف و با محتوای فایل پشتیبان جایگزین می‌شود. اطلاعات دو مجموعه با هم ادغام نمی‌شوند.",
   "@backupImportConfirmReplaces": {
     "description": "The replace-not-merge sentence, required by D-069 as a data-loss guard: a user who expects a merge loses everything entered since the backup and has no reason to expect it, because «restore» implies addition to most people."
   },
-  "backupImportConfirmLoses": "هر چیزی که پس از تهیهٔ این پشتیبان ثبت کرده‌اید از بین می‌رود.",
+  "backupImportConfirmLoses": "هر چیزی که پس از تهیه این پشتیبان ثبت کرده‌اید از بین می‌رود.",
   "@backupImportConfirmLoses": {},
   "backupImportConfirmContents": "محتوای فایل: {customers} مشتری، {invoices} فاکتور، {payments} پرداخت.",
   "@backupImportConfirmContents": {
@@ -1073,7 +1108,7 @@
   "backupImportConfirmAction": "جایگزین کن",
   "@backupImportConfirmAction": {},
 
-  "errorBackupExportFailedTitle": "تهیهٔ پشتیبان انجام نشد",
+  "errorBackupExportFailedTitle": "تهیه پشتیبان انجام نشد",
   "@errorBackupExportFailedTitle": {
     "description": "Export failed. The file is deleted on any failure, so there is never a half-written backup to explain away."
   },
@@ -1092,7 +1127,7 @@
   "errorBackupNotABackupBody": "فایل باز شد اما محتوای آن یک پشتیبان فاکتورینو نیست. فایل دیگری انتخاب کنید. اطلاعات فعلی شما دست‌نخورده است.",
   "@errorBackupNotABackupBody": {},
 
-  "errorBackupFromNewerVersionTitle": "این پشتیبان با نسخهٔ جدیدتری ساخته شده است",
+  "errorBackupFromNewerVersionTitle": "این پشتیبان با نسخه جدیدتری ساخته شده است",
   "@errorBackupFromNewerVersionTitle": {
     "description": "Refused rather than attempted: this build has no migration step for a shape it has never seen. The copy says what to do -- update the app -- rather than only that it failed."
   },
@@ -1141,7 +1176,7 @@
   "@invoiceDocumentBuyerHeading": {
     "description": "Heads the party block on the printed invoice. Deliberately NOT the in-app «طرف حساب», which is right on screen where the same record can be read either way. On the document there is one role and «خریدار» is what an Iranian invoice calls it."
   },
-  "invoiceDocumentPartyFromRecord": "مشخصات خریدار از پروندهٔ فعلی مشتری خوانده شده است.",
+  "invoiceDocumentPartyFromRecord": "مشخصات خریدار از پرونده فعلی مشتری خوانده شده است.",
   "@invoiceDocumentPartyFromRecord": {
     "description": "One factual line under the party block, printed ONLY for an invoice issued before the party snapshot existed (D-052, schema v3), where the document's own statement of the buyer was never stored. It is not an apology and not a warning: it says where the details came from, which is true and is what a reader would otherwise assume wrongly. The other three provenance cases print nothing -- see D-075. Keep it to one sentence; a document that explains itself at length reads as unreliable."
   },
@@ -1210,7 +1245,7 @@
   "@invoiceDeleteSuccess": {},
   "invoiceDeleteFailed": "حذف این فاکتور ممکن نشد.",
   "@invoiceDeleteFailed": {},
-  "invoiceDocumentExportAction": "ذخیرهٔ نسخهٔ PDF",
+  "invoiceDocumentExportAction": "ذخیره نسخه PDF",
   "@invoiceDocumentExportAction": {
     "description": "The menu item on the invoice detail screen that generates the PDF and offers it to the user to save. In the title row menu beside cancellation, per the project spec: an actions card here would be the fourth block added above the invoice lines on this family of screens. Says 'save a PDF copy' rather than 'print' -- nothing is sent to a printer, a file is written where the user chooses."
   },
@@ -1218,7 +1253,7 @@
   "@invoiceDocumentExportSaved": {
     "description": "Saved, and the automatic open found nothing to open it with -- a phone with no PDF viewer is a real phone. Says which of the two happened rather than reporting only the save, because the user is looking at the application rather than at a document and needs to know why. Carries the «باز کردن» action as a manual retry."
   },
-  "invoiceDocumentExportFailed": "ذخیرهٔ فایل فاکتور انجام نشد. دوباره تلاش کنید.",
+  "invoiceDocumentExportFailed": "ذخیره فایل فاکتور انجام نشد. دوباره تلاش کنید.",
   "@invoiceDocumentExportFailed": {
     "description": "A failed generation or save. Friendly Persian with no stack trace, no file path and no exception text, per section 7. Says what to do next rather than what went wrong internally, because the internal reason is never something the user can act on."
   },
@@ -1258,7 +1293,7 @@
   "@settingsAppearanceSection": {
     "description": "The settings section holding the light/dark choice. Named for what it governs rather than 'theme', which is a word from the implementation."
   },
-  "settingsThemeMode": "\u067e\u0648\u0633\u062a\u0647\u0654 \u0631\u0648\u0634\u0646 \u0648 \u062a\u06cc\u0631\u0647",
+  "settingsThemeMode": "\u067e\u0648\u0633\u062a\u0647 \u0631\u0648\u0634\u0646 \u0648 \u062a\u06cc\u0631\u0647",
   "@settingsThemeMode": {
     "description": "The label above the three-way light/dark control."
   },
@@ -1321,7 +1356,7 @@
       "title": { "type": "String" }
     }
   },
-  "invoiceDocumentExportSavedAndOpened": "فاکتور در برنامهٔ PDF باز شد؛ فایل هم ذخیره شد.",
+  "invoiceDocumentExportSavedAndOpened": "فاکتور در برنامه PDF باز شد؛ فایل هم ذخیره شد.",
   "@invoiceDocumentExportSavedAndOpened": {
     "description": "The ordinary, everything-worked outcome (D-100). **It leads with the opening, not the saving**, so the three export messages differ in their first words rather than in a negation particle buried mid-sentence -- the owner tested the previous build, met the no-seller message instead, and read a working save as a failure (D-101). No action beside it: offering to open a document that is already open is an action that does nothing visible."
   },

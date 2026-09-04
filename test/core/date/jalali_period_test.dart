@@ -258,6 +258,163 @@ void main() {
     });
   });
 
+  group('jalaliWeek - شنبه to جمعه', () {
+    test('starts on Saturday whatever day is asked for', () {
+      // Every day of one week must resolve to the same range. Written out as
+      // seven separate days rather than as a loop over an offset, because a
+      // loop that steps by `weekDay` would be the implementation again.
+      final expected = InstantRange(
+        startOfJalaliDayUtc(Jalali(1405, 5, 31)),
+        startOfJalaliDayUtc(Jalali(1405, 6, 7)),
+      );
+      for (final Jalali day in <Jalali>[
+        Jalali(1405, 5, 31), // شنبه
+        Jalali(1405, 6, 1), // یکشنبه
+        Jalali(1405, 6, 2), // دوشنبه
+        Jalali(1405, 6, 3), // سه‌شنبه
+        Jalali(1405, 6, 4), // چهارشنبه
+        Jalali(1405, 6, 5), // پنجشنبه
+        Jalali(1405, 6, 6), // جمعه
+      ]) {
+        expect(jalaliWeek(day), expected, reason: '$day');
+      }
+    });
+
+    test('the next day starts the next week', () {
+      // 1405/06/07 is the following شنبه: the boundary, and the one day that
+      // must not fall in the range above.
+      expect(Jalali(1405, 6, 7).weekDay, 1);
+      expect(
+        jalaliWeek(Jalali(1405, 6, 7)).start,
+        jalaliWeek(Jalali(1405, 6, 6)).end,
+      );
+    });
+
+    test('is always exactly seven days, across a month and a year end', () {
+      for (final Jalali day in <Jalali>[
+        Jalali(1405, 6, 2), // an ordinary week, crossing Mordad into Shahrivar
+        Jalali(1404, 12, 29), // the last day of a 29-day Esfand
+        Jalali(1405, 1, 1), // Nowruz
+        Jalali(1403, 12, 30), // the leap day
+      ]) {
+        expect(
+          jalaliWeek(day).duration,
+          const Duration(days: 7),
+          reason: '$day',
+        );
+        expect(jalaliAt(jalaliWeek(day).start).weekDay, 1, reason: '$day');
+      }
+    });
+
+    test('a week may straddle the new year', () {
+      // Nowruz 1405 is a Saturday only by chance in some years; here the week
+      // containing it starts in Esfand 1404 and ends in Farvardin 1405, which
+      // is the case that catches arithmetic done on month numbers.
+      final week = jalaliWeekOf(DateTime.utc(2026, 3, 21, 12));
+      expect(week.contains(startOfJalaliDayUtc(Jalali(1405, 1, 1))), isTrue);
+      expect(week.duration, const Duration(days: 7));
+    });
+
+    test('jalaliWeekOf uses Tehran day boundaries', () {
+      // 21:00 UTC is 00:30 Tehran the next day, which in this case is the
+      // شنبه that starts a new week — so the two instants three hours apart
+      // belong to different weeks.
+      final lateFriday = DateTime.utc(2026, 8, 28, 18);
+      final earlySaturday = DateTime.utc(2026, 8, 28, 21);
+      expect(jalaliWeekOf(lateFriday), isNot(jalaliWeekOf(earlySaturday)));
+      expect(jalaliWeekOf(earlySaturday).start, jalaliWeekOf(lateFriday).end);
+    });
+  });
+
+  group('day indexing - the key a SQL GROUP BY can compute', () {
+    test(
+      'every instant of one Tehran day shares an index, and the next differs',
+      () {
+        final day = jalaliDay(Jalali(1405, 6, 2));
+        final int index = dayIndexAtMillis(day.startMillis);
+
+        // The first instant, the last, and one in the middle.
+        expect(dayIndexAtMillis(day.startMillis), index);
+        expect(dayIndexAtMillis(day.endMillis - 1), index);
+        expect(dayIndexAtMillis(day.startMillis + 43200000), index);
+
+        // And the instant the day ends at is already the next one.
+        expect(dayIndexAtMillis(day.endMillis), index + 1);
+      },
+    );
+
+    test('the boundary is Tehran midnight, not UTC midnight', () {
+      // 22:00 Tehran on 1405/06/02 and 02:00 Tehran on 1405/06/03 fall either
+      // side of Tehran midnight but on the *same* UTC date. Dividing the raw
+      // instant would file them together, under a day one of them was not in.
+      final DateTime evening = DateTime.utc(
+        2026,
+        8,
+        24,
+        18,
+        30,
+      ); // 22:00 Tehran
+      final DateTime night = DateTime.utc(2026, 8, 24, 22, 30); // 02:00 Tehran
+
+      expect(evening.day, night.day, reason: 'the same UTC date');
+      expect(
+        dayIndexAtMillis(evening.millisecondsSinceEpoch),
+        isNot(dayIndexAtMillis(night.millisecondsSinceEpoch)),
+      );
+      expect(
+        dayIndexAtMillis(night.millisecondsSinceEpoch),
+        dayIndexAtMillis(evening.millisecondsSinceEpoch) + 1,
+      );
+    });
+
+    test('round-trips through jalaliFromDayIndex', () {
+      // Across a month end, a year end and a leap day, because those are where
+      // an off-by-one in the conversion would first show.
+      for (final Jalali day in <Jalali>[
+        Jalali(1405, 6, 2),
+        Jalali(1405, 6, 31),
+        Jalali(1404, 12, 29),
+        Jalali(1403, 12, 30),
+        Jalali(1405, 1, 1),
+      ]) {
+        final int index = dayIndexAtMillis(
+          startOfJalaliDayUtc(day).millisecondsSinceEpoch,
+        );
+        final Jalali back = jalaliFromDayIndex(index);
+        expect(
+          <int>[back.year, back.month, back.day],
+          <int>[day.year, day.month, day.day],
+          reason: '$day',
+        );
+      }
+    });
+
+    test('dayIndexRange covers exactly the days in the range', () {
+      final month = jalaliMonth(1405, 6); // 31 days
+      final span = dayIndexRange(month);
+      expect(span.last - span.first + 1, 31);
+      expect(jalaliFromDayIndex(span.first).day, 1);
+      expect(jalaliFromDayIndex(span.last).day, 31);
+
+      // Esfand 1404, a 29-day month, so the count is not a constant.
+      final esfand = dayIndexRange(jalaliMonth(1404, 12));
+      expect(esfand.last - esfand.first + 1, 29);
+    });
+
+    test('dayIndexRange refuses a range that reaches before the epoch', () {
+      // The index is a truncating division, which rounds toward zero rather
+      // than downward: a negative instant would land on the wrong day instead
+      // of failing. It should stop rather than report a figure under the wrong
+      // heading.
+      expect(
+        () => dayIndexRange(
+          InstantRange(DateTime.utc(1969, 6, 1), DateTime.utc(1970, 6, 1)),
+        ),
+        throwsArgumentError,
+      );
+    });
+  });
+
   group('jalaliYear', () {
     test('runs Farvardin 1 to Farvardin 1', () {
       final year = jalaliYear(1405);

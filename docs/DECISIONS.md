@@ -7397,3 +7397,247 @@ somebody quietly removed.
 in the ARB and `no_hardcoded_strings_test` forbids a Persian literal anywhere else in `lib/`, so the
 two together cover the screens and the printed document alike — a document string that is not in the
 ARB cannot exist.
+
+---
+
+## D-113 — The ezafe mark is not written, because the font cannot place it
+
+**Date:** 2026-09-04. Owner request 1, the second time: *"The hamza is still wrong. «مشاهده» and
+«تهیه» still show the small mark sitting on top… Note that these render wrong even where there's
+plenty of room, so it may not be the line-break cause you diagnosed. Find out what's actually
+happening before changing anything, and check it on the rendered screen, not in the ARB."*
+
+**D-112's diagnosis was wrong, and the owner said so in the sentence that opens the request.** That
+answer — `ه` + U+0654 is one grapheme, a container narrower than the word breaks inside it, and the
+mark is left alone at the head of the next line — describes a real effect, and the remedy for it
+(`text_fit.dart`'s `expectNoCrushedText`) is a real guard that stays. It was not this. These strings
+render wrong with room to spare, which is a fact the previous pass could have checked and did not:
+it reasoned from the ARB and from a PDF raster, and never rendered the string at the size a phone
+draws it.
+
+### What was measured
+
+**On the rendered screen first**, as asked. The two reported strings were drawn through the real
+production Vazirmatn at 14 and 16 sp at device pixel ratio 3, rasterised and magnified 9×. The mark
+is a **detached stroke sitting above and to the left of the ه**, over empty space, with no visual
+connection to the letter — exactly what was reported. Beside it, the same words with a plain `ه`
+are clean, and Segoe UI's rendering of the same string sits closer and smaller.
+
+**Then in the font tables**, to find out why:
+
+| | |
+|---|---|
+| U+0654 in `cmap` | yes, glyph 739 |
+| `GDEF` glyph class | 3 — a mark, so the shaper zeroes its advance and positions it. Correct. |
+| `GPOS` mark-to-base | covers glyph 739 as a mark **and** ه plus all three of its joined forms as bases, with real anchors. Correct. |
+| mark anchor | (260, 972) |
+| isolated ه anchor | (424, 1164) |
+| resulting ink | hamza bottom at y=1117; ه ink top at 912 |
+| **the gap** | **205 units on a 2048 em = 0.100 em**, mark centre 0.038 em left of the letter's |
+| Medium / Bold | 0.096 em / 0.099 em — the same design in all three weights |
+
+So nothing is failing. **The mark lands exactly where Vazirmatn asks for it, and where Vazirmatn asks
+for it is a tenth of an em clear of the letter.** At 14–16 sp that is one to two device pixels of
+white, and the mark rasterises as a free-floating stroke rather than as part of the word.
+
+### Why it cannot be fixed from this side
+
+The number is inside the font binary, not in the application. Vazirmatn has no ه+ء ligature — its
+only hamza ligatures are with fatha and damma — and U+06C0, the precomposed «ۀ», decomposes to the
+same two glyphs and renders identically; both were rasterised side by side and are indistinguishable.
+An application cannot override a `GPOS` anchor.
+
+### The decision
+
+**The ezafe mark comes out of every user-facing string.** «مشاهده همه», «تهیه پشتیبان», «شماره
+فاکتور», «ذخیره نسخه PDF» — 33 occurrences across 32 ARB keys, one of them written as a `ٔ`
+escape, which is why a plain character replacement missed it and a second pass over the escaped form
+was needed.
+
+The owner authorised this in the request itself — *"using the plain «ه» without the mark is normal in
+Persian writing and better than a mark in the wrong place"* — and it is: the mark is optional in
+modern Persian orthography and widely omitted. A correct letter beats a correct mark in the wrong
+place.
+
+**Alternatives considered.** *Keep the mark and accept it* — rejected; it was reported twice.
+*Switch to `ه‌ی` (heh, ZWNJ, ye)* — also standard Persian and it renders cleanly, but it is a
+different orthographic register and the owner named the plain ه. *Patch the font's anchor* — a
+forked Vazirmatn is a binary this project would then own, re-derive on every upstream release, and
+have to justify under §2; a spelling change costs nothing.
+
+**The guard.** U+0654 and U+06C0 join `persian_script_test.dart`'s ban list, so neither spelling can
+return, and the "correct Persian must not be flagged" case list — which held «ذخیرهٔ نسخهٔ PDF» as an
+example of something the guard must *permit* — was updated to the new spelling. `أ`, `ؤ`, `ئ`, `آ`
+and the fathatan of «لطفاً» stay permitted: they are letters, not this mark, and they render fine.
+
+**What this says about the method.** The previous pass had the right instinct — do not normalize on
+the way out, fix it at the source — and reached a plausible mechanism without rendering the thing.
+The owner's line *"check it on the rendered screen, not in the ARB"* is the rule: for anything about
+how text **looks**, the artifact under examination is pixels. Two independent reports of the same
+symptom should have been enough to make that the first step rather than the second.
+
+---
+
+## D-114 — A navigation label is not the page's title
+
+**Date:** 2026-09-04. Owner request 2: *"Rename the «محصولات و خدمات» nav button to just «محصولات».
+That also removes the truncation problem you flagged as deliberate."*
+
+`navProducts` becomes «محصولات». `productsTitle` stays «محصولات و خدمات» — the screen's own heading,
+where there is room and where naming both halves is more informative.
+
+**This closes a cost that had been pinned rather than fixed.** D-108 measured that at 328 logical
+pixels — the narrowest width the sweep covers — an equal fifth of the navigation bar is 65 pixels,
+and «محصولات و خدمات» could not fit at any readable size. The test asserted `didExceedMaxLines` was
+`true` and carried a note: *"if a future change makes it fit, this line is the one to delete — and
+deleting it will be a deliberate act rather than a discovery."* The rename is that change, so the
+assertion was **inverted rather than removed**: no navigation label may be abbreviated at the
+narrowest supported width, and a future label long enough to break that fails there.
+
+Two things stay that the rename might look like it retires:
+
+* **The one-line clamp** in `AdaptiveScaffold` (D-088). It is a property of the bar rather than of
+  one string: Material renders `NavigationDestination.label` as a bare `Text` with no line limit, and
+  the layout delegate places the icon from the label's height, so any future long label lifts its
+  icon above the other four again.
+* **`navigationRailCompactWidth = 104`**, measured against the longer label. It is headroom now
+  rather than a fit. Narrowing it is a rail-geometry change with its own three-tier layout check to
+  earn, not a free consequence of renaming a string.
+
+---
+
+## D-115 — Three sales figures, three Jalali periods, one query family
+
+**Date:** 2026-09-04. Owner request 3: *"Expand the dashboard reporting. Alongside sales this month,
+add sales this week and sales this year — all Jalali periods, all as SQL."*
+
+**The week is شنبه to جمعه, not the last seven days and not a Monday week.** `jalaliWeek` steps back
+by `weekDay - 1`, using `shamsi_date`'s numbering, which is already the Iranian week — 1 for شنبه
+through 7 for جمعه. Reaching for `DateTime.weekday`, which starts at Monday, would shift every week
+by two days and the figure would still look plausible. A rolling seven-day window is a defensible
+report and a different one: a user comparing Wednesday to Tuesday expects the figure to have grown by
+Wednesday's sales, not to have also dropped last Wednesday's off the back.
+
+**The year is Farvardin to Farvardin** — the user's business and tax year. A Gregorian year here
+would be wrong by about three months and would look right for nine of them.
+
+**One provider family, not three providers.** Week, month and year differ only in the range, so all
+three read `_issuedSalesRial(period)` against `watchTotalIssuedRial`. Three separate providers would
+be the same statement written three times and three places for D-039's population to drift apart.
+All three are live streams inside one `DashboardSummary`, so the six tiles still belong to one
+moment.
+
+**The three figures are nested, not additive**, and each tile's caption says which period it covers —
+the week's naming both dates, because a week is the one period whose name does not say which days it
+holds. `formatJalaliDayRangeParts` states the shared month and year once («۱ تا ۷ شهریور ۱۴۰۵») and
+falls back to the fuller form when the week straddles a month or a year, and it returns the two
+halves rather than the sentence because the «تا» between them is copy and lives in the ARB.
+
+**The desktop grid goes from four columns to three.** Six tiles over four columns leaves a ragged
+second row of two, and the three sales figures belong on one row together.
+
+**Cost, stated rather than hidden:** on a phone, six tiles in one column is about a screen and a half
+before the recent-invoices list begins. Two columns on a phone was considered and rejected without
+being built — at 400 logical pixels that is ~190 per tile, and the ladder's top rung
+(۱۰۰٬۰۰۰٬۰۰۰ تومان) at `AmountSize.medium` is not obviously safe there. One column is the measured-safe
+choice; the tiles are what the dashboard is for and the recent list is a glance below them.
+
+---
+
+## D-116 — A day view, one query per month, and what a dot means
+
+**Date:** 2026-09-04. Owner request 4: *"Add a date view: pick a day and see that day's sales. In its
+calendar, days with sales should be visually distinct from days with none… That calendar needs one
+query for the whole visible month rather than one per day — say how you did it. And decide what 'has
+sales' means: issued invoices only, or does a payment received that day count too. Say which and
+why."*
+
+### One query for the visible month
+
+`InvoiceRepository.watchDailySales(InstantRange)` returns a `DailySales` — a sparse map from Iranian
+civil day to that day's total and count — from a single grouped aggregate:
+
+```sql
+SELECT (issue_date + ?) / 86400000 AS day_index,
+       SUM(grand_total_rial),
+       COUNT(id)
+FROM invoices
+WHERE deleted_at IS NULL AND status IN (unpaid, partiallyPaid, paid)
+  AND issue_date >= ? AND issue_date < ?
+GROUP BY day_index
+```
+
+**Why a day *index* and not a date.** SQLite can compute an integer division and cannot compute a
+Jalali date, so the boundary is applied in SQL and the calendar conversion happens once per returned
+row rather than once per day of the month.
+
+**Why the offset is added before the division, and this is the correctness of it.** Dividing
+`issue_date` alone groups by the **UTC** day, which files an invoice issued at 02:00 Tehran under the
+previous date — the user would see last night's takings on the wrong day. Shifting by Iran's offset
+first puts the boundary at Tehran midnight, exactly where `jalaliDay` puts it.
+
+**It is built with drift's typed operators, not a raw statement** (§7). SQLite's `/` on two integers
+*is* integer division, so `(issueDate + Variable(offsetMs)) / Constant(86400000)` expresses the whole
+key inside the query builder, with the offset as a bound variable. `CustomExpression` was the first
+attempt and was abandoned: drift 2.31 does not accept variables on it, so it would have meant
+splicing the offset into SQL as text.
+
+**Truncating division is only correct at or after the epoch** — Dart and SQLite both round toward
+zero, which for a negative numerator rounds the wrong way. `dayIndexRange` refuses such a range
+rather than returning a quietly wrong grouping.
+
+The sparseness is the point: only days with issued invoices are rows, which is exactly the question
+the calendar asks. `DailySales.on(day)` answers `DaySales.none` for anything absent, so no call site
+has to know which days are present.
+
+The selected day's own figure uses **the same method** over a one-day range rather than a second
+aggregate, so the dot and the total can never disagree. Reading it out of the month's result would
+save a query and be wrong at the one moment it matters — the user may browse to another month while a
+day in the previous one stays selected.
+
+### What "has sales" means: issued invoices only
+
+**A day is marked when an invoice was *issued* on it. A payment received that day does not mark it.**
+
+* The figure the screen shows is *sales* — `SUM(grand_total)` over the invoices issued that day —
+  which is the same population as every other sales figure in the application (D-039). If the dot
+  meant "money moved today", a user would tap a marked day and be told nothing was sold on it: the
+  marking contradicting the page it is a control for.
+* One invoice paid in three instalments would light up four days, three of them showing a sales total
+  of zero. The dot would be measuring collection activity while the heading measured trade.
+* Sales on a date is the figure a business reconciles against — what the document is dated, what a
+  tax period is computed from, and what the month and year tiles already mean.
+
+A cash-received view is a real and useful second report. It is a **different** one, and it belongs
+with گزارش‌ها in Phase 8 rather than as a second meaning folded into this dot. The legend under the
+calendar says the rule in Persian — «روزهایی که فاکتور صادر شده با نقطه مشخص شده‌اند» — so it is on
+the screen and not only in a comment.
+
+**The mark is a dot, not a colour**, so the distinction survives a colour-blind reader and both
+themes; the dot's slot is reserved on every cell so numerals do not shift between months; and marked
+cells carry a Persian semantics label, because a dot announces nothing.
+
+### Where it lives, and how it is laid out
+
+`/day`, a **child of the dashboard branch** rather than a sixth navigation destination — it answers a
+question the dashboard already asks at a finer grain, the bar stays at the five items §11 names, and
+it is not گزارش‌ها, which D-021 keeps closed until Phase 8. It is reached from an **icon in the
+dashboard's title row**, which costs no height: §10's rule about cards above the content a page
+exists to show has now been rediscovered three times, and this is the placement that rule prescribes.
+
+**The invoice list sits at full width below the calendar, not beside it.** Putting a table next to a
+312-wide calendar is the squeeze D-053 measured and rejected. The cost is whitespace under the
+figures on a wide window; the alternative is the defect this project has recorded three times.
+
+`JalaliMonthGrid`, `JalaliWeekdayHeadings` and `JalaliMonthHeader` were **extracted** from
+`jalali_date_picker.dart` rather than copied, so the picker and this screen cannot come to disagree
+about where شنبه goes.
+
+### Verification
+
+`integration_test/daily_sales_device_test.dart` runs the grouped statement against a real encrypted
+database on Windows, with a fixture seeded **across a Tehran midnight** — two invoices half an hour
+either side of it, on the same UTC date. If the grouping were done on the raw stored instant they
+would land on one day. They land on two. The same file asserts the days of a month sum to
+`totalIssuedRial` of that month, so the calendar and the dashboard cannot diverge, and runs the
+amount ladder through the day tile.

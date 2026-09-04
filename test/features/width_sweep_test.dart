@@ -8,6 +8,7 @@ import 'package:factorino/data/providers.dart';
 import 'package:factorino/features/customers/presentation/customer_detail_screen.dart';
 import 'package:factorino/features/customers/presentation/customer_form_screen.dart';
 import 'package:factorino/features/customers/presentation/customers_screen.dart';
+import 'package:factorino/features/dashboard/presentation/daily_sales_screen.dart';
 import 'package:factorino/features/dashboard/presentation/dashboard_screen.dart';
 import 'package:factorino/features/invoices/presentation/invoice_detail_screen.dart';
 import 'package:factorino/features/invoices/presentation/invoice_editor_screen.dart';
@@ -77,7 +78,7 @@ void main() {
         discount: Money.rial(5000000),
         items: <InvoiceItemDraft>[
           InvoiceItemDraft(
-            title: 'طراحی و پیاده‌سازی سامانهٔ نگه‌داری تجهیزات',
+            title: 'طراحی و پیاده‌سازی سامانه نگه‌داری تجهیزات',
             unit: 'ساعت',
             quantityMilli: 2500,
             unitPrice: Money.rial(400000000),
@@ -92,6 +93,12 @@ void main() {
 
   final Map<String, Widget Function()> screens = <String, Widget Function()>{
     'dashboard': () => const DashboardScreen(),
+    // Opens on today, and the invoice built above is dated today at the
+    // ceiling rung of the ladder — so the calendar, the day's total tile and
+    // the invoice row underneath are all swept at 100,000,000 Toman, at every
+    // width. The 312-wide calendar sitting beside the figures is the composed
+    // width §10 warns about, and this is where it gets measured.
+    'daily sales': () => const DailySalesScreen(),
     'customers': () => const CustomersScreen(),
     'customer detail': () => CustomerDetailScreen(customerId: customer.id),
     'customer form new': () => const CustomerFormScreen(),
