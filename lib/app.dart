@@ -6,8 +6,10 @@ import 'package:go_router/go_router.dart';
 import 'core/localization/generated/app_strings.dart';
 import 'core/router/app_router.dart';
 import 'core/theme/app_theme.dart';
+import 'core/widgets/money_display_scope.dart';
 import 'data/models/app_settings.dart';
 import 'data/models/app_theme_mode.dart';
+import 'data/models/money_display_unit.dart';
 import 'features/settings/application/settings_providers.dart';
 
 /// The application root.
@@ -31,6 +33,13 @@ import 'features/settings/application/settings_providers.dart';
 ///   for it; the setting is written by the settings screen and reaches here as
 ///   a live query, so the theme changes under the user's finger.
 ///
+/// * **The display unit is the user's too, and it is installed here for the
+///   same reason** (D-117). [MoneyDisplayScope] wraps the whole application
+///   from inside `builder`, so every amount — including one drawn in a dialog
+///   or a route overlay, which build outside the router's subtree — reads the
+///   one unit in force. Toman until the row says otherwise, which is what the
+///   application did for its whole life before the setting existed.
+///
 ///   **While the row is loading, the system's choice stands.** A first frame
 ///   painted in the wrong theme and corrected a frame later is a flash on every
 ///   cold start, and the system value is what the application did for its whole
@@ -50,12 +59,15 @@ class _FactorinoAppState extends ConsumerState<FactorinoApp> {
 
   @override
   Widget build(BuildContext context) {
-    final AppThemeMode mode = ref
-        .watch(appSettingsProvider)
-        .maybeWhen(
-          data: (AppSettings settings) => settings.themeMode,
-          orElse: () => AppThemeMode.system,
-        );
+    final AsyncValue<AppSettings> settings = ref.watch(appSettingsProvider);
+    final AppThemeMode mode = settings.maybeWhen(
+      data: (AppSettings value) => value.themeMode,
+      orElse: () => AppThemeMode.system,
+    );
+    final MoneyDisplayUnit unit = settings.maybeWhen(
+      data: (AppSettings value) => value.displayUnit,
+      orElse: () => MoneyDisplayUnit.toman,
+    );
 
     return MaterialApp.router(
       onGenerateTitle: (BuildContext context) =>
@@ -83,7 +95,10 @@ class _FactorinoAppState extends ConsumerState<FactorinoApp> {
       builder: (BuildContext context, Widget? child) {
         return Directionality(
           textDirection: TextDirection.rtl,
-          child: child ?? const SizedBox.shrink(),
+          child: MoneyDisplayScope(
+            unit: unit,
+            child: child ?? const SizedBox.shrink(),
+          ),
         );
       },
     );

@@ -2,15 +2,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 
+import '../../../core/formatting/number_display.dart';
 import '../../../core/formatting/number_input.dart';
 import '../../../core/localization/generated/app_strings.dart';
-import '../../../core/money/money.dart';
 import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/async_error_view.dart';
 import '../../../core/widgets/form_scaffold.dart';
+import '../../../core/widgets/money_display_scope.dart';
 import '../../../data/models/field_limits.dart';
+import '../../../data/models/money_display_unit.dart';
 import '../../../data/models/product.dart';
 import '../../../data/models/product_type.dart';
 import '../application/products_providers.dart';
@@ -23,9 +25,10 @@ import '../application/products_providers.dart';
 /// * The amount is parsed by `core/formatting/number_input.dart`, so Persian
 ///   and Arabic-Indic digits are accepted, and **no `double` is involved at any
 ///   point** (D-002).
-/// * The value is entered in **Toman**, the primary display unit (§9), and
-///   converted to Rial by `Money.toman` — the one place that conversion is
-///   allowed to happen.
+/// * The value is entered in **the unit the user chose** — Toman by default
+///   (§9), Rial if they said so (D-117) — and converted to Rial storage by
+///   [MoneyDisplayUnitConversion.moneyOf], which is `Money`'s own constructor
+///   and the one place that conversion is allowed to happen.
 /// * An amount past `kMaxAmountRial` is **rejected with a Persian message**
 ///   rather than truncated (D-002). The engine already refuses it; this is the
 ///   screen that explains the refusal instead of letting an exception surface.
@@ -42,8 +45,14 @@ class ProductFormScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AppStrings strings = AppStrings.of(context);
 
+    // Read where there is a context to read it from, and handed to the form:
+    // the controllers are seeded before the form's own first build, and a
+    // field seeded in one unit and labelled in another is the ambiguity
+    // D-117 exists to close.
+    final MoneyDisplayUnit unit = MoneyDisplayScope.of(context);
+
     if (productId == null) {
-      return _ProductForm(strings: strings, existing: null);
+      return _ProductForm(strings: strings, existing: null, unit: unit);
     }
 
     return ref
@@ -59,7 +68,11 @@ class ProductFormScreen extends ConsumerWidget {
                 error: StateError('product not found'),
               );
             }
-            return _ProductForm(strings: strings, existing: product);
+            return _ProductForm(
+              strings: strings,
+              existing: product,
+              unit: unit,
+            );
           },
         );
   }
@@ -94,10 +107,17 @@ class _FormFailure extends StatelessWidget {
 }
 
 class _ProductForm extends ConsumerStatefulWidget {
-  const _ProductForm({required this.strings, required this.existing});
+  const _ProductForm({
+    required this.strings,
+    required this.existing,
+    required this.unit,
+  });
 
   final AppStrings strings;
   final Product? existing;
+
+  /// The unit the price is shown and entered in (D-117).
+  final MoneyDisplayUnit unit;
 
   @override
   ConsumerState<_ProductForm> createState() => _ProductFormState();
@@ -113,7 +133,12 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
     text: widget.existing?.unit ?? '',
   );
   late final TextEditingController _price = TextEditingController(
-    text: widget.existing == null ? '' : '${widget.existing!.price.toman}',
+    // Seeded grouped, in the same shape the field keeps while it is typed in:
+    // an existing price that appeared ungrouped until the first keystroke
+    // would read as a different kind of value than the one being entered.
+    text: widget.existing == null
+        ? ''
+        : formatGroupedPersian(widget.unit.amountOf(widget.existing!.price)),
   );
   late final TextEditingController _description = TextEditingController(
     text: widget.existing?.description ?? '',
@@ -204,12 +229,12 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
               maxLength: AmountLimits.tomanDigits,
               // The unit is always shown beside an amount (§9): a bare number
               // here is ambiguous by a factor of ten.
-              suffixText: strings.unitToman,
+              suffixText: moneyUnitLabel(widget.unit, strings),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: false,
               ),
               textInputAction: TextInputAction.next,
-              digitsOnly: true,
+              groupDigits: true,
               validator: _validatePrice,
             ),
             const SizedBox(height: AppSpacing.lg),
@@ -239,7 +264,7 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
     );
   }
 
-  /// Parses in Toman, checks the ceiling in Rial.
+  /// Parses in the unit on the label, checks the ceiling for that unit.
   ///
   /// `tryParseIntInput` folds the digit sets and returns null rather than
   /// throwing, so malformed input is an ordinary form state instead of an
@@ -249,29 +274,31 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
     final String text = value?.trim() ?? '';
     if (text.isEmpty) return strings.validationRequired;
 
-    final int? toman = tryParseIntInput(text);
-    if (toman == null || toman < 0) return strings.validationAmountInvalid;
+    final int? entered = tryParseIntInput(text);
+    if (entered == null || entered < 0) return strings.validationAmountInvalid;
 
     // Checked here rather than caught at save time: the ceiling rejects
     // instead of truncating (D-002), and the user should learn that while the
     // field is still in front of them.
-    if (toman > kMaxAmountRial ~/ 10) return strings.validationAmountTooLarge;
+    if (entered > widget.unit.maxEnterableValue) {
+      return strings.validationAmountTooLarge;
+    }
     return null;
   }
 
   Future<void> _save() async {
     if (!(_formKey.currentState?.validate() ?? false)) return;
 
-    final int? toman = tryParseIntInput(_price.text.trim());
-    if (toman == null) return;
+    final int? amount = tryParseIntInput(_price.text.trim());
+    if (amount == null) return;
 
     final ProductDraft draft = ProductDraft(
       name: _name.text.trim(),
       type: _type,
-      // The one place Toman entry becomes Rial storage. `Money.toman` is
-      // overflow-checked, and the field already refused anything past the
-      // ceiling (D-002).
-      price: Money.toman(toman),
+      // The one place entry becomes Rial storage. Both constructors behind
+      // `moneyOf` are overflow-checked, and the field already refused anything
+      // past the ceiling (D-002).
+      price: widget.unit.moneyOf(amount),
       unit: _unit.text.trim(),
       description: _description.text.trim().isEmpty
           ? null

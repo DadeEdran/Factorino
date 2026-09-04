@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import '../../../core/formatting/jalali_display.dart';
 import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/localization/month_names.dart';
+import '../../../core/money/money.dart';
 import '../../../core/responsive/breakpoints.dart';
 import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
@@ -108,11 +109,33 @@ class DashboardScreen extends ConsumerWidget {
   }
 }
 
-class _DashboardBody extends StatelessWidget {
+/// Which of the three nested Jalali periods the sales figure covers.
+///
+/// **A selector rather than three tiles side by side** (D-119). The three were
+/// one figure at three zoom levels and they were shown together so they could
+/// be compared — but they are nested rather than additive, they took the whole
+/// first row of the grid on every tier, and on a phone that is the entire first
+/// screen spent on one question asked three ways. One tile, and the period is
+/// chosen.
+enum _Period { week, month, year }
+
+class _DashboardBody extends StatefulWidget {
   const _DashboardBody({required this.summary, required this.strings});
 
   final DashboardSummary summary;
   final AppStrings strings;
+
+  @override
+  State<_DashboardBody> createState() => _DashboardBodyState();
+}
+
+class _DashboardBodyState extends State<_DashboardBody> {
+  /// The month, because it is the period a business reads its own trading in —
+  /// and because it is the one the invoice count beside it counts.
+  _Period _period = _Period.month;
+
+  DashboardSummary get summary => widget.summary;
+  AppStrings get strings => widget.strings;
 
   @override
   Widget build(BuildContext context) {
@@ -144,45 +167,78 @@ class _DashboardBody extends StatelessWidget {
         ? AmountSize.medium
         : AmountSize.large;
 
+    // The selected period's figure, its title and the caption that says which
+    // days it covers, resolved together so the three cannot come apart.
+    // Destructured, so the figure and the two labels are three names rather
+    // than three positions.
+    final (
+      Money sales,
+      String salesLabel,
+      String salesCaption,
+    ) = switch (_period) {
+      _Period.week => (
+        summary.salesThisWeek,
+        strings.dashboardSalesThisWeek,
+        weekLabel,
+      ),
+      _Period.month => (
+        summary.salesThisPeriod,
+        strings.dashboardSalesThisMonth,
+        periodLabel,
+      ),
+      _Period.year => (
+        summary.salesThisYear,
+        strings.dashboardSalesThisYear,
+        yearLabel,
+      ),
+    };
+
     return ListView(
       children: <Widget>[
+        // Above the grid and not inside a tile: it governs the first tile, and
+        // a control that changes what a card says belongs beside the card
+        // rather than in it. It costs one row of chips, which is what the two
+        // tiles it replaced cost several times over.
+        SizedBox(
+          width: double.infinity,
+          child: SegmentedButton<_Period>(
+            segments: <ButtonSegment<_Period>>[
+              ButtonSegment<_Period>(
+                value: _Period.week,
+                label: Text(strings.dashboardPeriodWeek),
+              ),
+              ButtonSegment<_Period>(
+                value: _Period.month,
+                label: Text(strings.dashboardPeriodMonth),
+              ),
+              ButtonSegment<_Period>(
+                value: _Period.year,
+                label: Text(strings.dashboardPeriodYear),
+              ),
+            ],
+            selected: <_Period>{_period},
+            // No icons, and for D-108's measured reason: three Persian words
+            // divided across a 320-pixel row have no room to spend on 18 px of
+            // glyph and 8 px of gap, and what breaks is the word.
+            showSelectedIcon: false,
+            onSelectionChanged: (Set<_Period> selection) =>
+                setState(() => _period = selection.first),
+          ),
+        ),
+        const SizedBox(height: AppSpacing.lg),
         TileGrid(
-          // Three across on a desktop rather than four: six tiles over four
-          // columns leaves a ragged second row of two, and the three sales
-          // figures belong on one row together — they are the same figure at
-          // three zoom levels, and reading them side by side is the point.
+          // Four tiles now that the sales figure is one tile rather than three,
+          // so the desktop row is full rather than ragged.
           columns: switch (tier) {
             LayoutTier.mobile => 1,
             LayoutTier.tablet => 2,
-            LayoutTier.desktop => 3,
+            LayoutTier.desktop => 4,
           },
           tiles: <Widget>[
             StatTile(
-              label: strings.dashboardSalesThisWeek,
-              caption: weekLabel,
-              value: AmountText(
-                summary.salesThisWeek,
-                unitLabel: strings.unitToman,
-                size: amountSize,
-              ),
-            ),
-            StatTile(
-              label: strings.dashboardSalesThisMonth,
-              caption: periodLabel,
-              value: AmountText(
-                summary.salesThisPeriod,
-                unitLabel: strings.unitToman,
-                size: amountSize,
-              ),
-            ),
-            StatTile(
-              label: strings.dashboardSalesThisYear,
-              caption: yearLabel,
-              value: AmountText(
-                summary.salesThisYear,
-                unitLabel: strings.unitToman,
-                size: amountSize,
-              ),
+              label: salesLabel,
+              caption: salesCaption,
+              value: AmountText(sales, size: amountSize),
             ),
             StatTile(
               label: strings.dashboardInvoiceCount,
@@ -195,11 +251,7 @@ class _DashboardBody extends StatelessWidget {
             StatTile(
               label: strings.dashboardOutstanding,
               caption: strings.dashboardOutstandingCaption,
-              value: AmountText(
-                summary.outstanding,
-                unitLabel: strings.unitToman,
-                size: amountSize,
-              ),
+              value: AmountText(summary.outstanding, size: amountSize),
             ),
             StatTile(
               label: strings.dashboardCustomerCount,

@@ -340,11 +340,7 @@ class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
             // The amount, restated at the moment of commitment. The user is
             // agreeing to a figure, and it should not be behind them on a
             // scrolled page when they agree to it.
-            AmountText(
-              state.totals.grandTotal,
-              unitLabel: strings.unitToman,
-              size: AmountSize.medium,
-            ),
+            AmountText(state.totals.grandTotal, size: AmountSize.medium),
           ],
         ),
         actions: <Widget>[
@@ -844,7 +840,6 @@ class _PinnedGrandTotal extends StatelessWidget {
         Flexible(
           child: AmountText(
             state.totals.grandTotal,
-            unitLabel: strings.unitToman,
             size: context.tier.isMobile ? AmountSize.medium : AmountSize.large,
           ),
         ),

@@ -7,6 +7,7 @@ import '../models/invoice_status.dart';
 import '../models/payment_method.dart';
 import '../models/product_type.dart';
 import '../models/app_theme_mode.dart';
+import '../models/money_display_unit.dart';
 import '../models/sync_status.dart';
 
 import 'invoice_figures_backfill.dart';
@@ -76,7 +77,7 @@ class AppDatabase extends _$AppDatabase {
   /// undone by a later step; it is a deliberate product decision, requested
   /// after use.
   @override
-  int get schemaVersion => 7;
+  int get schemaVersion => 8;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -118,10 +119,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 7 && to >= 7) {
         await migrateV6ToV7(m);
       }
+      if (from < 8 && to >= 8) {
+        await migrateV7ToV8(m);
+      }
 
       // Fail loud on a version this ladder does not cover, rather than
       // opening a database whose shape is not the one the code expects.
-      if (from < 1 || to > 7) {
+      if (from < 1 || to > 8) {
         throw StateError('no migration defined from v$from to v$to');
       }
     },
@@ -635,6 +639,39 @@ Future<void> _dropColumnIfPresent(
   if (!present.contains(column)) return;
 
   await m.dropColumn(table, column);
+}
+
+/// v7 -> v8 (D-117): the display unit joins the settings row.
+///
+/// One nullable-free `ADD COLUMN` with a default of `0` —
+/// [MoneyDisplayUnit.toman], which is what every database in existence has been
+/// doing since the first release. No value is migrated because there is nothing
+/// to migrate from and the default is not a guess: it is the behaviour the row
+/// already had.
+///
+/// **It moves no money.** The column decides how an amount is displayed and
+/// entered, not how it is stored; every amount column in this schema is integer
+/// Rial before this step and after it (§4, D-002). A migration that touched a
+/// figure to "convert" it would be the one thing this setting must never do.
+///
+/// `ADD COLUMN`, so no table is rebuilt, no `ON DELETE CASCADE` is armed, and
+/// [assertForeignKeysCanBeDisabled] is not called — the same reasoning
+/// [migrateV5ToV6] sets out.
+Future<void> migrateV7ToV8(Migrator m) async {
+  final db = m.database as AppDatabase;
+
+  await _addColumnIfAbsent(m, db, db.settings, db.settings.displayUnit);
+
+  // As in every step before it: nothing here can create a dangling reference,
+  // but the check costs one pragma while we can still refuse to open.
+  // soft-delete-exempt: an integrity pragma, not a read of user rows.
+  final violations = await db.customSelect('pragma foreign_key_check').get();
+  if (violations.isNotEmpty) {
+    throw StateError(
+      'the v7 -> v8 display-unit migration left ${violations.length} '
+      'foreign-key violation(s); refusing to open. See D-117.',
+    );
+  }
 }
 
 /// Adds [column] to [table] unless the table already has it.

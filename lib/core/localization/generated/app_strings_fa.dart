@@ -71,6 +71,15 @@ class AppStringsFa extends AppStrings {
   String get dashboardCustomerCount => 'مشتریان';
 
   @override
+  String get dashboardPeriodWeek => 'هفته';
+
+  @override
+  String get dashboardPeriodMonth => 'ماه';
+
+  @override
+  String get dashboardPeriodYear => 'سال';
+
+  @override
   String get dashboardSalesThisWeek => 'فروش این هفته';
 
   @override
@@ -173,6 +182,13 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get unitDays => 'روز';
+
+  @override
+  String get settingsDisplayUnit => 'واحد نمایش مبلغ';
+
+  @override
+  String get settingsDisplayUnitHint =>
+      'مبلغ‌ها با همین واحد نمایش داده می‌شوند، با همین واحد وارد می‌شوند و روی فاکتور PDF هم با همین واحد چاپ می‌شوند. اطلاعات ذخیره‌شده تغییر نمی‌کند و فاکتورهای قبلی دست‌نخورده می‌مانند.';
 
   @override
   String get settingsBackupSection => 'پشتیبان‌گیری';
@@ -502,16 +518,18 @@ class AppStringsFa extends AppStrings {
     String line,
     String requested,
     String applied,
+    String unit,
   ) {
-    return 'تخفیف سطر $line: $requested تومان وارد شده بود، اما این سطر بیش از $applied تومان ارزش ندارد و تنها همین مبلغ کسر شد.';
+    return 'تخفیف سطر $line: $requested $unit وارد شده بود، اما این سطر بیش از $applied $unit ارزش ندارد و تنها همین مبلغ کسر شد.';
   }
 
   @override
   String invoiceWarningInvoiceDiscountClamped(
     String requested,
     String applied,
+    String unit,
   ) {
-    return 'تخفیف کل فاکتور: $requested تومان وارد شده بود، اما جمع فاکتور بیش از $applied تومان نیست و تنها همین مبلغ کسر شد.';
+    return 'تخفیف کل فاکتور: $requested $unit وارد شده بود، اما جمع فاکتور بیش از $applied $unit نیست و تنها همین مبلغ کسر شد.';
   }
 
   @override
@@ -980,8 +998,8 @@ class AppStringsFa extends AppStrings {
       'شماره چک، مرجع تراکنش، یا هر یادداشت دیگر';
 
   @override
-  String paymentAmountRemainingHelper(String amount) {
-    return 'مانده: $amount تومان';
+  String paymentAmountRemainingHelper(String amount, String unit) {
+    return 'مانده: $amount $unit';
   }
 
   @override
@@ -998,8 +1016,8 @@ class AppStringsFa extends AppStrings {
   String get paymentDeleteTitle => 'این پرداخت حذف شود؟';
 
   @override
-  String paymentDeleteBody(String amount) {
-    return '$amount تومان از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.';
+  String paymentDeleteBody(String amount, String unit) {
+    return '$amount $unit از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.';
   }
 
   @override
@@ -1026,8 +1044,8 @@ class AppStringsFa extends AppStrings {
       'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شماره آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.';
 
   @override
-  String invoiceCancelPaymentsNote(String amount) {
-    return '$amount تومان پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.';
+  String invoiceCancelPaymentsNote(String amount, String unit) {
+    return '$amount $unit پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.';
   }
 
   @override
@@ -1115,8 +1133,8 @@ class AppStringsFa extends AppStrings {
       'این فاکتور باطل شده است، اما پرداخت‌های زیر واقعاً دریافت شده‌اند و در سوابق می‌مانند. ابطال، پرداختی را حذف یا بازنمی‌گرداند.';
 
   @override
-  String paymentDeleteBodyCancelled(String amount) {
-    return '$amount تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.';
+  String paymentDeleteBodyCancelled(String amount, String unit) {
+    return '$amount $unit از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.';
   }
 
   @override
@@ -1443,8 +1461,8 @@ class AppStringsFa extends AppStrings {
   String get invoiceDiscountPayableAfter => 'مبلغ پس از تخفیف';
 
   @override
-  String invoiceDiscountChange(String amount) {
-    return '$amount تومان کمتر از مبلغ فعلی';
+  String invoiceDiscountChange(String amount, String unit) {
+    return '$amount $unit کمتر از مبلغ فعلی';
   }
 
   @override

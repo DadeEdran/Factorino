@@ -267,20 +267,12 @@ class _Totals extends StatelessWidget {
           // that did not say so would make the total look wrong to anyone who
           // added up the rows.
           caption: strings.customerTotalBilledCaption,
-          value: AmountText(
-            view.totals.billed,
-            unitLabel: strings.unitToman,
-            size: size,
-          ),
+          value: AmountText(view.totals.billed, size: size),
         ),
         StatTile(
           label: strings.customerTotalOutstanding,
           caption: strings.customerTotalOutstandingCaption,
-          value: AmountText(
-            view.totals.outstanding,
-            unitLabel: strings.unitToman,
-            size: size,
-          ),
+          value: AmountText(view.totals.outstanding, size: size),
         ),
       ],
     );

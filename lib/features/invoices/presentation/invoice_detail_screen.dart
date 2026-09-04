@@ -735,12 +735,7 @@ class _PaymentRow extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        AmountText(
-          amount,
-          unitLabel: strings.unitToman,
-          size: AmountSize.small,
-          color: color,
-        ),
+        AmountText(amount, size: AmountSize.small, color: color),
       ],
     );
   }

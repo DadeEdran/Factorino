@@ -10,6 +10,7 @@ import '../../../../core/widgets/amount_text.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_table.dart';
 import '../../../../core/widgets/empty_state.dart';
+import '../../../../core/widgets/money_display_scope.dart';
 import '../../../../data/models/product.dart';
 import '../../application/invoice_editor.dart';
 import '../../domain/invoice_editor_state.dart';
@@ -298,11 +299,7 @@ class _LineCard extends StatelessWidget {
                 child: Text(entry.title, style: theme.textTheme.titleMedium),
               ),
               // The line total, which is the figure the user is checking.
-              AmountText(
-                calculated.total,
-                unitLabel: strings.unitToman,
-                size: AmountSize.small,
-              ),
+              AmountText(calculated.total, size: AmountSize.small),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -412,14 +409,9 @@ class _LinesTable extends StatelessWidget {
                 '${formatQuantityMilli(state.lines[index].quantityMilli)} '
                 '${state.lines[index].unit}',
               ),
-              AmountText(
-                state.lines[index].unitPrice,
-                unitLabel: strings.unitToman,
-                size: AmountSize.small,
-              ),
+              AmountText(state.lines[index].unitPrice, size: AmountSize.small),
               AmountText(
                 state.totals.lines[index].total,
-                unitLabel: strings.unitToman,
                 size: AmountSize.small,
               ),
             ],
@@ -541,6 +533,7 @@ class _Warnings extends StatelessWidget {
     final List<String> messages = invoiceWarningMessages(
       state.warnings,
       strings,
+      unit: MoneyDisplayScope.of(context),
     );
 
     return AppCard(

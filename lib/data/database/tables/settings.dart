@@ -1,6 +1,7 @@
 import 'package:drift/drift.dart';
 
 import '../../models/app_theme_mode.dart';
+import '../../models/money_display_unit.dart';
 import 'sync_columns.dart';
 
 /// Single-row application configuration.
@@ -113,4 +114,21 @@ class Settings extends Table with SyncColumns {
   /// asserts the generated default is `AppThemeMode.system`.
   IntColumn get themeMode =>
       intEnum<AppThemeMode>().withDefault(const Constant(0))();
+
+  /// Which unit amounts are shown and entered in, as the [MoneyDisplayUnit]
+  /// index (v8).
+  ///
+  /// **Display only.** Every amount in this schema is and stays integer Rial
+  /// (§4, D-002); this column decides what the user reads and types, not what
+  /// is stored, so changing it cannot alter a figure on an existing invoice.
+  ///
+  /// In this table for the reason [themeMode] is: it is a preference with no
+  /// per-device store to live in, the settings row is already watched live by
+  /// the screen that edits it, and it already travels with a backup.
+  ///
+  /// The literal `0` rather than `MoneyDisplayUnit.toman.index`, for the reason
+  /// every other default in this file carries one: `drift_dev` reads this
+  /// argument from the **source expression**.
+  IntColumn get displayUnit =>
+      intEnum<MoneyDisplayUnit>().withDefault(const Constant(0))();
 }

@@ -7641,3 +7641,84 @@ either side of it, on the same UTC date. If the grouping were done on the raw st
 would land on one day. They land on two. The same file asserts the days of a month sum to
 `totalIssuedRial` of that month, so the calendar and the dashboard cannot diverge, and runs the
 amount ladder through the day tile.
+
+---
+
+## D-117 — The display unit is the user's, and it is a display decision only
+
+**Date:** 2026-09-04 · **Status:** accepted · **Asked for by the owner.**
+
+Amounts are shown, entered and printed in **the unit the user chooses** — تومان (the default, and
+what the application has always done) or ریال — selected from a dropdown in settings.
+
+**Storage does not move.** Every amount column is integer Rial before this and after it (§4, D-002).
+`MoneyDisplayUnit` selects between `Money.rial` and `Money.toman`, which are the constructors and
+getters the money engine already had, so nothing here multiplies or divides: the engine stays the
+only calculator. Schema **v8** adds `settings.display_unit`, one `ADD COLUMN` defaulting to `0` —
+Toman — so a database that has never seen this setting reads exactly as it did.
+
+**One scope, not twenty call sites.** `MoneyDisplayScope` is installed at the application root inside
+the same `builder` the `Directionality` uses (so overlays and dialogs are covered), and `AmountText`
+reads it where the amount is drawn. `unitLabel` is gone from that widget's API: an amount showing
+Toman on one card and Rial on the next because a call site was missed is the exact ambiguity this
+setting exists to remove, and a required parameter at 28 call sites is how that happens.
+
+**Seven Persian strings had the word تومان written into the sentence.** They now take the unit as a
+placeholder. A message that names a figure and asserts a unit is a message that can lie, and a
+clamped-discount warning quoting the wrong unit is a tenfold error in the app's favour.
+
+**The document says which unit it is** — `DocumentAmount` already carries a unit beside every figure,
+and it now carries the chosen one. A PDF is read away from the application that produced it, so it is
+the one surface where the unit cannot be inferred from context.
+
+**What is not covered:** `AmountLimits.tomanDigits` still bounds entry at 14 digits in either unit.
+That is 10 trillion Toman or 100 trillion Rial; `kMaxAmountRial` is the real ceiling and the
+validators check it per unit, so no guard was relaxed — only the field's stop is one digit short of
+the ceiling in Rial, far above any invoice.
+
+---
+
+## D-118 — Money fields group as they are typed, and the parser is unchanged
+
+**Date:** 2026-09-04 · **Status:** accepted · **Asked for by the owner.**
+
+Every money field regroups on each keystroke: ۳۰۰۰۰۰۰ reads «۳٬۰۰۰٬۰۰۰» while it is being entered, in
+Persian digits with U+066C — the same shape `formatGroupedPersian` produces everywhere else.
+
+This **reverses** a comment that stood in two editor sheets: that separators in an editable field are
+characters the user has to delete. They are not, because the field regroups on every edit and the
+caret is carried by *digit position* rather than by character offset. What the old form actually cost
+was a seven-digit price that could not be read until it was saved.
+
+**No second parser.** `groupAmountEntry` in `core/formatting/` produces the text and the caret;
+`normalizeNumericInput` has always discarded U+066C and folded Persian digits, so what the field holds
+is what the parser has always accepted. The `TextInputFormatter` is a Flutter adapter over that
+function and nothing else — the division `_DigitsOnlyFormatter` already makes (D-029).
+
+**It changes what `maxLength` counts.** The limit is a column limit in characters the column stores,
+and separators are characters the column never sees — so with grouping on, the formatter caps
+*digits* and the validator measures digits. Without that, a 14-digit limit would stop the user at
+eleven digits with no explanation.
+
+Percentages and quantities are **not** grouped: both are short by nature and both take a decimal
+separator that grouping would have to reason about.
+
+---
+
+## D-119 — One sales figure on the dashboard, with the period chosen
+
+**Date:** 2026-09-04 · **Status:** accepted · **Asked for by the owner.** Narrows D-115.
+
+D-115 put week, month and year on the dashboard as three tiles, on the argument that they are one
+figure at three zoom levels and reading them side by side is the point. In use they were the whole
+first row on every tier — on a phone, the entire first screen spent on one question asked three ways.
+
+They are now a **selector** above the grid and one tile, defaulting to the month. The periods are
+unchanged: شنبه-to-جمعه Jalali week, Jalali month, Farvardin-to-Farvardin year (D-006), each naming
+its own days in the caption. The query family is unchanged too — all three still resolve, from one
+`DashboardSummary` and therefore from one moment, so switching the selector cannot show a figure from
+a different instant than the tiles beside it.
+
+**The issued-count tile stays monthly**, and says so in its caption. It counts what the month's sales
+sum, which is the pair D-039 asks to reconcile; making it follow the selector would have meant two
+more aggregates for a tile that already names its period.

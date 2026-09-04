@@ -253,17 +253,9 @@ class _LinesTable extends StatelessWidget {
     _LineColumn.quantity => Text(
       '${formatQuantityMilli(item.quantityMilli)} ${item.unit}',
     ),
-    _LineColumn.unitPrice => AmountText(
-      item.unitPrice,
-      unitLabel: strings.unitToman,
-      size: AmountSize.small,
-    ),
+    _LineColumn.unitPrice => AmountText(item.unitPrice, size: AmountSize.small),
     _LineColumn.gross => _MaybeAmount(amount: item.gross, strings: strings),
-    _LineColumn.total => AmountText(
-      item.lineTotal,
-      unitLabel: strings.unitToman,
-      size: AmountSize.small,
-    ),
+    _LineColumn.total => AmountText(item.lineTotal, size: AmountSize.small),
   };
 
   @override
@@ -356,11 +348,7 @@ class _LineCard extends StatelessWidget {
               ),
               const SizedBox(width: AppSpacing.md),
               // The line total, which is the figure the reader is checking.
-              AmountText(
-                item.lineTotal,
-                unitLabel: strings.unitToman,
-                size: AmountSize.small,
-              ),
+              AmountText(item.lineTotal, size: AmountSize.small),
             ],
           ),
           const SizedBox(height: AppSpacing.xs),
@@ -411,11 +399,7 @@ class _MaybeAmount extends StatelessWidget {
         ),
       );
     }
-    return AmountText(
-      value,
-      unitLabel: strings.unitToman,
-      size: AmountSize.small,
-    );
+    return AmountText(value, size: AmountSize.small);
   }
 }
 

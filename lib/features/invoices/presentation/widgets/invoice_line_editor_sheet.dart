@@ -7,7 +7,9 @@ import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/editor_sheet.dart';
+import '../../../../core/widgets/money_display_scope.dart';
 import '../../../../data/models/field_limits.dart';
+import '../../../../data/models/money_display_unit.dart';
 import '../../../../data/models/product.dart';
 import '../../domain/invoice_editor_state.dart';
 
@@ -95,16 +97,23 @@ Future<InvoiceLineEntry?> showInvoiceLineEditorSheet(
       existing: existing,
       product: product,
       resolvedTaxRateBp: resolvedTaxRateBp,
+      // Read from the caller's context, where the scope is: the controllers
+      // are seeded in `initState`, before this sheet can ask for it (D-117).
+      unit: MoneyDisplayScope.of(context),
     ),
   );
 }
 
 class _InvoiceLineEditorSheet extends StatefulWidget {
   const _InvoiceLineEditorSheet({
+    required this.unit,
     this.existing,
     this.product,
     this.resolvedTaxRateBp,
   });
+
+  /// The unit prices and discounts are shown and entered in (D-117).
+  final MoneyDisplayUnit unit;
 
   final InvoiceLineEntry? existing;
   final Product? product;
@@ -152,7 +161,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     );
     _unit = TextEditingController(text: existing?.unit ?? product?.unit ?? '');
     _unitPrice = TextEditingController(
-      text: _tomanText(existing?.unitPrice ?? product?.price),
+      text: _amountText(widget.unit, existing?.unitPrice ?? product?.price),
     );
     _quantity = TextEditingController(
       // A new line starts at one, which is what it almost always is. Zero is a
@@ -170,7 +179,8 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     _discount = TextEditingController(
       text: percent != null
           ? _percentText(percent)
-          : _tomanText(
+          : _amountText(
+              widget.unit,
               existing == null || existing.discount == Money.zero
                   ? null
                   : existing.discount,
@@ -260,10 +270,10 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
         controller: _unitPrice,
         label: strings.invoiceLineFieldUnitPrice,
         maxLength: AmountLimits.tomanDigits,
-        suffixText: strings.unitToman,
+        suffixText: moneyUnitLabel(widget.unit, strings),
         keyboardType: const TextInputType.numberWithOptions(decimal: false),
         textInputAction: TextInputAction.next,
-        digitsOnly: true,
+        groupDigits: true,
         validator: (String? value) =>
             _validateAmount(value, strings, required: true),
       ),
@@ -299,13 +309,16 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
             : strings.invoiceLineDiscountModePercent,
         maxLength: AmountLimits.tomanDigits,
         suffixText: _discountMode == _DiscountMode.amount
-            ? strings.unitToman
+            ? moneyUnitLabel(widget.unit, strings)
             : kPersianPercentSign,
         helperText: strings.fieldOptional,
         keyboardType: TextInputType.numberWithOptions(
           decimal: _discountMode == _DiscountMode.percent,
         ),
-        digitsOnly: _discountMode == _DiscountMode.amount,
+        // Grouped in the amount mode only. A percentage is two or three digits
+        // and takes a decimal separator; grouping it would be dressing up a
+        // number that was already legible.
+        groupDigits: _discountMode == _DiscountMode.amount,
         validator: (String? value) => _discountMode == _DiscountMode.amount
             ? _validateAmount(value, strings, required: false)
             : _validatePercent(value, strings, required: false),
@@ -384,7 +397,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     // the values came from the product (D-097).
     final String title = _title.text;
     final String unit = _unit.text;
-    final int? unitPriceToman = tryParseIntInput(_unitPrice.text);
+    final int? unitPriceValue = tryParseIntInput(_unitPrice.text);
 
     final int? discountPercent = existing?.discountPercentBp;
     final bool hasDiscount =
@@ -399,12 +412,12 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
       _quantityField(strings),
       const SizedBox(height: AppSpacing.xl),
       _FixedValue(label: strings.productFieldUnit, value: unit),
-      if (unitPriceToman != null)
+      if (unitPriceValue != null)
         _FixedValue(
           label: strings.invoiceLineFieldUnitPrice,
           value: strings.amountWithUnit(
-            formatGroupedPersian(unitPriceToman),
-            strings.unitToman,
+            formatGroupedPersian(unitPriceValue),
+            moneyUnitLabel(widget.unit, strings),
           ),
         ),
       if (hasDiscount)
@@ -413,8 +426,10 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
           value: discountPercent != null
               ? formatPercentFromBasisPoints(discountPercent)
               : strings.amountWithUnit(
-                  formatGroupedPersian(existing!.discount.toman),
-                  strings.unitToman,
+                  formatGroupedPersian(
+                    widget.unit.amountOf(existing!.discount),
+                  ),
+                  moneyUnitLabel(widget.unit, strings),
                 ),
         ),
       _FixedValue(
@@ -479,7 +494,9 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
       _quantity.text.trim(),
       scale: 1000,
     )!;
-    final Money unitPrice = Money.toman(tryParseIntInput(_unitPrice.text)!);
+    final Money unitPrice = widget.unit.moneyOf(
+      tryParseIntInput(_unitPrice.text)!,
+    );
 
     final String discountText = _discount.text.trim();
     final bool hasDiscount = discountText.isNotEmpty;
@@ -496,7 +513,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
         // amount would win in the engine over the amount the user just typed
         // (§4 step 2) — the same reason `setDiscountAmount` clears it.
         discount: hasDiscount && !isPercent
-            ? Money.toman(tryParseIntInput(discountText)!)
+            ? widget.unit.moneyOf(tryParseIntInput(discountText)!)
             : Money.zero,
         discountPercentBp: hasDiscount && isPercent
             ? tryParseScaledInput(discountText, scale: 100)
@@ -547,11 +564,13 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     final String text = value?.trim() ?? '';
     if (text.isEmpty) return required ? strings.validationRequired : null;
 
-    final int? toman = tryParseIntInput(text);
-    if (toman == null || toman < 0) return strings.validationAmountInvalid;
+    final int? entered = tryParseIntInput(text);
+    if (entered == null || entered < 0) return strings.validationAmountInvalid;
     // The ceiling rejects rather than truncates (D-002); said here, while the
     // field is still in front of the user, rather than as an error on save.
-    if (toman > kMaxAmountRial ~/ 10) return strings.validationAmountTooLarge;
+    if (entered > widget.unit.maxEnterableValue) {
+      return strings.validationAmountTooLarge;
+    }
     return null;
   }
 
@@ -624,10 +643,18 @@ class _FixedValue extends StatelessWidget {
   }
 }
 
-/// Toman as plain ASCII digits for a text field. **Not** the grouped Persian
-/// display form: this is a value the user edits and the field re-parses, and
-/// grouping separators in an editable field are characters they have to delete.
-String _tomanText(Money? amount) => amount == null ? '' : '${amount.toman}';
+/// An amount in the chosen unit, in the grouped Persian form the field holds
+/// while it is being typed.
+///
+/// **This is the reversal D-118 records.** It used to be plain ASCII digits,
+/// on the argument that separators in an editable field are characters the user
+/// has to delete. They are not: the field regroups on every keystroke, so the
+/// separators are never in the way of a keystroke, and `normalizeNumericInput`
+/// has always discarded U+066C — so the parser is the same one, unchanged. What
+/// the old form actually cost was a seven-digit price that could not be read
+/// until it was saved.
+String _amountText(MoneyDisplayUnit unit, Money? amount) =>
+    amount == null ? '' : formatGroupedPersian(unit.amountOf(amount));
 
 /// `1500` becomes `1.5` and `2000` becomes `2` — trailing zeros trimmed,
 /// because a quantity field pre-filled with `1.000` invites the user to wonder

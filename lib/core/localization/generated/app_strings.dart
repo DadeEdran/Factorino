@@ -214,6 +214,24 @@ abstract class AppStrings {
   /// **'مشتریان'**
   String get dashboardCustomerCount;
 
+  /// The week segment of the dashboard's period selector (D-119). One word, because the three segments share a row and the tile beneath them already says «فروش این هفته» in full.
+  ///
+  /// In fa, this message translates to:
+  /// **'هفته'**
+  String get dashboardPeriodWeek;
+
+  /// The month segment of the dashboard's period selector. The default: a month is the period an Iranian business reads its own trading in.
+  ///
+  /// In fa, this message translates to:
+  /// **'ماه'**
+  String get dashboardPeriodMonth;
+
+  /// The year segment of the dashboard's period selector. The Jalali year, Farvardin to Farvardin (D-006), which is the user's business and tax year.
+  ///
+  /// In fa, this message translates to:
+  /// **'سال'**
+  String get dashboardPeriodYear;
+
   /// Dashboard tile. 'This week' is the JALALI week, شنبه to جمعه (D-006) -- not the last seven days, and not a Monday-start week. The caption beneath it names the two dates, because a week is the one period a user cannot reconstruct from its name.
   ///
   /// In fa, this message translates to:
@@ -405,6 +423,18 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'روز'**
   String get unitDays;
+
+  /// The label over the display-unit dropdown in settings (D-117). «واحد نمایش» rather than «واحد پول», because the stored currency does not change -- only what the user reads and types.
+  ///
+  /// In fa, this message translates to:
+  /// **'واحد نمایش مبلغ'**
+  String get settingsDisplayUnit;
+
+  /// Says the two things a user needs before switching: it changes everything they read, type and print, and it changes no stored figure. Storage is integer Rial either way (section 4, D-002), so an issued invoice reads the same amount in a different unit -- never a different amount.
+  ///
+  /// In fa, this message translates to:
+  /// **'مبلغ‌ها با همین واحد نمایش داده می‌شوند، با همین واحد وارد می‌شوند و روی فاکتور PDF هم با همین واحد چاپ می‌شوند. اطلاعات ذخیره‌شده تغییر نمی‌کند و فاکتورهای قبلی دست‌نخورده می‌مانند.'**
+  String get settingsDisplayUnitHint;
 
   /// No description provided for @settingsBackupSection.
   ///
@@ -1027,18 +1057,23 @@ abstract class AppStrings {
   /// D-027: a line discount larger than the line was capped. States BOTH figures -- what was entered and what was actually deducted -- because a message that only said some discount was ignored leaves the user unable to tell which line or by how much. Almost always a data-entry slip, so it is surfaced as a question rather than absorbed.
   ///
   /// In fa, this message translates to:
-  /// **'تخفیف سطر {line}: {requested} تومان وارد شده بود، اما این سطر بیش از {applied} تومان ارزش ندارد و تنها همین مبلغ کسر شد.'**
+  /// **'تخفیف سطر {line}: {requested} {unit} وارد شده بود، اما این سطر بیش از {applied} {unit} ارزش ندارد و تنها همین مبلغ کسر شد.'**
   String invoiceWarningLineDiscountClamped(
     String line,
     String requested,
     String applied,
+    String unit,
   );
 
   /// D-027: the invoice-level discount exceeded the subtotal and was capped. This one MUST be capped -- it is part of the reconciliation invariant and an uncapped one produces a negative grand total, which is never a valid document -- but the user is still told, with both figures.
   ///
   /// In fa, this message translates to:
-  /// **'تخفیف کل فاکتور: {requested} تومان وارد شده بود، اما جمع فاکتور بیش از {applied} تومان نیست و تنها همین مبلغ کسر شد.'**
-  String invoiceWarningInvoiceDiscountClamped(String requested, String applied);
+  /// **'تخفیف کل فاکتور: {requested} {unit} وارد شده بود، اما جمع فاکتور بیش از {applied} {unit} نیست و تنها همین مبلغ کسر شد.'**
+  String invoiceWarningInvoiceDiscountClamped(
+    String requested,
+    String applied,
+    String unit,
+  );
 
   /// Heading over the clamped-input warnings. Deliberately not an error: the totals are correct and the invoice is usable; what is questionable is the input.
   ///
@@ -1874,11 +1909,11 @@ abstract class AppStrings {
   /// **'شماره چک، مرجع تراکنش، یا هر یادداشت دیگر'**
   String get paymentFieldNoteHint;
 
-  /// What is still owed, shown under the amount field so the common case -- paying off the rest -- needs no arithmetic from the user. It is InvoiceDetail.amountDue, read, never recomputed here.
+  /// What is still owed, shown under the amount field so the common case -- paying off the rest -- needs no arithmetic from the user. It is InvoiceDetail.amountDue, read, never recomputed here. The unit is a placeholder rather than a word in the sentence because the user chooses it (D-117).
   ///
   /// In fa, this message translates to:
-  /// **'مانده: {amount} تومان'**
-  String paymentAmountRemainingHelper(String amount);
+  /// **'مانده: {amount} {unit}'**
+  String paymentAmountRemainingHelper(String amount, String unit);
 
   /// Fills the amount field with the outstanding balance. A convenience over the figure above it, not a second source for it.
   ///
@@ -1904,11 +1939,11 @@ abstract class AppStrings {
   /// **'این پرداخت حذف شود؟'**
   String get paymentDeleteTitle;
 
-  /// Names the amount being removed and its direct consequence. The status change is stated separately, because it only applies to some invoices.
+  /// Names the amount being removed and its direct consequence. The status change is stated separately, because it only applies to some invoices. The unit is a placeholder because the user chooses it (D-117).
   ///
   /// In fa, this message translates to:
-  /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.'**
-  String paymentDeleteBody(String amount);
+  /// **'{amount} {unit} از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.'**
+  String paymentDeleteBody(String amount, String unit);
 
   /// Shown only when removing this payment actually moves the invoice out of paid. Deleting a payment recomputes the derived status in the same transaction (section 6), and a badge that changed without warning would look like a fault.
   ///
@@ -1952,11 +1987,11 @@ abstract class AppStrings {
   /// **'فاکتور حذف نمی‌شود؛ در سوابق می‌ماند و «باطل شده» علامت می‌خورد. شماره آن آزاد نمی‌شود و به هیچ فاکتور دیگری داده نمی‌شود. ابطال برگشت‌پذیر نیست و فاکتور پس از آن قابل ویرایش نیست؛ برای اصلاح، فاکتور تازه‌ای صادر کنید.'**
   String get invoiceCancelBody;
 
-  /// Shown only when the invoice actually carries payments (D-060's rule). Cancelling never touches the payments table (D-061), and a user cancelling a part-paid invoice must be told that before committing, not discover it afterwards.
+  /// Shown only when the invoice actually carries payments (D-060's rule). Cancelling never touches the payments table (D-061), and a user cancelling a part-paid invoice must be told that before committing, not discover it afterwards. The unit is a placeholder because the user chooses it (D-117).
   ///
   /// In fa, this message translates to:
-  /// **'{amount} تومان پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.'**
-  String invoiceCancelPaymentsNote(String amount);
+  /// **'{amount} {unit} پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.'**
+  String invoiceCancelPaymentsNote(String amount, String unit);
 
   /// Shown on every cancellation dialog. Closes the discoverability half of D-105: deletion is offered only after cancellation, so a user looking for a way to clear a mistaken or test invoice would otherwise see only the cancel action and conclude the document is permanent -- which is what was reported from the phone. This is the one place they are standing when the answer is relevant.
   ///
@@ -2108,11 +2143,11 @@ abstract class AppStrings {
   /// **'این فاکتور باطل شده است، اما پرداخت‌های زیر واقعاً دریافت شده‌اند و در سوابق می‌مانند. ابطال، پرداختی را حذف یا بازنمی‌گرداند.'**
   String get invoiceDetailCancelledPaymentsNote;
 
-  /// The cancelled invoice's version of paymentDeleteBody. «مانده افزایش می‌یابد» is false there — nothing is owed on a void document — and the fact worth stating instead is that correcting the money record does not resurrect the invoice (D-061).
+  /// The cancelled invoice's version of paymentDeleteBody. «مانده افزایش می‌یابد» is false there — nothing is owed on a void document — and the fact worth stating instead is that correcting the money record does not resurrect the invoice (D-061). The unit is a placeholder because the user chooses it (D-117).
   ///
   /// In fa, this message translates to:
-  /// **'{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.'**
-  String paymentDeleteBodyCancelled(String amount);
+  /// **'{amount} {unit} از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.'**
+  String paymentDeleteBodyCancelled(String amount, String unit);
 
   /// No description provided for @settingsEditTitle.
   ///
@@ -2682,11 +2717,11 @@ abstract class AppStrings {
   /// **'مبلغ پس از تخفیف'**
   String get invoiceDiscountPayableAfter;
 
-  /// The difference between the two figures, stated rather than left to be worked out -- on the one screen where working it out is what the user came to avoid. Shown only when the two actually differ, so an untouched sheet does not open with a row about nothing.
+  /// The difference between the two figures, stated rather than left to be worked out -- on the one screen where working it out is what the user came to avoid. Shown only when the two actually differ, so an untouched sheet does not open with a row about nothing. The unit is a placeholder because the user chooses it (D-117).
   ///
   /// In fa, this message translates to:
-  /// **'{amount} تومان کمتر از مبلغ فعلی'**
-  String invoiceDiscountChange(String amount);
+  /// **'{amount} {unit} کمتر از مبلغ فعلی'**
+  String invoiceDiscountChange(String amount, String unit);
 
   /// Names one line on the discount screen: its position and its title. The number is 1-based and matches the numbering the clamp warnings quote, so a warning about 'line 3' points at the control headed 'line 3'.
   ///

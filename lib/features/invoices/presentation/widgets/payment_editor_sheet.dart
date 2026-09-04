@@ -8,8 +8,10 @@ import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/editor_sheet.dart';
+import '../../../../core/widgets/money_display_scope.dart';
 import '../../../../core/widgets/jalali_date_picker.dart';
 import '../../../../data/models/field_limits.dart';
+import '../../../../data/models/money_display_unit.dart';
 import '../../../../data/models/payment.dart';
 import '../../../../data/models/payment_method.dart';
 import '../../domain/payment_method_label.dart';
@@ -50,13 +52,26 @@ Future<PaymentDraft?> showPaymentEditorSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (BuildContext context) =>
-        _PaymentEditorSheet(amountDue: amountDue, today: today),
+    builder: (BuildContext context) => _PaymentEditorSheet(
+      amountDue: amountDue,
+      today: today,
+      // Read from the caller's context, where the scope is, and handed in:
+      // the controllers are seeded in `initState`, before this sheet's own
+      // context can be asked (D-117).
+      unit: MoneyDisplayScope.of(context),
+    ),
   );
 }
 
 class _PaymentEditorSheet extends StatefulWidget {
-  const _PaymentEditorSheet({required this.amountDue, required this.today});
+  const _PaymentEditorSheet({
+    required this.amountDue,
+    required this.today,
+    required this.unit,
+  });
+
+  /// The unit the amount is shown and entered in (D-117).
+  final MoneyDisplayUnit unit;
 
   /// What is still owed, from `InvoiceDetail.amountDue`. Read, never derived.
   final Money amountDue;
@@ -118,9 +133,9 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
   Widget build(BuildContext context) {
     final AppStrings strings = AppStrings.of(context);
     final ThemeData theme = Theme.of(context);
-    final int? typedToman = tryParseIntInput(_amount.text.trim());
+    final int? typed = tryParseIntInput(_amount.text.trim());
     final bool overpaying =
-        typedToman != null && Money.toman(typedToman) > widget.amountDue;
+        typed != null && widget.unit.moneyOf(typed) > widget.amountDue;
 
     return EditorSheet(
       title: strings.paymentCreateTitle,
@@ -141,15 +156,16 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
           controller: _amount,
           label: strings.paymentFieldAmount,
           maxLength: AmountLimits.tomanDigits,
-          suffixText: strings.unitToman,
+          suffixText: moneyUnitLabel(widget.unit, strings),
           autofocus: true,
-          digitsOnly: true,
+          groupDigits: true,
           keyboardType: const TextInputType.numberWithOptions(decimal: false),
           // The balance, named rather than implied, so the commonest
           // payment -- settling the rest -- needs no arithmetic from
           // the user.
           helperText: strings.paymentAmountRemainingHelper(
-            formatGroupedPersian(widget.amountDue.toman),
+            formatGroupedPersian(widget.unit.amountOf(widget.amountDue)),
+            moneyUnitLabel(widget.unit, strings),
           ),
           validator: (String? value) => _validateAmount(value, strings),
         ),
@@ -175,7 +191,12 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
             alignment: AlignmentDirectional.centerStart,
             child: FilledButton.tonal(
               onPressed: () {
-                _amount.text = '${widget.amountDue.toman}';
+                // Grouped, because that is the shape the field holds while it
+                // is typed in — the filled figure and a typed one must not
+                // look like two different kinds of value.
+                _amount.text = formatGroupedPersian(
+                  widget.unit.amountOf(widget.amountDue),
+                );
                 // The caret follows the text in, so a user who wanted to round
                 // it off is typing at the end rather than in front of it.
                 _amount.selection = TextSelection.collapsed(
@@ -255,7 +276,9 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
 
     // Safe after validation: the validator refuses exactly what the parser
     // returns null for, and refuses zero besides.
-    final Money amount = Money.toman(tryParseIntInput(_amount.text.trim())!);
+    final Money amount = widget.unit.moneyOf(
+      tryParseIntInput(_amount.text.trim())!,
+    );
     final String note = _note.text.trim();
 
     Navigator.of(context).pop(
@@ -281,12 +304,14 @@ class _PaymentEditorSheetState extends State<_PaymentEditorSheet> {
     final String text = value?.trim() ?? '';
     if (text.isEmpty) return strings.validationRequired;
 
-    final int? toman = tryParseIntInput(text);
-    if (toman == null) return strings.validationAmountInvalid;
-    if (toman <= 0) return strings.validationAmountPositive;
+    final int? entered = tryParseIntInput(text);
+    if (entered == null) return strings.validationAmountInvalid;
+    if (entered <= 0) return strings.validationAmountPositive;
     // The ceiling rejects rather than truncates (D-002), said while the field
     // is still in front of the user rather than as an error on save.
-    if (toman > kMaxAmountRial ~/ 10) return strings.validationAmountTooLarge;
+    if (entered > widget.unit.maxEnterableValue) {
+      return strings.validationAmountTooLarge;
+    }
     return null;
   }
 }

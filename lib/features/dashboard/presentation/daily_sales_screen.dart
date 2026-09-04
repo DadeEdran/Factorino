@@ -289,11 +289,7 @@ class _DayFigures extends StatelessWidget {
             StatTile(
               label: strings.dailySalesDayTotal,
               caption: dayLabel,
-              value: AmountText(
-                figures.total,
-                unitLabel: strings.unitToman,
-                size: amountSize,
-              ),
+              value: AmountText(figures.total, size: amountSize),
             ),
             StatTile(
               label: strings.dashboardInvoiceCount,

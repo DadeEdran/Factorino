@@ -6,6 +6,8 @@ import '../../../../core/formatting/number_display.dart';
 import '../../../../core/localization/generated/app_strings.dart';
 import '../../../../core/router/destinations.dart';
 import '../../../../core/theme/app_dimensions.dart';
+import '../../../../core/widgets/money_display_scope.dart';
+import '../../../../data/models/money_display_unit.dart';
 import '../../../../data/models/invoice_detail.dart';
 import '../../application/invoice_cancellation.dart';
 
@@ -264,6 +266,7 @@ class InvoiceCancelAction extends ConsumerWidget {
   /// otherwise query afterwards.
   Future<bool> _confirm(BuildContext context) async {
     final bool hasPayments = detail.payments.isNotEmpty;
+    final MoneyDisplayUnit unit = MoneyDisplayScope.of(context);
 
     final bool? confirmed = await showDialog<bool>(
       context: context,
@@ -278,7 +281,8 @@ class InvoiceCancelAction extends ConsumerWidget {
               const SizedBox(height: AppSpacing.md),
               Text(
                 strings.invoiceCancelPaymentsNote(
-                  formatGroupedPersian(detail.amountPaid.toman),
+                  formatGroupedPersian(unit.amountOf(detail.amountPaid)),
+                  moneyUnitLabel(unit, strings),
                 ),
               ),
             ],

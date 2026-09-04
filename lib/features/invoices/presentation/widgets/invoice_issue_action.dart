@@ -72,7 +72,7 @@ Future<bool> _confirm(
         children: <Widget>[
           Text(strings.invoiceIssueConfirmBody),
           const SizedBox(height: AppSpacing.md),
-          AmountText(detail.invoice.grandTotal, unitLabel: strings.unitToman),
+          AmountText(detail.invoice.grandTotal),
         ],
       ),
       actions: <Widget>[

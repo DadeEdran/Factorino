@@ -819,7 +819,10 @@ void main() {
       // 20,000,000 rial invoice less 5,000,000 paid = 1,500,000 تومان due.
       expect(
         find.text(
-          strings.paymentAmountRemainingHelper(formatGroupedPersian(1500000)),
+          strings.paymentAmountRemainingHelper(
+            formatGroupedPersian(1500000),
+            strings.unitToman,
+          ),
         ),
         findsOneWidget,
       );
@@ -892,7 +895,10 @@ void main() {
       // The amount being removed is named, so the confirmation is about this
       // payment rather than about payments in general.
       expect(
-        find.text(strings.paymentDeleteBody(formatGroupedPersian(500000))),
+        find.text(strings.paymentDeleteBody(
+          formatGroupedPersian(500000),
+          strings.unitToman,
+        )),
         findsOneWidget,
       );
 
@@ -1563,12 +1569,15 @@ void main() {
 
       expect(
         find.text(
-          strings.invoiceCancelPaymentsNote(formatGroupedPersian(500000)),
+          strings.invoiceCancelPaymentsNote(
+            formatGroupedPersian(500000),
+            strings.unitToman,
+          ),
         ),
         findsOneWidget,
       );
       expect(
-        strings.invoiceCancelPaymentsNote('X'),
+        strings.invoiceCancelPaymentsNote('X', strings.unitToman),
         allOf(contains('حذف نمی‌شود'), contains('بازگردانده نمی‌شود')),
         reason:
             'both halves are the claim: the payment is neither erased from the '
@@ -1757,12 +1766,18 @@ void main() {
 
       expect(
         find.text(
-          strings.paymentDeleteBodyCancelled(formatGroupedPersian(500000)),
+          strings.paymentDeleteBodyCancelled(
+            formatGroupedPersian(500000),
+            strings.unitToman,
+          ),
         ),
         findsOneWidget,
       );
       expect(
-        find.text(strings.paymentDeleteBody(formatGroupedPersian(500000))),
+        find.text(strings.paymentDeleteBody(
+          formatGroupedPersian(500000),
+          strings.unitToman,
+        )),
         findsNothing,
         reason:
             'the ordinary wording promises a balance that would go up, and '
@@ -1828,6 +1843,7 @@ void main() {
             find.text(
               strings.invoiceCancelPaymentsNote(
                 formatGroupedPersian(Money.rial(rial ~/ 3).toman),
+                strings.unitToman,
               ),
             ),
             findsOneWidget,

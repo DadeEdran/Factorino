@@ -83,6 +83,18 @@
   "@dashboardCustomerCount": {
     "description": "Dashboard tile: number of customers on record."
   },
+  "dashboardPeriodWeek": "هفته",
+  "@dashboardPeriodWeek": {
+    "description": "The week segment of the dashboard's period selector (D-119). One word, because the three segments share a row and the tile beneath them already says «فروش این هفته» in full."
+  },
+  "dashboardPeriodMonth": "ماه",
+  "@dashboardPeriodMonth": {
+    "description": "The month segment of the dashboard's period selector. The default: a month is the period an Iranian business reads its own trading in."
+  },
+  "dashboardPeriodYear": "سال",
+  "@dashboardPeriodYear": {
+    "description": "The year segment of the dashboard's period selector. The Jalali year, Farvardin to Farvardin (D-006), which is the user's business and tax year."
+  },
   "dashboardSalesThisWeek": "فروش این هفته",
   "@dashboardSalesThisWeek": {
     "description": "Dashboard tile. 'This week' is the JALALI week, شنبه to جمعه (D-006) -- not the last seven days, and not a Monday-start week. The caption beneath it names the two dates, because a week is the one period a user cannot reconstruct from its name."
@@ -171,6 +183,14 @@
   "@settingsPaymentTermHint": {},
   "unitDays": "روز",
   "@unitDays": {},
+  "settingsDisplayUnit": "واحد نمایش مبلغ",
+  "@settingsDisplayUnit": {
+    "description": "The label over the display-unit dropdown in settings (D-117). «واحد نمایش» rather than «واحد پول», because the stored currency does not change -- only what the user reads and types."
+  },
+  "settingsDisplayUnitHint": "مبلغ‌ها با همین واحد نمایش داده می‌شوند، با همین واحد وارد می‌شوند و روی فاکتور PDF هم با همین واحد چاپ می‌شوند. اطلاعات ذخیره‌شده تغییر نمی‌کند و فاکتورهای قبلی دست‌نخورده می‌مانند.",
+  "@settingsDisplayUnitHint": {
+    "description": "Says the two things a user needs before switching: it changes everything they read, type and print, and it changes no stored figure. Storage is integer Rial either way (section 4, D-002), so an issued invoice reads the same amount in a different unit -- never a different amount."
+  },
   "settingsBackupSection": "پشتیبان‌گیری",
   "@settingsBackupSection": {},
   "settingsLastBackup": "آخرین پشتیبان‌گیری",
@@ -456,21 +476,23 @@
   "tableColumnPrice": "قیمت",
   "@tableColumnPrice": {},
 
-  "invoiceWarningLineDiscountClamped": "تخفیف سطر {line}: {requested} تومان وارد شده بود، اما این سطر بیش از {applied} تومان ارزش ندارد و تنها همین مبلغ کسر شد.",
+  "invoiceWarningLineDiscountClamped": "تخفیف سطر {line}: {requested} {unit} وارد شده بود، اما این سطر بیش از {applied} {unit} ارزش ندارد و تنها همین مبلغ کسر شد.",
   "@invoiceWarningLineDiscountClamped": {
     "description": "D-027: a line discount larger than the line was capped. States BOTH figures -- what was entered and what was actually deducted -- because a message that only said some discount was ignored leaves the user unable to tell which line or by how much. Almost always a data-entry slip, so it is surfaced as a question rather than absorbed.",
     "placeholders": {
       "line": { "type": "String" },
       "requested": { "type": "String" },
-      "applied": { "type": "String" }
+      "applied": { "type": "String" },
+      "unit": { "type": "String" }
     }
   },
-  "invoiceWarningInvoiceDiscountClamped": "تخفیف کل فاکتور: {requested} تومان وارد شده بود، اما جمع فاکتور بیش از {applied} تومان نیست و تنها همین مبلغ کسر شد.",
+  "invoiceWarningInvoiceDiscountClamped": "تخفیف کل فاکتور: {requested} {unit} وارد شده بود، اما جمع فاکتور بیش از {applied} {unit} نیست و تنها همین مبلغ کسر شد.",
   "@invoiceWarningInvoiceDiscountClamped": {
     "description": "D-027: the invoice-level discount exceeded the subtotal and was capped. This one MUST be capped -- it is part of the reconciliation invariant and an uncapped one produces a negative grand total, which is never a valid document -- but the user is still told, with both figures.",
     "placeholders": {
       "requested": { "type": "String" },
-      "applied": { "type": "String" }
+      "applied": { "type": "String" },
+      "unit": { "type": "String" }
     }
   },
   "invoiceWarningsTitle": "این مقادیر را بررسی کنید",
@@ -882,10 +904,10 @@
   "@paymentFieldNote": {},
   "paymentFieldNoteHint": "شماره چک، مرجع تراکنش، یا هر یادداشت دیگر",
   "@paymentFieldNoteHint": {},
-  "paymentAmountRemainingHelper": "مانده: {amount} تومان",
+  "paymentAmountRemainingHelper": "مانده: {amount} {unit}",
   "@paymentAmountRemainingHelper": {
-    "description": "What is still owed, shown under the amount field so the common case -- paying off the rest -- needs no arithmetic from the user. It is InvoiceDetail.amountDue, read, never recomputed here.",
-    "placeholders": { "amount": { "type": "String" } }
+    "description": "What is still owed, shown under the amount field so the common case -- paying off the rest -- needs no arithmetic from the user. It is InvoiceDetail.amountDue, read, never recomputed here. The unit is a placeholder rather than a word in the sentence because the user chooses it (D-117).",
+    "placeholders": { "amount": { "type": "String" }, "unit": { "type": "String" } }
   },
   "paymentAmountFillRemaining": "پرداخت کامل مانده",
   "@paymentAmountFillRemaining": {
@@ -902,10 +924,10 @@
 
   "paymentDeleteTitle": "این پرداخت حذف شود؟",
   "@paymentDeleteTitle": {},
-  "paymentDeleteBody": "{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.",
+  "paymentDeleteBody": "{amount} {unit} از پرداخت‌های این فاکتور حذف می‌شود و مانده به همان اندازه افزایش می‌یابد.",
   "@paymentDeleteBody": {
-    "description": "Names the amount being removed and its direct consequence. The status change is stated separately, because it only applies to some invoices.",
-    "placeholders": { "amount": { "type": "String" } }
+    "description": "Names the amount being removed and its direct consequence. The status change is stated separately, because it only applies to some invoices. The unit is a placeholder because the user chooses it (D-117).",
+    "placeholders": { "amount": { "type": "String" }, "unit": { "type": "String" } }
   },
   "paymentDeleteStatusWarning": "با این کار وضعیت فاکتور از «پرداخت شده» خارج می‌شود.",
   "@paymentDeleteStatusWarning": {
@@ -928,10 +950,10 @@
   "@invoiceCancelBody": {
     "description": "Cancellation is the correction path, so the copy states what it does and what it does not do before the user commits: the record stays, the number stays spent (D-013), and editing is still not the way back. A confirmation that only asks «are you sure» is one people learn to dismiss."
   },
-  "invoiceCancelPaymentsNote": "{amount} تومان پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.",
+  "invoiceCancelPaymentsNote": "{amount} {unit} پرداختی که تاکنون ثبت شده حذف نمی‌شود و بازگردانده نمی‌شود. ابطال، فاکتور را باطل می‌کند نه پولی را که دریافت شده است.",
   "@invoiceCancelPaymentsNote": {
-    "description": "Shown only when the invoice actually carries payments (D-060's rule). Cancelling never touches the payments table (D-061), and a user cancelling a part-paid invoice must be told that before committing, not discover it afterwards.",
-    "placeholders": { "amount": { "type": "String" } }
+    "description": "Shown only when the invoice actually carries payments (D-060's rule). Cancelling never touches the payments table (D-061), and a user cancelling a part-paid invoice must be told that before committing, not discover it afterwards. The unit is a placeholder because the user chooses it (D-117).",
+    "placeholders": { "amount": { "type": "String" }, "unit": { "type": "String" } }
   },
   "invoiceCancelThenDeleteNote": "پس از ابطال، می‌توانید این فاکتور را به‌کلی حذف کنید.",
   "@invoiceCancelThenDeleteNote": {
@@ -1019,10 +1041,10 @@
   "@invoiceDetailCancelledPaymentsNote": {
     "description": "Shown on a cancelled invoice that carries payments (D-061). A void document showing a paid amount with no explanation reads as a fault in the software rather than as a fact about the record."
   },
-  "paymentDeleteBodyCancelled": "{amount} تومان از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.",
+  "paymentDeleteBodyCancelled": "{amount} {unit} از پرداخت‌های این فاکتور حذف می‌شود. فاکتور باطل شده است و باطل می‌ماند؛ این کار فقط سابقه پرداخت را اصلاح می‌کند.",
   "@paymentDeleteBodyCancelled": {
-    "description": "The cancelled invoice's version of paymentDeleteBody. «مانده افزایش می‌یابد» is false there — nothing is owed on a void document — and the fact worth stating instead is that correcting the money record does not resurrect the invoice (D-061).",
-    "placeholders": { "amount": { "type": "String" } }
+    "description": "The cancelled invoice's version of paymentDeleteBody. «مانده افزایش می‌یابد» is false there — nothing is owed on a void document — and the fact worth stating instead is that correcting the money record does not resurrect the invoice (D-061). The unit is a placeholder because the user chooses it (D-117).",
+    "placeholders": { "amount": { "type": "String" }, "unit": { "type": "String" } }
   },
 
   "settingsEditTitle": "ویرایش تنظیمات فاکتور",
@@ -1343,10 +1365,10 @@
   "@invoiceDiscountPayableAfter": {
     "description": "The payable figure this screen's entries would produce. Updates on every keystroke."
   },
-  "invoiceDiscountChange": "{amount} تومان کمتر از مبلغ فعلی",
+  "invoiceDiscountChange": "{amount} {unit} کمتر از مبلغ فعلی",
   "@invoiceDiscountChange": {
-    "description": "The difference between the two figures, stated rather than left to be worked out -- on the one screen where working it out is what the user came to avoid. Shown only when the two actually differ, so an untouched sheet does not open with a row about nothing.",
-    "placeholders": { "amount": { "type": "String" } }
+    "description": "The difference between the two figures, stated rather than left to be worked out -- on the one screen where working it out is what the user came to avoid. Shown only when the two actually differ, so an untouched sheet does not open with a row about nothing. The unit is a placeholder because the user chooses it (D-117).",
+    "placeholders": { "amount": { "type": "String" }, "unit": { "type": "String" } }
   },
   "invoiceDiscountLineHeading": "سطر {number}، {title}",
   "@invoiceDiscountLineHeading": {

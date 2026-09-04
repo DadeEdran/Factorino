@@ -156,11 +156,7 @@ class _Results extends ConsumerWidget {
           // The catalogue price, as it stands right now. Choosing this row
           // copies it (D-004); it is not a live reference from that moment on,
           // which is why the invoice keeps its own figure.
-          trailing: AmountText(
-            product.price,
-            unitLabel: strings.unitToman,
-            size: AmountSize.small,
-          ),
+          trailing: AmountText(product.price, size: AmountSize.small),
           onTap: () => Navigator.of(context).pop(product),
         );
       },

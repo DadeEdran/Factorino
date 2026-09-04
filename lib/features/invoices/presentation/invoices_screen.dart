@@ -354,11 +354,7 @@ class InvoiceTableRow extends StatelessWidget {
           style: muted,
         ),
         StatusBadge(status: view, label: invoiceStatusLabel(view, strings)),
-        AmountText(
-          item.invoice.grandTotal,
-          unitLabel: strings.unitToman,
-          size: AmountSize.small,
-        ),
+        AmountText(item.invoice.grandTotal, size: AmountSize.small),
       ],
     );
   }
@@ -446,7 +442,7 @@ class InvoiceCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: AppSpacing.md),
-          AmountText(item.invoice.grandTotal, unitLabel: strings.unitToman),
+          AmountText(item.invoice.grandTotal),
         ],
       ),
     );

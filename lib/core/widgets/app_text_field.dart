@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../formatting/amount_entry.dart';
 import '../formatting/jalali_display.dart';
 import '../formatting/persian_text.dart';
 import '../localization/generated/app_strings.dart';
@@ -53,6 +54,7 @@ class AppTextField extends StatefulWidget {
     this.autofocus = false,
     this.maxLines = 1,
     this.digitsOnly = false,
+    this.groupDigits = false,
     this.obscureText = false,
     this.onChanged,
     super.key,
@@ -86,6 +88,19 @@ class AppTextField extends StatefulWidget {
   /// (§9). Digits are kept as typed and folded at parse time, never rewritten
   /// under the cursor.
   final bool digitsOnly;
+
+  /// Groups the digits in threes as they are typed, the way every amount in the
+  /// application is displayed — so ۳۰۰۰۰۰۰ reads ۳٬۰۰۰٬۰۰۰ while it is still
+  /// being entered (§9). For **money fields only**: a percentage, a quantity
+  /// and a payment term are all short enough to read ungrouped, and two of them
+  /// accept a decimal separator that grouping would have to reason about.
+  ///
+  /// It changes what [maxLength] counts. The limit is a **column** limit,
+  /// counted in the characters the column will store, and the separators this
+  /// inserts are characters the column never sees — so with grouping on, both
+  /// the formatter's ceiling and the validator measure digits, and the field
+  /// stops at the limit's worth of digits rather than at eleven of them.
+  final bool groupDigits;
 
   /// Hides what is typed — the backup password, and nothing else so far.
   ///
@@ -158,6 +173,18 @@ class _AppTextFieldState extends State<AppTextField> {
     super.dispose();
   }
 
+  List<TextInputFormatter>? get _formatters {
+    if (widget.groupDigits) {
+      return <TextInputFormatter>[
+        _GroupedAmountFormatter(maxDigits: widget.maxLength),
+      ];
+    }
+    if (widget.digitsOnly) {
+      return const <TextInputFormatter>[_DigitsOnlyFormatter()];
+    }
+    return null;
+  }
+
   @override
   Widget build(BuildContext context) {
     final AppStrings strings = AppStrings.of(context);
@@ -169,11 +196,11 @@ class _AppTextFieldState extends State<AppTextField> {
       keyboardType: widget.keyboardType,
       textInputAction: widget.textInputAction,
       maxLines: widget.maxLines,
-      maxLength: widget.maxLength,
+      // Counted in digits, and therefore enforced by the formatter instead,
+      // when the text carries separators the column will never store.
+      maxLength: widget.groupDigits ? null : widget.maxLength,
       obscureText: widget.obscureText,
-      inputFormatters: widget.digitsOnly
-          ? const <TextInputFormatter>[_DigitsOnlyFormatter()]
-: null,
+      inputFormatters: _formatters,
       onChanged: widget.onChanged,
       buildCounter: _buildCounter,
       decoration: InputDecoration(
@@ -187,7 +214,10 @@ class _AppTextFieldState extends State<AppTextField> {
         // Measured the way `GeneratedColumn.checkTextLength` measures, so this
         // fires exactly when the column would have refused the value -- never
         // earlier, and never a character later.
-        if (text.length > widget.maxLength) {
+        final int measured = widget.groupDigits
+            ? keepDigitsOnly(text).length
+: text.length;
+        if (measured > widget.maxLength) {
           return strings.validationTooLong(
             toPersianDigits('${widget.maxLength}'),
           );
@@ -263,6 +293,39 @@ class _DigitsOnlyFormatter extends TextInputFormatter {
     return TextEditingValue(
       text: filtered,
       selection: TextSelection.collapsed(offset: caretInFiltered),
+    );
+  }
+}
+
+/// Regroups an amount as it is typed, and keeps the caret on its digit.
+///
+/// The grouping itself is [groupAmountEntry] in `core/formatting/`, which is
+/// the only directory allowed to know what a digit is or how Persian groups
+/// them (D-029). This class is the Flutter adapter and nothing else — the same
+/// division [_DigitsOnlyFormatter] makes.
+class _GroupedAmountFormatter extends TextInputFormatter {
+  const _GroupedAmountFormatter({required this.maxDigits});
+
+  final int maxDigits;
+
+  @override
+  TextEditingValue formatEditUpdate(
+    TextEditingValue oldValue,
+    TextEditingValue newValue,
+  ) {
+    final AmountEntryText entry = groupAmountEntry(
+      newValue.text,
+      caret: newValue.selection.end,
+      maxDigits: maxDigits,
+    );
+    if (entry.text == newValue.text &&
+        newValue.selection.isCollapsed &&
+        newValue.selection.end == entry.caret) {
+      return newValue;
+    }
+    return TextEditingValue(
+      text: entry.text,
+      selection: TextSelection.collapsed(offset: entry.caret),
     );
   }
 }

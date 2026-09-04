@@ -59,11 +59,8 @@ void main() {
             Align(
               alignment: Alignment.topRight,
               child: Builder(
-                builder: (BuildContext context) => AmountText(
-                  toman(value),
-                  unitLabel: AppStrings.of(context).unitToman,
-                  size: size,
-                ),
+                builder: (BuildContext context) =>
+                    AmountText(toman(value), size: size),
               ),
             ),
             size: kDesktopSize,
@@ -142,13 +139,7 @@ void main() {
                   width: AppLayout.tablePriceWidth,
                 ),
               ],
-              cells: <Widget>[
-                AmountText(
-                  toman(value),
-                  unitLabel: AppStrings.of(context).unitToman,
-                  size: AmountSize.small,
-                ),
-              ],
+              cells: <Widget>[AmountText(toman(value), size: AmountSize.small)],
             ),
           ),
           size: kDesktopSize,
@@ -178,11 +169,7 @@ void main() {
                   StatTile(
                     label: AppStrings.of(context).dashboardSalesThisMonth,
                     caption: AppStrings.of(context).dashboardOutstandingCaption,
-                    value: AmountText(
-                      toman(value),
-                      unitLabel: AppStrings.of(context).unitToman,
-                      size: AmountSize.large,
-                    ),
+                    value: AmountText(toman(value), size: AmountSize.large),
                   ),
               ],
             ),

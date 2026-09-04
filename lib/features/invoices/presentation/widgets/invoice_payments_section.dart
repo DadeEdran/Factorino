@@ -10,6 +10,8 @@ import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/utils/clock.dart';
 import '../../../../core/widgets/amount_text.dart';
+import '../../../../core/widgets/money_display_scope.dart';
+import '../../../../data/models/money_display_unit.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../../data/models/invoice_detail.dart';
@@ -277,11 +279,7 @@ class _PaymentRow extends ConsumerWidget {
                 ),
               ),
               const SizedBox(width: AppSpacing.md),
-              AmountText(
-                payment.amount,
-                unitLabel: strings.unitToman,
-                size: AmountSize.small,
-              ),
+              AmountText(payment.amount, size: AmountSize.small),
               IconButton(
                 onPressed: () => _confirmAndDelete(context, ref),
                 tooltip: strings.paymentDeleteAction,
@@ -300,6 +298,11 @@ class _PaymentRow extends ConsumerWidget {
   }
 
   Future<void> _confirmAndDelete(BuildContext context, WidgetRef ref) async {
+    // Read before the dialog is built, from the context that has the scope:
+    // the dialog's own context is a route below it and the figure and its unit
+    // must be the ones the page behind it is showing (D-117).
+    final MoneyDisplayUnit unit = MoneyDisplayScope.of(context);
+
     // **Whether the status moves is decided before the dialog is shown, from
     // the row's own numbers, and only to word the warning.** The status itself
     // is recomputed by the repository inside the delete's transaction (§6) --
@@ -328,10 +331,12 @@ class _PaymentRow extends ConsumerWidget {
                 Text(
                   isCancelled
                       ? strings.paymentDeleteBodyCancelled(
-                          formatGroupedPersian(payment.amount.toman),
+                          formatGroupedPersian(unit.amountOf(payment.amount)),
+                          moneyUnitLabel(unit, strings),
                         )
                       : strings.paymentDeleteBody(
-                          formatGroupedPersian(payment.amount.toman),
+                          formatGroupedPersian(unit.amountOf(payment.amount)),
+                          moneyUnitLabel(unit, strings),
                         ),
                 ),
                 // Only where it is true. A warning shown on every deletion is a

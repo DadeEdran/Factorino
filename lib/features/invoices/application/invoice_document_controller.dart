@@ -174,6 +174,9 @@ class InvoiceDocumentController extends _$InvoiceDocumentController {
         strings: strings,
         boundary: typeface.boundary,
         seller: settings.seller,
+        // The same row the screen reads its unit from, so a document says the
+        // unit the user was looking at when they asked for it (D-117).
+        unit: settings.displayUnit,
       );
 
       final Uint8List bytes = await PdfInvoiceDocumentGenerator(typeface)

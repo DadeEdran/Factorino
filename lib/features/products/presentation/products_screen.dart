@@ -246,11 +246,7 @@ class _ProductCard extends StatelessWidget {
                 // The most salient element on the card (§10). Prominence comes
                 // from the type scale, not from colour -- colour is reserved
                 // for status, and a product has none (D-033).
-                AmountText(
-                  product.price,
-                  unitLabel: strings.unitToman,
-                  size: AmountSize.medium,
-                ),
+                AmountText(product.price, size: AmountSize.medium),
               ],
             ),
           ),
@@ -287,11 +283,7 @@ class _ProductTableRow extends StatelessWidget {
         ),
         Text(_typeLabel(product.type, strings), style: muted),
         Text(product.unit, overflow: TextOverflow.ellipsis, style: muted),
-        AmountText(
-          product.price,
-          unitLabel: strings.unitToman,
-          size: AmountSize.small,
-        ),
+        AmountText(product.price, size: AmountSize.small),
       ],
     );
   }

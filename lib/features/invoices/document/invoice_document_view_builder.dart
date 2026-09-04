@@ -4,11 +4,13 @@ import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/localization/month_names.dart';
 import '../../../core/money/money.dart';
 import '../../../core/pdf/document_text.dart';
+import '../../../core/widgets/money_display_scope.dart';
 import '../../../data/models/customer_snapshot.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/invoice_detail.dart';
 import '../../../data/models/invoice_item.dart';
 import '../../../data/models/invoice_status.dart';
+import '../../../data/models/money_display_unit.dart';
 import '../../../data/models/seller_identity.dart';
 import '../domain/invoice_party_view.dart';
 import '../domain/invoice_summary_figures.dart';
@@ -33,15 +35,22 @@ InvoiceDocumentView buildInvoiceDocumentView({
   required AppStrings strings,
   required DocumentTextBoundary boundary,
   SellerIdentity seller = SellerIdentity.none,
+
+  /// The unit every figure on the document is printed in, and printed **as a
+  /// word beside each of them** (D-117): a document is read away from the
+  /// application that produced it, so a page of bare numbers is a page whose
+  /// unit the reader has to guess. Defaults to Toman, which is what every
+  /// document printed before the setting existed said.
+  MoneyDisplayUnit unit = MoneyDisplayUnit.toman,
 }) {
   final Invoice invoice = detail.invoice;
   final InvoiceSummaryFigures figures = InvoiceSummaryFigures.ofStored(invoice);
 
   DocumentText text(String raw) => boundary(raw);
 
-  DocumentAmount toman(Money amount) => DocumentAmount(
-    digits: text(formatGroupedPersian(amount.toman)),
-    unit: text(strings.unitToman),
+  DocumentAmount money(Money amount) => DocumentAmount(
+    digits: text(formatGroupedPersian(unit.amountOf(amount))),
+    unit: text(moneyUnitLabel(unit, strings)),
   );
 
   return InvoiceDocumentView(
@@ -128,12 +137,12 @@ InvoiceDocumentView buildInvoiceDocumentView({
     ],
     lines: <InvoiceDocumentLine>[
       for (int i = 0; i < detail.items.length; i++)
-        _line(detail.items[i], i, strings, text, toman),
+        _line(detail.items[i], i, strings, text, money),
     ],
-    totals: _totals(figures, strings, text, toman),
+    totals: _totals(figures, strings, text, money),
     grandTotal: DocumentAmountRow(
       label: text(strings.invoiceSummaryGrandTotal),
-      amount: toman(figures.grandTotal),
+      amount: money(figures.grandTotal),
     ),
     notes: invoice.notes == null || invoice.notes!.isEmpty
         ? null
@@ -245,7 +254,7 @@ InvoiceDocumentLine _line(
   int index,
   AppStrings strings,
   DocumentText Function(String) text,
-  DocumentAmount Function(Money) toman,
+  DocumentAmount Function(Money) money,
 ) {
   return InvoiceDocumentLine(
     rowNumber: text(formatGroupedPersian(index + 1)),
@@ -253,13 +262,13 @@ InvoiceDocumentLine _line(
     // at the last possible moment, on the one artifact the customer keeps.
     description: text(item.title),
     quantity: text('${formatQuantityMilli(item.quantityMilli)} ${item.unit}'),
-    unitPrice: toman(item.unitPrice),
+    unitPrice: money(item.unitPrice),
     // Null means unknown, never zero (D-055). The admission carries the
     // column's own name, exactly as it does on screen — and carries no unit,
     // because «ثبت‌نشده تومان» would be nonsense: there is no amount for the
     // unit to qualify.
     gross: switch (item.gross) {
-      final Money gross => toman(gross),
+      final Money gross => money(gross),
       null => DocumentAmount(
         digits: text(
           strings.invoiceLineLabelUnrecorded(strings.invoiceLineColumnGross),
@@ -285,13 +294,13 @@ List<DocumentAmountRow> _totals(
   InvoiceSummaryFigures figures,
   AppStrings strings,
   DocumentText Function(String) text,
-  DocumentAmount Function(Money) toman,
+  DocumentAmount Function(Money) money,
 ) {
   return <DocumentAmountRow>[
     DocumentAmountRow(
       label: text(strings.invoiceSummaryGross),
       amount: switch (figures.grossTotal) {
-        final Money gross => toman(gross),
+        final Money gross => money(gross),
         null => DocumentAmount(
           digits: text(
             strings.invoiceLineLabelUnrecorded(strings.invoiceSummaryGross),
@@ -303,17 +312,17 @@ List<DocumentAmountRow> _totals(
     if (figures.totalDiscount != Money.zero)
       DocumentAmountRow(
         label: text(strings.invoiceSummaryDiscount),
-        amount: toman(figures.totalDiscount),
+        amount: money(figures.totalDiscount),
       ),
     if (figures.totalTax != Money.zero)
       DocumentAmountRow(
         label: text(strings.invoiceSummaryTax),
-        amount: toman(figures.totalTax),
+        amount: money(figures.totalTax),
       ),
     if (figures.roundingAdjustment != Money.zero)
       DocumentAmountRow(
         label: text(strings.invoiceSummaryRounding),
-        amount: toman(figures.roundingAdjustment),
+        amount: money(figures.roundingAdjustment),
       ),
   ];
 }

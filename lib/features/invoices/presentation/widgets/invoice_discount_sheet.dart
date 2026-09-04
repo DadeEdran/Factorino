@@ -10,7 +10,9 @@ import '../../../../core/widgets/amount_text.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/editor_sheet.dart';
+import '../../../../core/widgets/money_display_scope.dart';
 import '../../../../data/models/field_limits.dart';
+import '../../../../data/models/money_display_unit.dart';
 import '../../application/invoice_editor.dart';
 import '../../domain/invoice_editor_state.dart';
 import '../../domain/invoice_warning_message.dart';
@@ -87,7 +89,12 @@ Future<void> showInvoiceDiscountSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (BuildContext context) => _InvoiceDiscountSheet(base: state),
+    builder: (BuildContext context) => _InvoiceDiscountSheet(
+      base: state,
+      // From the caller's context: the fields are seeded in `initState`,
+      // before this sheet has one of its own (D-117).
+      unit: MoneyDisplayScope.of(context),
+    ),
   );
   if (result == null) return;
 
@@ -117,7 +124,10 @@ class _Result {
 }
 
 class _InvoiceDiscountSheet extends StatefulWidget {
-  const _InvoiceDiscountSheet({required this.base});
+  const _InvoiceDiscountSheet({required this.base, required this.unit});
+
+  /// The unit discounts are shown and entered in (D-117).
+  final MoneyDisplayUnit unit;
 
   /// The invoice as it stands. Never mutated: the sheet previews against a copy
   /// and the real state moves once, on apply.
@@ -148,7 +158,7 @@ class _InvoiceDiscountSheetState extends State<_InvoiceDiscountSheet> {
     _invoice = TextEditingController(
       text: base.discountPercentBp != null
           ? _percentText(base.discountPercentBp!)
-          : _tomanText(base.discount),
+          : _amountText(widget.unit, base.discount),
     );
 
     _lineModes = <_Mode>[
@@ -160,7 +170,7 @@ class _InvoiceDiscountSheetState extends State<_InvoiceDiscountSheet> {
         TextEditingController(
           text: line.discountPercentBp != null
               ? _percentText(line.discountPercentBp!)
-              : _tomanText(line.discount),
+              : _amountText(widget.unit, line.discount),
         ),
     ];
   }
@@ -199,17 +209,17 @@ class _InvoiceDiscountSheetState extends State<_InvoiceDiscountSheet> {
         clearDiscountPercent: bp == null,
       );
     }
-    final int? toman = tryParseIntInput(value);
+    final int? entered = tryParseIntInput(value);
     return line.copyWith(
-      discount: toman == null ? Money.zero : Money.toman(toman),
+      discount: entered == null ? Money.zero : widget.unit.moneyOf(entered),
       clearDiscountPercent: true,
     );
   }
 
   Money get _draftInvoiceDiscount {
     if (_invoiceMode == _Mode.percent) return Money.zero;
-    final int? toman = tryParseIntInput(_invoice.text.trim());
-    return toman == null ? Money.zero : Money.toman(toman);
+    final int? entered = tryParseIntInput(_invoice.text.trim());
+    return entered == null ? Money.zero : widget.unit.moneyOf(entered);
   }
 
   int? get _draftInvoicePercent {
@@ -369,11 +379,7 @@ class _Preview extends StatelessWidget {
             style: theme.textTheme.titleSmall,
           ),
           const SizedBox(height: AppSpacing.xs),
-          AmountText(
-            after,
-            unitLabel: strings.unitToman,
-            size: AmountSize.medium,
-          ),
+          AmountText(after, size: AmountSize.medium),
           // Only where the two differ. A «۰ تومان» saving on an untouched sheet
           // is a row about nothing, and it would be the first thing the user
           // reads every time they open this.
@@ -381,7 +387,10 @@ class _Preview extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               strings.invoiceDiscountChange(
-                formatGroupedPersian((now - after).toman),
+                formatGroupedPersian(
+                  MoneyDisplayScope.of(context).amountOf(now - after),
+                ),
+                moneyUnitLabel(MoneyDisplayScope.of(context), strings),
               ),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -421,11 +430,7 @@ class _Row extends StatelessWidget {
           ),
         ),
         const SizedBox(width: AppSpacing.md),
-        AmountText(
-          amount,
-          unitLabel: strings.unitToman,
-          size: AmountSize.small,
-        ),
+        AmountText(amount, size: AmountSize.small),
       ],
     );
   }
@@ -474,7 +479,9 @@ class _LineDiscount extends StatelessWidget {
           strings.invoiceLineLabelQuantity(
             formatQuantityMilli(line.quantityMilli),
             line.unit,
-            formatGroupedPersian(line.unitPrice.toman),
+            formatGroupedPersian(
+              MoneyDisplayScope.of(context).amountOf(line.unitPrice),
+            ),
           ),
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -515,6 +522,8 @@ class _DiscountControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final MoneyDisplayUnit unit = MoneyDisplayScope.of(context);
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -541,19 +550,21 @@ class _DiscountControl extends StatelessWidget {
               : strings.invoiceLineDiscountModePercent,
           maxLength: AmountLimits.tomanDigits,
           suffixText: mode == _Mode.amount
-              ? strings.unitToman
+              ? moneyUnitLabel(unit, strings)
               : kPersianPercentSign,
           helperText: strings.fieldOptional,
           keyboardType: TextInputType.numberWithOptions(
             decimal: mode == _Mode.percent,
           ),
-          digitsOnly: mode == _Mode.amount,
+          // Grouped in the amount mode only: a percentage is short by nature
+          // and takes a decimal separator.
+          groupDigits: mode == _Mode.amount,
           // Every keystroke, because the footer is a live preview: a figure the
           // user has typed but not "committed" would leave the payable amount
           // describing an invoice that is no longer the one on screen.
           onChanged: onChanged,
           validator: (String? value) => mode == _Mode.amount
-              ? _validateAmount(value, strings)
+              ? _validateAmount(value, strings, unit)
               : _validatePercent(value, strings),
         ),
       ],
@@ -578,6 +589,7 @@ class _Warnings extends StatelessWidget {
     final List<String> messages = invoiceWarningMessages(
       state.warnings,
       strings,
+      unit: MoneyDisplayScope.of(context),
     );
 
     return AppCard(
@@ -623,14 +635,19 @@ class _SectionLabel extends StatelessWidget {
   }
 }
 
-/// An optional Toman amount. The ceiling rejects rather than truncates (D-002).
-String? _validateAmount(String? value, AppStrings strings) {
+/// An optional amount in the chosen unit. The ceiling rejects rather than
+/// truncates (D-002).
+String? _validateAmount(
+  String? value,
+  AppStrings strings,
+  MoneyDisplayUnit unit,
+) {
   final String text = value?.trim() ?? '';
   if (text.isEmpty) return null;
 
-  final int? toman = tryParseIntInput(text);
-  if (toman == null || toman < 0) return strings.validationAmountInvalid;
-  if (toman > kMaxAmountRial ~/ 10) return strings.validationAmountTooLarge;
+  final int? entered = tryParseIntInput(text);
+  if (entered == null || entered < 0) return strings.validationAmountInvalid;
+  if (entered > unit.maxEnterableValue) return strings.validationAmountTooLarge;
   return null;
 }
 
@@ -647,11 +664,13 @@ String? _validatePercent(String? value, AppStrings strings) {
   return null;
 }
 
-/// Toman as plain ASCII digits for a text field. **Not** the grouped Persian
-/// display form: this is a value the user edits and the field re-parses, and
-/// grouping separators in an editable field are characters they have to delete.
-String _tomanText(Money amount) =>
-    amount == Money.zero ? '' : '${amount.toman}';
+/// An amount in the chosen unit, grouped, as an editable field holds it.
+///
+/// Grouped since D-118: the field regroups on every keystroke and
+/// `normalizeNumericInput` has always discarded the separator, so what the user
+/// edits is readable and what the parser receives is unchanged.
+String _amountText(MoneyDisplayUnit unit, Money amount) =>
+    amount == Money.zero ? '' : formatGroupedPersian(unit.amountOf(amount));
 
 /// Basis points as a percent string: `950` becomes `9.5`.
 String _percentText(int basisPoints) {

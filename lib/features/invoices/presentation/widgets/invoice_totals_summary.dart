@@ -163,11 +163,7 @@ class _Row extends StatelessWidget {
         ),
         const SizedBox(width: AppSpacing.md),
         if (amount case final Money value)
-          AmountText(
-            value,
-            unitLabel: strings.unitToman,
-            size: AmountSize.small,
-          )
+          AmountText(value, size: AmountSize.small)
         else
           Text(
             strings.invoiceFigureUnrecorded,
@@ -228,11 +224,7 @@ class _GrandTotal extends StatelessWidget {
           style: theme.textTheme.titleSmall,
         ),
         const SizedBox(height: AppSpacing.xs),
-        AmountText(
-          totals.grandTotal,
-          unitLabel: strings.unitToman,
-          size: AmountSize.medium,
-        ),
+        AmountText(totals.grandTotal, size: AmountSize.medium),
       ],
     );
   }

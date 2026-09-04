@@ -5379,6 +5379,16 @@ class $SettingsTable extends Settings
         defaultValue: const Constant(0),
       ).withConverter<AppThemeMode>($SettingsTable.$converterthemeMode);
   @override
+  late final GeneratedColumnWithTypeConverter<MoneyDisplayUnit, int>
+  displayUnit = GeneratedColumn<int>(
+    'display_unit',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  ).withConverter<MoneyDisplayUnit>($SettingsTable.$converterdisplayUnit);
+  @override
   List<GeneratedColumn> get $columns => [
     id,
     createdAt,
@@ -5397,6 +5407,7 @@ class $SettingsTable extends Settings
     sellerAddress,
     sellerPhone,
     themeMode,
+    displayUnit,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5605,6 +5616,12 @@ class $SettingsTable extends Settings
           data['${effectivePrefix}theme_mode'],
         )!,
       ),
+      displayUnit: $SettingsTable.$converterdisplayUnit.fromSql(
+        attachedDatabase.typeMapping.read(
+          DriftSqlType.int,
+          data['${effectivePrefix}display_unit'],
+        )!,
+      ),
     );
   }
 
@@ -5617,6 +5634,8 @@ class $SettingsTable extends Settings
       const EnumIndexConverter<SyncStatus>(SyncStatus.values);
   static JsonTypeConverter2<AppThemeMode, int, int> $converterthemeMode =
       const EnumIndexConverter<AppThemeMode>(AppThemeMode.values);
+  static JsonTypeConverter2<MoneyDisplayUnit, int, int> $converterdisplayUnit =
+      const EnumIndexConverter<MoneyDisplayUnit>(MoneyDisplayUnit.values);
 }
 
 class SettingsRow extends DataClass implements Insertable<SettingsRow> {
@@ -5704,6 +5723,22 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   /// argument from the **source expression**. `settings_theme_test.dart`
   /// asserts the generated default is `AppThemeMode.system`.
   final AppThemeMode themeMode;
+
+  /// Which unit amounts are shown and entered in, as the [MoneyDisplayUnit]
+  /// index (v8).
+  ///
+  /// **Display only.** Every amount in this schema is and stays integer Rial
+  /// (§4, D-002); this column decides what the user reads and types, not what
+  /// is stored, so changing it cannot alter a figure on an existing invoice.
+  ///
+  /// In this table for the reason [themeMode] is: it is a preference with no
+  /// per-device store to live in, the settings row is already watched live by
+  /// the screen that edits it, and it already travels with a backup.
+  ///
+  /// The literal `0` rather than `MoneyDisplayUnit.toman.index`, for the reason
+  /// every other default in this file carries one: `drift_dev` reads this
+  /// argument from the **source expression**.
+  final MoneyDisplayUnit displayUnit;
   const SettingsRow({
     required this.id,
     required this.createdAt,
@@ -5722,6 +5757,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     this.sellerAddress,
     this.sellerPhone,
     required this.themeMode,
+    required this.displayUnit,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5765,6 +5801,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         $SettingsTable.$converterthemeMode.toSql(themeMode),
       );
     }
+    {
+      map['display_unit'] = Variable<int>(
+        $SettingsTable.$converterdisplayUnit.toSql(displayUnit),
+      );
+    }
     return map;
   }
 
@@ -5801,6 +5842,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ? const Value.absent()
 : Value(sellerPhone),
       themeMode: Value(themeMode),
+      displayUnit: Value(displayUnit),
     );
   }
 
@@ -5833,6 +5875,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       themeMode: $SettingsTable.$converterthemeMode.fromJson(
         serializer.fromJson<int>(json['themeMode']),
       ),
+      displayUnit: $SettingsTable.$converterdisplayUnit.fromJson(
+        serializer.fromJson<int>(json['displayUnit']),
+      ),
     );
   }
   @override
@@ -5860,6 +5905,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'themeMode': serializer.toJson<int>(
         $SettingsTable.$converterthemeMode.toJson(themeMode),
       ),
+      'displayUnit': serializer.toJson<int>(
+        $SettingsTable.$converterdisplayUnit.toJson(displayUnit),
+      ),
     };
   }
 
@@ -5881,6 +5929,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     Value<String?> sellerAddress = const Value.absent(),
     Value<String?> sellerPhone = const Value.absent(),
     AppThemeMode? themeMode,
+    MoneyDisplayUnit? displayUnit,
   }) => SettingsRow(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -5901,6 +5950,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
 : this.sellerAddress,
     sellerPhone: sellerPhone.present ? sellerPhone.value : this.sellerPhone,
     themeMode: themeMode ?? this.themeMode,
+    displayUnit: displayUnit ?? this.displayUnit,
   );
   SettingsRow copyWithCompanion(SettingsCompanion data) {
     return SettingsRow(
@@ -5943,6 +5993,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           ? data.sellerPhone.value
 : this.sellerPhone,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
+      displayUnit: data.displayUnit.present
+          ? data.displayUnit.value
+: this.displayUnit,
     );
   }
 
@@ -5965,7 +6018,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
 ..write('sellerName: $sellerName, ')
 ..write('sellerAddress: $sellerAddress, ')
 ..write('sellerPhone: $sellerPhone, ')
-..write('themeMode: $themeMode')
+..write('themeMode: $themeMode, ')
+..write('displayUnit: $displayUnit')
 ..write(')'))
 .toString();
   }
@@ -5989,6 +6043,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     sellerAddress,
     sellerPhone,
     themeMode,
+    displayUnit,
   );
   @override
   bool operator ==(Object other) =>
@@ -6010,7 +6065,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.sellerName == this.sellerName &&
           other.sellerAddress == this.sellerAddress &&
           other.sellerPhone == this.sellerPhone &&
-          other.themeMode == this.themeMode);
+          other.themeMode == this.themeMode &&
+          other.displayUnit == this.displayUnit);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingsRow> {
@@ -6031,6 +6087,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String?> sellerAddress;
   final Value<String?> sellerPhone;
   final Value<AppThemeMode> themeMode;
+  final Value<MoneyDisplayUnit> displayUnit;
   final Value<int> rowid;
   const SettingsCompanion({
     this.id = const Value.absent(),
@@ -6050,6 +6107,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.sellerAddress = const Value.absent(),
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.displayUnit = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettingsCompanion.insert({
@@ -6070,6 +6128,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.sellerAddress = const Value.absent(),
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
+    this.displayUnit = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   static Insertable<SettingsRow> custom({
@@ -6090,6 +6149,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? sellerAddress,
     Expression<String>? sellerPhone,
     Expression<int>? themeMode,
+    Expression<int>? displayUnit,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6111,6 +6171,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       if (sellerAddress != null) 'seller_address': sellerAddress,
       if (sellerPhone != null) 'seller_phone': sellerPhone,
       if (themeMode != null) 'theme_mode': themeMode,
+      if (displayUnit != null) 'display_unit': displayUnit,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6133,6 +6194,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String?>? sellerAddress,
     Value<String?>? sellerPhone,
     Value<AppThemeMode>? themeMode,
+    Value<MoneyDisplayUnit>? displayUnit,
     Value<int>? rowid,
   }) {
     return SettingsCompanion(
@@ -6153,6 +6215,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       sellerAddress: sellerAddress ?? this.sellerAddress,
       sellerPhone: sellerPhone ?? this.sellerPhone,
       themeMode: themeMode ?? this.themeMode,
+      displayUnit: displayUnit ?? this.displayUnit,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6217,6 +6280,11 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
         $SettingsTable.$converterthemeMode.toSql(themeMode.value),
       );
     }
+    if (displayUnit.present) {
+      map['display_unit'] = Variable<int>(
+        $SettingsTable.$converterdisplayUnit.toSql(displayUnit.value),
+      );
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6243,6 +6311,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
 ..write('sellerAddress: $sellerAddress, ')
 ..write('sellerPhone: $sellerPhone, ')
 ..write('themeMode: $themeMode, ')
+..write('displayUnit: $displayUnit, ')
 ..write('rowid: $rowid')
 ..write(')'))
 .toString();
@@ -9419,6 +9488,7 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<String?> sellerAddress,
   Value<String?> sellerPhone,
   Value<AppThemeMode> themeMode,
+  Value<MoneyDisplayUnit> displayUnit,
   Value<int> rowid,
 });
 typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
@@ -9439,6 +9509,7 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<String?> sellerAddress,
   Value<String?> sellerPhone,
   Value<AppThemeMode> themeMode,
+  Value<MoneyDisplayUnit> displayUnit,
   Value<int> rowid,
 });
 
@@ -9537,6 +9608,12 @@ class $$SettingsTableFilterComposer
     column: $table.themeMode,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnWithTypeConverterFilters<MoneyDisplayUnit, MoneyDisplayUnit, int>
+  get displayUnit => $composableBuilder(
+    column: $table.displayUnit,
+    builder: (column) => ColumnWithTypeConverterFilters(column),
+  );
 }
 
 class $$SettingsTableOrderingComposer
@@ -9632,6 +9709,11 @@ class $$SettingsTableOrderingComposer
     column: $table.themeMode,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get displayUnit => $composableBuilder(
+    column: $table.displayUnit,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -9716,6 +9798,12 @@ class $$SettingsTableAnnotationComposer
 
   GeneratedColumnWithTypeConverter<AppThemeMode, int> get themeMode =>
       $composableBuilder(column: $table.themeMode, builder: (column) => column);
+
+  GeneratedColumnWithTypeConverter<MoneyDisplayUnit, int> get displayUnit =>
+      $composableBuilder(
+        column: $table.displayUnit,
+        builder: (column) => column,
+      );
 }
 
 class $$SettingsTableTableManager
@@ -9766,6 +9854,7 @@ class $$SettingsTableTableManager
                 Value<String?> sellerAddress = const Value.absent(),
                 Value<String?> sellerPhone = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
+                Value<MoneyDisplayUnit> displayUnit = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
@@ -9785,6 +9874,7 @@ class $$SettingsTableTableManager
                 sellerAddress: sellerAddress,
                 sellerPhone: sellerPhone,
                 themeMode: themeMode,
+                displayUnit: displayUnit,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9806,6 +9896,7 @@ class $$SettingsTableTableManager
                 Value<String?> sellerAddress = const Value.absent(),
                 Value<String?> sellerPhone = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
+                Value<MoneyDisplayUnit> displayUnit = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
@@ -9825,6 +9916,7 @@ class $$SettingsTableTableManager
                 sellerAddress: sellerAddress,
                 sellerPhone: sellerPhone,
                 themeMode: themeMode,
+                displayUnit: displayUnit,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0

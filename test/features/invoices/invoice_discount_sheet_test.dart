@@ -310,7 +310,12 @@ void main() {
     // difference is readable rather than derivable.
     expect(
       find.text(
-        strings.invoiceWarningLineDiscountClamped('۱', '۱۵۰٬۰۰۰', '۱۰۰٬۰۰۰'),
+        strings.invoiceWarningLineDiscountClamped(
+          '۱',
+          '۱۵۰٬۰۰۰',
+          '۱۰۰٬۰۰۰',
+          strings.unitToman,
+        ),
       ),
       findsOneWidget,
     );

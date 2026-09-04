@@ -122,7 +122,10 @@ void main() {
       expect(find.text(strings.paymentAmountFillRemaining), findsNothing);
       expect(
         find.text(
-          strings.paymentAmountRemainingHelper(formatGroupedPersian(0)),
+          strings.paymentAmountRemainingHelper(
+            formatGroupedPersian(0),
+            strings.unitToman,
+          ),
         ),
         findsOneWidget,
         reason: 'the balance is still stated; only the action goes',

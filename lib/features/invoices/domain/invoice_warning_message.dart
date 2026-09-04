@@ -2,6 +2,8 @@ import '../../../core/formatting/number_display.dart';
 import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/money/invoice_calculator.dart';
 import '../../../core/money/money.dart';
+import '../../../core/widgets/money_display_scope.dart';
+import '../../../data/models/money_display_unit.dart';
 
 /// The one place an [InvoiceWarning] becomes something a user reads.
 ///
@@ -17,9 +19,11 @@ import '../../../core/money/money.dart';
 /// arithmetic is what they were trying to avoid. Requested and applied are
 /// named separately, so the difference is readable rather than derivable.
 ///
-/// Amounts are rendered in **Toman** with Persian digits and grouping, matching
-/// every other figure on the screen: a warning quoting Rial beside a summary
-/// quoting Toman would look like a tenfold error in the app's favour.
+/// Amounts are rendered in **the unit the user chose** (D-117) with Persian
+/// digits and grouping, matching every other figure on the screen: a warning
+/// quoting Rial beside a summary quoting Toman would look like a tenfold error
+/// in the app's favour. The unit is named in the sentence rather than assumed,
+/// which is why it is a placeholder in the ARB and an argument here.
 String invoiceWarningMessage(
   InvoiceWarning warning,
   AppStrings strings, {
@@ -27,9 +31,14 @@ String invoiceWarningMessage(
   /// The line's position as the user sees it — 1-based, because
   /// `warning.lineIndex` counts from zero and no invoice has a line zero.
   required int Function(int index) lineNumberOf,
+
+  /// The unit the figures are stated in. Defaults to Toman, which is what the
+  /// application shows until the user says otherwise.
+  MoneyDisplayUnit unit = MoneyDisplayUnit.toman,
 }) {
-  final String requested = _toman(warning.requested);
-  final String applied = _toman(warning.applied);
+  final String requested = _amount(warning.requested, unit);
+  final String applied = _amount(warning.applied, unit);
+  final String unitLabel = moneyUnitLabel(unit, strings);
 
   return switch (warning.kind) {
     InvoiceWarningKind.lineDiscountClamped =>
@@ -37,9 +46,14 @@ String invoiceWarningMessage(
         formatGroupedPersian(lineNumberOf(warning.lineIndex!)),
         requested,
         applied,
+        unitLabel,
       ),
     InvoiceWarningKind.invoiceDiscountClamped =>
-      strings.invoiceWarningInvoiceDiscountClamped(requested, applied),
+      strings.invoiceWarningInvoiceDiscountClamped(
+        requested,
+        applied,
+        unitLabel,
+      ),
   };
 }
 
@@ -49,6 +63,7 @@ List<String> invoiceWarningMessages(
   List<InvoiceWarning> warnings,
   AppStrings strings, {
   int Function(int index)? lineNumberOf,
+  MoneyDisplayUnit unit = MoneyDisplayUnit.toman,
 }) {
   return <String>[
     for (final InvoiceWarning warning in warnings)
@@ -56,10 +71,12 @@ List<String> invoiceWarningMessages(
         warning,
         strings,
         lineNumberOf: lineNumberOf ?? (int index) => index + 1,
+        unit: unit,
       ),
   ];
 }
 
-/// Toman, grouped, in Persian digits — the display unit everything else on the
-/// screen uses (§9). The conversion is [Money]'s, not this file's.
-String _toman(Money amount) => formatGroupedPersian(amount.toman);
+/// Grouped, in Persian digits, in the unit everything else on the screen uses
+/// (§9, D-117). The conversion is [Money]'s, not this file's.
+String _amount(Money amount, MoneyDisplayUnit unit) =>
+    formatGroupedPersian(unit.amountOf(amount));
