@@ -7722,3 +7722,38 @@ a different instant than the tiles beside it.
 **The issued-count tile stays monthly**, and says so in its caption. It counts what the month's sales
 sum, which is the pair D-039 asks to reconcile; making it follow the selector would have meant two
 more aggregates for a tile that already names its period.
+
+## D-120
+
+**2026-09-05 — The repository is public on GitHub, and the builds ship as Release assets, not as
+tracked files.**
+
+**Decision.** The project is published at `https://github.com/DadeEdran/Factorino` as a **public**
+repository. The Android APK and the Windows bundle are attached to a tagged **GitHub Release**
+(`v1.0.0`), never committed to the tree. The README is the landing page: Persian for the people who
+install the app, an English section for anyone reading the code.
+
+**Reason.** The tester artifacts are ~50 MB a pair and are *replaced* on every rebuild (see the
+tester-drop convention). Committing them would add ~50 MB of permanently unreachable blobs to history
+per rebuild, and only a history rewrite could ever remove it — a cost paid forever for a file that is
+current for a week. A Release attaches the same bytes outside the object graph, where replacing them
+costs nothing, and gives testers a stable download URL
+(`/releases/latest/download/factorino-arm64.apk`) that survives every future build.
+
+**On the screenshots.** `docs/screenshots/` holds nine captures of the running Windows build, taken
+from the seeded development database after the owner confirmed the records in it are invented. This
+mattered enough to ask before capturing: the repository is public, the database holds names, mobile
+numbers and amounts, and §7 forbids leaking exactly those fields. A screenshot is a publication of
+whatever the screen held. **If that database is ever reseeded with real records, screenshots must not
+be retaken from it.**
+
+**Alternatives considered.** *Committing the binaries* — simplest, and rejected on the history cost
+above. *Git LFS* — keeps blobs out of history, but adds a tool dependency and bills bandwidth per
+clone, which a public repository cannot bound. *Keeping the repository private* — rejected by the
+owner; the audit that preceded the push found no secret in the tree or in any of the 99 commits, and
+`.gitignore` already covered keystores, `key.properties`, `.env*`, backups and `*.db`.
+
+**Known consequence, accepted.** The owner's commit email is in all 99 commit objects and is now
+public. Scrubbing it would mean rewriting every commit and force-pushing; the owner was told twice
+before the push and did not ask for it. There is no LICENSE file, so the code is "all rights
+reserved" — readable, but not licensed for reuse.

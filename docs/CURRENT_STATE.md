@@ -3133,7 +3133,57 @@ rial recorded (status `paid`), then deleted (status `unpaid`), 0 layout errors.
 the phase over it. There is no work in progress, nothing uncommitted and no open question: the next
 session starts cold at the Next Action below.
 
+## Tenth pass — 2026-09-05 — the project is public on GitHub
+
+The repository was published at **https://github.com/DadeEdran/Factorino** (public), all 99 commits
+on `main`, plus tag **`v1.0.0`** at `66f5f70`. No code changed this pass; what changed is that the
+project now has an audience.
+
+**Before the push**, the tree and all 99 commits were scanned for secrets — nothing found beyond
+`android/key.properties.example`, which is placeholders. `.gitignore` already covered keystores,
+`key.properties`, `.env*`, `config/*.json`, backups and `*.db`.
+
+**The README was the Flutter template** — the literal "A new Flutter project." stub — which is why
+the GitHub page read as blank. It is now a real landing page: Persian for people installing the app
+(what it is, download table, Android and Windows install steps including the SmartScreen and
+unknown-sources prompts they will actually hit, features, privacy), then an English section for
+anyone reading the code (stack, the money/date/sync constraints, build, tests, a `docs/` index).
+
+**`docs/screenshots/` is new** — nine captures of the running Windows release at 1384×880 and
+414×980: dashboard, invoices, invoice detail, customers, products, settings, dark mode, and two
+mobile-tier shots. 456 KB total. **The owner confirmed the seeded database is invented data before
+any capture was taken** — see D-120, which also records that this must be re-asked if that database
+is ever reseeded.
+
+**The builds are not in the repository** and must not be. They go to a GitHub Release as attached
+assets (D-120). The README's download badges point at
+`/releases/latest/download/factorino-arm64.apk` and `…/factorino-windows-x64.zip`, which resolve
+**only once a release carrying those exact asset names is published** — so those two links are
+currently dead, and the next action fixes that.
+
+Two things the owner was told and did not act on, recorded so they are not rediscovered: the commit
+address is public in all 99 commit objects, and there is no LICENSE file, so the
+code is "all rights reserved".
+
 ## Next action
+
+**The single specific next action: publish the `v1.0.0` release with its three assets, which is the
+one step that makes the README's download buttons work.** Open
+`https://github.com/DadeEdran/Factorino/releases/new`, select the **existing** `v1.0.0` tag (do not
+create a new one), and attach all three files from `%USERPROFILE%\Desktop\Factorino-test\` under
+their exact names — `factorino-arm64.apk`, `factorino-windows-x64.zip`, `README-fa.txt`. The names
+are what the README links to; renaming an asset breaks the badge. Draft notes with SHA-256 checksums
+are in D-120's commit and were placed on the clipboard during the tenth pass.
+
+There is no `gh` CLI and no `winget` on this machine, so a release cannot be created from the shell
+as things stand. Installing the GitHub CLI portable build would let a future session publish releases
+directly, but `gh auth login` needs an interactive browser step the owner must perform once.
+
+> **The ninth pass's device check is still outstanding and still matters** — it is now the *second*
+> action, not the first, only because the release takes a minute and unblocks other people.
+
+<details>
+<summary>The outstanding ninth-pass device verification, unchanged</summary>
 
 > **Nothing is half-finished and no question is waiting on an answer.** Nine passes of owner feedback
 > are delivered in full; the gate is clean at **1,382** tests, **15 on-device files pass on Windows**,
@@ -3183,3 +3233,5 @@ The APK is `build/app/outputs/flutter-apk/app-profile.apk`, copied to
 gate distribution rather than phase-sized work — the Android manifest's `allowBackup="false"` (known
 issue 15) and release signing from a gitignored properties file (known issue 13) — and Phase 8, where
 D-116 filed the cash-received report and D-115 left arbitrary-period summaries.
+
+</details>
