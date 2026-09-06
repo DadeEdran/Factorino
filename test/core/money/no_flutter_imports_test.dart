@@ -77,10 +77,10 @@ void main() {
   test('the engine is actually there to be checked', () {
     // Guards against the scan passing because the directory moved or emptied.
     final files = Directory(root)
-.listSync(recursive: true)
-.whereType<File>()
-.where((f) => f.path.endsWith('.dart'))
-.toList();
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((f) => f.path.endsWith('.dart'))
+        .toList();
 
     expect(files, isNotEmpty, reason: '$root has no Dart files');
     expect(

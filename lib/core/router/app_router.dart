@@ -12,6 +12,7 @@ import '../../features/invoices/presentation/invoices_screen.dart';
 import '../../features/products/presentation/product_form_screen.dart';
 import '../../features/products/presentation/products_screen.dart';
 import '../../features/settings/presentation/settings_screen.dart';
+import '../../features/tutorial/presentation/tutorial_layer.dart';
 import '../responsive/adaptive_scaffold.dart';
 import 'destinations.dart';
 
@@ -74,6 +75,13 @@ GoRouter createRouter() {
                         AppDestination.values.indexOf(destination),
                   );
                 },
+                // **Over the shell, not inside a destination** (D-122). The
+                // first-run tutorial is about the application rather than about
+                // any one screen, so it covers the navigation chrome too — and
+                // it has to be reachable from the settings screen as well as on
+                // a first launch, which a route under one branch would not be.
+                // It draws nothing at all unless it is running.
+                overlay: const TutorialLayer(),
                 child: shell,
               );
             },

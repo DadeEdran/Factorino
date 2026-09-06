@@ -65,8 +65,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
               row.issueDate.isBiggerOrEqualValue(period.startMillis) &
               row.issueDate.isSmallerThanValue(period.endMillis),
         ))
-.watch()
-.map(_mapRows);
+        .watch()
+        .map(_mapRows);
   }
 
   @override
@@ -120,7 +120,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
 
     return query.watch().map(
       (List<TypedResult> rows) => rows
-.map(
+          .map(
             (TypedResult row) => InvoiceListItem(
               invoice: invoiceFromRow(row.readTable(_db.invoices)),
               // The **live** name. The document's name, when it differs, is
@@ -129,7 +129,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
               liveCustomerName: row.readTable(_db.customers).fullName,
             ),
           )
-.toList(),
+          .toList(),
     );
   }
 
@@ -150,8 +150,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
     final Expression<int> counter = _db.invoices.id.count();
     final JoinedSelectStatement<HasResultSet, dynamic> query =
         _db.selectOnlyAlive(_db.invoices)
-..addColumns(<Expression<Object>>[counter])
-..where(_issuedInPeriod(period));
+          ..addColumns(<Expression<Object>>[counter])
+          ..where(_issuedInPeriod(period));
 
     // Counted in SQL, over exactly the population `totalIssuedRial` sums, so
     // the two tiles that sit beside each other describe the same documents.
@@ -179,8 +179,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
     // belonging to neither state.
     final Expression<int> paidOnThisInvoice = subqueryExpression<int>(
       _db.selectOnlyAlive(_db.payments)
-..addColumns(<Expression<Object>>[_db.payments.amountRial.sum()])
-..where(_db.payments.invoiceId.equalsExp(_db.invoices.id)),
+        ..addColumns(<Expression<Object>>[_db.payments.amountRial.sum()])
+        ..where(_db.payments.invoiceId.equalsExp(_db.invoices.id)),
     );
     final Expression<int> owed =
         (_db.invoices.grandTotalRial -
@@ -188,12 +188,12 @@ class DriftInvoiceRepository implements InvoiceRepository {
                   paidOnThisInvoice,
                   const Constant<int>(0),
                 ]))
-.sum();
+            .sum();
 
     final JoinedSelectStatement<HasResultSet, dynamic> query =
         _db.selectOnlyAlive(_db.invoices)
-..addColumns(<Expression<Object>>[owed])
-..where(_db.invoices.status.isInValues(kOutstandingInvoiceStatuses));
+          ..addColumns(<Expression<Object>>[owed])
+          ..where(_db.invoices.status.isInValues(kOutstandingInvoiceStatuses));
 
     return query.watchSingle().map((TypedResult row) => row.read(owed) ?? 0);
   }
@@ -223,8 +223,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
     // invoice takes its second instalment and then overstates what is owed.
     final Expression<int> paidOnThisInvoice = subqueryExpression<int>(
       _db.selectOnlyAlive(_db.payments)
-..addColumns(<Expression<Object>>[_db.payments.amountRial.sum()])
-..where(_db.payments.invoiceId.equalsExp(_db.invoices.id)),
+        ..addColumns(<Expression<Object>>[_db.payments.amountRial.sum()])
+        ..where(_db.payments.invoiceId.equalsExp(_db.invoices.id)),
     );
 
     // Issued only (D-039). A draft is not yet a claim on anyone, so a
@@ -238,7 +238,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
                   paidOnThisInvoice,
                   const Constant<int>(0),
                 ]))
-.sum(
+            .sum(
               filter: _db.invoices.status.isInValues(
                 kOutstandingInvoiceStatuses,
               ),
@@ -246,8 +246,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
 
     final JoinedSelectStatement<HasResultSet, dynamic> query =
         _db.selectOnlyAlive(_db.invoices)
-..addColumns(<Expression<Object>>[billed, outstanding])
-..where(_db.invoices.customerId.equals(customerId));
+          ..addColumns(<Expression<Object>>[billed, outstanding])
+          ..where(_db.invoices.customerId.equals(customerId));
 
     return query.watchSingle().map(
       (TypedResult row) => CustomerTotals(
@@ -267,10 +267,10 @@ class DriftInvoiceRepository implements InvoiceRepository {
     // Rebuilt whenever any of the three tables changes, so a recorded payment
     // updates the detail view without the screen having to know why.
     return _db
-.selectAlive(_db.invoices)
-.watch()
-.asyncMap((_) => _detail(id))
-.distinct((a, b) => identical(a, b));
+        .selectAlive(_db.invoices)
+        .watch()
+        .asyncMap((_) => _detail(id))
+        .distinct((a, b) => identical(a, b));
   }
 
   @override
@@ -330,9 +330,9 @@ class DriftInvoiceRepository implements InvoiceRepository {
 
     final JoinedSelectStatement<HasResultSet, dynamic> query =
         _db.selectOnlyAlive(_db.invoices)
-..addColumns(<Expression<Object>>[dayIndex, total, counter])
-..where(_issuedInPeriod(range))
-..groupBy(<Expression<Object>>[dayIndex]);
+          ..addColumns(<Expression<Object>>[dayIndex, total, counter])
+          ..where(_issuedInPeriod(range))
+          ..groupBy(<Expression<Object>>[dayIndex]);
 
     return query.watch().map((List<TypedResult> rows) {
       final Map<int, DaySales> byDayIndex = <int, DaySales>{};
@@ -357,8 +357,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
     Expression<int> total,
   ) {
     return _db.selectOnlyAlive(_db.invoices)
-..addColumns(<Expression<Object>>[total])
-..where(_issuedInPeriod(period));
+      ..addColumns(<Expression<Object>>[total])
+      ..where(_issuedInPeriod(period));
   }
 
   /// Issued inside [period] -- drafts and cancellations excluded (D-039).
@@ -389,18 +389,18 @@ class DriftInvoiceRepository implements InvoiceRepository {
       // its number here, because it is a document from the moment it exists.
       final InvoiceNumber? number = status == InvoiceStatus.draft
           ? null
-: await _allocateNumber(draft.issueDate, settings);
+          : await _allocateNumber(draft.issueDate, settings);
 
       // An invoice created already issued is a document from the moment it
       // exists, so it takes its party snapshot here for the same reason it
       // takes its number here (D-052). A draft takes neither.
       final CustomerSnapshot? snapshot = status == InvoiceStatus.draft
           ? null
-: CustomerSnapshot.of(await _requireCustomer(draft.customerId));
+          : CustomerSnapshot.of(await _requireCustomer(draft.customerId));
 
       final row = await _db
-.into(_db.invoices)
-.insertReturning(
+          .into(_db.invoices)
+          .insertReturning(
             InvoicesCompanion.insert(
               number: Value(number?.formatted),
               numberYear: Value(number?.year),
@@ -517,7 +517,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
       // than the gap the old behaviour left behind.
       final InvoiceNumber? number = existing.number != null
           ? null
-: await _allocateNumber(
+          : await _allocateNumber(
               instantFromMillis(existing.issueDate),
               settings,
             );
@@ -526,13 +526,13 @@ class DriftInvoiceRepository implements InvoiceRepository {
         InvoicesCompanion(
           number: number == null
               ? const Value<String?>.absent()
-: Value<String?>(number.formatted),
+              : Value<String?>(number.formatted),
           numberYear: number == null
               ? const Value<int?>.absent()
-: Value<int?>(number.year),
+              : Value<int?>(number.year),
           numberSequence: number == null
               ? const Value<int?>.absent()
-: Value<int?>(number.sequence),
+              : Value<int?>(number.sequence),
           customerNameSnapshot: Value<String?>(snapshot.fullName),
           customerCompanySnapshot: Value<String?>(snapshot.companyName),
           customerNationalIdSnapshot: Value<String?>(snapshot.nationalId),
@@ -616,7 +616,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
     return calculateInvoice(
       InvoiceInput(
         lines: draft.items
-.map(
+            .map(
               (item) => InvoiceLineInput(
                 unitPrice: item.unitPrice,
                 quantityMilli: item.quantityMilli,
@@ -625,7 +625,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
                 taxRateBp: item.taxRateBp,
               ),
             )
-.toList(),
+            .toList(),
         defaultTaxRateBp: settings.defaultTaxRateBp,
         discount: draft.discount,
         discountPercentBp: draft.discountPercentBp,
@@ -650,8 +650,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
     // soft-delete-exempt: a spent number stays spent. Excluding deleted rows
     // here would reissue the number of a deleted invoice (D-013).
     final query = _db.selectOnly(_db.invoices)
-..addColumns(<Expression<Object>>[highest])
-..where(_db.invoices.numberYear.equals(year));
+      ..addColumns(<Expression<Object>>[highest])
+      ..where(_db.invoices.numberYear.equals(year));
 
     final row = await query.getSingle();
     final next = (row.read(highest) ?? 0) + 1;
@@ -673,8 +673,8 @@ class DriftInvoiceRepository implements InvoiceRepository {
       final line = calculated.lines[i];
 
       await _db
-.into(_db.invoiceItems)
-.insert(
+          .into(_db.invoiceItems)
+          .insert(
             InvoiceItemsCompanion.insert(
               invoiceId: invoiceId,
               titleSnapshot: item.title,
@@ -716,19 +716,19 @@ class DriftInvoiceRepository implements InvoiceRepository {
 
     final itemRows =
         await (_db.selectAlive(_db.invoiceItems)
-..where((r) => r.invoiceId.equals(id))
-..orderBy(<OrderClauseGenerator<$InvoiceItemsTable>>[
+              ..where((r) => r.invoiceId.equals(id))
+              ..orderBy(<OrderClauseGenerator<$InvoiceItemsTable>>[
                 (r) => OrderingTerm.asc(r.position),
               ]))
-.get();
+            .get();
 
     final paymentRows =
         await (_db.selectAlive(_db.payments)
-..where((r) => r.invoiceId.equals(id))
-..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
+              ..where((r) => r.invoiceId.equals(id))
+              ..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
                 (r) => OrderingTerm.desc(r.paidAt),
               ]))
-.get();
+            .get();
 
     return InvoiceDetail(
       invoice: invoiceFromRow(invoiceRow),
@@ -834,7 +834,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
     required int offset,
   }) {
     return _db.selectAlive(_db.invoices)
-..orderBy(<OrderClauseGenerator<$InvoicesTable>>[
+      ..orderBy(<OrderClauseGenerator<$InvoicesTable>>[
         (row) => OrderingTerm.desc(row.issueDate),
         // A draft has no sequence (D-048), so the null needs a defined
         // position rather than SQLite's default. `NULLS FIRST` under DESC puts
@@ -851,7 +851,7 @@ class DriftInvoiceRepository implements InvoiceRepository {
         // between two such drafts, but the same arbitrary answer every read.
         (row) => OrderingTerm.desc(row.id),
       ])
-..limit(limit, offset: offset);
+      ..limit(limit, offset: offset);
   }
 
   List<Invoice> _mapRows(List<InvoiceRow> rows) =>

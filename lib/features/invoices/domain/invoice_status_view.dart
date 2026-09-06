@@ -35,7 +35,7 @@ InvoiceStatusView invoiceStatusViewOf(
     InvoiceStatus.unpaid || InvoiceStatus.partiallyPaid =>
       isOverdue(invoice, now: now)
           ? InvoiceStatusView.overdue
-: invoiceStatusViewOfStored(invoice.status),
+          : invoiceStatusViewOfStored(invoice.status),
   };
 }
 

@@ -38,7 +38,7 @@ final class DashboardPeriodProvider
   /// does and what this provider is for. A Gregorian month applied here produces
   /// a figure that matches nothing the user recognises, without looking wrong.
   DashboardPeriodProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,
@@ -99,7 +99,7 @@ final class DashboardWeekProvider
   /// expects the figure to have grown by Wednesday's sales, not to have also
   /// dropped last Wednesday's off the back.
   DashboardWeekProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,
@@ -151,7 +151,7 @@ final class DashboardYearProvider
   /// tax year (D-006). A Gregorian year here would be wrong by roughly three
   /// months, and would look right for nine of them.
   DashboardYearProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,
@@ -229,7 +229,7 @@ final class DashboardSummaryProvider
   /// Every one of these is an SQL aggregate (§13). None of them loads rows into
   /// Dart to count or sum them.
   DashboardSummaryProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,
@@ -353,7 +353,7 @@ String _$_issuedSalesRialHash() => r'171885599da3565b9f9a913b1fb57d3d9ab725fa';
 final class _IssuedSalesRialFamily extends $Family
     with $FunctionalFamilyOverride<Stream<int>, InstantRange> {
   _IssuedSalesRialFamily._()
-: super(
+    : super(
         retry: null,
         name: r'_issuedSalesRialProvider',
         dependencies: null,
@@ -434,7 +434,7 @@ String _$_monthlyIssuedCountHash() =>
 final class _MonthlyIssuedCountFamily extends $Family
     with $FunctionalFamilyOverride<Stream<int>, InstantRange> {
   _MonthlyIssuedCountFamily._()
-: super(
+    : super(
         retry: null,
         name: r'_monthlyIssuedCountProvider',
         dependencies: null,
@@ -456,7 +456,7 @@ final class _OutstandingRialProvider
     extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
     with $FutureModifier<int>, $StreamProvider<int> {
   _OutstandingRialProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,
@@ -489,7 +489,7 @@ final class _CustomerCountProvider
     extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
     with $FutureModifier<int>, $StreamProvider<int> {
   _CustomerCountProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,
@@ -522,7 +522,7 @@ final class _InvoiceCountProvider
     extends $FunctionalProvider<AsyncValue<int>, int, Stream<int>>
     with $FutureModifier<int>, $StreamProvider<int> {
   _InvoiceCountProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,
@@ -582,7 +582,7 @@ final class RecentInvoicesProvider
   /// own shape and its own skeleton, and folding a list into a summary of scalars
   /// would make the summary a grab-bag.
   RecentInvoicesProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,

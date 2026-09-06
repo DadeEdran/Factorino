@@ -330,9 +330,9 @@ void main() {
         // soft-delete-exempt: connection pragmas, not a read of user rows.
         Future<Object?> fk() async =>
             (await db.customSelect('pragma foreign_keys').getSingle())
-.data
-.values
-.first;
+                .data
+                .values
+                .first;
 
         await db.customStatement('pragma foreign_keys = off');
         expect(await fk(), 0, reason: 'outside a transaction it takes effect');
@@ -457,8 +457,8 @@ void main() {
         file: File('${directory.path}${Platform.pathSeparator}test.db'),
       );
       await db
-.into(db.customers)
-.insert(
+          .into(db.customers)
+          .insert(
             CustomersCompanion.insert(
               id: const Value<String>('c1'),
               fullName: 'مشتری',
@@ -482,8 +482,8 @@ void main() {
       // distinct** in a unique index.
       for (var i = 0; i < 2; i++) {
         await db
-.into(db.invoices)
-.insert(
+            .into(db.invoices)
+            .insert(
               InvoicesCompanion.insert(
                 customerId: 'c1',
                 issueDate: _t,
@@ -497,8 +497,8 @@ void main() {
 
     test('a duplicate real number is still refused', () async {
       Future<void> insertNumbered() => db
-.into(db.invoices)
-.insert(
+          .into(db.invoices)
+          .insert(
             InvoicesCompanion.insert(
               number: const Value<String>('INV-1405-0001'),
               numberYear: const Value<int>(1405),
@@ -534,8 +534,8 @@ class _FixedKeyStore implements DatabaseKeyStore {
 // soft-deleted rows would be data loss, so the filter would hide the failure.
 Future<int> _count(GeneratedDatabase db, String table) async {
   final row = await db
-.customSelect('select count(*) as c from $table')
-.getSingle();
+      .customSelect('select count(*) as c from $table')
+      .getSingle();
   return row.read<int>('c');
 }
 

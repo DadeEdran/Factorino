@@ -139,4 +139,27 @@ class Settings extends Table with SyncColumns {
   /// argument from the **source expression**.
   IntColumn get displayUnit =>
       intEnum<MoneyDisplayUnit>().withDefault(const Constant(0))();
+
+  // ------------------------------------------------ orientation (v9, D-122)
+
+  /// When the first-run tutorial was last completed or skipped, in epoch
+  /// milliseconds — and **null means it has never been shown**.
+  ///
+  /// A timestamp rather than a boolean, for the reason every other "has this
+  /// happened" column here carries one: `lastBackupAt` answers *when* as well
+  /// as *whether*, and a `0`/`1` flag would have to be widened the first time
+  /// anybody asks which build a user was oriented on.
+  ///
+  /// **In this table rather than in a device-local store**, on exactly D-087's
+  /// reasoning for `theme_mode`: this application has no per-device store, and
+  /// adding one would mean a new dependency, a second place settings live, and
+  /// a second thing the backup does not carry. The consequence is deliberate
+  /// and worth stating — a restored backup carries the flag, so a user who
+  /// moves to a new phone is not re-taught an application they already know.
+  ///
+  /// Nullable, and the migration is where the two populations part: a database
+  /// that already exists belongs to someone who has already learnt the
+  /// application, so [migrateV8ToV9] backfills it; `onCreate` leaves it null,
+  /// so only a genuinely new database is greeted. See D-122.
+  IntColumn get tutorialSeenAt => integer().nullable()();
 }

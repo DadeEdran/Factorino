@@ -17,4 +17,13 @@ abstract interface class SettingsRepository {
 
   /// Records that a backup completed, for the reminder in settings (§8).
   Future<void> markBackedUp(DateTime at);
+
+  /// Records that the first-run tutorial has been seen (D-122).
+  ///
+  /// **Idempotent, and once means once**: an implementation must not move an
+  /// instant that is already set. The tutorial can be reopened from settings
+  /// any number of times, and each of those ends by calling this — if it
+  /// overwrote, the column would stop meaning "when this user was first
+  /// oriented" and start meaning "when they last browsed the help".
+  Future<void> markTutorialSeen(DateTime at);
 }

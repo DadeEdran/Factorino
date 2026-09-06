@@ -54,17 +54,17 @@ void main() {
 
   List<File> widgetSources() {
     return Directory('lib')
-.listSync(recursive: true)
-.whereType<File>()
-.where((File file) => file.path.endsWith('.dart'))
-.where((File file) {
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((File file) => file.path.endsWith('.dart'))
+        .where((File file) {
           final String relative = file.path.replaceAll(r'\', '/');
           if (relative.endsWith('.g.dart')) return false;
           // Generated localizations are not hand-written UI.
           if (relative.contains('core/localization/generated/')) return false;
           return !tokenSources.contains(relative);
         })
-.toList();
+        .toList();
   }
 
   List<String> scan(RegExp pattern) {

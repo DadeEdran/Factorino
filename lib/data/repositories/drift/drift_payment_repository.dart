@@ -24,8 +24,8 @@ class DriftPaymentRepository implements PaymentRepository {
   @override
   Stream<List<Payment>> watchForInvoice(String invoiceId) {
     return _aliveQuery(invoiceId)
-.watch()
-.map((rows) => rows.map(paymentFromRow).toList());
+        .watch()
+        .map((rows) => rows.map(paymentFromRow).toList());
   }
 
   @override
@@ -62,8 +62,8 @@ class DriftPaymentRepository implements PaymentRepository {
       }
 
       final row = await _db
-.into(_db.payments)
-.insertReturning(
+          .into(_db.payments)
+          .insertReturning(
             PaymentsCompanion.insert(
               invoiceId: invoiceId,
               amountRial: draft.amount.rial,
@@ -157,8 +157,8 @@ class DriftPaymentRepository implements PaymentRepository {
   Future<int> _totalPaidRial(String invoiceId) async {
     final total = _db.payments.amountRial.sum();
     final query = _db.selectOnlyAlive(_db.payments)
-..addColumns(<Expression<Object>>[total])
-..where(_db.payments.invoiceId.equals(invoiceId));
+      ..addColumns(<Expression<Object>>[total])
+      ..where(_db.payments.invoiceId.equals(invoiceId));
 
     final row = await query.getSingle();
     return row.read(total) ?? 0;
@@ -176,8 +176,8 @@ class DriftPaymentRepository implements PaymentRepository {
     String invoiceId,
   ) {
     return _db.selectAlive(_db.payments)
-..where((r) => r.invoiceId.equals(invoiceId))
-..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
+      ..where((r) => r.invoiceId.equals(invoiceId))
+      ..orderBy(<OrderClauseGenerator<$PaymentsTable>>[
         (r) => OrderingTerm.desc(r.paidAt),
       ]);
   }

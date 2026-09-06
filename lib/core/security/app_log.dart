@@ -203,9 +203,9 @@ class DeveloperLogSink implements LogSink {
 // produce a comparable key, not to redact one.
 String scrubForLogging(String input) {
   return input
-.replaceAll(_pragmaKeyArgument, "x'<redacted>'")
-.replaceAll(_hexRun, '<redacted:hex>')
-.replaceAll(_digitRun, '<redacted:digits>');
+      .replaceAll(_pragmaKeyArgument, "x'<redacted>'")
+      .replaceAll(_hexRun, '<redacted:hex>')
+      .replaceAll(_digitRun, '<redacted:digits>');
 }
 
 /// The exact wrapped form `openEncryptedDatabase` builds its key into (D-020).

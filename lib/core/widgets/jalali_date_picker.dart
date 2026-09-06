@@ -95,7 +95,7 @@ class _JalaliDatePickerDialogState extends State<_JalaliDatePickerDialog> {
     final DateTime? floor = widget.firstAllowed;
     if (floor == null) return true;
     return !startOfJalaliDayUtc(day)
-.isBefore(startOfJalaliDayUtc(jalaliAt(floor)));
+        .isBefore(startOfJalaliDayUtc(jalaliAt(floor)));
   }
 
   @override
@@ -149,7 +149,7 @@ class _JalaliDatePickerDialogState extends State<_JalaliDatePickerDialog> {
         FilledButton(
           onPressed: _isAllowed(_selected)
               ? () => Navigator.of(context).pop(startOfJalaliDayUtc(_selected))
-: null,
+              : null,
           child: Text(strings.actionSave),
         ),
       ],
@@ -202,12 +202,12 @@ class JalaliDateField extends StatelessWidget {
                   tooltip: strings.actionCancel,
                   onPressed: onClear,
                 )
-: const Icon(Icons.calendar_today_outlined),
+              : const Icon(Icons.calendar_today_outlined),
         ),
         child: Text(
           current == null
               ? (emptyLabel ?? '')
-: formatJalaliDateLong(
+              : formatJalaliDateLong(
                   current,
                   monthNames: jalaliMonthNames(strings),
                 ),

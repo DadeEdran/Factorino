@@ -40,15 +40,15 @@ void main() {
 
   List<File> librarySources() {
     return Directory('lib')
-.listSync(recursive: true)
-.whereType<File>()
-.where((File file) => file.path.endsWith('.dart'))
-.where((File file) {
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((File file) => file.path.endsWith('.dart'))
+        .where((File file) {
           final String relative = file.path.replaceAll(r'\', '/');
           if (relative.endsWith('.g.dart')) return false;
           return !relative.contains(localizationDirectory);
         })
-.toList();
+        .toList();
   }
 
   test('no Persian literal in code outside the localization layer', () {
@@ -103,7 +103,7 @@ void main() {
     // than trusted to survive in a decision log. If someone later "improves"
     // this string to say the ID is confirmed, this fails.
     final String arb = File('lib/core/localization/arb/app_fa.arb')
-.readAsStringSync();
+        .readAsStringSync();
 
     expect(arb, contains('"nationalIdFormatValid"'));
 

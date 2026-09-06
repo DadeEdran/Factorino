@@ -4174,6 +4174,14 @@ class Settings extends Table with TableInfo<Settings, SettingsData> {
     $customConstraints: 'NOT NULL DEFAULT 0',
     defaultValue: const CustomExpression('0'),
   );
+  late final GeneratedColumn<int> tutorialSeenAt = GeneratedColumn<int>(
+    'tutorial_seen_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    $customConstraints: 'NULL',
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -4194,6 +4202,7 @@ class Settings extends Table with TableInfo<Settings, SettingsData> {
     sellerPhone,
     themeMode,
     displayUnit,
+    tutorialSeenAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -4278,6 +4287,10 @@ class Settings extends Table with TableInfo<Settings, SettingsData> {
         DriftSqlType.int,
         data['${effectivePrefix}display_unit'],
       )!,
+      tutorialSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tutorial_seen_at'],
+      ),
     );
   }
 
@@ -4314,6 +4327,7 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
   final String? sellerPhone;
   final int themeMode;
   final int displayUnit;
+  final int? tutorialSeenAt;
   const SettingsData({
     required this.id,
     required this.createdAt,
@@ -4333,6 +4347,7 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
     this.sellerPhone,
     required this.themeMode,
     required this.displayUnit,
+    this.tutorialSeenAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -4369,6 +4384,9 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
     }
     map['theme_mode'] = Variable<int>(themeMode);
     map['display_unit'] = Variable<int>(displayUnit);
+    if (!nullToAbsent || tutorialSeenAt != null) {
+      map['tutorial_seen_at'] = Variable<int>(tutorialSeenAt);
+    }
     return map;
   }
 
@@ -4406,6 +4424,9 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
           : Value(sellerPhone),
       themeMode: Value(themeMode),
       displayUnit: Value(displayUnit),
+      tutorialSeenAt: tutorialSeenAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tutorialSeenAt),
     );
   }
 
@@ -4435,6 +4456,7 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
       sellerPhone: serializer.fromJson<String?>(json['sellerPhone']),
       themeMode: serializer.fromJson<int>(json['themeMode']),
       displayUnit: serializer.fromJson<int>(json['displayUnit']),
+      tutorialSeenAt: serializer.fromJson<int?>(json['tutorialSeenAt']),
     );
   }
   @override
@@ -4459,6 +4481,7 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
       'sellerPhone': serializer.toJson<String?>(sellerPhone),
       'themeMode': serializer.toJson<int>(themeMode),
       'displayUnit': serializer.toJson<int>(displayUnit),
+      'tutorialSeenAt': serializer.toJson<int?>(tutorialSeenAt),
     };
   }
 
@@ -4481,6 +4504,7 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
     Value<String?> sellerPhone = const Value.absent(),
     int? themeMode,
     int? displayUnit,
+    Value<int?> tutorialSeenAt = const Value.absent(),
   }) => SettingsData(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -4502,6 +4526,9 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
     sellerPhone: sellerPhone.present ? sellerPhone.value : this.sellerPhone,
     themeMode: themeMode ?? this.themeMode,
     displayUnit: displayUnit ?? this.displayUnit,
+    tutorialSeenAt: tutorialSeenAt.present
+        ? tutorialSeenAt.value
+        : this.tutorialSeenAt,
   );
   SettingsData copyWithCompanion(SettingsCompanion data) {
     return SettingsData(
@@ -4547,6 +4574,9 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
       displayUnit: data.displayUnit.present
           ? data.displayUnit.value
           : this.displayUnit,
+      tutorialSeenAt: data.tutorialSeenAt.present
+          ? data.tutorialSeenAt.value
+          : this.tutorialSeenAt,
     );
   }
 
@@ -4570,7 +4600,8 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
           ..write('sellerAddress: $sellerAddress, ')
           ..write('sellerPhone: $sellerPhone, ')
           ..write('themeMode: $themeMode, ')
-          ..write('displayUnit: $displayUnit')
+          ..write('displayUnit: $displayUnit, ')
+          ..write('tutorialSeenAt: $tutorialSeenAt')
           ..write(')'))
         .toString();
   }
@@ -4595,6 +4626,7 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
     sellerPhone,
     themeMode,
     displayUnit,
+    tutorialSeenAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -4617,7 +4649,8 @@ class SettingsData extends DataClass implements Insertable<SettingsData> {
           other.sellerAddress == this.sellerAddress &&
           other.sellerPhone == this.sellerPhone &&
           other.themeMode == this.themeMode &&
-          other.displayUnit == this.displayUnit);
+          other.displayUnit == this.displayUnit &&
+          other.tutorialSeenAt == this.tutorialSeenAt);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingsData> {
@@ -4639,6 +4672,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
   final Value<String?> sellerPhone;
   final Value<int> themeMode;
   final Value<int> displayUnit;
+  final Value<int?> tutorialSeenAt;
   final Value<int> rowid;
   const SettingsCompanion({
     this.id = const Value.absent(),
@@ -4659,6 +4693,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.displayUnit = const Value.absent(),
+    this.tutorialSeenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettingsCompanion.insert({
@@ -4680,6 +4715,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.displayUnit = const Value.absent(),
+    this.tutorialSeenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   }) : id = Value(id),
        createdAt = Value(createdAt),
@@ -4703,6 +4739,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
     Expression<String>? sellerPhone,
     Expression<int>? themeMode,
     Expression<int>? displayUnit,
+    Expression<int>? tutorialSeenAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -4725,6 +4762,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
       if (sellerPhone != null) 'seller_phone': sellerPhone,
       if (themeMode != null) 'theme_mode': themeMode,
       if (displayUnit != null) 'display_unit': displayUnit,
+      if (tutorialSeenAt != null) 'tutorial_seen_at': tutorialSeenAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -4748,6 +4786,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
     Value<String?>? sellerPhone,
     Value<int>? themeMode,
     Value<int>? displayUnit,
+    Value<int?>? tutorialSeenAt,
     Value<int>? rowid,
   }) {
     return SettingsCompanion(
@@ -4769,6 +4808,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
       sellerPhone: sellerPhone ?? this.sellerPhone,
       themeMode: themeMode ?? this.themeMode,
       displayUnit: displayUnit ?? this.displayUnit,
+      tutorialSeenAt: tutorialSeenAt ?? this.tutorialSeenAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -4832,6 +4872,9 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
     if (displayUnit.present) {
       map['display_unit'] = Variable<int>(displayUnit.value);
     }
+    if (tutorialSeenAt.present) {
+      map['tutorial_seen_at'] = Variable<int>(tutorialSeenAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -4859,14 +4902,15 @@ class SettingsCompanion extends UpdateCompanion<SettingsData> {
           ..write('sellerPhone: $sellerPhone, ')
           ..write('themeMode: $themeMode, ')
           ..write('displayUnit: $displayUnit, ')
+          ..write('tutorialSeenAt: $tutorialSeenAt, ')
           ..write('rowid: $rowid')
           ..write(')'))
         .toString();
   }
 }
 
-class DatabaseAtV8 extends GeneratedDatabase {
-  DatabaseAtV8(QueryExecutor e) : super(e);
+class DatabaseAtV9 extends GeneratedDatabase {
+  DatabaseAtV9(QueryExecutor e) : super(e);
   late final Customers customers = Customers(this);
   late final Products products = Products(this);
   late final Invoices invoices = Invoices(this);
@@ -4978,5 +5022,5 @@ class DatabaseAtV8 extends GeneratedDatabase {
     ),
   ]);
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 }

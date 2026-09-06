@@ -436,4 +436,7 @@ class _FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> markBackedUp(DateTime at) async {}
+
+  @override
+  Future<void> markTutorialSeen(DateTime at) async {}
 }

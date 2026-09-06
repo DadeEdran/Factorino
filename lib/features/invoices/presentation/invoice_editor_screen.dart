@@ -279,8 +279,8 @@ class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
     setState(() => _writing = true);
 
     final InvoiceCreationResult? result = await ref
-.read(invoiceEditorProvider(_openedAt).notifier)
-.save();
+        .read(invoiceEditorProvider(_openedAt).notifier)
+        .save();
 
     if (!mounted) return;
     setState(() => _writing = false);
@@ -306,8 +306,8 @@ class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
 
     setState(() => _writing = true);
     final Invoice? issued = await ref
-.read(invoiceEditorProvider(_openedAt).notifier)
-.issue();
+        .read(invoiceEditorProvider(_openedAt).notifier)
+        .issue();
 
     if (!mounted) return;
     setState(() => _writing = false);
@@ -360,7 +360,7 @@ class _InvoiceEditorScreenState extends ConsumerState<InvoiceEditorScreen> {
 
   void _tell(String message) {
     ScaffoldMessenger.of(context)
-.showSnackBar(SnackBar(content: Text(message)));
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 }
 
@@ -482,7 +482,7 @@ class _EditorActions extends StatelessWidget {
           style: theme.textTheme.bodySmall?.copyWith(
             color: blockedReason == null
                 ? theme.colorScheme.onSurfaceVariant
-: theme.colorScheme.error,
+                : theme.colorScheme.error,
           ),
           textAlign: TextAlign.center,
         ),

@@ -301,7 +301,7 @@ CalculatedInvoice calculateInvoice(InvoiceInput input) {
     // amount is at most the gross. Only an absolute entry can overshoot.
     final requested = line.discountPercentBp != null
         ? applyBasisPoints(lineGross, line.discountPercentBp!)
-: line.discount.rial;
+        : line.discount.rial;
 
     // §4 step 3's "clamped at >= 0", expressed as a cap on the discount rather
     // than on the net. The two produce the same net; capping the discount is
@@ -330,7 +330,7 @@ CalculatedInvoice calculateInvoice(InvoiceInput input) {
   // -- step 4: resolve and clamp the invoice discount ----------------------
   final requestedInvoiceDiscount = input.discountPercentBp != null
       ? applyBasisPoints(subtotal, input.discountPercentBp!)
-: input.discount.rial;
+      : input.discount.rial;
 
   // Clamped for a stronger reason than a line discount: this figure *is* part
   // of the invariant, so letting it exceed the subtotal would produce a
@@ -338,7 +338,7 @@ CalculatedInvoice calculateInvoice(InvoiceInput input) {
   // way, though — the caller still needs to know it happened (D-027).
   final invoiceDiscount = requestedInvoiceDiscount > subtotal
       ? subtotal
-: requestedInvoiceDiscount;
+      : requestedInvoiceDiscount;
 
   final allocations = allocateByLargestRemainder(
     amount: invoiceDiscount,

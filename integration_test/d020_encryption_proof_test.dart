@@ -124,8 +124,8 @@ void main() {
       <Object?>[_sentinel],
     );
     final foreignKeys = await database
-.customSelect('pragma foreign_keys')
-.getSingle();
+        .customSelect('pragma foreign_keys')
+        .getSingle();
     await database.close();
 
     expect(
@@ -259,13 +259,13 @@ void main() {
     final version = unencrypted.select('pragma cipher_version');
     final reported = version.isEmpty
         ? '(empty)'
-: version.first.values.first.toString();
+        : version.first.values.first.toString();
 
     unencrypted.execute("pragma cipher = 'sqlcipher'");
     final echoed = unencrypted.select('pragma cipher');
     final echoedValue = echoed.isEmpty
         ? '(empty)'
-: echoed.first.values.first.toString();
+        : echoed.first.values.first.toString();
     unencrypted.close();
 
     debugPrint('cipher_version: $reported   <- unusable as an assertion');

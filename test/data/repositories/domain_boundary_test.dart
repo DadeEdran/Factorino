@@ -33,15 +33,15 @@ void main() {
 
   List<File> dartFilesIn(String directory, {bool recursive = true}) {
     return Directory(directory)
-.listSync(recursive: recursive)
-.whereType<File>()
-.where((file) => file.path.endsWith('.dart'))
-.where(
+        .listSync(recursive: recursive)
+        .whereType<File>()
+        .where((file) => file.path.endsWith('.dart'))
+        .where(
           (file) => !file.path
-.replaceAll(r'\', '/')
-.contains('$implementationDirectory/'),
+              .replaceAll(r'\', '/')
+              .contains('$implementationDirectory/'),
         )
-.toList();
+        .toList();
   }
 
   List<String> offendersIn(String directory, {bool recursive = true}) {
@@ -120,12 +120,12 @@ void main() {
       recursive: false,
     ).map((f) => f.path.replaceAll(r'\', '/').split('/').last).toSet();
     final implementations = Directory(implementationDirectory)
-.listSync()
-.whereType<File>()
-.map((f) => f.path.replaceAll(r'\', '/').split('/').last)
-.where((name) => name.startsWith('drift_'))
-.map((name) => name.substring('drift_'.length))
-.toSet();
+        .listSync()
+        .whereType<File>()
+        .map((f) => f.path.replaceAll(r'\', '/').split('/').last)
+        .where((name) => name.startsWith('drift_'))
+        .map((name) => name.substring('drift_'.length))
+        .toSet();
 
     expect(
       interfaces.difference(implementations),

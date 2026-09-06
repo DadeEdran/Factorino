@@ -62,7 +62,7 @@ import 'app_strings_fa.dart';
 /// property.
 abstract class AppStrings {
   AppStrings(String locale)
-: localeName = intl.Intl.canonicalizedLocale(locale.toString());
+    : localeName = intl.Intl.canonicalizedLocale(locale.toString());
 
   final String localeName;
 
@@ -2752,6 +2752,150 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'تکمیل مشخصات'**
   String get sellerPromptAction;
+
+  /// Step counter at the top of the first-run tutorial. Both numbers arrive already formatted in Persian digits, which is why they are String placeholders rather than numbers -- an ICU number would render in Latin digits (section 9).
+  ///
+  /// In fa, this message translates to:
+  /// **'گام {current} از {total}'**
+  String tutorialProgress(String current, String total);
+
+  /// Leaves the tutorial. Present on EVERY step, not only the first: a user who understands the application three screens in must not have to page through the rest to get out.
+  ///
+  /// In fa, this message translates to:
+  /// **'رد کردن'**
+  String get tutorialSkip;
+
+  /// Previous step. Hidden on the first step, where there is nothing behind it.
+  ///
+  /// In fa, this message translates to:
+  /// **'قبلی'**
+  String get tutorialBack;
+
+  /// Next step.
+  ///
+  /// In fa, this message translates to:
+  /// **'بعدی'**
+  String get tutorialNext;
+
+  /// The last step's action. Deliberately not «پایان»: what follows is the application, not the end of something.
+  ///
+  /// In fa, this message translates to:
+  /// **'شروع کنیم'**
+  String get tutorialDone;
+
+  /// Step 1. First because it is what the printed invoice is missing until it is filled in (D-077), and because the dashboard prompt that outlives a skipped tutorial says the same thing.
+  ///
+  /// In fa, this message translates to:
+  /// **'نام کسب‌وکار'**
+  String get tutorialSellerTitle;
+
+  /// One sentence, and the section name is a PLACEHOLDER rather than a literal -- it is filled from navSettings, the same string the navigation bar draws, so the tutorial cannot name a tab that no longer says that (D-122).
+  ///
+  /// In fa, this message translates to:
+  /// **'ابتدا در بخش «{settings}» نام کسب‌وکارتان را وارد کنید تا روی فاکتورها چاپ شود.'**
+  String tutorialSellerBody(String settings);
+
+  /// No description provided for @tutorialCustomerTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'افزودن مشتری'**
+  String get tutorialCustomerTitle;
+
+  /// No description provided for @tutorialCustomerBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'در بخش «{customers}» کسانی را که به آن‌ها فاکتور می‌دهید ثبت کنید.'**
+  String tutorialCustomerBody(String customers);
+
+  /// No description provided for @tutorialProductTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'افزودن کالا یا خدمت'**
+  String get tutorialProductTitle;
+
+  /// No description provided for @tutorialProductBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'در بخش «{products}» کالاها و خدماتتان را همراه قیمت ثبت کنید.'**
+  String tutorialProductBody(String products);
+
+  /// No description provided for @tutorialInvoiceTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ساخت فاکتور'**
+  String get tutorialInvoiceTitle;
+
+  /// No description provided for @tutorialInvoiceBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'در بخش «{invoices}» فاکتور تازه‌ای بسازید، مشتری را انتخاب کنید و سطرهای آن را اضافه کنید.'**
+  String tutorialInvoiceBody(String invoices);
+
+  /// No description provided for @tutorialIssueTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'صدور فاکتور'**
+  String get tutorialIssueTitle;
+
+  /// The one step that teaches a rule rather than a place: issuing is what section 6 makes irreversible, so the sentence says what changes.
+  ///
+  /// In fa, this message translates to:
+  /// **'تا وقتی فاکتور پیش‌نویس است قابل ویرایش است؛ با صدور، شماره می‌گیرد و نهایی می‌شود.'**
+  String get tutorialIssueBody;
+
+  /// No description provided for @tutorialPaymentTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ثبت پرداخت'**
+  String get tutorialPaymentTitle;
+
+  /// No description provided for @tutorialPaymentBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'هر مبلغی را که مشتری می‌پردازد در صفحهٔ همان فاکتور ثبت کنید تا وضعیت آن خودبه‌خود به‌روز شود.'**
+  String get tutorialPaymentBody;
+
+  /// No description provided for @tutorialDocumentTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'ذخیرهٔ PDF'**
+  String get tutorialDocumentTitle;
+
+  /// No description provided for @tutorialDocumentBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'از صفحهٔ هر فاکتور می‌توانید نسخهٔ PDF آن را ذخیره کنید و برای مشتری بفرستید.'**
+  String get tutorialDocumentBody;
+
+  /// No description provided for @tutorialBackupTitle.
+  ///
+  /// In fa, this message translates to:
+  /// **'پشتیبان‌گیری'**
+  String get tutorialBackupTitle;
+
+  /// Last, and the consequence comes before the instruction on purpose: section 8 treats a user who has never taken a backup as one lost phone away from losing their records.
+  ///
+  /// In fa, this message translates to:
+  /// **'اطلاعات فقط روی همین دستگاه ذخیره می‌شود، پس هر از چندی در بخش «{settings}» یک فایل پشتیبان بگیرید.'**
+  String tutorialBackupBody(String settings);
+
+  /// The settings section that replays the first-run tutorial.
+  ///
+  /// In fa, this message translates to:
+  /// **'راهنما'**
+  String get settingsHelpSection;
+
+  /// No description provided for @settingsHelpBody.
+  ///
+  /// In fa, this message translates to:
+  /// **'راهنمای کوتاه آغاز کار را دوباره از ابتدا ببینید.'**
+  String get settingsHelpBody;
+
+  /// Reopens the tutorial from the first step. It replays in full every time: a user who comes looking for help wants the sequence, not wherever they abandoned it months ago.
+  ///
+  /// In fa, this message translates to:
+  /// **'نمایش راهنما'**
+  String get settingsHelpAction;
 }
 
 class _AppStringsDelegate extends LocalizationsDelegate<AppStrings> {

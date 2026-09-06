@@ -111,17 +111,17 @@ void main() {
       // 0.333 x 1001 = 333.333 Rial -> 333
       expect(
         calculate(<InvoiceLineInput>[line(priceRial: 1001, quantityMilli: 333)])
-.lines
-.single
-.gross,
+            .lines
+            .single
+            .gross,
         Money.rial(333),
       );
       // 5 x 0.5 = 2.5 Rial -> 3, not 2
       expect(
         calculate(<InvoiceLineInput>[line(priceRial: 5, quantityMilli: 500)])
-.lines
-.single
-.gross,
+            .lines
+            .single
+            .gross,
         Money.rial(3),
       );
     });

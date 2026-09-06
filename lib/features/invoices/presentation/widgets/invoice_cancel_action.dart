@@ -124,7 +124,7 @@ class InvoiceCancelAction extends ConsumerWidget {
             child: Text(
               isDraft
                   ? strings.invoiceDeleteDraftAction
-: strings.invoiceDeleteAction,
+                  : strings.invoiceDeleteAction,
             ),
           ),
       ],
@@ -136,8 +136,8 @@ class InvoiceCancelAction extends ConsumerWidget {
     if (!confirmed || !context.mounted) return;
 
     final bool cancelled = await ref
-.read(invoiceCancellationProvider(detail.invoice.id).notifier)
-.cancel();
+        .read(invoiceCancellationProvider(detail.invoice.id).notifier)
+        .cancel();
     if (!context.mounted) return;
 
     ScaffoldMessenger.maybeOf(context)?.showSnackBar(
@@ -145,7 +145,7 @@ class InvoiceCancelAction extends ConsumerWidget {
         content: Text(
           cancelled
               ? strings.invoiceCancelSuccess
-: strings.invoiceCancelFailed,
+              : strings.invoiceCancelFailed,
         ),
       ),
     );
@@ -164,8 +164,8 @@ class InvoiceCancelAction extends ConsumerWidget {
     if (!confirmed || !context.mounted) return;
 
     final bool deleted = await ref
-.read(invoiceCancellationProvider(detail.invoice.id).notifier)
-.delete();
+        .read(invoiceCancellationProvider(detail.invoice.id).notifier)
+        .delete();
     if (!context.mounted) return;
 
     // The message is shown either way, but only a success navigates: leaving a
@@ -211,7 +211,7 @@ class InvoiceCancelAction extends ConsumerWidget {
         title: Text(
           isDraft
               ? strings.invoiceDeleteDraftTitle
-: strings.invoiceDeleteTitle,
+              : strings.invoiceDeleteTitle,
         ),
         content: Column(
           mainAxisSize: MainAxisSize.min,
@@ -220,7 +220,7 @@ class InvoiceCancelAction extends ConsumerWidget {
             Text(
               isDraft
                   ? strings.invoiceDeleteDraftBody
-: strings.invoiceDeleteBody,
+                  : strings.invoiceDeleteBody,
             ),
             if (payments > 0) ...<Widget>[
               const SizedBox(height: AppSpacing.md),
@@ -242,7 +242,7 @@ class InvoiceCancelAction extends ConsumerWidget {
             child: Text(
               isDraft
                   ? strings.invoiceDeleteDraftAction
-: strings.invoiceDeleteAction,
+                  : strings.invoiceDeleteAction,
             ),
           ),
         ],

@@ -146,7 +146,7 @@ DatabaseFileState inspectDatabaseFile(File file) {
     }
     return String.fromCharCodes(header) == kSqliteFormat3Magic
         ? DatabaseFileState.plaintextSqlite
-: DatabaseFileState.encrypted;
+        : DatabaseFileState.encrypted;
   } finally {
     handle.closeSync();
   }

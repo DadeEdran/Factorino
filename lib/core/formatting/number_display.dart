@@ -95,9 +95,9 @@ String formatQuantityMilli(int quantityMilli) {
   if (fraction == 0) return toPersianDigits('$whole');
 
   final String trimmed = fraction
-.toString()
-.padLeft(3, '0')
-.replaceFirst(RegExp(r'0+$'), '');
+      .toString()
+      .padLeft(3, '0')
+      .replaceFirst(RegExp(r'0+$'), '');
 
   return toPersianDigits('$whole$kPersianDecimalSeparator$trimmed');
 }

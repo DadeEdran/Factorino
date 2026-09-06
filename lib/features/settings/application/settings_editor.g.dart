@@ -45,7 +45,7 @@ final class SettingsEditorProvider
   /// item snapshots the rate that applied to it (§4, D-026). That is the property
   /// which makes this screen safe to open at all.
   SettingsEditorProvider._()
-: super(
+    : super(
         from: null,
         argument: null,
         retry: null,

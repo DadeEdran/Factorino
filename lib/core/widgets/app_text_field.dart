@@ -197,8 +197,8 @@ class _AppTextFieldState extends State<AppTextField> {
   @override
   void dispose() {
     _focusNode
-..removeListener(_onFocusChange)
-..dispose();
+      ..removeListener(_onFocusChange)
+      ..dispose();
     super.dispose();
   }
 
@@ -246,7 +246,7 @@ class _AppTextFieldState extends State<AppTextField> {
         // earlier, and never a character later.
         final int measured = widget.groupDigits
             ? keepDigitsOnly(text).length
-: text.length;
+            : text.length;
         if (measured > widget.maxLength) {
           return strings.validationTooLong(
             toPersianDigits('${widget.maxLength}'),

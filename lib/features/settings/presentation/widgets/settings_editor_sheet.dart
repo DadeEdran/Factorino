@@ -107,7 +107,7 @@ class _SettingsEditorSheetState extends State<_SettingsEditorSheet> {
   /// the sign is the field's business and not the value's.
   static String _percentFieldText(int basisPoints) =>
       formatPercentFromBasisPoints(basisPoints)
-.replaceAll(kPersianPercentSign, '');
+          .replaceAll(kPersianPercentSign, '');
 
   @override
   Widget build(BuildContext context) {

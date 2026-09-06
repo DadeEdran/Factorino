@@ -446,27 +446,27 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(deletedAt),
+          : Value(deletedAt),
       syncStatus: Value(syncStatus),
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(lastSyncedAt),
+          : Value(lastSyncedAt),
       fullName: Value(fullName),
       mobile: mobile == null && nullToAbsent
           ? const Value.absent()
-: Value(mobile),
+          : Value(mobile),
       companyName: companyName == null && nullToAbsent
           ? const Value.absent()
-: Value(companyName),
+          : Value(companyName),
       address: address == null && nullToAbsent
           ? const Value.absent()
-: Value(address),
+          : Value(address),
       nationalId: nationalId == null && nullToAbsent
           ? const Value.absent()
-: Value(nationalId),
+          : Value(nationalId),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
-: Value(notes),
+          : Value(notes),
       searchName: Value(searchName),
     );
   }
@@ -553,44 +553,44 @@ class CustomerRow extends DataClass implements Insertable<CustomerRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-: this.syncStatus,
+          : this.syncStatus,
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
-: this.lastSyncedAt,
+          : this.lastSyncedAt,
       fullName: data.fullName.present ? data.fullName.value : this.fullName,
       mobile: data.mobile.present ? data.mobile.value : this.mobile,
       companyName: data.companyName.present
           ? data.companyName.value
-: this.companyName,
+          : this.companyName,
       address: data.address.present ? data.address.value : this.address,
       nationalId: data.nationalId.present
           ? data.nationalId.value
-: this.nationalId,
+          : this.nationalId,
       notes: data.notes.present ? data.notes.value : this.notes,
       searchName: data.searchName.present
           ? data.searchName.value
-: this.searchName,
+          : this.searchName,
     );
   }
 
   @override
   String toString() {
     return (StringBuffer('CustomerRow(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('fullName: $fullName, ')
-..write('mobile: $mobile, ')
-..write('companyName: $companyName, ')
-..write('address: $address, ')
-..write('nationalId: $nationalId, ')
-..write('notes: $notes, ')
-..write('searchName: $searchName')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('fullName: $fullName, ')
+          ..write('mobile: $mobile, ')
+          ..write('companyName: $companyName, ')
+          ..write('address: $address, ')
+          ..write('nationalId: $nationalId, ')
+          ..write('notes: $notes, ')
+          ..write('searchName: $searchName')
+          ..write(')'))
+        .toString();
   }
 
   @override
@@ -796,22 +796,22 @@ class CustomersCompanion extends UpdateCompanion<CustomerRow> {
   @override
   String toString() {
     return (StringBuffer('CustomersCompanion(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('fullName: $fullName, ')
-..write('mobile: $mobile, ')
-..write('companyName: $companyName, ')
-..write('address: $address, ')
-..write('nationalId: $nationalId, ')
-..write('notes: $notes, ')
-..write('searchName: $searchName, ')
-..write('rowid: $rowid')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('fullName: $fullName, ')
+          ..write('mobile: $mobile, ')
+          ..write('companyName: $companyName, ')
+          ..write('address: $address, ')
+          ..write('nationalId: $nationalId, ')
+          ..write('notes: $notes, ')
+          ..write('searchName: $searchName, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -1216,18 +1216,18 @@ class ProductRow extends DataClass implements Insertable<ProductRow> {
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(deletedAt),
+          : Value(deletedAt),
       syncStatus: Value(syncStatus),
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(lastSyncedAt),
+          : Value(lastSyncedAt),
       name: Value(name),
       type: Value(type),
       priceRial: Value(priceRial),
       unit: Value(unit),
       description: description == null && nullToAbsent
           ? const Value.absent()
-: Value(description),
+          : Value(description),
       searchName: Value(searchName),
     );
   }
@@ -1314,40 +1314,40 @@ class ProductRow extends DataClass implements Insertable<ProductRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-: this.syncStatus,
+          : this.syncStatus,
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
-: this.lastSyncedAt,
+          : this.lastSyncedAt,
       name: data.name.present ? data.name.value : this.name,
       type: data.type.present ? data.type.value : this.type,
       priceRial: data.priceRial.present ? data.priceRial.value : this.priceRial,
       unit: data.unit.present ? data.unit.value : this.unit,
       description: data.description.present
           ? data.description.value
-: this.description,
+          : this.description,
       searchName: data.searchName.present
           ? data.searchName.value
-: this.searchName,
+          : this.searchName,
     );
   }
 
   @override
   String toString() {
     return (StringBuffer('ProductRow(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('name: $name, ')
-..write('type: $type, ')
-..write('priceRial: $priceRial, ')
-..write('unit: $unit, ')
-..write('description: $description, ')
-..write('searchName: $searchName')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('priceRial: $priceRial, ')
+          ..write('unit: $unit, ')
+          ..write('description: $description, ')
+          ..write('searchName: $searchName')
+          ..write(')'))
+        .toString();
   }
 
   @override
@@ -1546,21 +1546,21 @@ class ProductsCompanion extends UpdateCompanion<ProductRow> {
   @override
   String toString() {
     return (StringBuffer('ProductsCompanion(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('name: $name, ')
-..write('type: $type, ')
-..write('priceRial: $priceRial, ')
-..write('unit: $unit, ')
-..write('description: $description, ')
-..write('searchName: $searchName, ')
-..write('rowid: $rowid')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('name: $name, ')
+          ..write('type: $type, ')
+          ..write('priceRial: $priceRial, ')
+          ..write('unit: $unit, ')
+          ..write('description: $description, ')
+          ..write('searchName: $searchName, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -2463,52 +2463,52 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(deletedAt),
+          : Value(deletedAt),
       syncStatus: Value(syncStatus),
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(lastSyncedAt),
+          : Value(lastSyncedAt),
       number: number == null && nullToAbsent
           ? const Value.absent()
-: Value(number),
+          : Value(number),
       numberYear: numberYear == null && nullToAbsent
           ? const Value.absent()
-: Value(numberYear),
+          : Value(numberYear),
       numberSequence: numberSequence == null && nullToAbsent
           ? const Value.absent()
-: Value(numberSequence),
+          : Value(numberSequence),
       customerId: Value(customerId),
       issueDate: Value(issueDate),
       dueDate: dueDate == null && nullToAbsent
           ? const Value.absent()
-: Value(dueDate),
+          : Value(dueDate),
       discountRial: Value(discountRial),
       discountPercentBp: discountPercentBp == null && nullToAbsent
           ? const Value.absent()
-: Value(discountPercentBp),
+          : Value(discountPercentBp),
       taxRateBp: taxRateBp == null && nullToAbsent
           ? const Value.absent()
-: Value(taxRateBp),
+          : Value(taxRateBp),
       notes: notes == null && nullToAbsent
           ? const Value.absent()
-: Value(notes),
+          : Value(notes),
       customerNameSnapshot: customerNameSnapshot == null && nullToAbsent
           ? const Value.absent()
-: Value(customerNameSnapshot),
+          : Value(customerNameSnapshot),
       customerCompanySnapshot: customerCompanySnapshot == null && nullToAbsent
           ? const Value.absent()
-: Value(customerCompanySnapshot),
+          : Value(customerCompanySnapshot),
       customerNationalIdSnapshot:
           customerNationalIdSnapshot == null && nullToAbsent
           ? const Value.absent()
-: Value(customerNationalIdSnapshot),
+          : Value(customerNationalIdSnapshot),
       customerAddressSnapshot: customerAddressSnapshot == null && nullToAbsent
           ? const Value.absent()
-: Value(customerAddressSnapshot),
+          : Value(customerAddressSnapshot),
       status: Value(status),
       grossTotalRial: grossTotalRial == null && nullToAbsent
           ? const Value.absent()
-: Value(grossTotalRial),
+          : Value(grossTotalRial),
       subtotalRial: Value(subtotalRial),
       totalDiscountRial: Value(totalDiscountRial),
       totalTaxRial: Value(totalTaxRial),
@@ -2649,32 +2649,32 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
     numberYear: numberYear.present ? numberYear.value : this.numberYear,
     numberSequence: numberSequence.present
         ? numberSequence.value
-: this.numberSequence,
+        : this.numberSequence,
     customerId: customerId ?? this.customerId,
     issueDate: issueDate ?? this.issueDate,
     dueDate: dueDate.present ? dueDate.value : this.dueDate,
     discountRial: discountRial ?? this.discountRial,
     discountPercentBp: discountPercentBp.present
         ? discountPercentBp.value
-: this.discountPercentBp,
+        : this.discountPercentBp,
     taxRateBp: taxRateBp.present ? taxRateBp.value : this.taxRateBp,
     notes: notes.present ? notes.value : this.notes,
     customerNameSnapshot: customerNameSnapshot.present
         ? customerNameSnapshot.value
-: this.customerNameSnapshot,
+        : this.customerNameSnapshot,
     customerCompanySnapshot: customerCompanySnapshot.present
         ? customerCompanySnapshot.value
-: this.customerCompanySnapshot,
+        : this.customerCompanySnapshot,
     customerNationalIdSnapshot: customerNationalIdSnapshot.present
         ? customerNationalIdSnapshot.value
-: this.customerNationalIdSnapshot,
+        : this.customerNationalIdSnapshot,
     customerAddressSnapshot: customerAddressSnapshot.present
         ? customerAddressSnapshot.value
-: this.customerAddressSnapshot,
+        : this.customerAddressSnapshot,
     status: status ?? this.status,
     grossTotalRial: grossTotalRial.present
         ? grossTotalRial.value
-: this.grossTotalRial,
+        : this.grossTotalRial,
     subtotalRial: subtotalRial ?? this.subtotalRial,
     totalDiscountRial: totalDiscountRial ?? this.totalDiscountRial,
     totalTaxRial: totalTaxRial ?? this.totalTaxRial,
@@ -2690,96 +2690,96 @@ class InvoiceRow extends DataClass implements Insertable<InvoiceRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-: this.syncStatus,
+          : this.syncStatus,
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
-: this.lastSyncedAt,
+          : this.lastSyncedAt,
       number: data.number.present ? data.number.value : this.number,
       numberYear: data.numberYear.present
           ? data.numberYear.value
-: this.numberYear,
+          : this.numberYear,
       numberSequence: data.numberSequence.present
           ? data.numberSequence.value
-: this.numberSequence,
+          : this.numberSequence,
       customerId: data.customerId.present
           ? data.customerId.value
-: this.customerId,
+          : this.customerId,
       issueDate: data.issueDate.present ? data.issueDate.value : this.issueDate,
       dueDate: data.dueDate.present ? data.dueDate.value : this.dueDate,
       discountRial: data.discountRial.present
           ? data.discountRial.value
-: this.discountRial,
+          : this.discountRial,
       discountPercentBp: data.discountPercentBp.present
           ? data.discountPercentBp.value
-: this.discountPercentBp,
+          : this.discountPercentBp,
       taxRateBp: data.taxRateBp.present ? data.taxRateBp.value : this.taxRateBp,
       notes: data.notes.present ? data.notes.value : this.notes,
       customerNameSnapshot: data.customerNameSnapshot.present
           ? data.customerNameSnapshot.value
-: this.customerNameSnapshot,
+          : this.customerNameSnapshot,
       customerCompanySnapshot: data.customerCompanySnapshot.present
           ? data.customerCompanySnapshot.value
-: this.customerCompanySnapshot,
+          : this.customerCompanySnapshot,
       customerNationalIdSnapshot: data.customerNationalIdSnapshot.present
           ? data.customerNationalIdSnapshot.value
-: this.customerNationalIdSnapshot,
+          : this.customerNationalIdSnapshot,
       customerAddressSnapshot: data.customerAddressSnapshot.present
           ? data.customerAddressSnapshot.value
-: this.customerAddressSnapshot,
+          : this.customerAddressSnapshot,
       status: data.status.present ? data.status.value : this.status,
       grossTotalRial: data.grossTotalRial.present
           ? data.grossTotalRial.value
-: this.grossTotalRial,
+          : this.grossTotalRial,
       subtotalRial: data.subtotalRial.present
           ? data.subtotalRial.value
-: this.subtotalRial,
+          : this.subtotalRial,
       totalDiscountRial: data.totalDiscountRial.present
           ? data.totalDiscountRial.value
-: this.totalDiscountRial,
+          : this.totalDiscountRial,
       totalTaxRial: data.totalTaxRial.present
           ? data.totalTaxRial.value
-: this.totalTaxRial,
+          : this.totalTaxRial,
       roundingAdjustmentRial: data.roundingAdjustmentRial.present
           ? data.roundingAdjustmentRial.value
-: this.roundingAdjustmentRial,
+          : this.roundingAdjustmentRial,
       grandTotalRial: data.grandTotalRial.present
           ? data.grandTotalRial.value
-: this.grandTotalRial,
+          : this.grandTotalRial,
     );
   }
 
   @override
   String toString() {
     return (StringBuffer('InvoiceRow(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('number: $number, ')
-..write('numberYear: $numberYear, ')
-..write('numberSequence: $numberSequence, ')
-..write('customerId: $customerId, ')
-..write('issueDate: $issueDate, ')
-..write('dueDate: $dueDate, ')
-..write('discountRial: $discountRial, ')
-..write('discountPercentBp: $discountPercentBp, ')
-..write('taxRateBp: $taxRateBp, ')
-..write('notes: $notes, ')
-..write('customerNameSnapshot: $customerNameSnapshot, ')
-..write('customerCompanySnapshot: $customerCompanySnapshot, ')
-..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
-..write('customerAddressSnapshot: $customerAddressSnapshot, ')
-..write('status: $status, ')
-..write('grossTotalRial: $grossTotalRial, ')
-..write('subtotalRial: $subtotalRial, ')
-..write('totalDiscountRial: $totalDiscountRial, ')
-..write('totalTaxRial: $totalTaxRial, ')
-..write('roundingAdjustmentRial: $roundingAdjustmentRial, ')
-..write('grandTotalRial: $grandTotalRial')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('number: $number, ')
+          ..write('numberYear: $numberYear, ')
+          ..write('numberSequence: $numberSequence, ')
+          ..write('customerId: $customerId, ')
+          ..write('issueDate: $issueDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('discountRial: $discountRial, ')
+          ..write('discountPercentBp: $discountPercentBp, ')
+          ..write('taxRateBp: $taxRateBp, ')
+          ..write('notes: $notes, ')
+          ..write('customerNameSnapshot: $customerNameSnapshot, ')
+          ..write('customerCompanySnapshot: $customerCompanySnapshot, ')
+          ..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
+          ..write('customerAddressSnapshot: $customerAddressSnapshot, ')
+          ..write('status: $status, ')
+          ..write('grossTotalRial: $grossTotalRial, ')
+          ..write('subtotalRial: $subtotalRial, ')
+          ..write('totalDiscountRial: $totalDiscountRial, ')
+          ..write('totalTaxRial: $totalTaxRial, ')
+          ..write('roundingAdjustmentRial: $roundingAdjustmentRial, ')
+          ..write('grandTotalRial: $grandTotalRial')
+          ..write(')'))
+        .toString();
   }
 
   @override
@@ -3176,36 +3176,36 @@ class InvoicesCompanion extends UpdateCompanion<InvoiceRow> {
   @override
   String toString() {
     return (StringBuffer('InvoicesCompanion(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('number: $number, ')
-..write('numberYear: $numberYear, ')
-..write('numberSequence: $numberSequence, ')
-..write('customerId: $customerId, ')
-..write('issueDate: $issueDate, ')
-..write('dueDate: $dueDate, ')
-..write('discountRial: $discountRial, ')
-..write('discountPercentBp: $discountPercentBp, ')
-..write('taxRateBp: $taxRateBp, ')
-..write('notes: $notes, ')
-..write('customerNameSnapshot: $customerNameSnapshot, ')
-..write('customerCompanySnapshot: $customerCompanySnapshot, ')
-..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
-..write('customerAddressSnapshot: $customerAddressSnapshot, ')
-..write('status: $status, ')
-..write('grossTotalRial: $grossTotalRial, ')
-..write('subtotalRial: $subtotalRial, ')
-..write('totalDiscountRial: $totalDiscountRial, ')
-..write('totalTaxRial: $totalTaxRial, ')
-..write('roundingAdjustmentRial: $roundingAdjustmentRial, ')
-..write('grandTotalRial: $grandTotalRial, ')
-..write('rowid: $rowid')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('number: $number, ')
+          ..write('numberYear: $numberYear, ')
+          ..write('numberSequence: $numberSequence, ')
+          ..write('customerId: $customerId, ')
+          ..write('issueDate: $issueDate, ')
+          ..write('dueDate: $dueDate, ')
+          ..write('discountRial: $discountRial, ')
+          ..write('discountPercentBp: $discountPercentBp, ')
+          ..write('taxRateBp: $taxRateBp, ')
+          ..write('notes: $notes, ')
+          ..write('customerNameSnapshot: $customerNameSnapshot, ')
+          ..write('customerCompanySnapshot: $customerCompanySnapshot, ')
+          ..write('customerNationalIdSnapshot: $customerNationalIdSnapshot, ')
+          ..write('customerAddressSnapshot: $customerAddressSnapshot, ')
+          ..write('status: $status, ')
+          ..write('grossTotalRial: $grossTotalRial, ')
+          ..write('subtotalRial: $subtotalRial, ')
+          ..write('totalDiscountRial: $totalDiscountRial, ')
+          ..write('totalTaxRial: $totalTaxRial, ')
+          ..write('roundingAdjustmentRial: $roundingAdjustmentRial, ')
+          ..write('grandTotalRial: $grandTotalRial, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -3920,15 +3920,15 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(deletedAt),
+          : Value(deletedAt),
       syncStatus: Value(syncStatus),
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(lastSyncedAt),
+          : Value(lastSyncedAt),
       invoiceId: Value(invoiceId),
       productId: productId == null && nullToAbsent
           ? const Value.absent()
-: Value(productId),
+          : Value(productId),
       position: Value(position),
       titleSnapshot: Value(titleSnapshot),
       unitSnapshot: Value(unitSnapshot),
@@ -3937,15 +3937,15 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
       discountRial: Value(discountRial),
       discountPercentBp: discountPercentBp == null && nullToAbsent
           ? const Value.absent()
-: Value(discountPercentBp),
+          : Value(discountPercentBp),
       resolvedTaxRateBp: Value(resolvedTaxRateBp),
       lineGrossRial: lineGrossRial == null && nullToAbsent
           ? const Value.absent()
-: Value(lineGrossRial),
+          : Value(lineGrossRial),
       allocatedInvoiceDiscountRial:
           allocatedInvoiceDiscountRial == null && nullToAbsent
           ? const Value.absent()
-: Value(allocatedInvoiceDiscountRial),
+          : Value(allocatedInvoiceDiscountRial),
       lineNetRial: Value(lineNetRial),
       lineTaxRial: Value(lineTaxRial),
       lineTotalRial: Value(lineTotalRial),
@@ -4056,14 +4056,14 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
     discountRial: discountRial ?? this.discountRial,
     discountPercentBp: discountPercentBp.present
         ? discountPercentBp.value
-: this.discountPercentBp,
+        : this.discountPercentBp,
     resolvedTaxRateBp: resolvedTaxRateBp ?? this.resolvedTaxRateBp,
     lineGrossRial: lineGrossRial.present
         ? lineGrossRial.value
-: this.lineGrossRial,
+        : this.lineGrossRial,
     allocatedInvoiceDiscountRial: allocatedInvoiceDiscountRial.present
         ? allocatedInvoiceDiscountRial.value
-: this.allocatedInvoiceDiscountRial,
+        : this.allocatedInvoiceDiscountRial,
     lineNetRial: lineNetRial ?? this.lineNetRial,
     lineTaxRial: lineTaxRial ?? this.lineTaxRial,
     lineTotalRial: lineTotalRial ?? this.lineTotalRial,
@@ -4076,80 +4076,80 @@ class InvoiceItemRow extends DataClass implements Insertable<InvoiceItemRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-: this.syncStatus,
+          : this.syncStatus,
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
-: this.lastSyncedAt,
+          : this.lastSyncedAt,
       invoiceId: data.invoiceId.present ? data.invoiceId.value : this.invoiceId,
       productId: data.productId.present ? data.productId.value : this.productId,
       position: data.position.present ? data.position.value : this.position,
       titleSnapshot: data.titleSnapshot.present
           ? data.titleSnapshot.value
-: this.titleSnapshot,
+          : this.titleSnapshot,
       unitSnapshot: data.unitSnapshot.present
           ? data.unitSnapshot.value
-: this.unitSnapshot,
+          : this.unitSnapshot,
       unitPriceRial: data.unitPriceRial.present
           ? data.unitPriceRial.value
-: this.unitPriceRial,
+          : this.unitPriceRial,
       quantityMilli: data.quantityMilli.present
           ? data.quantityMilli.value
-: this.quantityMilli,
+          : this.quantityMilli,
       discountRial: data.discountRial.present
           ? data.discountRial.value
-: this.discountRial,
+          : this.discountRial,
       discountPercentBp: data.discountPercentBp.present
           ? data.discountPercentBp.value
-: this.discountPercentBp,
+          : this.discountPercentBp,
       resolvedTaxRateBp: data.resolvedTaxRateBp.present
           ? data.resolvedTaxRateBp.value
-: this.resolvedTaxRateBp,
+          : this.resolvedTaxRateBp,
       lineGrossRial: data.lineGrossRial.present
           ? data.lineGrossRial.value
-: this.lineGrossRial,
+          : this.lineGrossRial,
       allocatedInvoiceDiscountRial: data.allocatedInvoiceDiscountRial.present
           ? data.allocatedInvoiceDiscountRial.value
-: this.allocatedInvoiceDiscountRial,
+          : this.allocatedInvoiceDiscountRial,
       lineNetRial: data.lineNetRial.present
           ? data.lineNetRial.value
-: this.lineNetRial,
+          : this.lineNetRial,
       lineTaxRial: data.lineTaxRial.present
           ? data.lineTaxRial.value
-: this.lineTaxRial,
+          : this.lineTaxRial,
       lineTotalRial: data.lineTotalRial.present
           ? data.lineTotalRial.value
-: this.lineTotalRial,
+          : this.lineTotalRial,
     );
   }
 
   @override
   String toString() {
     return (StringBuffer('InvoiceItemRow(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('invoiceId: $invoiceId, ')
-..write('productId: $productId, ')
-..write('position: $position, ')
-..write('titleSnapshot: $titleSnapshot, ')
-..write('unitSnapshot: $unitSnapshot, ')
-..write('unitPriceRial: $unitPriceRial, ')
-..write('quantityMilli: $quantityMilli, ')
-..write('discountRial: $discountRial, ')
-..write('discountPercentBp: $discountPercentBp, ')
-..write('resolvedTaxRateBp: $resolvedTaxRateBp, ')
-..write('lineGrossRial: $lineGrossRial, ')
-..write(
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('invoiceId: $invoiceId, ')
+          ..write('productId: $productId, ')
+          ..write('position: $position, ')
+          ..write('titleSnapshot: $titleSnapshot, ')
+          ..write('unitSnapshot: $unitSnapshot, ')
+          ..write('unitPriceRial: $unitPriceRial, ')
+          ..write('quantityMilli: $quantityMilli, ')
+          ..write('discountRial: $discountRial, ')
+          ..write('discountPercentBp: $discountPercentBp, ')
+          ..write('resolvedTaxRateBp: $resolvedTaxRateBp, ')
+          ..write('lineGrossRial: $lineGrossRial, ')
+          ..write(
             'allocatedInvoiceDiscountRial: $allocatedInvoiceDiscountRial, ',
           )
-..write('lineNetRial: $lineNetRial, ')
-..write('lineTaxRial: $lineTaxRial, ')
-..write('lineTotalRial: $lineTotalRial')
-..write(')'))
-.toString();
+          ..write('lineNetRial: $lineNetRial, ')
+          ..write('lineTaxRial: $lineTaxRial, ')
+          ..write('lineTotalRial: $lineTotalRial')
+          ..write(')'))
+        .toString();
   }
 
   @override
@@ -4461,32 +4461,32 @@ class InvoiceItemsCompanion extends UpdateCompanion<InvoiceItemRow> {
   @override
   String toString() {
     return (StringBuffer('InvoiceItemsCompanion(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('invoiceId: $invoiceId, ')
-..write('productId: $productId, ')
-..write('position: $position, ')
-..write('titleSnapshot: $titleSnapshot, ')
-..write('unitSnapshot: $unitSnapshot, ')
-..write('unitPriceRial: $unitPriceRial, ')
-..write('quantityMilli: $quantityMilli, ')
-..write('discountRial: $discountRial, ')
-..write('discountPercentBp: $discountPercentBp, ')
-..write('resolvedTaxRateBp: $resolvedTaxRateBp, ')
-..write('lineGrossRial: $lineGrossRial, ')
-..write(
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('invoiceId: $invoiceId, ')
+          ..write('productId: $productId, ')
+          ..write('position: $position, ')
+          ..write('titleSnapshot: $titleSnapshot, ')
+          ..write('unitSnapshot: $unitSnapshot, ')
+          ..write('unitPriceRial: $unitPriceRial, ')
+          ..write('quantityMilli: $quantityMilli, ')
+          ..write('discountRial: $discountRial, ')
+          ..write('discountPercentBp: $discountPercentBp, ')
+          ..write('resolvedTaxRateBp: $resolvedTaxRateBp, ')
+          ..write('lineGrossRial: $lineGrossRial, ')
+          ..write(
             'allocatedInvoiceDiscountRial: $allocatedInvoiceDiscountRial, ',
           )
-..write('lineNetRial: $lineNetRial, ')
-..write('lineTaxRial: $lineTaxRial, ')
-..write('lineTotalRial: $lineTotalRial, ')
-..write('rowid: $rowid')
-..write(')'))
-.toString();
+          ..write('lineNetRial: $lineNetRial, ')
+          ..write('lineTaxRial: $lineTaxRial, ')
+          ..write('lineTotalRial: $lineTotalRial, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -4849,11 +4849,11 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(deletedAt),
+          : Value(deletedAt),
       syncStatus: Value(syncStatus),
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(lastSyncedAt),
+          : Value(lastSyncedAt),
       invoiceId: Value(invoiceId),
       amountRial: Value(amountRial),
       paidAt: Value(paidAt),
@@ -4940,14 +4940,14 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-: this.syncStatus,
+          : this.syncStatus,
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
-: this.lastSyncedAt,
+          : this.lastSyncedAt,
       invoiceId: data.invoiceId.present ? data.invoiceId.value : this.invoiceId,
       amountRial: data.amountRial.present
           ? data.amountRial.value
-: this.amountRial,
+          : this.amountRial,
       paidAt: data.paidAt.present ? data.paidAt.value : this.paidAt,
       method: data.method.present ? data.method.value : this.method,
       note: data.note.present ? data.note.value : this.note,
@@ -4957,19 +4957,19 @@ class PaymentRow extends DataClass implements Insertable<PaymentRow> {
   @override
   String toString() {
     return (StringBuffer('PaymentRow(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('invoiceId: $invoiceId, ')
-..write('amountRial: $amountRial, ')
-..write('paidAt: $paidAt, ')
-..write('method: $method, ')
-..write('note: $note')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('invoiceId: $invoiceId, ')
+          ..write('amountRial: $amountRial, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('method: $method, ')
+          ..write('note: $note')
+          ..write(')'))
+        .toString();
   }
 
   @override
@@ -5156,20 +5156,20 @@ class PaymentsCompanion extends UpdateCompanion<PaymentRow> {
   @override
   String toString() {
     return (StringBuffer('PaymentsCompanion(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('invoiceId: $invoiceId, ')
-..write('amountRial: $amountRial, ')
-..write('paidAt: $paidAt, ')
-..write('method: $method, ')
-..write('note: $note, ')
-..write('rowid: $rowid')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('invoiceId: $invoiceId, ')
+          ..write('amountRial: $amountRial, ')
+          ..write('paidAt: $paidAt, ')
+          ..write('method: $method, ')
+          ..write('note: $note, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -5388,6 +5388,17 @@ class $SettingsTable extends Settings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   ).withConverter<MoneyDisplayUnit>($SettingsTable.$converterdisplayUnit);
+  static const VerificationMeta _tutorialSeenAtMeta = const VerificationMeta(
+    'tutorialSeenAt',
+  );
+  @override
+  late final GeneratedColumn<int> tutorialSeenAt = GeneratedColumn<int>(
+    'tutorial_seen_at',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5408,6 +5419,7 @@ class $SettingsTable extends Settings
     sellerPhone,
     themeMode,
     displayUnit,
+    tutorialSeenAt,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -5535,6 +5547,15 @@ class $SettingsTable extends Settings
         ),
       );
     }
+    if (data.containsKey('tutorial_seen_at')) {
+      context.handle(
+        _tutorialSeenAtMeta,
+        tutorialSeenAt.isAcceptableOrUnknown(
+          data['tutorial_seen_at']!,
+          _tutorialSeenAtMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -5621,6 +5642,10 @@ class $SettingsTable extends Settings
           DriftSqlType.int,
           data['${effectivePrefix}display_unit'],
         )!,
+      ),
+      tutorialSeenAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}tutorial_seen_at'],
       ),
     );
   }
@@ -5724,21 +5749,50 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
   /// asserts the generated default is `AppThemeMode.system`.
   final AppThemeMode themeMode;
 
-  /// Which unit amounts are shown and entered in, as the [MoneyDisplayUnit]
-  /// index (v8).
+  /// Which unit amounts were shown and entered in, as the [MoneyDisplayUnit]
+  /// index (v8). **Nothing reads it any more.**
   ///
-  /// **Display only.** Every amount in this schema is and stays integer Rial
-  /// (§4, D-002); this column decides what the user reads and types, not what
-  /// is stored, so changing it cannot alter a figure on an existing invoice.
+  /// The setting is gone (D-121): the owner removed the ریال/تومان choice and
+  /// Toman became fixed, so `AppSettings` no longer carries the value and
+  /// `kDisplayUnit` is what every amount is drawn in.
   ///
-  /// In this table for the reason [themeMode] is: it is a preference with no
-  /// per-device store to live in, the settings row is already watched live by
-  /// the screen that edits it, and it already travels with a backup.
+  /// **The column stays, and that is deliberate rather than an oversight.**
+  /// Dropping it is a schema change, and a schema change needs a version bump,
+  /// a migration step and a migration test (§6) — real work and real risk, in
+  /// exchange for one unread integer per database. It is left where it is,
+  /// defaulted and untouched, and a database that had `1` in it keeps `1`
+  /// while displaying Toman like every other. Removing it is a job for the next
+  /// migration this schema needs for a reason of its own.
+  ///
+  /// **Display only, and it always was.** Every amount in this schema is and
+  /// stays integer Rial (§4, D-002), so neither the setting nor its removal
+  /// alters a figure on an existing invoice.
   ///
   /// The literal `0` rather than `MoneyDisplayUnit.toman.index`, for the reason
   /// every other default in this file carries one: `drift_dev` reads this
   /// argument from the **source expression**.
   final MoneyDisplayUnit displayUnit;
+
+  /// When the first-run tutorial was last completed or skipped, in epoch
+  /// milliseconds — and **null means it has never been shown**.
+  ///
+  /// A timestamp rather than a boolean, for the reason every other "has this
+  /// happened" column here carries one: `lastBackupAt` answers *when* as well
+  /// as *whether*, and a `0`/`1` flag would have to be widened the first time
+  /// anybody asks which build a user was oriented on.
+  ///
+  /// **In this table rather than in a device-local store**, on exactly D-087's
+  /// reasoning for `theme_mode`: this application has no per-device store, and
+  /// adding one would mean a new dependency, a second place settings live, and
+  /// a second thing the backup does not carry. The consequence is deliberate
+  /// and worth stating — a restored backup carries the flag, so a user who
+  /// moves to a new phone is not re-taught an application they already know.
+  ///
+  /// Nullable, and the migration is where the two populations part: a database
+  /// that already exists belongs to someone who has already learnt the
+  /// application, so [migrateV8ToV9] backfills it; `onCreate` leaves it null,
+  /// so only a genuinely new database is greeted. See D-122.
+  final int? tutorialSeenAt;
   const SettingsRow({
     required this.id,
     required this.createdAt,
@@ -5758,6 +5812,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     this.sellerPhone,
     required this.themeMode,
     required this.displayUnit,
+    this.tutorialSeenAt,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -5806,6 +5861,9 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
         $SettingsTable.$converterdisplayUnit.toSql(displayUnit),
       );
     }
+    if (!nullToAbsent || tutorialSeenAt != null) {
+      map['tutorial_seen_at'] = Variable<int>(tutorialSeenAt);
+    }
     return map;
   }
 
@@ -5816,11 +5874,11 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       updatedAt: Value(updatedAt),
       deletedAt: deletedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(deletedAt),
+          : Value(deletedAt),
       syncStatus: Value(syncStatus),
       lastSyncedAt: lastSyncedAt == null && nullToAbsent
           ? const Value.absent()
-: Value(lastSyncedAt),
+          : Value(lastSyncedAt),
       singleton: Value(singleton),
       defaultTaxRateBp: Value(defaultTaxRateBp),
       roundingUnitRial: Value(roundingUnitRial),
@@ -5828,21 +5886,24 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       invoiceNumberPrefix: Value(invoiceNumberPrefix),
       devicePrefix: devicePrefix == null && nullToAbsent
           ? const Value.absent()
-: Value(devicePrefix),
+          : Value(devicePrefix),
       lastBackupAt: lastBackupAt == null && nullToAbsent
           ? const Value.absent()
-: Value(lastBackupAt),
+          : Value(lastBackupAt),
       sellerName: sellerName == null && nullToAbsent
           ? const Value.absent()
-: Value(sellerName),
+          : Value(sellerName),
       sellerAddress: sellerAddress == null && nullToAbsent
           ? const Value.absent()
-: Value(sellerAddress),
+          : Value(sellerAddress),
       sellerPhone: sellerPhone == null && nullToAbsent
           ? const Value.absent()
-: Value(sellerPhone),
+          : Value(sellerPhone),
       themeMode: Value(themeMode),
       displayUnit: Value(displayUnit),
+      tutorialSeenAt: tutorialSeenAt == null && nullToAbsent
+          ? const Value.absent()
+          : Value(tutorialSeenAt),
     );
   }
 
@@ -5878,6 +5939,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       displayUnit: $SettingsTable.$converterdisplayUnit.fromJson(
         serializer.fromJson<int>(json['displayUnit']),
       ),
+      tutorialSeenAt: serializer.fromJson<int?>(json['tutorialSeenAt']),
     );
   }
   @override
@@ -5908,6 +5970,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       'displayUnit': serializer.toJson<int>(
         $SettingsTable.$converterdisplayUnit.toJson(displayUnit),
       ),
+      'tutorialSeenAt': serializer.toJson<int?>(tutorialSeenAt),
     };
   }
 
@@ -5930,6 +5993,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     Value<String?> sellerPhone = const Value.absent(),
     AppThemeMode? themeMode,
     MoneyDisplayUnit? displayUnit,
+    Value<int?> tutorialSeenAt = const Value.absent(),
   }) => SettingsRow(
     id: id ?? this.id,
     createdAt: createdAt ?? this.createdAt,
@@ -5947,10 +6011,13 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     sellerName: sellerName.present ? sellerName.value : this.sellerName,
     sellerAddress: sellerAddress.present
         ? sellerAddress.value
-: this.sellerAddress,
+        : this.sellerAddress,
     sellerPhone: sellerPhone.present ? sellerPhone.value : this.sellerPhone,
     themeMode: themeMode ?? this.themeMode,
     displayUnit: displayUnit ?? this.displayUnit,
+    tutorialSeenAt: tutorialSeenAt.present
+        ? tutorialSeenAt.value
+        : this.tutorialSeenAt,
   );
   SettingsRow copyWithCompanion(SettingsCompanion data) {
     return SettingsRow(
@@ -5960,68 +6027,72 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
       deletedAt: data.deletedAt.present ? data.deletedAt.value : this.deletedAt,
       syncStatus: data.syncStatus.present
           ? data.syncStatus.value
-: this.syncStatus,
+          : this.syncStatus,
       lastSyncedAt: data.lastSyncedAt.present
           ? data.lastSyncedAt.value
-: this.lastSyncedAt,
+          : this.lastSyncedAt,
       singleton: data.singleton.present ? data.singleton.value : this.singleton,
       defaultTaxRateBp: data.defaultTaxRateBp.present
           ? data.defaultTaxRateBp.value
-: this.defaultTaxRateBp,
+          : this.defaultTaxRateBp,
       roundingUnitRial: data.roundingUnitRial.present
           ? data.roundingUnitRial.value
-: this.roundingUnitRial,
+          : this.roundingUnitRial,
       paymentTermDays: data.paymentTermDays.present
           ? data.paymentTermDays.value
-: this.paymentTermDays,
+          : this.paymentTermDays,
       invoiceNumberPrefix: data.invoiceNumberPrefix.present
           ? data.invoiceNumberPrefix.value
-: this.invoiceNumberPrefix,
+          : this.invoiceNumberPrefix,
       devicePrefix: data.devicePrefix.present
           ? data.devicePrefix.value
-: this.devicePrefix,
+          : this.devicePrefix,
       lastBackupAt: data.lastBackupAt.present
           ? data.lastBackupAt.value
-: this.lastBackupAt,
+          : this.lastBackupAt,
       sellerName: data.sellerName.present
           ? data.sellerName.value
-: this.sellerName,
+          : this.sellerName,
       sellerAddress: data.sellerAddress.present
           ? data.sellerAddress.value
-: this.sellerAddress,
+          : this.sellerAddress,
       sellerPhone: data.sellerPhone.present
           ? data.sellerPhone.value
-: this.sellerPhone,
+          : this.sellerPhone,
       themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
       displayUnit: data.displayUnit.present
           ? data.displayUnit.value
-: this.displayUnit,
+          : this.displayUnit,
+      tutorialSeenAt: data.tutorialSeenAt.present
+          ? data.tutorialSeenAt.value
+          : this.tutorialSeenAt,
     );
   }
 
   @override
   String toString() {
     return (StringBuffer('SettingsRow(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('singleton: $singleton, ')
-..write('defaultTaxRateBp: $defaultTaxRateBp, ')
-..write('roundingUnitRial: $roundingUnitRial, ')
-..write('paymentTermDays: $paymentTermDays, ')
-..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
-..write('devicePrefix: $devicePrefix, ')
-..write('lastBackupAt: $lastBackupAt, ')
-..write('sellerName: $sellerName, ')
-..write('sellerAddress: $sellerAddress, ')
-..write('sellerPhone: $sellerPhone, ')
-..write('themeMode: $themeMode, ')
-..write('displayUnit: $displayUnit')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('singleton: $singleton, ')
+          ..write('defaultTaxRateBp: $defaultTaxRateBp, ')
+          ..write('roundingUnitRial: $roundingUnitRial, ')
+          ..write('paymentTermDays: $paymentTermDays, ')
+          ..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
+          ..write('devicePrefix: $devicePrefix, ')
+          ..write('lastBackupAt: $lastBackupAt, ')
+          ..write('sellerName: $sellerName, ')
+          ..write('sellerAddress: $sellerAddress, ')
+          ..write('sellerPhone: $sellerPhone, ')
+          ..write('themeMode: $themeMode, ')
+          ..write('displayUnit: $displayUnit, ')
+          ..write('tutorialSeenAt: $tutorialSeenAt')
+          ..write(')'))
+        .toString();
   }
 
   @override
@@ -6044,6 +6115,7 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
     sellerPhone,
     themeMode,
     displayUnit,
+    tutorialSeenAt,
   );
   @override
   bool operator ==(Object other) =>
@@ -6066,7 +6138,8 @@ class SettingsRow extends DataClass implements Insertable<SettingsRow> {
           other.sellerAddress == this.sellerAddress &&
           other.sellerPhone == this.sellerPhone &&
           other.themeMode == this.themeMode &&
-          other.displayUnit == this.displayUnit);
+          other.displayUnit == this.displayUnit &&
+          other.tutorialSeenAt == this.tutorialSeenAt);
 }
 
 class SettingsCompanion extends UpdateCompanion<SettingsRow> {
@@ -6088,6 +6161,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
   final Value<String?> sellerPhone;
   final Value<AppThemeMode> themeMode;
   final Value<MoneyDisplayUnit> displayUnit;
+  final Value<int?> tutorialSeenAt;
   final Value<int> rowid;
   const SettingsCompanion({
     this.id = const Value.absent(),
@@ -6108,6 +6182,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.displayUnit = const Value.absent(),
+    this.tutorialSeenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   SettingsCompanion.insert({
@@ -6129,6 +6204,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     this.sellerPhone = const Value.absent(),
     this.themeMode = const Value.absent(),
     this.displayUnit = const Value.absent(),
+    this.tutorialSeenAt = const Value.absent(),
     this.rowid = const Value.absent(),
   });
   static Insertable<SettingsRow> custom({
@@ -6150,6 +6226,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Expression<String>? sellerPhone,
     Expression<int>? themeMode,
     Expression<int>? displayUnit,
+    Expression<int>? tutorialSeenAt,
     Expression<int>? rowid,
   }) {
     return RawValuesInsertable({
@@ -6172,6 +6249,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       if (sellerPhone != null) 'seller_phone': sellerPhone,
       if (themeMode != null) 'theme_mode': themeMode,
       if (displayUnit != null) 'display_unit': displayUnit,
+      if (tutorialSeenAt != null) 'tutorial_seen_at': tutorialSeenAt,
       if (rowid != null) 'rowid': rowid,
     });
   }
@@ -6195,6 +6273,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
     Value<String?>? sellerPhone,
     Value<AppThemeMode>? themeMode,
     Value<MoneyDisplayUnit>? displayUnit,
+    Value<int?>? tutorialSeenAt,
     Value<int>? rowid,
   }) {
     return SettingsCompanion(
@@ -6216,6 +6295,7 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
       sellerPhone: sellerPhone ?? this.sellerPhone,
       themeMode: themeMode ?? this.themeMode,
       displayUnit: displayUnit ?? this.displayUnit,
+      tutorialSeenAt: tutorialSeenAt ?? this.tutorialSeenAt,
       rowid: rowid ?? this.rowid,
     );
   }
@@ -6285,6 +6365,9 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
         $SettingsTable.$converterdisplayUnit.toSql(displayUnit.value),
       );
     }
+    if (tutorialSeenAt.present) {
+      map['tutorial_seen_at'] = Variable<int>(tutorialSeenAt.value);
+    }
     if (rowid.present) {
       map['rowid'] = Variable<int>(rowid.value);
     }
@@ -6294,27 +6377,28 @@ class SettingsCompanion extends UpdateCompanion<SettingsRow> {
   @override
   String toString() {
     return (StringBuffer('SettingsCompanion(')
-..write('id: $id, ')
-..write('createdAt: $createdAt, ')
-..write('updatedAt: $updatedAt, ')
-..write('deletedAt: $deletedAt, ')
-..write('syncStatus: $syncStatus, ')
-..write('lastSyncedAt: $lastSyncedAt, ')
-..write('singleton: $singleton, ')
-..write('defaultTaxRateBp: $defaultTaxRateBp, ')
-..write('roundingUnitRial: $roundingUnitRial, ')
-..write('paymentTermDays: $paymentTermDays, ')
-..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
-..write('devicePrefix: $devicePrefix, ')
-..write('lastBackupAt: $lastBackupAt, ')
-..write('sellerName: $sellerName, ')
-..write('sellerAddress: $sellerAddress, ')
-..write('sellerPhone: $sellerPhone, ')
-..write('themeMode: $themeMode, ')
-..write('displayUnit: $displayUnit, ')
-..write('rowid: $rowid')
-..write(')'))
-.toString();
+          ..write('id: $id, ')
+          ..write('createdAt: $createdAt, ')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('deletedAt: $deletedAt, ')
+          ..write('syncStatus: $syncStatus, ')
+          ..write('lastSyncedAt: $lastSyncedAt, ')
+          ..write('singleton: $singleton, ')
+          ..write('defaultTaxRateBp: $defaultTaxRateBp, ')
+          ..write('roundingUnitRial: $roundingUnitRial, ')
+          ..write('paymentTermDays: $paymentTermDays, ')
+          ..write('invoiceNumberPrefix: $invoiceNumberPrefix, ')
+          ..write('devicePrefix: $devicePrefix, ')
+          ..write('lastBackupAt: $lastBackupAt, ')
+          ..write('sellerName: $sellerName, ')
+          ..write('sellerAddress: $sellerAddress, ')
+          ..write('sellerPhone: $sellerPhone, ')
+          ..write('themeMode: $themeMode, ')
+          ..write('displayUnit: $displayUnit, ')
+          ..write('tutorialSeenAt: $tutorialSeenAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
   }
 }
 
@@ -6766,7 +6850,7 @@ class $$CustomersTableTableManager
           PrefetchHooks Function({bool invoicesRefs})
         > {
   $$CustomersTableTableManager(_$AppDatabase db, $CustomersTable table)
-: super(
+    : super(
         TableManagerState(
           db: db,
           table: table,
@@ -6841,13 +6925,13 @@ class $$CustomersTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-.map(
+              .map(
                 (e) => (
                   e.readTable(table),
                   $$CustomersTableReferences(db, table, e),
                 ),
               )
-.toList(),
+              .toList(),
           prefetchHooksCallback: ({invoicesRefs = false}) {
             return PrefetchHooks(
               db: db,
@@ -6863,7 +6947,7 @@ class $$CustomersTableTableManager
                     >(
                       currentTable: table,
                       referencedTable: $$CustomersTableReferences
-._invoicesRefsTable(db),
+                          ._invoicesRefsTable(db),
                       managerFromTypedResult: (p0) =>
                           $$CustomersTableReferences(
                             db,
@@ -7213,7 +7297,7 @@ class $$ProductsTableTableManager
           PrefetchHooks Function({bool invoiceItemsRefs})
         > {
   $$ProductsTableTableManager(_$AppDatabase db, $ProductsTable table)
-: super(
+    : super(
         TableManagerState(
           db: db,
           table: table,
@@ -7284,13 +7368,13 @@ class $$ProductsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-.map(
+              .map(
                 (e) => (
                   e.readTable(table),
                   $$ProductsTableReferences(db, table, e),
                 ),
               )
-.toList(),
+              .toList(),
           prefetchHooksCallback: ({invoiceItemsRefs = false}) {
             return PrefetchHooks(
               db: db,
@@ -7306,7 +7390,7 @@ class $$ProductsTableTableManager
                     >(
                       currentTable: table,
                       referencedTable: $$ProductsTableReferences
-._invoiceItemsRefsTable(db),
+                          ._invoiceItemsRefsTable(db),
                       managerFromTypedResult: (p0) => $$ProductsTableReferences(
                         db,
                         table,
@@ -8049,7 +8133,7 @@ class $$InvoicesTableTableManager
           })
         > {
   $$InvoicesTableTableManager(_$AppDatabase db, $InvoicesTable table)
-: super(
+    : super(
         TableManagerState(
           db: db,
           table: table,
@@ -8182,13 +8266,13 @@ class $$InvoicesTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-.map(
+              .map(
                 (e) => (
                   e.readTable(table),
                   $$InvoicesTableReferences(db, table, e),
                 ),
               )
-.toList(),
+              .toList(),
           prefetchHooksCallback:
               ({
                 customerId = false,
@@ -8222,10 +8306,10 @@ class $$InvoicesTableTableManager
                             currentTable: table,
                             currentColumn: table.customerId,
                             referencedTable: $$InvoicesTableReferences
-._customerIdTable(db),
+                                ._customerIdTable(db),
                             referencedColumn: $$InvoicesTableReferences
-._customerIdTable(db)
-.id,
+                                ._customerIdTable(db)
+                                .id,
                           ) as T;
                         }
 
@@ -8241,7 +8325,7 @@ class $$InvoicesTableTableManager
                         >(
                           currentTable: table,
                           referencedTable: $$InvoicesTableReferences
-._invoiceItemsRefsTable(db),
+                              ._invoiceItemsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$InvoicesTableReferences(
                                 db,
@@ -8262,7 +8346,7 @@ class $$InvoicesTableTableManager
                         >(
                           currentTable: table,
                           referencedTable: $$InvoicesTableReferences
-._paymentsRefsTable(db),
+                              ._paymentsRefsTable(db),
                           managerFromTypedResult: (p0) =>
                               $$InvoicesTableReferences(
                                 db,
@@ -8852,7 +8936,7 @@ class $$InvoiceItemsTableTableManager
           PrefetchHooks Function({bool invoiceId, bool productId})
         > {
   $$InvoiceItemsTableTableManager(_$AppDatabase db, $InvoiceItemsTable table)
-: super(
+    : super(
         TableManagerState(
           db: db,
           table: table,
@@ -8959,13 +9043,13 @@ class $$InvoiceItemsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-.map(
+              .map(
                 (e) => (
                   e.readTable(table),
                   $$InvoiceItemsTableReferences(db, table, e),
                 ),
               )
-.toList(),
+              .toList(),
           prefetchHooksCallback: ({invoiceId = false, productId = false}) {
             return PrefetchHooks(
               db: db,
@@ -8991,10 +9075,10 @@ class $$InvoiceItemsTableTableManager
                         currentTable: table,
                         currentColumn: table.invoiceId,
                         referencedTable: $$InvoiceItemsTableReferences
-._invoiceIdTable(db),
+                            ._invoiceIdTable(db),
                         referencedColumn: $$InvoiceItemsTableReferences
-._invoiceIdTable(db)
-.id,
+                            ._invoiceIdTable(db)
+                            .id,
                       ) as T;
                     }
                     if (productId) {
@@ -9002,10 +9086,10 @@ class $$InvoiceItemsTableTableManager
                         currentTable: table,
                         currentColumn: table.productId,
                         referencedTable: $$InvoiceItemsTableReferences
-._productIdTable(db),
+                            ._productIdTable(db),
                         referencedColumn: $$InvoiceItemsTableReferences
-._productIdTable(db)
-.id,
+                            ._productIdTable(db)
+                            .id,
                       ) as T;
                     }
 
@@ -9339,7 +9423,7 @@ class $$PaymentsTableTableManager
           PrefetchHooks Function({bool invoiceId})
         > {
   $$PaymentsTableTableManager(_$AppDatabase db, $PaymentsTable table)
-: super(
+    : super(
         TableManagerState(
           db: db,
           table: table,
@@ -9406,13 +9490,13 @@ class $$PaymentsTableTableManager
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-.map(
+              .map(
                 (e) => (
                   e.readTable(table),
                   $$PaymentsTableReferences(db, table, e),
                 ),
               )
-.toList(),
+              .toList(),
           prefetchHooksCallback: ({invoiceId = false}) {
             return PrefetchHooks(
               db: db,
@@ -9438,10 +9522,10 @@ class $$PaymentsTableTableManager
                         currentTable: table,
                         currentColumn: table.invoiceId,
                         referencedTable: $$PaymentsTableReferences
-._invoiceIdTable(db),
+                            ._invoiceIdTable(db),
                         referencedColumn: $$PaymentsTableReferences
-._invoiceIdTable(db)
-.id,
+                            ._invoiceIdTable(db)
+                            .id,
                       ) as T;
                     }
 
@@ -9489,6 +9573,7 @@ typedef $$SettingsTableCreateCompanionBuilder = SettingsCompanion Function({
   Value<String?> sellerPhone,
   Value<AppThemeMode> themeMode,
   Value<MoneyDisplayUnit> displayUnit,
+  Value<int?> tutorialSeenAt,
   Value<int> rowid,
 });
 typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
@@ -9510,6 +9595,7 @@ typedef $$SettingsTableUpdateCompanionBuilder = SettingsCompanion Function({
   Value<String?> sellerPhone,
   Value<AppThemeMode> themeMode,
   Value<MoneyDisplayUnit> displayUnit,
+  Value<int?> tutorialSeenAt,
   Value<int> rowid,
 });
 
@@ -9614,6 +9700,11 @@ class $$SettingsTableFilterComposer
     column: $table.displayUnit,
     builder: (column) => ColumnWithTypeConverterFilters(column),
   );
+
+  ColumnFilters<int> get tutorialSeenAt => $composableBuilder(
+    column: $table.tutorialSeenAt,
+    builder: (column) => ColumnFilters(column),
+  );
 }
 
 class $$SettingsTableOrderingComposer
@@ -9714,6 +9805,11 @@ class $$SettingsTableOrderingComposer
     column: $table.displayUnit,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get tutorialSeenAt => $composableBuilder(
+    column: $table.tutorialSeenAt,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$SettingsTableAnnotationComposer
@@ -9804,6 +9900,11 @@ class $$SettingsTableAnnotationComposer
         column: $table.displayUnit,
         builder: (column) => column,
       );
+
+  GeneratedColumn<int> get tutorialSeenAt => $composableBuilder(
+    column: $table.tutorialSeenAt,
+    builder: (column) => column,
+  );
 }
 
 class $$SettingsTableTableManager
@@ -9825,7 +9926,7 @@ class $$SettingsTableTableManager
           PrefetchHooks Function()
         > {
   $$SettingsTableTableManager(_$AppDatabase db, $SettingsTable table)
-: super(
+    : super(
         TableManagerState(
           db: db,
           table: table,
@@ -9855,6 +9956,7 @@ class $$SettingsTableTableManager
                 Value<String?> sellerPhone = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
                 Value<MoneyDisplayUnit> displayUnit = const Value.absent(),
+                Value<int?> tutorialSeenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettingsCompanion(
                 id: id,
@@ -9875,6 +9977,7 @@ class $$SettingsTableTableManager
                 sellerPhone: sellerPhone,
                 themeMode: themeMode,
                 displayUnit: displayUnit,
+                tutorialSeenAt: tutorialSeenAt,
                 rowid: rowid,
               ),
           createCompanionCallback:
@@ -9897,6 +10000,7 @@ class $$SettingsTableTableManager
                 Value<String?> sellerPhone = const Value.absent(),
                 Value<AppThemeMode> themeMode = const Value.absent(),
                 Value<MoneyDisplayUnit> displayUnit = const Value.absent(),
+                Value<int?> tutorialSeenAt = const Value.absent(),
                 Value<int> rowid = const Value.absent(),
               }) => SettingsCompanion.insert(
                 id: id,
@@ -9917,11 +10021,12 @@ class $$SettingsTableTableManager
                 sellerPhone: sellerPhone,
                 themeMode: themeMode,
                 displayUnit: displayUnit,
+                tutorialSeenAt: tutorialSeenAt,
                 rowid: rowid,
               ),
           withReferenceMapper: (p0) => p0
-.map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-.toList(),
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
           prefetchHooksCallback: null,
         ),
       );

@@ -96,7 +96,7 @@ InstantRange jalaliMonth(
   final start = Jalali(year, month, 1);
   final nextMonth = month == 12
       ? Jalali(year + 1, 1, 1)
-: Jalali(year, month + 1, 1);
+      : Jalali(year, month + 1, 1);
   return InstantRange(
     startOfJalaliDayUtc(start, offset: offset),
     startOfJalaliDayUtc(nextMonth, offset: offset),

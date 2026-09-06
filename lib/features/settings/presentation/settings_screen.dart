@@ -17,6 +17,7 @@ import '../../../data/backup/backup_service.dart';
 import '../../../data/models/app_settings.dart';
 import '../../../data/models/app_theme_mode.dart';
 import '../../../data/models/seller_identity.dart';
+import '../../tutorial/application/tutorial_controller.dart';
 import '../application/backup_controller.dart';
 import '../application/settings_editor.dart';
 import '../application/settings_providers.dart';
@@ -96,8 +97,8 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
     if (edited == null || !mounted) return;
 
     final bool saved = await ref
-.read(settingsEditorProvider.notifier)
-.save(edited);
+        .read(settingsEditorProvider.notifier)
+        .save(edited);
     if (!mounted) return;
     _say(saved ? strings.settingsSaved : strings.errorGenericBody);
   }
@@ -127,8 +128,8 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
     if (mode == settings.themeMode) return;
 
     final bool saved = await ref
-.read(settingsEditorProvider.notifier)
-.save(settings.copyWith(themeMode: mode));
+        .read(settingsEditorProvider.notifier)
+        .save(settings.copyWith(themeMode: mode));
     if (!mounted || saved) return;
     _say(strings.errorGenericBody);
   }
@@ -143,8 +144,8 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
     setState(() => _busy = true);
     _say(strings.backupExportInProgress);
     final BackupOutcome outcome = await ref
-.read(backupControllerProvider.notifier)
-.export(passphrase: password, suggestedName: _suggestedName());
+        .read(backupControllerProvider.notifier)
+        .export(passphrase: password, suggestedName: _suggestedName());
     if (!mounted) return;
     setState(() => _busy = false);
 
@@ -162,8 +163,8 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
 
   Future<void> _restore() async {
     final File? file = await ref
-.read(backupControllerProvider.notifier)
-.pickFile();
+        .read(backupControllerProvider.notifier)
+        .pickFile();
     if (file == null || !mounted) return;
 
     final String? password = await showBackupPasswordSheet(
@@ -177,8 +178,8 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
     // backup already proved readable rather than one hoped to be. Every
     // refusal a restore can raise happens here, with live data untouched.
     final BackupOutcome inspected = await ref
-.read(backupControllerProvider.notifier)
-.inspect(file: file, passphrase: password);
+        .read(backupControllerProvider.notifier)
+        .inspect(file: file, passphrase: password);
     if (!mounted) return;
     setState(() => _busy = false);
 
@@ -197,8 +198,8 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
     setState(() => _busy = true);
     _say(strings.backupImportInProgress);
     final BackupOutcome restored = await ref
-.read(backupControllerProvider.notifier)
-.restore(file: file, passphrase: password);
+        .read(backupControllerProvider.notifier)
+        .restore(file: file, passphrase: password);
     if (!mounted) return;
     setState(() => _busy = false);
 
@@ -222,7 +223,7 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
 
   void _say(String message) {
     ScaffoldMessenger.of(context)
-.showSnackBar(SnackBar(content: Text(message)));
+        .showSnackBar(SnackBar(content: Text(message)));
   }
 
   void _sayFailure(Object error) {
@@ -272,7 +273,7 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
                 // than a standing notice.
                 hint: seller.isPrintable
                     ? null
-: strings.settingsSellerConsequence,
+                    : strings.settingsSellerConsequence,
               ),
               const _RowDivider(),
               _SettingRow(
@@ -319,7 +320,7 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
                 label: strings.settingsRoundingUnit,
                 value: settings.roundingUnitRial == 0
                     ? formatGroupedPersian(0)
-: formatGroupedPersian(settings.roundingUnitRial),
+                    : formatGroupedPersian(settings.roundingUnitRial),
                 trailingLabel: strings.unitRial,
               ),
               const _RowDivider(),
@@ -402,7 +403,7 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
                     showSelectedIcon: false,
                     onSelectionChanged: _busy
                         ? null
-: (Set<AppThemeMode> selection) =>
+                        : (Set<AppThemeMode> selection) =>
                               _setThemeMode(selection.first),
                   ),
                 ),
@@ -424,7 +425,7 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
                 // which until this increment it never did.
                 value: settings.lastBackupAt == null
                     ? strings.settingsLastBackupNever
-: formatJalaliDateLong(
+                    : formatJalaliDateLong(
                         settings.lastBackupAt!,
                         monthNames: jalaliMonthNames(strings),
                       ),
@@ -475,10 +476,65 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
             ],
           ),
         ),
+        const SizedBox(height: AppSpacing.xl),
+        // **Last, and that is the ordering rather than an afterthought.** The
+        // sections above are things a user changes; this one is a thing they
+        // read, and a user who has come looking for it scrolls. It is here at
+        // all because a tutorial that runs once and can never be run again is
+        // one nobody can go back to — and the settings screen is where D-102
+        // already established the user goes when they want to know what the
+        // application expects of them.
+        SectionHeader(title: strings.settingsHelpSection),
+        AppCard(
+          padding: EdgeInsets.zero,
+          child: Column(
+            children: <Widget>[
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  AppSpacing.lg,
+                  0,
+                ),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: Text(
+                    strings.settingsHelpBody,
+                    style: Theme.of(context).textTheme.bodyMedium?.copyWith(
+                      color: Theme.of(context).colorScheme.onSurfaceVariant,
+                    ),
+                  ),
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.all(AppSpacing.lg),
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: OutlinedButton.icon(
+                    // Not disabled while `_busy`, unlike export and restore:
+                    // this touches no data and reading it during a long export
+                    // is a reasonable thing to want to do.
+                    onPressed: _showTutorial,
+                    icon: const Icon(Icons.help_outline),
+                    label: Text(strings.settingsHelpAction),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
         const SizedBox(height: AppSpacing.xxl),
       ],
     );
   }
+
+  /// Replays the tutorial from the first step (D-122).
+  ///
+  /// The same controller the first launch uses, so there is one sequence and
+  /// one place that decides what is in it. It opens over this screen rather
+  /// than navigating anywhere: the layer sits above the whole shell, and
+  /// closing it leaves the user exactly where they were.
+  void _showTutorial() => ref.read(tutorialControllerProvider.notifier).start();
 }
 
 /// One label/value pair.

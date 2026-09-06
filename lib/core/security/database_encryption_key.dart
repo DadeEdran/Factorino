@@ -59,7 +59,7 @@ abstract class DatabaseKeyStore {
 /// backup feature is in the MVP rather than a later phase.
 class SecureStorageDatabaseKeyStore implements DatabaseKeyStore {
   const SecureStorageDatabaseKeyStore({FlutterSecureStorage? storage})
-: _storage = storage ?? _defaultStorage;
+    : _storage = storage ?? _defaultStorage;
 
   /// Versioned so a future key-rotation or cipher change can migrate rather
   /// than silently read a key that no longer opens the file.

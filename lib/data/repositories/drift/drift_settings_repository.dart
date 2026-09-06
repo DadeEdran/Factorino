@@ -50,10 +50,36 @@ class DriftSettingsRepository implements SettingsRepository {
             sellerPhone: Value<String?>(seller.phone),
             devicePrefix: Value(settings.devicePrefix),
             lastBackupAt: Value(millisFromInstantOrNull(settings.lastBackupAt)),
+            // `tutorial_seen_at` is deliberately absent from this companion.
+            // Nothing the user edits on the settings screen has anything to
+            // say about it, and a `Value` here would let a saved tax rate
+            // carry a stale flag back into the column — including a null,
+            // which would make the tutorial reappear on the next launch
+            // (D-122). `markTutorialSeen` is the only writer.
             updatedAt: Value(nowMillis()),
           ),
         );
     return read();
+  }
+
+  @override
+  Future<void> markTutorialSeen(DateTime at) async {
+    // **`where`, not an unconditional write**, which is what makes this
+    // idempotent at the database rather than at whichever caller remembered.
+    // The «راهنما» entry in settings replays the tutorial, and every replay
+    // ends here; without the clause the flag would advance each time and the
+    // column would answer a different question from the one it is named for.
+    //
+    // `updated_at` is bumped, unlike in the migration that introduced the
+    // column: this one is a user's own action.
+    await (_db.update(
+      _db.settings,
+    )..where(($SettingsTable t) => t.tutorialSeenAt.isNull())).write(
+      SettingsCompanion(
+        tutorialSeenAt: Value(millisFromInstant(at)),
+        updatedAt: Value(nowMillis()),
+      ),
+    );
   }
 
   @override
@@ -84,5 +110,6 @@ class DriftSettingsRepository implements SettingsRepository {
     ),
     devicePrefix: row.devicePrefix,
     lastBackupAt: instantFromMillisOrNull(row.lastBackupAt),
+    tutorialSeenAt: instantFromMillisOrNull(row.tutorialSeenAt),
   );
 }

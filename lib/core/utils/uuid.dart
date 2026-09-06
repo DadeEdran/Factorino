@@ -18,7 +18,7 @@ import 'package:uuid/uuid.dart';
 String uuidV4([List<int>? randomBytes]) {
   return randomBytes == null
       ? _uuid.v4()
-: _uuid.v4(config: V4Options(randomBytes, null));
+      : _uuid.v4(config: V4Options(randomBytes, null));
 }
 
 const Uuid _uuid = Uuid();

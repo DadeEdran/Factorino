@@ -56,15 +56,15 @@ void main() {
 
   List<File> librarySources() {
     return Directory('lib')
-.listSync(recursive: true)
-.whereType<File>()
-.where((File file) => file.path.endsWith('.dart'))
-.where((File file) {
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((File file) => file.path.endsWith('.dart'))
+        .where((File file) {
           final String relative = file.path.replaceAll(r'\', '/');
           if (relative.endsWith('.g.dart')) return false;
           return !relative.startsWith(engineDirectory);
         })
-.toList();
+        .toList();
   }
 
   test('only the preview and the write call the money engine', () {

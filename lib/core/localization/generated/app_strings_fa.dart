@@ -1482,4 +1482,92 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get sellerPromptAction => 'تکمیل مشخصات';
+
+  @override
+  String tutorialProgress(String current, String total) {
+    return 'گام $current از $total';
+  }
+
+  @override
+  String get tutorialSkip => 'رد کردن';
+
+  @override
+  String get tutorialBack => 'قبلی';
+
+  @override
+  String get tutorialNext => 'بعدی';
+
+  @override
+  String get tutorialDone => 'شروع کنیم';
+
+  @override
+  String get tutorialSellerTitle => 'نام کسب‌وکار';
+
+  @override
+  String tutorialSellerBody(String settings) {
+    return 'ابتدا در بخش «$settings» نام کسب‌وکارتان را وارد کنید تا روی فاکتورها چاپ شود.';
+  }
+
+  @override
+  String get tutorialCustomerTitle => 'افزودن مشتری';
+
+  @override
+  String tutorialCustomerBody(String customers) {
+    return 'در بخش «$customers» کسانی را که به آن‌ها فاکتور می‌دهید ثبت کنید.';
+  }
+
+  @override
+  String get tutorialProductTitle => 'افزودن کالا یا خدمت';
+
+  @override
+  String tutorialProductBody(String products) {
+    return 'در بخش «$products» کالاها و خدماتتان را همراه قیمت ثبت کنید.';
+  }
+
+  @override
+  String get tutorialInvoiceTitle => 'ساخت فاکتور';
+
+  @override
+  String tutorialInvoiceBody(String invoices) {
+    return 'در بخش «$invoices» فاکتور تازه‌ای بسازید، مشتری را انتخاب کنید و سطرهای آن را اضافه کنید.';
+  }
+
+  @override
+  String get tutorialIssueTitle => 'صدور فاکتور';
+
+  @override
+  String get tutorialIssueBody =>
+      'تا وقتی فاکتور پیش‌نویس است قابل ویرایش است؛ با صدور، شماره می‌گیرد و نهایی می‌شود.';
+
+  @override
+  String get tutorialPaymentTitle => 'ثبت پرداخت';
+
+  @override
+  String get tutorialPaymentBody =>
+      'هر مبلغی را که مشتری می‌پردازد در صفحهٔ همان فاکتور ثبت کنید تا وضعیت آن خودبه‌خود به‌روز شود.';
+
+  @override
+  String get tutorialDocumentTitle => 'ذخیرهٔ PDF';
+
+  @override
+  String get tutorialDocumentBody =>
+      'از صفحهٔ هر فاکتور می‌توانید نسخهٔ PDF آن را ذخیره کنید و برای مشتری بفرستید.';
+
+  @override
+  String get tutorialBackupTitle => 'پشتیبان‌گیری';
+
+  @override
+  String tutorialBackupBody(String settings) {
+    return 'اطلاعات فقط روی همین دستگاه ذخیره می‌شود، پس هر از چندی در بخش «$settings» یک فایل پشتیبان بگیرید.';
+  }
+
+  @override
+  String get settingsHelpSection => 'راهنما';
+
+  @override
+  String get settingsHelpBody =>
+      'راهنمای کوتاه آغاز کار را دوباره از ابتدا ببینید.';
+
+  @override
+  String get settingsHelpAction => 'نمایش راهنما';
 }

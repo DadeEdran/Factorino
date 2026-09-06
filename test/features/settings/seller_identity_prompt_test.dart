@@ -284,6 +284,9 @@ class _FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> markBackedUp(DateTime at) async {}
+
+  @override
+  Future<void> markTutorialSeen(DateTime at) async {}
 }
 
 /// Never emits: the state between a cold start and the first read.
@@ -299,4 +302,7 @@ class _NeverSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> markBackedUp(DateTime at) async {}
+
+  @override
+  Future<void> markTutorialSeen(DateTime at) async {}
 }

@@ -15,6 +15,7 @@ class AppSettings {
     this.themeMode = AppThemeMode.system,
     this.devicePrefix,
     this.lastBackupAt,
+    this.tutorialSeenAt,
   });
 
   /// Default VAT rate in basis points, e.g. 10% = `1000`. Configurable, never
@@ -79,6 +80,20 @@ class AppSettings {
   /// lost phone away from losing the business (§8).
   final DateTime? lastBackupAt;
 
+  /// When the first-run tutorial was completed or skipped (schema v9, D-122).
+  ///
+  /// **Null means it has never been shown**, and that is the whole of the
+  /// first-launch rule: the application greets a database whose flag is null
+  /// and greets nothing else, ever. An existing database does not have a null
+  /// here — the migration backfilled it, because its owner learnt the
+  /// application before the tutorial existed.
+  ///
+  /// It is not written by [AppSettings] round-trips: the settings form has no
+  /// field for it and `SettingsRepository.write` leaves the column alone, so
+  /// saving a tax rate cannot un-teach a user. `markTutorialSeen` is the only
+  /// thing that sets it, and it sets it once.
+  final DateTime? tutorialSeenAt;
+
   AppSettings copyWith({
     int? defaultTaxRateBp,
     int? roundingUnitRial,
@@ -88,6 +103,7 @@ class AppSettings {
     AppThemeMode? themeMode,
     String? devicePrefix,
     DateTime? lastBackupAt,
+    DateTime? tutorialSeenAt,
   }) {
     return AppSettings(
       defaultTaxRateBp: defaultTaxRateBp ?? this.defaultTaxRateBp,
@@ -101,6 +117,7 @@ class AppSettings {
       themeMode: themeMode ?? this.themeMode,
       devicePrefix: devicePrefix ?? this.devicePrefix,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
+      tutorialSeenAt: tutorialSeenAt ?? this.tutorialSeenAt,
     );
   }
 

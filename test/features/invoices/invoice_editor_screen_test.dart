@@ -779,6 +779,9 @@ class _FakeSettingsRepository implements SettingsRepository {
 
   @override
   Future<void> markBackedUp(DateTime at) async {}
+
+  @override
+  Future<void> markTutorialSeen(DateTime at) async {}
 }
 
 /// Enough of the customer boundary for the picker and the name lookup.

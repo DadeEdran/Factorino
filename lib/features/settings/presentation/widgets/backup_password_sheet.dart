@@ -83,7 +83,7 @@ class _BackupPasswordSheetState extends State<_BackupPasswordSheet> {
     return EditorSheet(
       title: widget.confirming
           ? strings.backupPasswordTitle
-: strings.backupImportPasswordTitle,
+          : strings.backupImportPasswordTitle,
       closeTooltip: strings.actionCancel,
       formKey: _formKey,
       action: FilledButton(onPressed: _submit, child: Text(strings.actionSave)),

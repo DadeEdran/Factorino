@@ -49,16 +49,16 @@ void main() {
 
   List<File> librarySources() {
     return Directory('lib')
-.listSync(recursive: true)
-.whereType<File>()
-.where((File file) => file.path.endsWith('.dart'))
-.where((File file) {
+        .listSync(recursive: true)
+        .whereType<File>()
+        .where((File file) => file.path.endsWith('.dart'))
+        .where((File file) {
           final String relative = file.path.replaceAll(r'\', '/');
           if (relative.endsWith('.g.dart')) return false;
           if (relative.contains('core/localization/generated/')) return false;
           return true;
         })
-.toList();
+        .toList();
   }
 
   test('nothing in lib/ builds a text field except the wrapper', () {

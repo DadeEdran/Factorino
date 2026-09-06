@@ -45,7 +45,7 @@ class Customer {
   /// What the UI shows when a name alone is ambiguous.
   String get displayName => companyName == null || companyName!.isEmpty
       ? fullName
-: '$fullName ($companyName)';
+      : '$fullName ($companyName)';
 
   @override
   bool operator ==(Object other) =>

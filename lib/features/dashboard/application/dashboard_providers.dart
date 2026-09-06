@@ -127,6 +127,6 @@ Stream<int> _invoiceCount(Ref ref) =>
 @riverpod
 Stream<List<InvoiceListItem>> recentInvoices(Ref ref) {
   return ref
-.watch(invoiceRepositoryProvider)
-.watchList(limit: kRecentInvoiceCount);
+      .watch(invoiceRepositoryProvider)
+      .watchList(limit: kRecentInvoiceCount);
 }

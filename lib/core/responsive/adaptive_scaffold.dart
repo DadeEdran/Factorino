@@ -28,6 +28,7 @@ class AdaptiveScaffold extends StatefulWidget {
     required this.onDestinationSelected,
     required this.onPopSection,
     required this.child,
+    this.overlay,
     super.key,
   });
 
@@ -43,6 +44,20 @@ class AdaptiveScaffold extends StatefulWidget {
   final bool Function() onPopSection;
 
   final Widget child;
+
+  /// A layer drawn over the whole shell, navigation chrome included.
+  ///
+  /// **A slot rather than a widget this file knows about**, so `core/` does not
+  /// acquire a dependency on a feature: the router supplies what goes in it,
+  /// and this file stays a layout concern. It is a parameter here rather than a
+  /// `Stack` around `AdaptiveScaffold` at the call site for one reason that is
+  /// not cosmetic — everything inside this widget sits under
+  /// [BackPolicyScope], and a layer outside it could not claim the system back
+  /// press. One that could not claim it would be navigated out from underneath,
+  /// invisibly.
+  ///
+  /// Null on every tier and in every test that does not need one.
+  final Widget? overlay;
 
   @override
   State<AdaptiveScaffold> createState() => _AdaptiveScaffoldState();
@@ -84,7 +99,18 @@ class _AdaptiveScaffoldState extends State<AdaptiveScaffold> {
         isHome: widget.destination == AppDestination.dashboard,
         onPopSection: widget.onPopSection,
         onGoHome: () => widget.onDestinationSelected(AppDestination.dashboard),
-        child: shell,
+        // The overlay is a sibling of the shell **inside** the back policy, so
+        // whatever it holds can claim the press; see [AdaptiveScaffold.overlay].
+        // It is also above the navigation bar and the rail, which is what makes
+        // it an overlay rather than a page.
+        child: widget.overlay == null
+            ? shell
+            : Stack(
+                children: <Widget>[
+                  shell,
+                  Positioned.fill(child: widget.overlay!),
+                ],
+              ),
       ),
     );
   }

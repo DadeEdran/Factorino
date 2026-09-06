@@ -77,7 +77,7 @@ class AppDatabase extends _$AppDatabase {
   /// undone by a later step; it is a deliberate product decision, requested
   /// after use.
   @override
-  int get schemaVersion => 8;
+  int get schemaVersion => 9;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -122,10 +122,13 @@ class AppDatabase extends _$AppDatabase {
       if (from < 8 && to >= 8) {
         await migrateV7ToV8(m);
       }
+      if (from < 9 && to >= 9) {
+        await migrateV8ToV9(m);
+      }
 
       // Fail loud on a version this ladder does not cover, rather than
       // opening a database whose shape is not the one the code expects.
-      if (from < 1 || to > 8) {
+      if (from < 1 || to > 9) {
         throw StateError('no migration defined from v$from to v$to');
       }
     },
@@ -285,10 +288,10 @@ Future<void> migrateV1ToV2(Migrator m) async {
   // copy them out of a table that predates them.
   final Set<String> existing = await _columnNames(db, 'invoices');
   final List<GeneratedColumn<Object>> fromLaterVersions = db.invoices.$columns
-.where(
+      .where(
         (GeneratedColumn<Object> column) => !existing.contains(column.name),
       )
-.toList();
+      .toList();
 
   await m.alterTable(
     TableMigration(db.invoices, newColumns: fromLaterVersions),
@@ -670,6 +673,58 @@ Future<void> migrateV7ToV8(Migrator m) async {
     throw StateError(
       'the v7 -> v8 display-unit migration left ${violations.length} '
       'foreign-key violation(s); refusing to open. See D-117.',
+    );
+  }
+}
+
+/// v8 -> v9 (D-122): `settings.tutorial_seen_at`, the first-run flag.
+///
+/// One nullable `ADD COLUMN`, and then **the only backfill in this ladder that
+/// exists to stop something from happening**. Null means "never shown", so a
+/// column left null everywhere would greet every existing user with a tutorial
+/// for an application they have been using for months — the requirement is that
+/// it runs once on a new installation and never again, *including after an
+/// update*, and an upgrade is exactly the case a default cannot distinguish.
+///
+/// So the two populations part here. A database that reaches this step existed
+/// before the tutorial did, which is a fact about its owner and not a guess:
+/// they have already learnt the application. `onCreate` leaves the column null,
+/// so only a database created after this version is ever greeted.
+///
+/// **Written only where it is null**, rather than unconditionally. Nothing can
+/// have a value at this point today, and the `where` costs nothing — but this
+/// step is also what a v1 database runs at the end of the whole ladder, and a
+/// backfill that overwrites is one line away from moving a timestamp the next
+/// time somebody appends a step above it.
+///
+/// The timestamp is the migration's own instant rather than a sentinel: it is
+/// true, and it is what the column means everywhere else.
+///
+/// `updated_at` is deliberately **not** bumped. This is a schema step rather
+/// than a user edit, and marking every settings row as freshly written would
+/// hand the sync phase a conflict on every device that upgrades, over a value
+/// that was never typed.
+///
+/// `ADD COLUMN`, so no table is rebuilt, no `ON DELETE CASCADE` is armed, and
+/// [assertForeignKeysCanBeDisabled] is not called — the same reasoning
+/// [migrateV5ToV6] sets out.
+Future<void> migrateV8ToV9(Migrator m) async {
+  final db = m.database as AppDatabase;
+
+  await _addColumnIfAbsent(m, db, db.settings, db.settings.tutorialSeenAt);
+
+  await (db.update(db.settings)
+        ..where(($SettingsTable t) => t.tutorialSeenAt.isNull()))
+      .write(SettingsCompanion(tutorialSeenAt: Value(nowMillis())));
+
+  // As in every step before it: nothing here can create a dangling reference,
+  // but the check costs one pragma while we can still refuse to open.
+  // soft-delete-exempt: an integrity pragma, not a read of user rows.
+  final violations = await db.customSelect('pragma foreign_key_check').get();
+  if (violations.isNotEmpty) {
+    throw StateError(
+      'the v8 -> v9 tutorial migration left ${violations.length} '
+      'foreign-key violation(s); refusing to open. See D-122.',
     );
   }
 }

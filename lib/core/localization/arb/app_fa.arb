@@ -1393,5 +1393,90 @@
   "sellerPromptAction": "تکمیل مشخصات",
   "@sellerPromptAction": {
     "description": "Opens the seller sheet straight from the dashboard, so the fix is one tap from the prompt rather than a navigation to settings and a second control there. **The same words as the export message's action, deliberately**: the user may meet either first, and two labels for one destination would read as two different repairs."
+  },
+
+  "tutorialProgress": "گام {current} از {total}",
+  "@tutorialProgress": {
+    "description": "Step counter at the top of the first-run tutorial. Both numbers arrive already formatted in Persian digits, which is why they are String placeholders rather than numbers -- an ICU number would render in Latin digits (section 9).",
+    "placeholders": {
+      "current": { "type": "String" },
+      "total": { "type": "String" }
+    }
+  },
+  "tutorialSkip": "رد کردن",
+  "@tutorialSkip": {
+    "description": "Leaves the tutorial. Present on EVERY step, not only the first: a user who understands the application three screens in must not have to page through the rest to get out."
+  },
+  "tutorialBack": "قبلی",
+  "@tutorialBack": {
+    "description": "Previous step. Hidden on the first step, where there is nothing behind it."
+  },
+  "tutorialNext": "بعدی",
+  "@tutorialNext": {
+    "description": "Next step."
+  },
+  "tutorialDone": "شروع کنیم",
+  "@tutorialDone": {
+    "description": "The last step's action. Deliberately not «پایان»: what follows is the application, not the end of something."
+  },
+
+  "tutorialSellerTitle": "نام کسب‌وکار",
+  "@tutorialSellerTitle": {
+    "description": "Step 1. First because it is what the printed invoice is missing until it is filled in (D-077), and because the dashboard prompt that outlives a skipped tutorial says the same thing."
+  },
+  "tutorialSellerBody": "ابتدا در بخش «{settings}» نام کسب‌وکارتان را وارد کنید تا روی فاکتورها چاپ شود.",
+  "@tutorialSellerBody": {
+    "description": "One sentence, and the section name is a PLACEHOLDER rather than a literal -- it is filled from navSettings, the same string the navigation bar draws, so the tutorial cannot name a tab that no longer says that (D-122).",
+    "placeholders": { "settings": { "type": "String" } }
+  },
+  "tutorialCustomerTitle": "افزودن مشتری",
+  "@tutorialCustomerTitle": {},
+  "tutorialCustomerBody": "در بخش «{customers}» کسانی را که به آن‌ها فاکتور می‌دهید ثبت کنید.",
+  "@tutorialCustomerBody": {
+    "placeholders": { "customers": { "type": "String" } }
+  },
+  "tutorialProductTitle": "افزودن کالا یا خدمت",
+  "@tutorialProductTitle": {},
+  "tutorialProductBody": "در بخش «{products}» کالاها و خدماتتان را همراه قیمت ثبت کنید.",
+  "@tutorialProductBody": {
+    "placeholders": { "products": { "type": "String" } }
+  },
+  "tutorialInvoiceTitle": "ساخت فاکتور",
+  "@tutorialInvoiceTitle": {},
+  "tutorialInvoiceBody": "در بخش «{invoices}» فاکتور تازه‌ای بسازید، مشتری را انتخاب کنید و سطرهای آن را اضافه کنید.",
+  "@tutorialInvoiceBody": {
+    "placeholders": { "invoices": { "type": "String" } }
+  },
+  "tutorialIssueTitle": "صدور فاکتور",
+  "@tutorialIssueTitle": {},
+  "tutorialIssueBody": "تا وقتی فاکتور پیش‌نویس است قابل ویرایش است؛ با صدور، شماره می‌گیرد و نهایی می‌شود.",
+  "@tutorialIssueBody": {
+    "description": "The one step that teaches a rule rather than a place: issuing is what section 6 makes irreversible, so the sentence says what changes."
+  },
+  "tutorialPaymentTitle": "ثبت پرداخت",
+  "@tutorialPaymentTitle": {},
+  "tutorialPaymentBody": "هر مبلغی را که مشتری می‌پردازد در صفحهٔ همان فاکتور ثبت کنید تا وضعیت آن خودبه‌خود به‌روز شود.",
+  "@tutorialPaymentBody": {},
+  "tutorialDocumentTitle": "ذخیرهٔ PDF",
+  "@tutorialDocumentTitle": {},
+  "tutorialDocumentBody": "از صفحهٔ هر فاکتور می‌توانید نسخهٔ PDF آن را ذخیره کنید و برای مشتری بفرستید.",
+  "@tutorialDocumentBody": {},
+  "tutorialBackupTitle": "پشتیبان‌گیری",
+  "@tutorialBackupTitle": {},
+  "tutorialBackupBody": "اطلاعات فقط روی همین دستگاه ذخیره می‌شود، پس هر از چندی در بخش «{settings}» یک فایل پشتیبان بگیرید.",
+  "@tutorialBackupBody": {
+    "description": "Last, and the consequence comes before the instruction on purpose: section 8 treats a user who has never taken a backup as one lost phone away from losing their records.",
+    "placeholders": { "settings": { "type": "String" } }
+  },
+
+  "settingsHelpSection": "راهنما",
+  "@settingsHelpSection": {
+    "description": "The settings section that replays the first-run tutorial."
+  },
+  "settingsHelpBody": "راهنمای کوتاه آغاز کار را دوباره از ابتدا ببینید.",
+  "@settingsHelpBody": {},
+  "settingsHelpAction": "نمایش راهنما",
+  "@settingsHelpAction": {
+    "description": "Reopens the tutorial from the first step. It replays in full every time: a user who comes looking for help wants the sequence, not wherever they abandoned it months ago."
   }
 }
