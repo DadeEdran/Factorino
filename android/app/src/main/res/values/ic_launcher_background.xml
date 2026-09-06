@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  The adaptive icon's background layer. Not in values-night: a launcher icon
+  does not follow the system theme, and an icon that changed colour with it
+  would be the only thing on the home screen that did.
+-->
+<resources>
+    <color name="ic_launcher_background">#FFFFFFFF</color>
+</resources>
