@@ -1,8 +1,8 @@
 import '../../../core/formatting/number_display.dart';
 import '../../../core/localization/generated/app_strings.dart';
+import '../../../core/localization/money_display.dart';
 import '../../../core/money/invoice_calculator.dart';
 import '../../../core/money/money.dart';
-import '../../../core/widgets/money_display_scope.dart';
 import '../../../data/models/money_display_unit.dart';
 
 /// The one place an [InvoiceWarning] becomes something a user reads.

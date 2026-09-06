@@ -5,12 +5,12 @@ import 'package:go_router/go_router.dart';
 import '../../../core/formatting/number_display.dart';
 import '../../../core/formatting/number_input.dart';
 import '../../../core/localization/generated/app_strings.dart';
+import '../../../core/localization/money_display.dart';
 import '../../../core/router/destinations.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/widgets/app_text_field.dart';
 import '../../../core/widgets/async_error_view.dart';
 import '../../../core/widgets/form_scaffold.dart';
-import '../../../core/widgets/money_display_scope.dart';
 import '../../../data/models/field_limits.dart';
 import '../../../data/models/money_display_unit.dart';
 import '../../../data/models/product.dart';
@@ -45,14 +45,8 @@ class ProductFormScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final AppStrings strings = AppStrings.of(context);
 
-    // Read where there is a context to read it from, and handed to the form:
-    // the controllers are seeded before the form's own first build, and a
-    // field seeded in one unit and labelled in another is the ambiguity
-    // D-117 exists to close.
-    final MoneyDisplayUnit unit = MoneyDisplayScope.of(context);
-
     if (productId == null) {
-      return _ProductForm(strings: strings, existing: null, unit: unit);
+      return _ProductForm(strings: strings, existing: null);
     }
 
     return ref
@@ -68,11 +62,7 @@ class ProductFormScreen extends ConsumerWidget {
                 error: StateError('product not found'),
               );
             }
-            return _ProductForm(
-              strings: strings,
-              existing: product,
-              unit: unit,
-            );
+            return _ProductForm(strings: strings, existing: product);
           },
         );
   }
@@ -107,17 +97,10 @@ class _FormFailure extends StatelessWidget {
 }
 
 class _ProductForm extends ConsumerStatefulWidget {
-  const _ProductForm({
-    required this.strings,
-    required this.existing,
-    required this.unit,
-  });
+  const _ProductForm({required this.strings, required this.existing});
 
   final AppStrings strings;
   final Product? existing;
-
-  /// The unit the price is shown and entered in (D-117).
-  final MoneyDisplayUnit unit;
 
   @override
   ConsumerState<_ProductForm> createState() => _ProductFormState();
@@ -138,7 +121,7 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
     // would read as a different kind of value than the one being entered.
     text: widget.existing == null
         ? ''
-        : formatGroupedPersian(widget.unit.amountOf(widget.existing!.price)),
+        : formatGroupedPersian(kDisplayUnit.amountOf(widget.existing!.price)),
   );
   late final TextEditingController _description = TextEditingController(
     text: widget.existing?.description ?? '',
@@ -229,7 +212,7 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
               maxLength: AmountLimits.tomanDigits,
               // The unit is always shown beside an amount (§9): a bare number
               // here is ambiguous by a factor of ten.
-              suffixText: moneyUnitLabel(widget.unit, strings),
+              suffixText: moneyUnitLabel(kDisplayUnit, strings),
               keyboardType: const TextInputType.numberWithOptions(
                 decimal: false,
               ),
@@ -280,7 +263,7 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
     // Checked here rather than caught at save time: the ceiling rejects
     // instead of truncating (D-002), and the user should learn that while the
     // field is still in front of them.
-    if (entered > widget.unit.maxEnterableValue) {
+    if (entered > kDisplayUnit.maxEnterableValue) {
       return strings.validationAmountTooLarge;
     }
     return null;
@@ -298,7 +281,7 @@ class _ProductFormState extends ConsumerState<_ProductForm> {
       // The one place entry becomes Rial storage. Both constructors behind
       // `moneyOf` are overflow-checked, and the field already refused anything
       // past the ceiling (D-002).
-      price: widget.unit.moneyOf(amount),
+      price: kDisplayUnit.moneyOf(amount),
       unit: _unit.text.trim(),
       description: _description.text.trim().isEmpty
           ? null

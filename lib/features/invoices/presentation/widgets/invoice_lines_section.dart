@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/localization/generated/app_strings.dart';
+import '../../../../core/localization/money_display.dart';
 import '../../../../core/money/invoice_calculator.dart';
 import '../../../../core/responsive/breakpoints.dart';
 import '../../../../core/theme/app_dimensions.dart';
@@ -10,7 +11,6 @@ import '../../../../core/widgets/amount_text.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_table.dart';
 import '../../../../core/widgets/empty_state.dart';
-import '../../../../core/widgets/money_display_scope.dart';
 import '../../../../data/models/product.dart';
 import '../../application/invoice_editor.dart';
 import '../../domain/invoice_editor_state.dart';
@@ -533,7 +533,7 @@ class _Warnings extends StatelessWidget {
     final List<String> messages = invoiceWarningMessages(
       state.warnings,
       strings,
-      unit: MoneyDisplayScope.of(context),
+      unit: kDisplayUnit,
     );
 
     return AppCard(

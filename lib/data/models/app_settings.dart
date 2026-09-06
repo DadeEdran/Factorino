@@ -1,5 +1,4 @@
 import 'app_theme_mode.dart';
-import 'money_display_unit.dart';
 import 'seller_identity.dart';
 
 /// The single row of application configuration.
@@ -14,7 +13,6 @@ class AppSettings {
     this.paymentTermDays = kDefaultPaymentTermDays,
     this.seller = SellerIdentity.none,
     this.themeMode = AppThemeMode.system,
-    this.displayUnit = MoneyDisplayUnit.toman,
     this.devicePrefix,
     this.lastBackupAt,
   });
@@ -72,15 +70,6 @@ class AppSettings {
   /// reader to treat them as two.
   final AppThemeMode themeMode;
 
-  /// Which unit amounts are shown and entered in (schema v8).
-  ///
-  /// **Display only, and storage is untouched**: every amount in the database
-  /// is integer Rial and stays that way (§4, D-002). Choosing ریال changes what
-  /// the user reads on a card, types into a field and sees printed on the
-  /// document — never the number underneath it, and never a figure on an
-  /// invoice already issued.
-  final MoneyDisplayUnit displayUnit;
-
   /// Reserved for the multi-device numbering collision cloud sync will
   /// introduce (D-013). Unused in Phase 1.
   final String? devicePrefix;
@@ -97,7 +86,6 @@ class AppSettings {
     int? paymentTermDays,
     SellerIdentity? seller,
     AppThemeMode? themeMode,
-    MoneyDisplayUnit? displayUnit,
     String? devicePrefix,
     DateTime? lastBackupAt,
   }) {
@@ -111,7 +99,6 @@ class AppSettings {
       // "this one is now empty" (D-077).
       seller: seller ?? this.seller,
       themeMode: themeMode ?? this.themeMode,
-      displayUnit: displayUnit ?? this.displayUnit,
       devicePrefix: devicePrefix ?? this.devicePrefix,
       lastBackupAt: lastBackupAt ?? this.lastBackupAt,
     );

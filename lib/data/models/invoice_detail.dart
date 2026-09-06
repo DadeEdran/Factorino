@@ -86,6 +86,17 @@ class InvoiceDetail {
   /// is invisible in [amountDue] by design.
   bool get isOverpaid => amountPaid > invoice.grandTotal;
 
+  /// By how much [amountPaid] exceeds the invoice, and zero where it does not.
+  ///
+  /// The mirror of [amountDue], computed here for the same reason: it is not
+  /// historical, it moves with every payment, and it is a figure two callers
+  /// now need -- the screen, which says an overpayment happened, and the
+  /// **document**, which must say by how much. A reader who is told they paid
+  /// too much and not how much cannot check the claim against their own
+  /// records, and a figure on a document that cannot be reconciled is the thing
+  /// §4 exists to prevent.
+  Money get overpayment => (amountPaid - invoice.grandTotal).clampedToZero;
+
   @override
   String toString() => 'InvoiceDetail(${invoice.id})';
 }

@@ -11,13 +11,11 @@ import '../../../core/localization/generated/app_strings.dart';
 import '../../../core/theme/app_dimensions.dart';
 import '../../../core/widgets/app_card.dart';
 import '../../../core/widgets/empty_state.dart';
-import '../../../core/widgets/money_display_scope.dart';
 import '../../../core/widgets/page_body.dart';
 import '../../../data/backup/backup_file_gateway.dart';
 import '../../../data/backup/backup_service.dart';
 import '../../../data/models/app_settings.dart';
 import '../../../data/models/app_theme_mode.dart';
-import '../../../data/models/money_display_unit.dart';
 import '../../../data/models/seller_identity.dart';
 import '../application/backup_controller.dart';
 import '../application/settings_editor.dart';
@@ -131,26 +129,6 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
     final bool saved = await ref
 .read(settingsEditorProvider.notifier)
 .save(settings.copyWith(themeMode: mode));
-    if (!mounted || saved) return;
-    _say(strings.errorGenericBody);
-  }
-
-  /// Writes the display unit (D-117).
-  ///
-  /// **No confirmation message**, for [_setThemeMode]'s reason: every amount on
-  /// the screen behind this one changes as the row is written, which says it
-  /// better than a sentence would. A failure still speaks, because then nothing
-  /// visible happened.
-  ///
-  /// Nothing is converted and nothing is written but this one column. The
-  /// amounts are integer Rial before and after (§4, D-002); what changes is the
-  /// unit they are divided by on their way to the screen.
-  Future<void> _setDisplayUnit(MoneyDisplayUnit unit) async {
-    if (unit == settings.displayUnit) return;
-
-    final bool saved = await ref
-.read(settingsEditorProvider.notifier)
-.save(settings.copyWith(displayUnit: unit));
     if (!mounted || saved) return;
     _say(strings.errorGenericBody);
   }
@@ -427,49 +405,6 @@ class _SettingsContentState extends ConsumerState<_SettingsContent> {
 : (Set<AppThemeMode> selection) =>
                               _setThemeMode(selection.first),
                   ),
-                ),
-                const SizedBox(height: AppSpacing.xl),
-                Text(
-                  strings.settingsDisplayUnit,
-                  style: Theme.of(context).textTheme.bodyLarge,
-                ),
-                const SizedBox(height: AppSpacing.xxs),
-                Text(
-                  strings.settingsDisplayUnitHint,
-                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-                ),
-                const SizedBox(height: AppSpacing.md),
-                // **A dropdown and not a segmented control**, unlike the theme
-                // above it, and asked for in those terms. The two also differ
-                // in kind: the theme is a three-way choice whose options are
-                // worth reading side by side, and this is a two-way one whose
-                // current value is the thing worth reading — «تومان» sitting in
-                // a field answers "which unit am I looking at" at a glance,
-                // which is the question this setting exists for.
-                //
-                // Full width, so the Persian label is never the thing that
-                // decides the control's size: `isExpanded` is what keeps a long
-                // unit name from being ellipsized inside its own menu.
-                DropdownButtonFormField<MoneyDisplayUnit>(
-                  initialValue: settings.displayUnit,
-                  isExpanded: true,
-                  decoration: InputDecoration(
-                    labelText: strings.settingsDisplayUnit,
-                  ),
-                  items: <DropdownMenuItem<MoneyDisplayUnit>>[
-                    for (final MoneyDisplayUnit unit in MoneyDisplayUnit.values)
-                      DropdownMenuItem<MoneyDisplayUnit>(
-                        value: unit,
-                        child: Text(moneyUnitLabel(unit, strings)),
-                      ),
-                  ],
-                  onChanged: _busy
-                      ? null
-: (MoneyDisplayUnit? selected) {
-                          if (selected != null) _setDisplayUnit(selected);
-                        },
                 ),
               ],
             ),

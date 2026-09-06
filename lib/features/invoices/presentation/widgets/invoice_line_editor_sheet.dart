@@ -3,11 +3,11 @@ import 'package:flutter/material.dart';
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/formatting/number_input.dart';
 import '../../../../core/localization/generated/app_strings.dart';
+import '../../../../core/localization/money_display.dart';
 import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/editor_sheet.dart';
-import '../../../../core/widgets/money_display_scope.dart';
 import '../../../../data/models/field_limits.dart';
 import '../../../../data/models/money_display_unit.dart';
 import '../../../../data/models/product.dart';
@@ -97,23 +97,16 @@ Future<InvoiceLineEntry?> showInvoiceLineEditorSheet(
       existing: existing,
       product: product,
       resolvedTaxRateBp: resolvedTaxRateBp,
-      // Read from the caller's context, where the scope is: the controllers
-      // are seeded in `initState`, before this sheet can ask for it (D-117).
-      unit: MoneyDisplayScope.of(context),
     ),
   );
 }
 
 class _InvoiceLineEditorSheet extends StatefulWidget {
   const _InvoiceLineEditorSheet({
-    required this.unit,
     this.existing,
     this.product,
     this.resolvedTaxRateBp,
   });
-
-  /// The unit prices and discounts are shown and entered in (D-117).
-  final MoneyDisplayUnit unit;
 
   final InvoiceLineEntry? existing;
   final Product? product;
@@ -161,7 +154,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     );
     _unit = TextEditingController(text: existing?.unit ?? product?.unit ?? '');
     _unitPrice = TextEditingController(
-      text: _amountText(widget.unit, existing?.unitPrice ?? product?.price),
+      text: _amountText(kDisplayUnit, existing?.unitPrice ?? product?.price),
     );
     _quantity = TextEditingController(
       // A new line starts at one, which is what it almost always is. Zero is a
@@ -180,7 +173,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
       text: percent != null
           ? _percentText(percent)
           : _amountText(
-              widget.unit,
+              kDisplayUnit,
               existing == null || existing.discount == Money.zero
                   ? null
                   : existing.discount,
@@ -270,7 +263,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
         controller: _unitPrice,
         label: strings.invoiceLineFieldUnitPrice,
         maxLength: AmountLimits.tomanDigits,
-        suffixText: moneyUnitLabel(widget.unit, strings),
+        suffixText: moneyUnitLabel(kDisplayUnit, strings),
         keyboardType: const TextInputType.numberWithOptions(decimal: false),
         textInputAction: TextInputAction.next,
         groupDigits: true,
@@ -309,7 +302,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
             : strings.invoiceLineDiscountModePercent,
         maxLength: AmountLimits.tomanDigits,
         suffixText: _discountMode == _DiscountMode.amount
-            ? moneyUnitLabel(widget.unit, strings)
+            ? moneyUnitLabel(kDisplayUnit, strings)
             : kPersianPercentSign,
         helperText: strings.fieldOptional,
         keyboardType: TextInputType.numberWithOptions(
@@ -417,7 +410,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
           label: strings.invoiceLineFieldUnitPrice,
           value: strings.amountWithUnit(
             formatGroupedPersian(unitPriceValue),
-            moneyUnitLabel(widget.unit, strings),
+            moneyUnitLabel(kDisplayUnit, strings),
           ),
         ),
       if (hasDiscount)
@@ -427,9 +420,9 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
               ? formatPercentFromBasisPoints(discountPercent)
               : strings.amountWithUnit(
                   formatGroupedPersian(
-                    widget.unit.amountOf(existing!.discount),
+                    kDisplayUnit.amountOf(existing!.discount),
                   ),
-                  moneyUnitLabel(widget.unit, strings),
+                  moneyUnitLabel(kDisplayUnit, strings),
                 ),
         ),
       _FixedValue(
@@ -494,7 +487,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
       _quantity.text.trim(),
       scale: 1000,
     )!;
-    final Money unitPrice = widget.unit.moneyOf(
+    final Money unitPrice = kDisplayUnit.moneyOf(
       tryParseIntInput(_unitPrice.text)!,
     );
 
@@ -513,7 +506,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
         // amount would win in the engine over the amount the user just typed
         // (§4 step 2) — the same reason `setDiscountAmount` clears it.
         discount: hasDiscount && !isPercent
-            ? widget.unit.moneyOf(tryParseIntInput(discountText)!)
+            ? kDisplayUnit.moneyOf(tryParseIntInput(discountText)!)
             : Money.zero,
         discountPercentBp: hasDiscount && isPercent
             ? tryParseScaledInput(discountText, scale: 100)
@@ -568,7 +561,7 @@ class _InvoiceLineEditorSheetState extends State<_InvoiceLineEditorSheet> {
     if (entered == null || entered < 0) return strings.validationAmountInvalid;
     // The ceiling rejects rather than truncates (D-002); said here, while the
     // field is still in front of the user, rather than as an error on save.
-    if (entered > widget.unit.maxEnterableValue) {
+    if (entered > kDisplayUnit.maxEnterableValue) {
       return strings.validationAmountTooLarge;
     }
     return null;

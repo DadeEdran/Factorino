@@ -1,6 +1,13 @@
 import '../../core/money/money.dart';
 
-/// Which unit amounts are **shown and entered** in.
+/// Which unit an amount is **shown** in.
+///
+/// **No longer a user choice** (D-121): the ریال/تومان dropdown is gone and
+/// [MoneyDisplayUnit.toman] is fixed, named once as `kDisplayUnit`. The enum
+/// stays because two things still need it — the `settings.display_unit` column
+/// it types, which outlives the setting until a migration removes it, and
+/// `AmountText.inRial`, where showing the exact Rial figure is a precision
+/// decision rather than a preference.
 ///
 /// Storage is unaffected and stays integer Rial (§4, D-002). This is a display
 /// decision and nothing else: the same invoice reads ۳٬۰۰۰٬۰۰۰ تومان or
@@ -9,8 +16,10 @@ import '../../core/money/money.dart';
 ///
 /// Stored as the **enum index**, like [AppThemeMode] and every other enum this
 /// schema holds, so these values must never be reordered and new ones may only
-/// be appended. [toman] is index 0 and therefore the column default, which is
-/// what every database created before this setting existed silently had.
+/// be appended — the column still holds whatever the setting last wrote. [toman]
+/// is index 0 and therefore the column default, which is what every database
+/// created before the setting existed silently had, and what every one behaves
+/// as now that it is gone.
 ///
 /// Lives in `data/models/` rather than in `core/money/`, for the reason
 /// `app_theme_mode.dart` does: it is a value a domain model carries and a

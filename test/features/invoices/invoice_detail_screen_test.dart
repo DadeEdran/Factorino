@@ -895,10 +895,12 @@ void main() {
       // The amount being removed is named, so the confirmation is about this
       // payment rather than about payments in general.
       expect(
-        find.text(strings.paymentDeleteBody(
-          formatGroupedPersian(500000),
-          strings.unitToman,
-        )),
+        find.text(
+          strings.paymentDeleteBody(
+            formatGroupedPersian(500000),
+            strings.unitToman,
+          ),
+        ),
         findsOneWidget,
       );
 
@@ -1774,10 +1776,12 @@ void main() {
         findsOneWidget,
       );
       expect(
-        find.text(strings.paymentDeleteBody(
-          formatGroupedPersian(500000),
-          strings.unitToman,
-        )),
+        find.text(
+          strings.paymentDeleteBody(
+            formatGroupedPersian(500000),
+            strings.unitToman,
+          ),
+        ),
         findsNothing,
         reason:
             'the ordinary wording promises a balance that would go up, and '

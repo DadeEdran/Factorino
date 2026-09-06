@@ -184,13 +184,6 @@ class AppStringsFa extends AppStrings {
   String get unitDays => 'روز';
 
   @override
-  String get settingsDisplayUnit => 'واحد نمایش مبلغ';
-
-  @override
-  String get settingsDisplayUnitHint =>
-      'مبلغ‌ها با همین واحد نمایش داده می‌شوند، با همین واحد وارد می‌شوند و روی فاکتور PDF هم با همین واحد چاپ می‌شوند. اطلاعات ذخیره‌شده تغییر نمی‌کند و فاکتورهای قبلی دست‌نخورده می‌مانند.';
-
-  @override
   String get settingsBackupSection => 'پشتیبان‌گیری';
 
   @override
@@ -1310,6 +1303,12 @@ class AppStringsFa extends AppStrings {
 
   @override
   String get invoiceDocumentStatusLabel => 'وضعیت پرداخت';
+
+  @override
+  String get invoiceDocumentPaidLabel => 'پرداخت‌شده';
+
+  @override
+  String get invoiceDocumentOverpaidLabel => 'اضافه‌پرداخت';
 
   @override
   String get invoiceDocumentNumberLabel => 'شماره فاکتور';

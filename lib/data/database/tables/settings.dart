@@ -115,16 +115,24 @@ class Settings extends Table with SyncColumns {
   IntColumn get themeMode =>
       intEnum<AppThemeMode>().withDefault(const Constant(0))();
 
-  /// Which unit amounts are shown and entered in, as the [MoneyDisplayUnit]
-  /// index (v8).
+  /// Which unit amounts were shown and entered in, as the [MoneyDisplayUnit]
+  /// index (v8). **Nothing reads it any more.**
   ///
-  /// **Display only.** Every amount in this schema is and stays integer Rial
-  /// (§4, D-002); this column decides what the user reads and types, not what
-  /// is stored, so changing it cannot alter a figure on an existing invoice.
+  /// The setting is gone (D-121): the owner removed the ریال/تومان choice and
+  /// Toman became fixed, so `AppSettings` no longer carries the value and
+  /// `kDisplayUnit` is what every amount is drawn in.
   ///
-  /// In this table for the reason [themeMode] is: it is a preference with no
-  /// per-device store to live in, the settings row is already watched live by
-  /// the screen that edits it, and it already travels with a backup.
+  /// **The column stays, and that is deliberate rather than an oversight.**
+  /// Dropping it is a schema change, and a schema change needs a version bump,
+  /// a migration step and a migration test (§6) — real work and real risk, in
+  /// exchange for one unread integer per database. It is left where it is,
+  /// defaulted and untouched, and a database that had `1` in it keeps `1`
+  /// while displaying Toman like every other. Removing it is a job for the next
+  /// migration this schema needs for a reason of its own.
+  ///
+  /// **Display only, and it always was.** Every amount in this schema is and
+  /// stays integer Rial (§4, D-002), so neither the setting nor its removal
+  /// alters a figure on an existing invoice.
   ///
   /// The literal `0` rather than `MoneyDisplayUnit.toman.index`, for the reason
   /// every other default in this file carries one: `drift_dev` reads this

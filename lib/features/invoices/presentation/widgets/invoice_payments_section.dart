@@ -5,17 +5,17 @@ import '../../../../core/date/jalali_period.dart';
 import '../../../../core/formatting/jalali_display.dart';
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/localization/generated/app_strings.dart';
+import '../../../../core/localization/money_display.dart';
 import '../../../../core/responsive/breakpoints.dart';
 import '../../../../core/theme/app_colors.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/utils/clock.dart';
 import '../../../../core/widgets/amount_text.dart';
-import '../../../../core/widgets/money_display_scope.dart';
-import '../../../../data/models/money_display_unit.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/status_badge.dart';
 import '../../../../data/models/invoice_detail.dart';
 import '../../../../data/models/invoice_status.dart';
+import '../../../../data/models/money_display_unit.dart';
 import '../../../../data/models/payment.dart';
 import '../../application/invoice_payments.dart';
 import '../../domain/payment_method_label.dart';
@@ -301,7 +301,7 @@ class _PaymentRow extends ConsumerWidget {
     // Read before the dialog is built, from the context that has the scope:
     // the dialog's own context is a route below it and the figure and its unit
     // must be the ones the page behind it is showing (D-117).
-    final MoneyDisplayUnit unit = MoneyDisplayScope.of(context);
+    final MoneyDisplayUnit unit = kDisplayUnit;
 
     // **Whether the status moves is decided before the dialog is shown, from
     // the row's own numbers, and only to word the warning.** The status itself

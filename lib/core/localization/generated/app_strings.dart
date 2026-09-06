@@ -424,18 +424,6 @@ abstract class AppStrings {
   /// **'روز'**
   String get unitDays;
 
-  /// The label over the display-unit dropdown in settings (D-117). «واحد نمایش» rather than «واحد پول», because the stored currency does not change -- only what the user reads and types.
-  ///
-  /// In fa, this message translates to:
-  /// **'واحد نمایش مبلغ'**
-  String get settingsDisplayUnit;
-
-  /// Says the two things a user needs before switching: it changes everything they read, type and print, and it changes no stored figure. Storage is integer Rial either way (section 4, D-002), so an issued invoice reads the same amount in a different unit -- never a different amount.
-  ///
-  /// In fa, this message translates to:
-  /// **'مبلغ‌ها با همین واحد نمایش داده می‌شوند، با همین واحد وارد می‌شوند و روی فاکتور PDF هم با همین واحد چاپ می‌شوند. اطلاعات ذخیره‌شده تغییر نمی‌کند و فاکتورهای قبلی دست‌نخورده می‌مانند.'**
-  String get settingsDisplayUnitHint;
-
   /// No description provided for @settingsBackupSection.
   ///
   /// In fa, this message translates to:
@@ -2452,6 +2440,18 @@ abstract class AppStrings {
   /// In fa, this message translates to:
   /// **'وضعیت پرداخت'**
   String get invoiceDocumentStatusLabel;
+
+  /// The amount actually received, printed under the payable total but ONLY on an overpaid invoice. It is what makes the اضافه‌پرداخت row below it checkable with a pencil: paid minus the payable total is the excess, and a reader told they overpaid without being told what was received cannot reconcile the claim. Ordinary invoices still print no payment amounts -- the document states what is owed, and a receipt is a different document.
+  ///
+  /// In fa, this message translates to:
+  /// **'پرداخت‌شده'**
+  String get invoiceDocumentPaidLabel;
+
+  /// How much more was received than the invoice asked for, printed under the payable total. The screen says an overpayment happened (invoiceDetailOverpaidNote); a document a customer keeps has to say by how much, because the reader cannot open the app to find out. Printed on every status, cancelled included: money received is a fact about what happened, and a void document that silently omits it is the one place the omission matters most.
+  ///
+  /// In fa, this message translates to:
+  /// **'اضافه‌پرداخت'**
+  String get invoiceDocumentOverpaidLabel;
 
   /// Labels the invoice number in the printed header. Deliberately the full «شماره فاکتور» rather than «شماره»: on a page with no other numbered field the short form reads as a form field, and this is the reference the customer quotes when they pay.
   ///

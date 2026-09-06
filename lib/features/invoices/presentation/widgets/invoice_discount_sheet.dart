@@ -4,13 +4,13 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../../core/formatting/number_display.dart';
 import '../../../../core/formatting/number_input.dart';
 import '../../../../core/localization/generated/app_strings.dart';
+import '../../../../core/localization/money_display.dart';
 import '../../../../core/money/money.dart';
 import '../../../../core/theme/app_dimensions.dart';
 import '../../../../core/widgets/amount_text.dart';
 import '../../../../core/widgets/app_card.dart';
 import '../../../../core/widgets/app_text_field.dart';
 import '../../../../core/widgets/editor_sheet.dart';
-import '../../../../core/widgets/money_display_scope.dart';
 import '../../../../data/models/field_limits.dart';
 import '../../../../data/models/money_display_unit.dart';
 import '../../application/invoice_editor.dart';
@@ -89,12 +89,7 @@ Future<void> showInvoiceDiscountSheet(
     context: context,
     isScrollControlled: true,
     useSafeArea: true,
-    builder: (BuildContext context) => _InvoiceDiscountSheet(
-      base: state,
-      // From the caller's context: the fields are seeded in `initState`,
-      // before this sheet has one of its own (D-117).
-      unit: MoneyDisplayScope.of(context),
-    ),
+    builder: (BuildContext context) => _InvoiceDiscountSheet(base: state),
   );
   if (result == null) return;
 
@@ -124,10 +119,7 @@ class _Result {
 }
 
 class _InvoiceDiscountSheet extends StatefulWidget {
-  const _InvoiceDiscountSheet({required this.base, required this.unit});
-
-  /// The unit discounts are shown and entered in (D-117).
-  final MoneyDisplayUnit unit;
+  const _InvoiceDiscountSheet({required this.base});
 
   /// The invoice as it stands. Never mutated: the sheet previews against a copy
   /// and the real state moves once, on apply.
@@ -158,7 +150,7 @@ class _InvoiceDiscountSheetState extends State<_InvoiceDiscountSheet> {
     _invoice = TextEditingController(
       text: base.discountPercentBp != null
           ? _percentText(base.discountPercentBp!)
-          : _amountText(widget.unit, base.discount),
+          : _amountText(kDisplayUnit, base.discount),
     );
 
     _lineModes = <_Mode>[
@@ -170,7 +162,7 @@ class _InvoiceDiscountSheetState extends State<_InvoiceDiscountSheet> {
         TextEditingController(
           text: line.discountPercentBp != null
               ? _percentText(line.discountPercentBp!)
-              : _amountText(widget.unit, line.discount),
+              : _amountText(kDisplayUnit, line.discount),
         ),
     ];
   }
@@ -211,7 +203,7 @@ class _InvoiceDiscountSheetState extends State<_InvoiceDiscountSheet> {
     }
     final int? entered = tryParseIntInput(value);
     return line.copyWith(
-      discount: entered == null ? Money.zero : widget.unit.moneyOf(entered),
+      discount: entered == null ? Money.zero : kDisplayUnit.moneyOf(entered),
       clearDiscountPercent: true,
     );
   }
@@ -219,7 +211,7 @@ class _InvoiceDiscountSheetState extends State<_InvoiceDiscountSheet> {
   Money get _draftInvoiceDiscount {
     if (_invoiceMode == _Mode.percent) return Money.zero;
     final int? entered = tryParseIntInput(_invoice.text.trim());
-    return entered == null ? Money.zero : widget.unit.moneyOf(entered);
+    return entered == null ? Money.zero : kDisplayUnit.moneyOf(entered);
   }
 
   int? get _draftInvoicePercent {
@@ -387,10 +379,8 @@ class _Preview extends StatelessWidget {
             const SizedBox(height: AppSpacing.sm),
             Text(
               strings.invoiceDiscountChange(
-                formatGroupedPersian(
-                  MoneyDisplayScope.of(context).amountOf(now - after),
-                ),
-                moneyUnitLabel(MoneyDisplayScope.of(context), strings),
+                formatGroupedPersian(kDisplayUnit.amountOf(now - after)),
+                moneyUnitLabel(kDisplayUnit, strings),
               ),
               style: theme.textTheme.bodySmall?.copyWith(
                 color: theme.colorScheme.onSurfaceVariant,
@@ -479,9 +469,7 @@ class _LineDiscount extends StatelessWidget {
           strings.invoiceLineLabelQuantity(
             formatQuantityMilli(line.quantityMilli),
             line.unit,
-            formatGroupedPersian(
-              MoneyDisplayScope.of(context).amountOf(line.unitPrice),
-            ),
+            formatGroupedPersian(kDisplayUnit.amountOf(line.unitPrice)),
           ),
           style: theme.textTheme.bodySmall?.copyWith(
             color: theme.colorScheme.onSurfaceVariant,
@@ -522,7 +510,7 @@ class _DiscountControl extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final MoneyDisplayUnit unit = MoneyDisplayScope.of(context);
+    final MoneyDisplayUnit unit = kDisplayUnit;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -589,7 +577,7 @@ class _Warnings extends StatelessWidget {
     final List<String> messages = invoiceWarningMessages(
       state.warnings,
       strings,
-      unit: MoneyDisplayScope.of(context),
+      unit: kDisplayUnit,
     );
 
     return AppCard(

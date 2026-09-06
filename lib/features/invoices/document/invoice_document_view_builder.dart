@@ -1,10 +1,10 @@
 import '../../../core/formatting/jalali_display.dart';
 import '../../../core/formatting/number_display.dart';
 import '../../../core/localization/generated/app_strings.dart';
+import '../../../core/localization/money_display.dart';
 import '../../../core/localization/month_names.dart';
 import '../../../core/money/money.dart';
 import '../../../core/pdf/document_text.dart';
-import '../../../core/widgets/money_display_scope.dart';
 import '../../../data/models/customer_snapshot.dart';
 import '../../../data/models/invoice.dart';
 import '../../../data/models/invoice_detail.dart';
@@ -13,8 +13,8 @@ import '../../../data/models/invoice_status.dart';
 import '../../../data/models/money_display_unit.dart';
 import '../../../data/models/seller_identity.dart';
 import '../domain/invoice_party_view.dart';
-import '../domain/invoice_summary_figures.dart';
 import '../domain/invoice_status_view.dart';
+import '../domain/invoice_summary_figures.dart';
 import 'invoice_document_view.dart';
 
 /// Turns a stored invoice into the fully-computed, already-formatted view the
@@ -35,22 +35,19 @@ InvoiceDocumentView buildInvoiceDocumentView({
   required AppStrings strings,
   required DocumentTextBoundary boundary,
   SellerIdentity seller = SellerIdentity.none,
-
-  /// The unit every figure on the document is printed in, and printed **as a
-  /// word beside each of them** (D-117): a document is read away from the
-  /// application that produced it, so a page of bare numbers is a page whose
-  /// unit the reader has to guess. Defaults to Toman, which is what every
-  /// document printed before the setting existed said.
-  MoneyDisplayUnit unit = MoneyDisplayUnit.toman,
 }) {
   final Invoice invoice = detail.invoice;
   final InvoiceSummaryFigures figures = InvoiceSummaryFigures.ofStored(invoice);
 
   DocumentText text(String raw) => boundary(raw);
 
+  /// Every figure on the page, in [kDisplayUnit] and **with the unit printed
+  /// as a word beside it** (D-117, kept when the choice went away in D-121): a
+  /// document is read away from the application that produced it, so a page of
+  /// bare numbers is a page whose unit the reader has to guess.
   DocumentAmount money(Money amount) => DocumentAmount(
-    digits: text(formatGroupedPersian(unit.amountOf(amount))),
-    unit: text(moneyUnitLabel(unit, strings)),
+    digits: text(formatGroupedPersian(kDisplayUnit.amountOf(amount))),
+    unit: text(moneyUnitLabel(kDisplayUnit, strings)),
   );
 
   return InvoiceDocumentView(
@@ -144,6 +141,29 @@ InvoiceDocumentView buildInvoiceDocumentView({
       label: text(strings.invoiceSummaryGrandTotal),
       amount: money(figures.grandTotal),
     ),
+    // **Present only where it is true, like every other conditional row on
+    // this page.** `isOverpaid` and `overpayment` are both [InvoiceDetail]'s,
+    // computed there beside `amountDue` for the same reason that one is: they
+    // move with the payments rather than being snapshots, and this file
+    // computes nothing.
+    //
+    // Printed on every status, cancelled included. The payment *status* is
+    // withheld from a cancelled invoice because «پرداخت نشده» beside the void
+    // band reads as a demand; this is the opposite statement — money the
+    // customer is owed back — and a void page that silently omits it is the
+    // one place the omission does real harm.
+    overpayment: detail.isOverpaid
+        ? InvoiceDocumentOverpayment(
+            paid: DocumentAmountRow(
+              label: text(strings.invoiceDocumentPaidLabel),
+              amount: money(detail.amountPaid),
+            ),
+            excess: DocumentAmountRow(
+              label: text(strings.invoiceDocumentOverpaidLabel),
+              amount: money(detail.overpayment),
+            ),
+          )
+        : null,
     notes: invoice.notes == null || invoice.notes!.isEmpty
         ? null
         : text(invoice.notes!),

@@ -310,6 +310,18 @@ class PdfInvoiceDocumentGenerator implements InvoiceDocumentGenerator {
                 pw.SizedBox(height: _Doc.tight),
                 _field(view.paymentStatus!, _Doc.body),
               ],
+              // **Under the status, in the order the reader arrives at them.**
+              // The total is what was asked for, the status is whether it was
+              // met, and these two are what actually arrived and by how much
+              // it overshot — each one a fact about the line above it. They
+              // sit in the same column as the totals so the figures stack in
+              // one edge, which is what lets the subtraction be done by eye.
+              if (view.overpayment != null) ...<pw.Widget>[
+                pw.SizedBox(height: _Doc.tight),
+                _totalRow(view.overpayment!.paid, _Doc.body),
+                pw.SizedBox(height: _Doc.tight),
+                _totalRow(view.overpayment!.excess, _Doc.body, bold: true),
+              ],
             ],
           ),
         ),

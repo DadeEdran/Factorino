@@ -136,6 +136,7 @@ class InvoiceDocumentView {
     this.banner,
     this.paymentStatus,
     this.dueDate,
+    this.overpayment,
     this.notes,
   });
 
@@ -214,7 +215,46 @@ class InvoiceDocumentView {
   /// the one number the document exists to state.
   final DocumentAmountRow grandTotal;
 
+  /// What was received, and by how much it exceeds [grandTotal] — **only on an
+  /// invoice that was overpaid**, and null on every other one.
+  ///
+  /// **The document says what happened, not only what was asked for.** An
+  /// overpayment is invisible in every figure already on the page: the totals
+  /// are the invoice's own snapshots and do not move when money arrives, and
+  /// the payment status says «پرداخت شده» for a customer who paid exactly the
+  /// total and for one who paid half as much again. The record holds the
+  /// difference, so the page a customer keeps prints it.
+  ///
+  /// **Two rows rather than one**, because one is not checkable: «اضافه‌پرداخت
+  /// ۳۵۰٬۰۰۰» alone asks the reader to take the figure on trust, while the
+  /// amount received above it turns the same claim into a subtraction they can
+  /// do against their own bank record. That is §4's rule about a document a
+  /// customer reconciles, applied to the one block on the page that is about
+  /// money that already moved.
+  ///
+  /// Ordinary invoices print no payment amounts at all and that is unchanged: a
+  /// statement of what is owed and a receipt for what was paid are different
+  /// documents, and this is the one case where the invoice cannot be read
+  /// correctly without the other's figure.
+  final InvoiceDocumentOverpayment? overpayment;
+
   final DocumentText? notes;
+}
+
+/// The overpayment block: what was received, and the excess.
+///
+/// A type rather than two nullable rows on the view, so the pair cannot be
+/// half-set. The excess without the amount received is a figure the reader
+/// cannot check, and the amount received without the excess is a receipt line
+/// on a document that is not a receipt.
+class InvoiceDocumentOverpayment {
+  const InvoiceDocumentOverpayment({required this.paid, required this.excess});
+
+  /// «پرداخت‌شده» — the sum of the payments recorded against this invoice.
+  final DocumentAmountRow paid;
+
+  /// «اضافه‌پرداخت» — [paid] less the payable total.
+  final DocumentAmountRow excess;
 }
 
 /// A totals row: a label and an amount.

@@ -126,7 +126,7 @@ class AppTextField extends StatefulWidget {
 class _AppTextFieldState extends State<AppTextField> {
   late final FocusNode _focusNode = FocusNode()..addListener(_onFocusChange);
 
-  /// Whether focusing this field should select what is already in it.
+  /// Whether entering this field should select what is already in it.
   ///
   /// **Numeric fields only, and derived from the keyboard rather than from a
   /// flag at nine call sites.** A number is replaced far more often than it is
@@ -149,13 +149,42 @@ class _AppTextFieldState extends State<AppTextField> {
   }
 
   void _onFocusChange() {
-    if (!_focusNode.hasFocus || !_selectsAllOnFocus) return;
-    final String text = widget.controller.text;
-    if (text.isEmpty) return;
+    if (!_focusNode.hasFocus) return;
+    _selectAll();
+  }
+
+  /// The same selection, on a **tap into a field that already has focus**.
+  ///
+  /// **This is the half [_onFocusChange] could not cover, and it printed a
+  /// wrong quantity on a customer's invoice.** The line sheet opens with the
+  /// quantity autofocused and pre-filled with «۱»; focus is therefore already
+  /// installed, and a user who taps the field before typing — which is what a
+  /// user does — changes no focus, so the listener never fires. The tap itself
+  /// then sets the caret, and in an RTL field it sets it to **offset 0**: the
+  /// digits are an LTR run pinned to the right edge, so the empty space filling
+  /// most of the field is *before* them. Typing ۱۵۰ into a field holding ۱
+  /// produced **۱۵۰۱**, which the invoice then stored and the document
+  /// faithfully printed. Measured on the real sheet, not reasoned.
+  ///
+  /// **The trade, stated:** a tap can no longer put the caret inside a number,
+  /// so a long amount is retyped rather than edited in place. That is the same
+  /// judgement [_selectsAllOnFocus] already makes for the same fields — a
+  /// number is replaced, not edited — applied to the one way of entering them
+  /// it had missed. It buys the guarantee that what the user types into a
+  /// numeric field is what the field ends up holding, whichever way they got
+  /// there, and a figure silently gaining a digit is the defect §4 ranks above
+  /// every other in this application.
+  void _onTap() => _selectAll();
+
+  void _selectAll() {
+    if (!_selectsAllOnFocus) return;
+    if (widget.controller.text.isEmpty) return;
 
     // **After the frame**, because the framework sets its own selection while
     // it is installing focus — assigning here directly is overwritten on a real
     // device and survives only in a widget test, which is the worst of both.
+    // A tap is the same story: `TextField` positions the caret from the hit
+    // test around this callback, so the assignment has to outlive it.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted || !_focusNode.hasFocus) return;
       widget.controller.selection = TextSelection(
@@ -201,6 +230,7 @@ class _AppTextFieldState extends State<AppTextField> {
       maxLength: widget.groupDigits ? null : widget.maxLength,
       obscureText: widget.obscureText,
       inputFormatters: _formatters,
+      onTap: _onTap,
       onChanged: widget.onChanged,
       buildCounter: _buildCounter,
       decoration: InputDecoration(
