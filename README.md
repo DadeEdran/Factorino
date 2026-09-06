@@ -42,7 +42,7 @@
 |---|---|---|
 | [`factorino-arm64.apk`](https://github.com/DadeEdran/Factorino/releases/latest/download/factorino-arm64.apk) | اندروید | گوشی‌های ۶۴ بیتی (تقریباً همه گوشی‌های امروزی) |
 | [`factorino-windows-x64.zip`](https://github.com/DadeEdran/Factorino/releases/latest/download/factorino-windows-x64.zip) | ویندوز | ویندوز ۱۰ و ۱۱، ۶۴ بیتی |
-| [`README-fa.txt`](https://github.com/DadeEdran/Factorino/releases/latest) | — | راهنمای کامل فارسی برای آزمایش‌کننده‌ها |
+| [`README-fa.txt`](https://github.com/DadeEdran/Factorino/releases/latest/download/README-fa.txt) | — | راهنمای کامل فارسی برای آزمایش‌کننده‌ها |
 
 ### نصب روی اندروید
 
