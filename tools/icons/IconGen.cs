@@ -1,15 +1,17 @@
 // Icon generation from the source logo. Compiled at run time by
 // tools/icons/generate_icons.ps1 -- see tools/icons/README.md.
 //
+// **It downscales, and that is all it does.** The source PNG is used exactly as
+// the owner supplied it: white background included, nothing keyed, nothing
+// cropped, nothing recomposed. Load, resample, write.
+//
 // WHY C# AND NOT A DART SCRIPT
 //
 // Decoding a PNG in Dart needs the `image` package, and the project spec
 // asks that a dependency be justified before it is added. This needs no
 // dependency at all: System.Drawing ships with the .NET Framework already on
-// the machine, and the whole job -- key, trim, fit, resample, write ICO -- is
-// a couple of hundred lines of it. The PowerShell wrapper exists only because
-// that is how this repository already drives Windows-only tooling
-// (tools/pdf_raster).
+// the machine. The PowerShell wrapper exists only because that is how this
+// repository already drives Windows-only tooling (tools/pdf_raster).
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -34,97 +36,29 @@ public static class IconGen
         }
     }
 
-    // Makes the opaque background transparent, and trims to what is left.
+    // The whole image at [size] x [size].
     //
-    // **A flood fill from the border, not a colour test per pixel.** The
-    // receipt inside the mark is white too, and a threshold applied everywhere
-    // would punch a hole through the middle of the artwork. Only white that is
-    // CONNECTED to the edge of the canvas is background, which is the
-    // definition that matches what a person means by the word.
-    public static Bitmap KeyAndTrim(Bitmap src, int threshold)
+    // The source is square, so this never changes the aspect ratio and never
+    // crops. It refuses to enlarge: every target here is smaller than the
+    // 1254 px source, and an icon quietly upscaled from something too small is
+    // the soft, blurry result the owner asked to be told about instead.
+    public static Bitmap Resize(Bitmap src, int size)
     {
-        int w = src.Width, h = src.Height;
-        BitmapData data = src.LockBits(new Rectangle(0, 0, w, h),
-            ImageLockMode.ReadWrite, PixelFormat.Format32bppArgb);
-        int stride = data.Stride;
-        byte[] buf = new byte[stride * h];
-        System.Runtime.InteropServices.Marshal.Copy(data.Scan0, buf, 0, buf.Length);
-
-        bool[] bg = new bool[w * h];
-        Stack<int> stack = new Stack<int>();
-        for (int x = 0; x < w; x++)
+        if (size > src.Width || size > src.Height)
         {
-            Seed(buf, stride, w, bg, stack, x, 0, threshold);
-            Seed(buf, stride, w, bg, stack, x, h - 1, threshold);
-        }
-        for (int y = 0; y < h; y++)
-        {
-            Seed(buf, stride, w, bg, stack, 0, y, threshold);
-            Seed(buf, stride, w, bg, stack, w - 1, y, threshold);
+            throw new Exception("refusing to upscale: asked for " + size + " from a "
+                + src.Width + "x" + src.Height + " source");
         }
 
-        while (stack.Count > 0)
-        {
-            int i = stack.Pop();
-            int x = i % w, y = i / w;
-            if (x > 0) Seed(buf, stride, w, bg, stack, x - 1, y, threshold);
-            if (x < w - 1) Seed(buf, stride, w, bg, stack, x + 1, y, threshold);
-            if (y > 0) Seed(buf, stride, w, bg, stack, x, y - 1, threshold);
-            if (y < h - 1) Seed(buf, stride, w, bg, stack, x, y + 1, threshold);
-        }
-
-        int minX = w, minY = h, maxX = -1, maxY = -1;
-        for (int y = 0; y < h; y++)
-        {
-            for (int x = 0; x < w; x++)
-            {
-                int i = y * w + x;
-                int o = y * stride + x * 4;
-                if (bg[i]) { buf[o + 3] = 0; continue; }
-                if (x < minX) minX = x;
-                if (x > maxX) maxX = x;
-                if (y < minY) minY = y;
-                if (y > maxY) maxY = y;
-            }
-        }
-        System.Runtime.InteropServices.Marshal.Copy(buf, 0, data.Scan0, buf.Length);
-        src.UnlockBits(data);
-
-        if (maxX < 0) throw new Exception("the whole image keyed away as background");
-        Rectangle box = new Rectangle(minX, minY, maxX - minX + 1, maxY - minY + 1);
-        Console.WriteLine("  keyed at " + threshold + ": kept " + box.Width + "x" + box.Height
-            + " of " + w + "x" + h + " (offset " + minX + "," + minY + ")");
-        return src.Clone(box, PixelFormat.Format32bppArgb);
-    }
-
-    private static void Seed(byte[] buf, int stride, int w, bool[] bg, Stack<int> stack,
-        int x, int y, int threshold)
-    {
-        int i = y * w + x;
-        if (bg[i]) return;
-        int o = y * stride + x * 4;
-        if (buf[o] < threshold || buf[o + 1] < threshold || buf[o + 2] < threshold) return;
-        bg[i] = true;
-        stack.Push(i);
-    }
-
-    // [art] centred on a square canvas, scaled so its longest side is
-    // [coverage] of it. Contain, never crop and never stretch.
-    public static Bitmap Fit(Bitmap art, int canvas, double coverage, Color background)
-    {
-        Bitmap dst = new Bitmap(canvas, canvas, PixelFormat.Format32bppArgb);
+        Bitmap dst = new Bitmap(size, size, PixelFormat.Format32bppArgb);
         using (Graphics g = Graphics.FromImage(dst))
         {
-            g.Clear(background);
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.SmoothingMode = SmoothingMode.HighQuality;
             g.CompositingQuality = CompositingQuality.HighQuality;
-
-            double scale = canvas * coverage / Math.Max(art.Width, art.Height);
-            double dw = art.Width * scale, dh = art.Height * scale;
-            g.DrawImage(art, (float)((canvas - dw) / 2), (float)((canvas - dh) / 2),
-                (float)dw, (float)dh);
+            g.CompositingMode = CompositingMode.SourceCopy;
+            g.DrawImage(src, new Rectangle(0, 0, size, size));
         }
         return dst;
     }

@@ -2,15 +2,18 @@
 <!--
   The adaptive launcher icon, API 26 and above.
 
-  The background is a flat colour rather than a second bitmap, and it is white
-  because that is the field the artwork was drawn on: the receipt in the mark is
-  white and reads only by the soft shadow beneath it, so a coloured plate would
-  take the edge off the one element that says "invoice".
+  **The background layer is the logo itself**, at the full 108 dp canvas, and
+  the foreground is empty. An adaptive icon wants two layers; the artwork is a
+  finished square picture with its own background, so it goes in the layer that
+  is drawn full-bleed, and nothing is invented to sit in front of it.
 
-  The mipmap-* PNGs beside this file still matter — API 24 and 25 are inside
-  minSdk and get those instead.
+  A launcher masks this to the middle 72 dp of the 108 dp canvas — see
+  tools/icons/README.md for what that crops on this image.
+
+  The mipmap-* ic_launcher.png files beside this one still matter: API 24 and
+  25 are inside minSdk and get those instead.
 -->
 <adaptive-icon xmlns:android="http://schemas.android.com/apk/res/android">
-    <background android:drawable="@color/ic_launcher_background" />
-    <foreground android:drawable="@mipmap/ic_launcher_foreground" />
+    <background android:drawable="@mipmap/ic_launcher_background" />
+    <foreground android:drawable="@android:color/transparent" />
 </adaptive-icon>
