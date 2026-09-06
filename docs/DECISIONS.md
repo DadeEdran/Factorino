@@ -7757,3 +7757,78 @@ owner; the audit that preceded the push found no secret in the tree or in any of
 public. Scrubbing it would mean rewriting every commit and force-pushing; the owner was told twice
 before the push and did not ask for it. There is no LICENSE file, so the code is "all rights
 reserved" — readable, but not licensed for reuse.
+
+## D-122
+
+**2026-09-07 — The first-run tutorial is eight plain screens, not a coach-mark overlay, and the flag
+that makes it run once lives in the settings row.**
+
+**Decision.** A new user is greeted on first launch by eight full-screen steps — business name,
+customer, product, invoice, issue, payment, PDF, backup — one short Persian sentence each, with a
+skip control on **every** step. It never appears again: not on the second launch, not after an
+update. A «راهنما» section in settings replays the whole sequence from step one, on demand.
+
+**Why plain screens and not an overlay pointing at the real controls.** The deciding fact is about
+the moment it runs rather than about taste: **the tutorial runs on an empty database, where five of
+the eight controls it teaches do not exist.** There is no invoice on a first launch, so there is no
+invoice page, no payment sheet, no export button and no issue action to highlight. An overlay would
+have had to seed demonstration data to have a target — which §15 prohibits outright — or point at
+empty space.
+
+Two consequences reinforce it. **A coach-mark rots silently:** it is anchored to a widget by a key,
+and when that widget moves, nothing fails — the arrow points at the wrong place, in a release build,
+on somebody's phone. §10 already records three cards relocated *after* they shipped, and each would
+have invalidated an anchor with nothing turning red. **And a cut-out has geometry** that must be
+right at every width, over a `NavigationBar` on a phone and a rail on the right in Persian, and must
+survive the font-size setting that has already broken two layouts (D-108, D-114). These screens are
+one centred column, scrolling middle, pinned footer — D-053 and D-062's shape, already known to hold
+on all three tiers, with no tier branch in the file at all.
+
+**How the words are kept from rotting, which is the part that is actually checkable.** Every sentence
+that names a section fills the name in from `AppDestination` rather than spelling it in the ARB, so
+the tutorial quotes the label the navigation bar draws. Shortening «محصولات و خدمات» to «محصولات»
+(D-114) would have made a literal wrong and nothing would have failed; through the destination it
+follows automatically, and removing a destination stops `TutorialStep.body` compiling.
+
+**The flag: `settings.tutorial_seen_at`, schema v9.** Nullable, epoch milliseconds, where null means
+"never shown". In the settings row rather than a device-local store, on D-087's reasoning for
+`theme_mode`: there is no per-device store, and adding one would mean a dependency, a second place
+settings live, and a second thing the backup does not carry. The accepted consequence is that a
+restored backup carries the flag — which is right: a user moving to a new phone is not re-taught an
+application they already know.
+
+**The migration backfills every existing database, and that is the requirement rather than a
+shortcut.** "Never again, *including after an update*" is exactly the case a column default cannot
+distinguish. A database that reaches the v8→v9 step existed before the tutorial did, which is a fact
+about its owner and not a guess: they learnt the application without it. `onCreate` leaves the column
+null, so only a genuinely new database is greeted. **The practical cost, stated because it will be
+met immediately:** installing a new build over an existing one does *not* show the tutorial. Settings
+→ راهنما is how to see it; a fresh install is the other way, and it costs the existing data.
+
+**It is written by exactly one thing.** `SettingsRepository.write` leaves the column absent from its
+companion, so saving a tax rate cannot carry a stale flag — or a null — back into it.
+`markTutorialSeen` writes only `where tutorial_seen_at is null`, so the replay from settings cannot
+move a timestamp that already means "when this user was first oriented". Skipping writes the flag
+like finishing does: the flag records that the tutorial was *offered*, and a skip that did not write
+it would bring the tutorial back on the next launch, which is precisely what the user asked not to
+happen.
+
+**Ordering against the seller prompt (D-102): the tutorial first, and no logic was needed to
+arrange it.** The tutorial is a layer over the whole shell, so on a first launch the dashboard — and
+its prompt — is simply behind it. Step one asks for the business name; the prompt is what remains for
+whoever skipped, and both open the same sheet through the same write path. Nothing suppresses
+anything, which is the best kind of resolution: there is no rule for a later change to break.
+
+**Where the layer is mounted, and why it is not a route.** It is an `overlay` slot on
+`AdaptiveScaffold`, supplied by the router. That places it above the navigation chrome **and** inside
+`BackPolicyScope`, so it can claim the system back press through `BackClaims` — the mechanism that
+exists because nested `BackButtonListener`s do not hand priority back. Without the claim the press
+would be answered by the shell *behind* the tutorial: on a first launch, the exit prompt appearing
+invisibly underneath and the second press closing the application. Back moves to the previous step,
+and on the first step it leaves, exactly as the visible skip does.
+
+**Alternatives considered.** *A coach-mark overlay* — rejected above. *A `go_router` route* — the
+shell's `BackButtonListener` stays mounted beneath a pushed route and would intercept before the
+navigator could pop it. *A device-local flag* (`shared_preferences`) — a new dependency and a second
+home for settings, for one integer. *A boolean column* — `lastBackupAt` already establishes the
+timestamp shape here, and a `0`/`1` would need widening the first time anyone asks *when*.

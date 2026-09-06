@@ -5,6 +5,45 @@
 > **New reader with no context? Read `docs/HANDOVER.md` first** — what the app does, what it
 > deliberately does not, what is known broken, and what to do first. Then come back here.
 >
+> ---
+>
+> ## Eleventh pass — 2026-09-07 — the first-run tutorial (D-122), version 1.0.2
+>
+> **A deliberately partial pass, at the owner's instruction:** no new tests beyond the ones that
+> stopped compiling, **the suites were not run**, and this is not a full documentation pass. What is
+> below is what a fresh session needs to not be surprised; `docs/DECISIONS.md` D-122 carries the
+> reasoning in full, and `ROADMAP.md` and `ARCHITECTURE.md` are **stale with respect to this pass**.
+>
+> **What landed.** Eight plain full-screen steps on first launch — business name, customer, product,
+> invoice, issue, payment, PDF, backup — one Persian sentence each, skip on every step, replayable
+> from **تنظیمات ← راهنما**. New feature folder `lib/features/tutorial/` (three files). Mounted as an
+> `overlay` slot on `AdaptiveScaffold` so it covers the navigation chrome *and* sits inside
+> `BackPolicyScope`, which is what lets it claim the system back press.
+>
+> **Schema v9** — `settings.tutorial_seen_at`, nullable, null means never shown. `migrateV8ToV9`
+> adds the column and **backfills every database that already exists**, because "never again,
+> including after an update" is the case a default cannot distinguish. Dump and generated helper
+> written (`drift_schemas/drift_schema_v9.json`, `test/data/database/generated/schema_v9.dart`);
+> regenerating the helpers needs `--data-classes --companions` or every migration test loses its
+> companions and stops compiling. Schema v8's helper gained those in this pass, having been generated
+> without them.
+>
+> **The consequence to expect on the phone, not a bug:** installing the new APK over the old one does
+> **not** show the tutorial — the database already exists, so the migration marked it seen. Settings
+> → راهنما replays it. A fresh install is the other way and costs the existing data.
+>
+> **What was NOT done and is the first thing to check.** `flutter test` has not been run since the
+> schema bump. `flutter analyze` is clean and both artifacts build, so nothing is broken at compile
+> time — but the migration suites, `settings_screen_test.dart` and the width sweep have not seen v9
+> or the new settings section. **Run `flutter test` before trusting this pass.** No layout check has
+> run at any tier over the D-057 ladder either; the tutorial screens carry no money, but the settings
+> screen grew a section.
+>
+> `docs/DECISIONS.md` is also missing a **D-121** entry, which `lib/data/database/tables/settings.dart`
+> references. That gap predates this pass.
+>
+> ---
+>
 > **Last updated: 2026-09-04 (ninth pass) — four requests, and the correction of a diagnosis this
 > file got wrong last pass.**
 >
