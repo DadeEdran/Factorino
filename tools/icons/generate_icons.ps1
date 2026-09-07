@@ -31,8 +31,8 @@ Write-Host ("  loaded {0}x{1} — used whole, unmodified" -f $art.Width, $art.He
 
 # --------------------------------------------------------------- Android
 #
-# Legacy density icons, for API 24 and 25 — the two levels below adaptive that
-# `minSdk` still admits.
+# The launcher icon, at every density. Used on EVERY API level -- see the note
+# below about why there is no adaptive icon.
 $legacy = [ordered]@{ 'mdpi' = 48; 'hdpi' = 72; 'xhdpi' = 96; 'xxhdpi' = 144; 'xxxhdpi' = 192 }
 foreach ($density in $legacy.Keys) {
   $px = $legacy[$density]
@@ -42,20 +42,32 @@ foreach ($density in $legacy.Keys) {
   $bmp.Dispose()
 }
 
-# The adaptive icon's background layer, API 26+ — the image itself, at the
-# 108 dp canvas for each density. There is no generated foreground: the layer
-# that carries the artwork is this one, and `ic_launcher.xml` puts a
-# transparent colour in the foreground slot rather than inventing a second
-# picture. A launcher masks this to the middle 72 dp of the 108 — see the
-# README for what that costs on this particular image.
-$adaptive = [ordered]@{ 'mdpi' = 108; 'hdpi' = 162; 'xhdpi' = 216; 'xxhdpi' = 324; 'xxxhdpi' = 432 }
-foreach ($density in $adaptive.Keys) {
-  $px = $adaptive[$density]
-  $bmp = [IconGen]::Resize($art, $px)
-  [IconGen]::SavePng($bmp, (Join-Path $root "android\app\src\main\res\mipmap-$density\ic_launcher_background.png"))
-  Write-Host ("  android adaptive {0,-8} {1}x{1}" -f $density, $px)
-  $bmp.Dispose()
-}
+# THERE IS DELIBERATELY NO ADAPTIVE ICON. This is the second half of the fix,
+# and it is the half that matters -- read this before adding one back.
+#
+# An adaptive icon is defined to be cropped: the launcher draws only the middle
+# 72 dp of the 108 dp canvas and picks the shape itself. Measured on this
+# image, that safe zone is source pixels 209-1045 of 1254, and the artwork
+# spans 278-973 across and 212-1050 down -- so the mask keeps the mark and
+# throws away EVERY pixel of the white margin around it, then clips five pixels
+# off the bottom of the receipt. Rendered and looked at, not reasoned about:
+# the result is the mark bleeding to all four edges with no white left.
+#
+# That is the icon the owner reported as "the white background has been
+# removed", and no amount of regenerating a PNG fixes it, because nothing is
+# wrong with the PNG. The crop IS the adaptive icon.
+#
+# So there is no `mipmap-anydpi-v26/ic_launcher.xml` and no
+# `ic_launcher_background.png`. Every API level takes the legacy
+# `ic_launcher.png` above, which is the whole supplied square, downscaled and
+# nothing else. On API 26+ the system applies its own legacy treatment -- it
+# scales the icon down inside the launcher's shape rather than cutting into it
+# -- so the white margin survives and the mark is never clipped.
+#
+# The cost, stated so it reads as a choice rather than an oversight: the icon
+# does not move with the launcher's parallax, and on a launcher that draws
+# legacy icons small it sits inside a shape rather than filling it. That is the
+# trade for showing the picture as it was drawn.
 
 # --------------------------------------------------------------- Windows
 #

@@ -7758,6 +7758,54 @@ public. Scrubbing it would mean rewriting every commit and force-pushing; the ow
 before the push and did not ask for it. There is no LICENSE file, so the code is "all rights
 reserved" — readable, but not licensed for reuse.
 
+## D-121 — The display unit stops being a choice, and Toman is named once
+
+**Date:** 2026-09-06 · **Status:** accepted · **Asked for by the owner.** Reverses the settings half
+of D-117.
+
+**Written 2026-09-07, after the fact.** The decision shipped in commit `100d8aa` and eight source
+files cite it; the entry itself was never added, which is the gap this closes. Nothing here is new —
+it is the reasoning already recorded in that commit and in `core/localization/money_display.dart`,
+put where §17 says it belongs.
+
+**Decision.** The ریال/تومان dropdown is removed from settings. **Everything is Toman**, named once
+as `kDisplayUnit` in `core/localization/money_display.dart`, and the application prints the word
+beside every figure — on screen and on the page.
+
+**Reason.** A unit switch is a setting whose wrong value is invisible: an amount is a plausible
+number in either unit, off by exactly ten, and the person most likely to be hurt by a mis-set
+dropdown is the one who never opened settings. The owner's businesses quote in Toman; D-117 offered a
+choice nobody in the intended market needed, and the cost of the choice existing was borne on every
+screen that had to carry the unit through.
+
+**What went with it:** the `MoneyDisplayScope` inherited widget, the settings read in `app.dart`, the
+`unit` field threaded through four sheets, `AppSettings.displayUnit`, and two ARB strings. A scope
+that can only ever hold one value is a lookup that cannot fail interestingly, and §15 forbids keeping
+a layer for the case that was removed.
+
+**What deliberately stayed.**
+
+* **Integer Rial storage, untouched** (§4, D-002). This was and remains a display decision: the
+  divisor on the way to a screen, a field and a printed page. No migration moved a figure, and no
+  existing invoice changed.
+* **The unit printed beside every amount**, which is D-117's one genuinely load-bearing half. A PDF
+  is read away from the application that produced it, so it is the surface where the unit cannot be
+  inferred from context. Removing the choice did not remove the label.
+* **`AmountText.inRial`.** The one place a different unit still appears, and it is a **precision**
+  decision rather than a preference: a 9% tax on an odd figure is not a whole number of Toman, and
+  that call site says so where it matters.
+* **The `settings.display_unit` column**, still at schema v8, defaulted and now unread. Dropping it
+  needs a version bump, a migration step and a migration test (§6) — real work and real risk for one
+  unread integer per database. A database holding `1` keeps `1` and displays Toman like every other.
+  It goes with the next migration this schema needs for a reason of its own.
+
+**Alternatives considered.** *Keeping the dropdown and defaulting harder to Toman* — the failure mode
+is a wrong setting, and a better default does not remove it. *Dropping the column in the same pass* —
+a destructive migration to tidy up, taken on the same day as a behaviour change, against §6's rule
+that a migration is never incidental work.
+
+---
+
 ## D-122
 
 **2026-09-07 — The first-run tutorial is eight plain screens, not a coach-mark overlay, and the flag
@@ -7832,3 +7880,54 @@ shell's `BackButtonListener` stays mounted beneath a pushed route and would inte
 navigator could pop it. *A device-local flag* (`shared_preferences`) — a new dependency and a second
 home for settings, for one integer. *A boolean column* — `lastBackupAt` already establishes the
 timestamp shape here, and a `0`/`1` would need widening the first time anyone asks *when*.
+
+## D-123
+
+**2026-09-07 — There is no adaptive launcher icon, because an adaptive icon is defined to crop the
+picture it is given.**
+
+**Decision.** `mipmap-anydpi-v26/ic_launcher.xml` and the five `ic_launcher_background.png` layers are
+removed. `ic_launcher.png` — the whole supplied square, downscaled and nothing else — serves every
+API level. `IconGen.Resize` sets `WrapMode.TileFlipXY`, and `IconGen.AssertOpaque` runs on the source
+and on every output.
+
+**The report was "the white background has been removed from the logo again", and the first thing
+this pass established is that it had not been.** Measured rather than assumed, on disk and inside the
+shipped artifacts: every mipmap PNG and every `.ico` entry carried the full opaque image, interior
+alpha 255 throughout, corner pixels white, and the APK's entries were byte-identical in size to the
+repository's. The generator had not regressed and no stale processed file from the earlier pass was
+still in use — both of the causes the owner suggested were excluded before anything was changed.
+
+**The white was thrown away downstream, by the adaptive icon.** A launcher draws only the middle
+72 dp of the 108 dp canvas. That safe zone is source pixels 209–1045 of 1254; the artwork spans
+278–973 across and 212–1050 down. So the mask keeps the mark, discards **every pixel of the white
+margin**, and clips the last five pixels off the receipt — before the launcher's own circle or
+squircle takes more. Rendered at 288 px and looked at: the mark bleeds to all four edges with no
+white anywhere. The file was never the problem; the crop is the adaptive icon itself.
+
+**Why not fix it inside the adaptive icon.** The two ways to keep an adaptive icon and stop the crop
+are to scale the image into the 72 dp safe zone, which adds padding, or to put it in a foreground
+layer over a white background layer, which invents a second picture. Both are recompositions, and the
+standing instruction on this artwork is that it is used exactly as supplied — no keying, no flood
+fill, no trimming, no recomposition, no transparency, downscale only. An adaptive icon cannot satisfy
+that, so it goes.
+
+**What replaces it, and what that costs.** On API 26+ the system applies its legacy treatment: it
+scales the icon down inside the launcher's shape rather than cutting into it, so the margin survives
+and the mark is never clipped. The trade, stated so it is a choice: the icon does not move with the
+launcher's parallax, and a launcher that draws legacy icons small will sit it inside a shape rather
+than let it fill one.
+
+**A second, separate defect found by the same measurement.** Every generated file carried a
+**one-pixel translucent frame** — alpha 220–243 on the outermost row and column, interior untouched.
+A bicubic kernel reads past the edge of the bitmap; GDI+ calls outside "transparent black"; under
+`CompositingMode.SourceCopy` that partial coverage is copied rather than blended. The source is
+24-bit RGB with no alpha channel at all, so this was transparency invented in transit, and it had
+shipped in both artifacts. `WrapMode.TileFlipXY` gives the kernel real pixels to read.
+`AssertOpaque` throws naming the offending pixel, so it cannot come back quietly — which is the part
+that matters, because the previous pass stated the no-transparency rule in three comments and a
+README and shipped the violation anyway. **A rule asserted in prose is not a rule; the check is.**
+
+**Verified after regeneration:** zero non-opaque pixels in all five mipmaps, all six DIB entries of
+the `.ico` and its 256 px PNG entry, and a magenta-backed render of the largest icon shows no
+show-through.

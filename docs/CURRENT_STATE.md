@@ -39,8 +39,20 @@
 > run at any tier over the D-057 ladder either; the tutorial screens carry no money, but the settings
 > screen grew a section.
 >
-> `docs/DECISIONS.md` is also missing a **D-121** entry, which `lib/data/database/tables/settings.dart`
-> references. That gap predates this pass.
+> **The launcher icon was rebuilt again, and the earlier diagnosis of it was wrong twice over**
+> (D-123). Reported as "the white background has been removed from the logo again". It had not been:
+> every mipmap PNG, every `.ico` entry and both shipped artifacts carried the full opaque
+> white-background image, byte-identical between the repository and the APK — the generator had not
+> regressed and no stale processed file was in play. **The white was thrown away by the adaptive
+> icon**, which by definition shows only the middle 72 dp of 108 and therefore discarded the entire
+> white margin and clipped the receipt. The adaptive icon and its five background layers are gone;
+> `ic_launcher.png` now serves every API level. Separately, a **one-pixel translucent frame** (alpha
+> 220–243) was found on every generated file — GDI+ bicubic sampling past the source edge under
+> `SourceCopy` — and is fixed with `WrapMode.TileFlipXY` plus an `AssertOpaque` that throws rather
+> than let it return. Verified after regeneration: **zero non-opaque pixels anywhere.**
+>
+> **D-121 is now written** (`docs/DECISIONS.md`), closing a gap that predated this pass: eight source
+> files cited it and no entry existed.
 >
 > ---
 >

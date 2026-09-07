@@ -32,6 +32,13 @@ public static class IconGen
                 g.CompositingMode = CompositingMode.SourceCopy;
                 g.DrawImage(src, new Rectangle(0, 0, src.Width, src.Height));
             }
+
+            // The source is expected to be opaque -- the owner supplies a
+            // finished square picture with its own white background. If it
+            // ever arrives with an alpha channel, every downstream assertion
+            // would be wrong and the icons would go out transparent; say so
+            // here instead, where the file that caused it is still in hand.
+            AssertOpaque(dst, "source image " + Path.GetFileName(path));
             return dst;
         }
     }
@@ -52,15 +59,74 @@ public static class IconGen
 
         Bitmap dst = new Bitmap(size, size, PixelFormat.Format32bppArgb);
         using (Graphics g = Graphics.FromImage(dst))
+        using (ImageAttributes attr = new ImageAttributes())
         {
             g.InterpolationMode = InterpolationMode.HighQualityBicubic;
             g.PixelOffsetMode = PixelOffsetMode.HighQuality;
             g.SmoothingMode = SmoothingMode.HighQuality;
             g.CompositingQuality = CompositingQuality.HighQuality;
             g.CompositingMode = CompositingMode.SourceCopy;
-            g.DrawImage(src, new Rectangle(0, 0, size, size));
+
+            // **TileFlipXY, and this line is the whole of a real defect.** A
+            // bicubic kernel reaches past the pixel it is sampling, so at the
+            // very edge of the bitmap it reads outside it -- and GDI+ treats
+            // outside as transparent black. Under SourceCopy that partial
+            // coverage is *copied* rather than blended, so the outermost row
+            // and column came out at alpha 220-243 instead of 255: a
+            // one-pixel translucent frame around an image that has no alpha
+            // channel at all. It was in every mipmap, every .ico entry and
+            // both shipped artifacts, and it is exactly the "no transparency"
+            // the owner asked for and did not get.
+            //
+            // Mirroring the edge means the kernel always has real pixels to
+            // read, so the border keeps the source's own colour and the
+            // source's own opacity. [AssertOpaque] then refuses to let it come
+            // back silently.
+            attr.SetWrapMode(WrapMode.TileFlipXY);
+
+            g.DrawImage(
+                src,
+                new Rectangle(0, 0, size, size),
+                0, 0, src.Width, src.Height,
+                GraphicsUnit.Pixel,
+                attr);
         }
+
+        AssertOpaque(dst, "resize to " + size);
         return dst;
+    }
+
+    // Throws unless every pixel is fully opaque.
+    //
+    // Not a nicety: the source is 24-bit RGB with no alpha channel, so *any*
+    // transparency in an output was invented on the way through and there is
+    // no value of it that could be correct. Checking is cheap at these sizes
+    // and the alternative is what happened -- a translucent edge that no one
+    // sees until it is on a launcher, against a wallpaper, on somebody's
+    // phone.
+    public static void AssertOpaque(Bitmap bmp, string what)
+    {
+        BitmapData d = bmp.LockBits(new Rectangle(0, 0, bmp.Width, bmp.Height),
+            ImageLockMode.ReadOnly, PixelFormat.Format32bppArgb);
+        byte[] px = new byte[d.Stride * bmp.Height];
+        System.Runtime.InteropServices.Marshal.Copy(d.Scan0, px, 0, px.Length);
+        int stride = d.Stride;
+        bmp.UnlockBits(d);
+
+        for (int y = 0; y < bmp.Height; y++)
+        {
+            int row = y * stride;
+            for (int x = 0; x < bmp.Width; x++)
+            {
+                byte a = px[row + x * 4 + 3];
+                if (a != 255)
+                {
+                    throw new Exception("transparency introduced by " + what
+                        + ": pixel (" + x + "," + y + ") has alpha " + a
+                        + ". The source is opaque; an output must be too.");
+                }
+            }
+        }
     }
 
     public static void SavePng(Bitmap bmp, string path)
