@@ -327,12 +327,12 @@ This is the same family as §6b and §6c, and the third member of it:
 |---|---|---|
 | §6b | a repository method with **no call site** | a test asserts what a screen does, never what it fails to offer |
 | §6c | a check that runs in a **state no user is in** | it reports success, truthfully, about somewhere else |
-| **§6d** | a value **computed right and discarded** by its caller | both sides are tested; the assignment between them is not, and nothing renders the loss |
+| §6d | a value **computed right and discarded** by its caller | both sides are tested; the assignment between them is not, and nothing renders the loss |
+| **§6e** | a rule stated **only in prose** | nothing executes a comment; the output is never inspected for what the comment forbids |
 
 The unifying property is that **each is a fault in wiring rather than in logic**, and a suite built
-from unit tests over correct components is structurally unable to report any of them. All four
-instances so far were found by a person using the application, or by someone asking it for something
-new.
+from unit tests over correct components is structurally unable to report any of them. Every instance
+so far was found by a person using the application, or by someone asking it for something new.
 
 ### What to do about it
 
@@ -345,6 +345,39 @@ The remedy here is `jalaliDayWithTimeOf` (D-092): changing the *day* changes onl
 invariant that the result never leaves the picked Jalali day is what keeps the Jalali reporting
 periods correct. `jalali_day_with_time_test.dart` checks both edges of the clock against a month end,
 a year end and a leap-year Esfand 30.
+
+---
+
+## 6e. A rule that is only written down is not a rule
+
+**The instance, and it is a small one that makes the shape unmissable** (D-123). The launcher icons
+are generated from one source PNG under a single rule: use the image exactly as supplied, downscale
+and nothing else, **no transparency**. That rule was written in the header comment of `IconGen.cs`,
+again above `Resize`, again in `generate_icons.ps1`, and again in `tools/icons/README.md` — four
+statements of it — and every icon the generator produced violated it. A bicubic kernel reads past
+the edge of the bitmap, GDI+ treats outside as transparent black, and `CompositingMode.SourceCopy`
+copies that rather than blending it, so the outermost row and column came out at alpha 220–243. On a
+source with **no alpha channel at all**. It shipped in both artifacts and was found only when the
+owner reported something else.
+
+**Why no test could have caught it, and why that is the wrong question.** There was no test, and
+there was never going to be one: this is a Windows-only PowerShell generator run by hand, outside
+`flutter test`, producing binaries nobody reads. Asking the suite to cover it misses the point. The
+fix is not a test — it is an **assertion inside the thing that does the work**:
+`IconGen.AssertOpaque` runs on the source and on every resized bitmap and throws naming the offending
+pixel. It costs a few milliseconds at these sizes and it cannot be forgotten, because it is on the
+path.
+
+**The general form.** When you write a comment saying the output has some property — opaque, sorted,
+non-empty, within a bound, in a particular unit — ask what would happen if it did not. If the answer
+is "nothing, until somebody looks", the comment is decoration. Either something must check the
+property where it is produced, or the sentence should be honest that it is an intention rather than a
+guarantee. **Prefer the check at the point of production over a test somewhere else**: a test proves
+the property held once on the inputs the test chose; an assertion proves it holds on the input that
+actually ran.
+
+This is the cheapest member of the family to fix and the easiest to keep rediscovering, because a
+prose rule reads exactly like an enforced one.
 
 ---
 
